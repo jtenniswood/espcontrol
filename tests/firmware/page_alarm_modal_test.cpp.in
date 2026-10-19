@@ -384,6 +384,7 @@ struct CommandsPort : PageAlarmCommandPort {
     return success;
   }
 };
+static PageModalToken last_style_token{};
 struct Harness {
   Arena arena;
   Transport transport;
@@ -402,7 +403,9 @@ struct Harness {
   static PageAlarmModalStyle make_style(size_t capacity) {
     PageAlarmModalStyle value;
     value.gesture_capacity = capacity;
-    value.resolve = [](void*, const ParsedCfg&, PageAlarmModalEnvironment& environment) {
+    value.resolve = [](void*, PageModalToken token, const ParsedCfg&,
+                       PageAlarmModalEnvironment& environment) {
+      last_style_token = token;
       environment.label_font = environment.pin_font = environment.key_font = environment.icon_font =
           environment.title_font = &lv_font_montserrat_14;
       return style_ok;
@@ -432,6 +435,10 @@ struct Harness {
   void open(CardId card = 0, uint32_t gen = 0) {
     assert(request_without_allocation(modal, {gen, card}));
     modal.loop();
+    if (modal.token().opening)
+      assert(last_style_token.configuration == gen && last_style_token.card == card &&
+             last_style_token.opening == modal.token().opening &&
+             last_style_token.kind == modal.token().kind);
   }
 };
 void click(lv_obj_t* object) {

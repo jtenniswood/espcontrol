@@ -342,7 +342,7 @@ void test_volume() {
     bool styles = true;
     PageMediaVolumeModalStyle style;
     style.owner = &styles;
-    style.resolve = [](void* p, const ParsedCfg&, PageMediaVolumeModalEnvironment&) {
+    style.resolve = [](void* p, PageModalToken, const ParsedCfg&, PageMediaVolumeModalEnvironment&) {
       return *static_cast<bool*>(p);
     };
     style.numeric_action_sent = [](void*, PageModalToken token, float value) {
@@ -536,7 +536,9 @@ void test_gesture_budget() {
     const auto baseline = arena.live.size(), refs = coordinator.subscription_count(), bytes = lv_live_bytes;
     PageMediaVolumeModalStyle style;
     style.gesture_capacity = 1;
-    style.resolve = [](void*, const ParsedCfg&, PageMediaVolumeModalEnvironment&) { return true; };
+    style.resolve = [](void*, PageModalToken, const ParsedCfg&, PageMediaVolumeModalEnvironment&) {
+      return true;
+    };
     PageMediaVolumeModalPort port(arena, state, style, nullptr, [](void*, PageBindingToken) { return true; });
     PageModalRuntime runtime(port);
     assert(port.install(runtime, true));

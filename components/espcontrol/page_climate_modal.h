@@ -12,7 +12,10 @@ struct PageClimateModalStyle {
   // Resolve current profile fonts and per-card palette without retaining a
   // grid widget in the modal context. Required before this adapter can open.
   void *owner{nullptr};
-  bool (*resolve)(void *,const ParsedCfg &,espcontrol::cards::ClimateControlDriverEnvironment &){nullptr};
+  // Resolve by the opening's original configuration/card identity, including
+  // hidden-page fonts; never infer the source from the current visible grid.
+  bool (*resolve)(void*, PageModalToken, const ParsedCfg&,
+                  espcontrol::cards::ClimateControlDriverEnvironment&){nullptr};
 };
 // Demand-created adapter for the existing climate UI. No instance is selected
 // by production until scene/configuration ownership is migrated. A composite
@@ -59,7 +62,11 @@ class PageClimateModalPort final:public PageModalPort {
     config.precision=std::string(store.field(*definition,CardField::PRECISION));
     config.options=std::string(store.field(*definition,CardField::OPTIONS));
     auto env=style_.environment;
-    if(!style_.resolve(style_.owner,config,env)){record->~Record();allocator_.release(memory,sizeof(Record));return nullptr;}
+    if (!style_.resolve(style_.owner, token, config, env)) {
+      record->~Record();
+      allocator_.release(memory, sizeof(Record));
+      return nullptr;
+    }
     record->context=create_climate_control_context(nullptr,nullptr,nullptr,config,
         env.accent_color,env.secondary_color,env.tertiary_color,env.number_font,env.range_number_font,
         env.unit_font,env.label_font,env.option_title_font,env.option_value_font,env.option_menu_font,

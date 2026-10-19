@@ -157,6 +157,7 @@ struct Fixture {
   std::array<uint8_t,8192>document{};size_t size{0};alignas(std::max_align_t)std::array<uint8_t,32768>storage{};PageStore store;
 };
 void values(){auto &t=coordinator.transport();t.send("climate.room","","heat");t.send("climate.room","supported_features","1");t.send("climate.room","temperature","21.5");t.send("climate.room","current_temperature","20");t.send("climate.room","hvac_modes","['off','heat','cool']");t.send("climate.room","fan_modes","['auto','low']");t.send("climate.room","fan_mode","auto");}
+static PageModalToken last_style_token{};
 void test_adapter() {
   assert(climate_format_tenths(std::numeric_limits<int>::min(),0)=="-214748365");
   assert(climate_format_tenths(std::numeric_limits<int>::max(),1)=="214748364.7");
@@ -165,7 +166,14 @@ void test_adapter() {
   {
     PageEntityStateRuntime state(source,arena,subscriptions,{64,64,8192});assert(state.prepare(fixture.store));state.activate_prepared(fixture.store);values();
     const auto native=coordinator.transport().bindings.size(),graph_refs=coordinator.subscription_count(),arena_count=arena.live.size();
-    bool style_available=true;PageClimateModalStyle style;style.owner=&style_available;style.resolve=[](void *owner,const ParsedCfg &,cards::ClimateControlDriverEnvironment &){return *static_cast<bool *>(owner);};
+    bool style_available = true;
+    PageClimateModalStyle style;
+    style.owner = &style_available;
+    style.resolve = [](void* owner, PageModalToken token, const ParsedCfg&,
+                       cards::ClimateControlDriverEnvironment&) {
+      last_style_token = token;
+      return *static_cast<bool*>(owner);
+    };
     PageClimateModalPort port(arena,state,style,nullptr,[](void *,PageBindingToken){return true;});PageModalRuntime runtime(port);assert(port.install(runtime));
     assert(runtime.prepare(fixture.store));runtime.activate_prepared(fixture.store);
     const auto baseline_lv=lv_live_bytes;
@@ -173,6 +181,9 @@ void test_adapter() {
       assert(runtime.request_card({17,0}));runtime.loop();assert(ui.active&&runtime.interactive(runtime.token())&&clock_label=="Den");
       auto *ctx=ui.active;assert(ctx->has_target&&ctx->target_tenths==215&&ctx->fan_mode=="auto");
       const auto token=runtime.token();
+      assert(last_style_token.configuration == 17 && last_style_token.card == 0 &&
+             last_style_token.opening == token.opening && last_style_token.kind == ControlModalKind::CLIMATE);
+
       // No press: no pending edit. A valid press arms this exact opening.
       lv_obj_send_event(ui.button,LV_EVENT_CLICKED,nullptr);assert(!ctx->pending_temp_send);
       lv_obj_send_event(ui.button,LV_EVENT_PRESSED,nullptr);lv_obj_send_event(ui.button,LV_EVENT_CLICKED,nullptr);assert(ctx->pending_temp_send);

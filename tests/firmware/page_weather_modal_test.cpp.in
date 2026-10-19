@@ -152,6 +152,7 @@ Shell control_modal_open_shell(ControlModalKind kind, lv_obj_t* owner, int, cons
       close_button,
       [](lv_event_t* event) {
         auto* source = weather_daily_modal().source;
+
         auto callback = reinterpret_cast<void (*)()>(lv_event_get_user_data(event));
         callback();
         if (after_close) after_close(source);
@@ -266,12 +267,14 @@ void test_weather_modal() {
   {
     struct Settings {
       bool allowed = true;
+      PageModalToken styled{};
       size_t gestures = 128;
     } settings;
     PageWeatherModalStyle style;
     style.owner = &settings;
-    style.resolve = [](void* owner, const ParsedCfg&, PageWeatherModalStyle& out) {
+    style.resolve = [](void* owner, PageModalToken token, const ParsedCfg&, PageWeatherModalStyle& out) {
       auto& settings = *static_cast<Settings*>(owner);
+      settings.styled = token;
       out.font = out.icon_font = out.temperature_font = &lv_font_montserrat_14;
       out.gesture_capacity = settings.gestures;
       return settings.allowed;
@@ -285,6 +288,7 @@ void test_weather_modal() {
     assert(modal.prepare(invalid.store));
     modal.activate_prepared(invalid.store);
     assert(!request_without_allocation(modal, {19, 0}));
+    assert(!settings.styled.opening);
     assert(modal.prepare(first.store));
     modal.activate_prepared(first.store);
     const auto baseline = arena.live.size(), lv_baseline = lv_live_bytes;
@@ -310,6 +314,10 @@ void test_weather_modal() {
              weather_daily_modal().columns.size() == 6);
       assert(weather_daily_cards().empty() && weather_daily_sources().empty());
       const auto token = modal.token();
+      assert(settings.styled.configuration == 17 && settings.styled.card == 0 &&
+             settings.styled.opening == token.opening &&
+             settings.styled.kind == ControlModalKind::WEATHER_FORECAST);
+
       click(close_button);
       assert(!modal.valid(token) && modal.memory().retired_contexts == 1 &&
              source->entity_id == "weather.home");

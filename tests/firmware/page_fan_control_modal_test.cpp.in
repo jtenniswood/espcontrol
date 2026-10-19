@@ -425,7 +425,9 @@ void test_controls() {
     state.activate_prepared(fixture.store);
     values();
     PageFanControlModalStyle style;
-    style.resolve = [](void*, const ParsedCfg&, PageFanControlModalEnvironment&) { return true; };
+    style.resolve = [](void*, PageModalToken, const ParsedCfg&, PageFanControlModalEnvironment&) {
+      return true;
+    };
     PageFanControlModalPort port(arena, state, style, nullptr, [](void*, PageBindingToken) { return true; });
     PageModalRuntime runtime(port);
     assert(!port.install(runtime, false));
@@ -622,7 +624,7 @@ void test_failures() {
       style.gesture_capacity = capacity;
       bool styles = true;
       style.owner = &styles;
-      style.resolve = [](void* owner, const ParsedCfg&, PageFanControlModalEnvironment&) {
+      style.resolve = [](void* owner, PageModalToken, const ParsedCfg&, PageFanControlModalEnvironment&) {
         return *static_cast<bool*>(owner);
       };
       PageLegacyModalPort<Family> port(arena, state, style, nullptr,
@@ -677,7 +679,7 @@ void test_presets() {
     bool styles = true;
     PageFanPresetModalStyle style;
     style.owner = &styles;
-    style.resolve = [](void* owner, const ParsedCfg&, PageFanControlModalEnvironment&) {
+    style.resolve = [](void* owner, PageModalToken, const ParsedCfg&, PageFanControlModalEnvironment&) {
       return *static_cast<bool*>(owner);
     };
     PageFanPresetModalPort port(arena, state, style, nullptr, [](void*, PageBindingToken) { return true; });

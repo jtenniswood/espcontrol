@@ -341,7 +341,9 @@ void test_panel(const char* wire, const char* entity) {
     graph.activate_prepared(fixture.store);
     values(entity);
     PageOptionSelectModalStyle style;
-    style.resolve = [](void*, const ParsedCfg&, PageOptionSelectModalEnvironment&) { return true; };
+    style.resolve = [](void*, PageModalToken, const ParsedCfg&, PageOptionSelectModalEnvironment&) {
+      return true;
+    };
     PageOptionSelectModalPort port(arena, graph, style, nullptr,
                                    [](void*, PageBindingToken) { return true; });
     PageModalRuntime runtime(port);
@@ -495,7 +497,7 @@ void test_failures() {
       PageOptionSelectModalStyle style;
       style.gesture_capacity = capacity;
       style.owner = &styles;
-      style.resolve = [](void* p, const ParsedCfg&, PageOptionSelectModalEnvironment&) {
+      style.resolve = [](void* p, PageModalToken, const ParsedCfg&, PageOptionSelectModalEnvironment&) {
         return *static_cast<bool*>(p);
       };
       PageOptionSelectModalPort port(arena, graph, style, nullptr,
