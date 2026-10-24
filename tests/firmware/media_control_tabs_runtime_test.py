@@ -15,7 +15,7 @@ source = r'''
 #include "media_power_capability.h"
 struct MediaControlCtx {
   espcontrol::media::ControlTabs control_tabs;
-  bool group_only = false, progress = true, power = true;
+  bool group_only = false, progress = true, power = true, source = true;
   bool grouping_supported = true, speaker_discovery_available = true;
   bool available = true, power_state_known = true, power_available = true;
   std::string power_state_text = "on";
@@ -37,6 +37,7 @@ MediaControlModalUi &media_control_modal_ui() { return ui; }
 void media_control_clear_tab_content() { ++cleared; }
 bool media_control_progress_supported(MediaControlCtx *ctx) { return ctx->progress; }
 bool media_control_power_supported(MediaControlCtx *ctx) { return ctx->power; }
+bool media_control_source_supported(MediaControlCtx *ctx) { return ctx->source; }
 size_t media_control_group_size(MediaControlCtx *ctx) { return ctx->group_size; }
 bool media_group_speaker_tab_available(bool supported, bool discovered, bool grouped) {
   return supported && (discovered || grouped);
@@ -148,6 +149,18 @@ int main() {
   media_playback_apply_state_to_power_control(&power, &ctx);
   assert(ui.active == &ctx && media_control_can_open_modal(&ctx));
   assert(!media_control_can_open_modal(nullptr));
+  // Source appears only for players that support source selection, and an
+  // open Source tab falls back when that support disappears.
+  ctx.control_tabs = parse_control_tabs("source|volume|controls");
+  ctx.source = true;
+  ui.active = &ctx;
+  assert(media_control_visible_tabs(&ctx).tabs[0] == Tab::SOURCE);
+  ui.tab = Tab::SOURCE;
+  const int cleared_before_source = cleared;
+  ctx.source = false;
+  assert(!media_control_visible_tabs(&ctx).contains(Tab::SOURCE));
+  media_control_ensure_visible_tab(&ctx);
+  assert(ui.tab == Tab::VOLUME && cleared == cleared_before_source + 1);
 }
 '''
 # Check that the production opener and context constructor use the tested policy.

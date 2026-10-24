@@ -6,8 +6,13 @@ int main() {
   using namespace espcontrol::media;
   using Tab = MediaControlTab;
   const auto defaults = parse_control_tabs("");
-  assert(defaults.count == 4 && !defaults.contains(Tab::POWER));
-  assert(parse_control_tabs("", true).count == 5);
+  assert(defaults.count == 5 && !defaults.contains(Tab::POWER));
+  assert(defaults.contains(Tab::SOURCE) && defaults.tabs[4] == Tab::SOURCE);
+  const auto defaults_with_power = parse_control_tabs("", true);
+  assert(defaults_with_power.count == 6);
+  assert(defaults_with_power.tabs[4] == Tab::SOURCE && defaults_with_power.tabs[5] == Tab::POWER);
+  assert(std::string(control_tab_token(Tab::SOURCE)) == "source");
+  assert(normalize_control_tabs_value("source|volume") == "source|volume");
   assert(!parse_control_tabs("power|volume").contains(Tab::POWER));
   assert(normalize_control_tabs_value("power|volume") == "volume");
   assert(normalize_control_tabs_value(" \t") == DEFAULT_CONTROL_TABS);
@@ -27,4 +32,14 @@ int main() {
   // Hidden native power remains hidden even after its capability appears.
   visible = visible_control_tabs(parse_control_tabs("volume|controls"), true, true, true);
   assert(!visible.contains(Tab::POWER));
+  // Source follows the player's source-selection support, like Speakers.
+  const auto all_tabs = parse_control_tabs(
+    "source|power|speakers|volume|progress|controls", true);
+  assert(all_tabs.count == 6 && all_tabs.tabs[0] == Tab::SOURCE);
+  visible = visible_control_tabs(all_tabs, true, true, true, true);
+  assert(visible.count == 6 && visible.tabs[0] == Tab::SOURCE);
+  visible = visible_control_tabs(all_tabs, true, true, true, false);
+  assert(visible.count == 5 && !visible.contains(Tab::SOURCE));
+  visible = visible_control_tabs(parse_control_tabs("source"), true, true, true, false);
+  assert(visible.count == 1 && visible.tabs[0] == Tab::CONTROLS);
 }

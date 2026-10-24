@@ -23,6 +23,13 @@ int main() {
   assert(shuffle_supported(true, SUPPORT_SHUFFLE_SET | SUPPORT_REPEAT_SET));
   assert(repeat_supported(true, SUPPORT_SHUFFLE_SET | SUPPORT_REPEAT_SET));
 
+  using espcontrol::media::SUPPORT_SELECT_SOURCE;
+  using espcontrol::media::source_select_supported;
+  assert(!source_select_supported(false, SUPPORT_SELECT_SOURCE));
+  assert(!source_select_supported(true, 0));
+  assert(source_select_supported(true, SUPPORT_SELECT_SOURCE));
+  assert(source_select_supported(true, 659340));  // Amplifier zone with sources.
+
   bool shuffle = false;
   assert(parse_shuffle_state("true", shuffle) && shuffle);
   assert(parse_shuffle_state(" OFF ", shuffle) && !shuffle);

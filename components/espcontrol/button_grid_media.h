@@ -27,6 +27,9 @@ struct MediaControlCtx {
   std::string artist;
   std::string speaker_group_entity;
   std::vector<std::string> group_members;
+  std::vector<std::string> source_list;
+  std::string selected_source;
+  bool selected_source_known = false;
   std::vector<std::string> speaker_helper_members;
   std::vector<MediaGroupDiscoveryItem> speaker_discovery;
   std::vector<MediaGroupVolumeState> group_volume_states;
@@ -115,6 +118,7 @@ struct MediaControlModalUi {
   lv_obj_t *volume_tab = nullptr;
   lv_obj_t *speakers_tab = nullptr;
   lv_obj_t *power_tab = nullptr;
+  lv_obj_t *source_tab = nullptr;
   lv_obj_t *content_box = nullptr;
   lv_obj_t *controls_box = nullptr;
   lv_obj_t *progress_box = nullptr;
@@ -146,6 +150,9 @@ struct MediaControlModalUi {
   lv_obj_t *power_btn = nullptr;
   lv_obj_t *power_icon_lbl = nullptr;
   lv_obj_t *power_status_lbl = nullptr;
+  lv_obj_t *source_list = nullptr;
+  lv_obj_t *source_empty_lbl = nullptr;
+  std::vector<lv_obj_t *> source_rows;
   MediaControlCtx *active = nullptr;
   MediaControlCtx *display_text_ctx = nullptr;
   std::string display_title;
@@ -269,6 +276,11 @@ inline bool media_control_repeat_supported(MediaControlCtx *ctx) {
     ctx->supported_features_known, ctx->supported_features);
 }
 
+inline bool media_control_source_supported(MediaControlCtx *ctx) {
+  return ctx && espcontrol::media::source_select_supported(
+    ctx->supported_features_known, ctx->supported_features);
+}
+
 inline espcontrol::media::PowerCommand media_control_power_command(
     MediaControlCtx *ctx) {
   if (!media_control_power_supported(ctx)) return espcontrol::media::PowerCommand::NONE;
@@ -345,6 +357,7 @@ inline void media_control_refresh_volume(MediaControlCtx *ctx);
 inline void media_control_refresh_group_volume(MediaControlCtx *ctx);
 inline void media_control_speaker_action_timer_cb(lv_timer_t *timer);
 inline void media_control_refresh_power(MediaControlCtx *ctx);
+inline void media_control_refresh_sources(MediaControlCtx *ctx);
 inline void media_control_refresh_playback_modes(MediaControlCtx *ctx);
 inline void media_control_ensure_tab_content(MediaControlCtx *ctx);
 inline void media_control_clear_tab_content();
@@ -366,7 +379,8 @@ inline espcontrol::media::ControlTabs media_control_visible_tabs(MediaControlCtx
     media_control_progress_supported(ctx),
     media_group_speaker_tab_available(ctx->grouping_supported, ctx->speaker_discovery_available,
                                      media_control_group_size(ctx) > 1),
-    media_control_power_supported(ctx));
+    media_control_power_supported(ctx),
+    media_control_source_supported(ctx));
 }
 
 inline bool media_control_tab_layout_changed(MediaControlCtx *ctx) {
@@ -425,6 +439,8 @@ inline void media_playback_subscribe_progress(
   uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT);
 inline void media_playback_subscribe_volume(MediaPlaybackState *state);
 inline void media_playback_subscribe_modes(MediaPlaybackState *state);
+inline bool media_playback_copy_sources_to_control(MediaPlaybackState *state,
+                                                   MediaControlCtx *ctx);
 inline void media_playback_subscribe_friendly_name(MediaPlaybackState *state);
 inline void media_playback_subscribe_grouping(MediaPlaybackState *state);
 inline void media_playback_subscribe_speaker_discovery(
@@ -710,12 +726,17 @@ struct MediaPlaybackState {
   bool content_subscribed = false;
   bool friendly_name_subscribed = false;
   bool grouping_subscribed = false;
+  bool source_list_subscribed = false;
   uint32_t generation = 0;
   std::string entity_id;
   std::string state_text = "unknown";
   std::string title;
   std::string artist;
   std::string source;
+  // Exact Home Assistant source and source_list values for source selection.
+  std::string selected_source;
+  bool selected_source_known = false;
+  std::vector<std::string> source_list;
   std::string friendly_name;
   std::string current_content_id;
   uint64_t current_content_fingerprint = 0;
@@ -877,12 +898,16 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->content_subscribed = false;
   state->friendly_name_subscribed = false;
   state->grouping_subscribed = false;
+  state->source_list_subscribed = false;
   state->generation = ha_subscription_generation();
   state->entity_id = entity_id;
   state->state_text = "unknown";
   state->title.clear();
   state->artist.clear();
   state->source.clear();
+  state->selected_source.clear();
+  state->selected_source_known = false;
+  std::vector<std::string>().swap(state->source_list);
   state->friendly_name.clear();
   state->current_content_id.clear();
   state->current_content_fingerprint = 0;
@@ -1481,6 +1506,7 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
   const bool power_supported = media_control_power_supported(ctx);
   const bool shuffle_supported = media_control_shuffle_supported(ctx);
   const bool repeat_supported = media_control_repeat_supported(ctx);
+  const bool source_list_changed = media_playback_copy_sources_to_control(state, ctx);
   ctx->shuffle_known = shuffle_supported && state->shuffle_known;
   ctx->shuffle_enabled = state->shuffle_enabled;
   ctx->repeat_mode = repeat_supported
@@ -1568,6 +1594,10 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
                          mode_capabilities_changed;
     if (mode_capabilities_changed && ui.tab == MediaControlTab::CONTROLS) {
       media_control_clear_tab_content();
+    }
+    if (source_list_changed && ui.tab == MediaControlTab::SOURCE) {
+      media_control_clear_tab_content();
+      layout_needed = true;
     }
 #ifdef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
     if (media_control_progress_supported(ctx) && !ui.progress_tab) layout_needed = true;
@@ -1885,6 +1915,75 @@ inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {
 
 }
 
+// Copies the exact source selection data to one card. Returns whether the
+// list itself changed, which requires rebuilding an open Source tab.
+inline bool media_playback_copy_sources_to_control(MediaPlaybackState *state,
+                                                   MediaControlCtx *ctx) {
+  if (!state || !ctx) return false;
+  const bool list_changed = ctx->source_list != state->source_list;
+  if (list_changed) ctx->source_list = state->source_list;
+  ctx->selected_source = state->selected_source;
+  ctx->selected_source_known = state->selected_source_known;
+  return list_changed;
+}
+
+inline void media_playback_apply_sources_to_controls(MediaPlaybackState *state) {
+  if (!state) return;
+  MediaControlModalUi &ui = media_control_modal_ui();
+  for (MediaControlCtx *ctx : state->controls) {
+    if (!ctx) continue;
+    const bool list_changed = media_playback_copy_sources_to_control(state, ctx);
+    if (ui.active != ctx) continue;
+    if (list_changed && ui.tab == MediaControlTab::SOURCE) {
+      media_control_clear_tab_content();
+      media_control_refresh_open_modal(ctx, true);
+    } else {
+      media_control_refresh_sources(ctx);
+    }
+  }
+}
+
+inline void media_playback_update_selected_source(MediaPlaybackState *state,
+                                                  const std::string &value) {
+  if (!state) return;
+  const bool known = !value.empty() && value != "unknown" && value != "unavailable";
+  const std::string next = known ? value : std::string();
+  if (known == state->selected_source_known && next == state->selected_source) return;
+  state->selected_source = next;
+  state->selected_source_known = known;
+  media_playback_apply_sources_to_controls(state);
+}
+
+inline void media_playback_update_source_list(MediaPlaybackState *state,
+                                              const std::string &value) {
+  if (!state) return;
+  std::vector<std::string> next = option_select_parse_options(value);
+  if (next == state->source_list) return;
+  state->source_list = std::move(next);
+  media_playback_apply_sources_to_controls(state);
+}
+
+inline bool media_playback_subscribe_source_list(MediaPlaybackState *state) {
+  if (!state || state->controls.empty() || state->entity_id.empty() ||
+      state->source_list_subscribed ||
+      !espcontrol::media::source_select_supported(
+        state->supported_features_known, state->supported_features)) {
+    return false;
+  }
+  state->source_list_subscribed = true;
+  const uint32_t generation = state->generation;
+  ha_subscribe_attribute(
+    state->entity_id, std::string("source_list"),
+    std::function<void(esphome::StringRef)>(
+      [state, generation](esphome::StringRef value) {
+        if (!media_playback_generation_valid(state, generation)) return;
+        media_playback_update_source_list(
+          state, string_ref_limited(value, OPTION_SELECT_OPTIONS_TEXT_MAX_LEN));
+      })
+  );
+  return true;
+}
+
 inline void media_playback_subscribe_source(MediaPlaybackState *state) {
   if (!state || state->source_subscribed || state->entity_id.empty()) return;
   state->source_subscribed = true;
@@ -1892,6 +1991,9 @@ inline void media_playback_subscribe_source(MediaPlaybackState *state) {
   const uint32_t generation = state->generation;
   auto handle_media_source = [state, generation](esphome::StringRef source) {
     if (!media_playback_generation_valid(state, generation)) return;
+    // Source selection needs the untouched value; names can carry spaces.
+    media_playback_update_selected_source(
+      state, string_ref_limited(source, OPTION_SELECT_OPTION_MAX_LEN));
     const std::string next = media_playback_metadata_value(source, HA_STATE_TEXT_MAX_LEN);
     const bool source_external = media_external_source_input(next);
     const bool content_id_overrides_source =
@@ -2045,6 +2147,7 @@ inline void media_playback_subscribe_modes(MediaPlaybackState *state) {
   const std::string entity_id = state->entity_id;
   const uint32_t generation = state->generation;
   bool subscription_added = false;
+  if (media_playback_subscribe_source_list(state)) subscription_added = true;
 
   if (espcontrol::media::shuffle_supported(
         state->supported_features_known, state->supported_features) &&
@@ -3047,6 +3150,7 @@ inline void media_control_refresh_modal(MediaControlCtx *ctx) {
   media_control_refresh_speakers(ctx);
   media_control_refresh_power(ctx);
   media_control_refresh_playback_modes(ctx);
+  media_control_refresh_sources(ctx);
 }
 
 inline void media_control_set_volume_value(MediaControlCtx *ctx, int pct) {
@@ -3114,6 +3218,7 @@ inline void media_control_apply_tab_visibility() {
     {ui.volume_tab, MediaControlTab::VOLUME},
     {ui.speakers_tab, MediaControlTab::SPEAKERS},
     {ui.power_tab, MediaControlTab::POWER},
+    {ui.source_tab, MediaControlTab::SOURCE},
   };
   for (const auto &button : buttons) {
     if (!button.btn) continue;
@@ -3207,6 +3312,26 @@ inline bool media_control_ensure_power_tab_button(MediaControlCtx *ctx) {
   }
   if (!ui.power_tab) return false;
   lv_obj_clear_flag(ui.power_tab, LV_OBJ_FLAG_HIDDEN);
+  return true;
+}
+
+inline bool media_control_ensure_source_tab_button(MediaControlCtx *ctx) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ctx || ui.active != ctx) return false;
+  if (ctx->group_only) return true;
+  if (!ui.tab_row) return false;
+  if (!media_control_source_supported(ctx)) {
+    if (ui.source_tab) lv_obj_add_flag(ui.source_tab, LV_OBJ_FLAG_HIDDEN);
+    media_control_ensure_visible_tab(ctx);
+    return true;
+  }
+  if (!ui.source_tab) {
+    ui.source_tab = media_control_create_tab_button(
+      ui.tab_row, find_icon("Login Variant"), ctx->icon_font,
+      MediaControlTab::SOURCE);
+  }
+  if (!ui.source_tab) return false;
+  lv_obj_clear_flag(ui.source_tab, LV_OBJ_FLAG_HIDDEN);
   return true;
 }
 
@@ -4322,6 +4447,65 @@ inline void media_control_create_power_tab_content(MediaControlCtx *ctx) {
   media_control_refresh_power(ctx);
 }
 
+inline void media_control_refresh_sources(MediaControlCtx *ctx) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ctx || ui.active != ctx || !ui.source_list) return;
+  const uint32_t inactive = theme_display_color(current_theme().surface_primary);
+  for (size_t i = 0; i < ui.source_rows.size() && i < ctx->source_list.size(); ++i) {
+    lv_obj_t *row = ui.source_rows[i];
+    if (!row) continue;
+    // Highlight only the source Home Assistant reports as selected.
+    const bool active = ctx->selected_source_known &&
+                        ctx->source_list[i] == ctx->selected_source;
+    lv_obj_set_style_bg_color(
+      row, lv_color_hex(active ? ctx->accent_color : inactive), LV_PART_MAIN);
+    theme_set_content_background(row, active);
+    apply_card_descendant_text_color(row, lv_color_hex(active
+        ? readable_text_color_for_bg(ctx->accent_color) : current_theme().text_primary));
+    media_control_apply_availability(row, row, ctx->available);
+  }
+}
+
+inline void media_control_create_source_tab_content(MediaControlCtx *ctx) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ctx || !ui.content_box || ui.source_list) return;
+  // Layout sizes the list and rows once the content box is placed.
+  ui.source_list = control_modal_create_scroll_list(ui.content_box, 100, 100, 8);
+  if (!ui.source_list) return;
+  lv_obj_set_scrollbar_mode(ui.source_list, LV_SCROLLBAR_MODE_OFF);
+  const uint32_t inactive = theme_display_color(current_theme().surface_primary);
+  ui.source_rows.reserve(ctx->source_list.size());
+  for (size_t i = 0; i < ctx->source_list.size(); ++i) {
+    // Show tidy names, but always send Home Assistant's exact value.
+    lv_obj_t *row = control_modal_create_list_row(
+      ui.source_list, option_select_trim(ctx->source_list[i]), false, 48, 16,
+      ctx->accent_color, inactive, ctx->label_font, ctx->width_compensation_percent);
+    if (!row) continue;
+    lv_obj_add_event_cb(row, [](lv_event_t *e) {
+      MediaControlModalUi &ui = media_control_modal_ui();
+      MediaControlCtx *active = ui.active;
+      const size_t index = reinterpret_cast<uintptr_t>(lv_event_get_user_data(e));
+      if (!active || !active->available || !media_control_source_supported(active) ||
+          index >= active->source_list.size()) return;
+      send_media_source_action(active->entity_id, active->source_list[index]);
+    }, LV_EVENT_CLICKED, reinterpret_cast<void *>(static_cast<uintptr_t>(i)));
+    ui.source_rows.push_back(row);
+  }
+  if (ui.source_rows.empty()) {
+    ui.source_empty_lbl = lv_label_create(ui.source_list);
+    if (ui.source_empty_lbl) {
+      lv_label_set_display_text(ui.source_empty_lbl, espcontrol_i18n("No sources"));
+      lv_label_set_long_mode(ui.source_empty_lbl, LV_LABEL_LONG_WRAP);
+      lv_obj_set_width(ui.source_empty_lbl, lv_pct(100));
+      lv_obj_set_style_text_color(
+        ui.source_empty_lbl, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
+      lv_obj_set_style_text_align(ui.source_empty_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+      if (ctx->label_font) lv_obj_set_style_text_font(ui.source_empty_lbl, ctx->label_font, LV_PART_MAIN);
+    }
+  }
+  media_control_refresh_sources(ctx);
+}
+
 inline void media_control_clear_tab_content() {
   MediaControlModalUi &ui = media_control_modal_ui();
   if (ui.speaker_action_timer) {
@@ -4366,6 +4550,9 @@ inline void media_control_clear_tab_content() {
   ui.power_btn = nullptr;
   ui.power_icon_lbl = nullptr;
   ui.power_status_lbl = nullptr;
+  ui.source_list = nullptr;
+  ui.source_empty_lbl = nullptr;
+  std::vector<lv_obj_t *>().swap(ui.source_rows);
   ui.updating_progress = false;
   ui.updating_volume = false;
   ui.progress_layout_ready = false;
@@ -4395,6 +4582,9 @@ inline void media_control_ensure_tab_content(MediaControlCtx *ctx) {
   else if (ui.tab == MediaControlTab::POWER) {
     media_control_create_power_tab_content(ctx);
   }
+  else if (ui.tab == MediaControlTab::SOURCE) {
+    media_control_create_source_tab_content(ctx);
+  }
 }
 
 inline void media_control_layout_modal(MediaControlCtx *ctx) {
@@ -4403,6 +4593,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   if (!media_control_ensure_progress_tab_button(ctx)) return;
   if (!media_control_ensure_speakers_tab_button(ctx)) return;
   if (!media_control_ensure_power_tab_button(ctx)) return;
+  if (!media_control_ensure_source_tab_button(ctx)) return;
   media_control_ensure_tab_content(ctx);
   ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
   control_modal_apply_panel_layout(ui.overlay, ui.panel, layout, control_modal_card_radius(ctx->btn));
@@ -4423,7 +4614,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_t *btn;
     MediaControlTab tab;
   };
-  MediaControlTabLayout tabs[5] = {};
+  MediaControlTabLayout tabs[espcontrol::media::CONTROL_TAB_CAPACITY] = {};
   const int tab_count = visible_tabs.count;
   for (int i = 0; i < tab_count; ++i) {
     const auto tab = visible_tabs.tabs[i];
@@ -4434,6 +4625,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
       case MediaControlTab::VOLUME: btn = ui.volume_tab; break;
       case MediaControlTab::SPEAKERS: btn = ui.speakers_tab; break;
       case MediaControlTab::POWER: btn = ui.power_tab; break;
+      case MediaControlTab::SOURCE: btn = ui.source_tab; break;
     }
     tabs[i] = {btn, tab};
     if (!show_tabs || !tabs[i].btn) continue;
@@ -4467,6 +4659,21 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   if (ui.content_box) {
     lv_obj_set_size(ui.content_box, content_w, content_h);
     lv_obj_align(ui.content_box, LV_ALIGN_TOP_MID, 0, content_top);
+  }
+  if (ui.source_list) {
+    lv_coord_t row_gap = control_modal_scaled_px(layout.short_side < 520 ? 10 : 12,
+      layout.short_side);
+    if (row_gap < 8) row_gap = 8;
+    lv_coord_t row_h = control_modal_scaled_px(56, layout.short_side);
+    if (row_h < 44) row_h = 44;
+    lv_obj_set_size(ui.source_list, content_w, content_h);
+    lv_obj_align(ui.source_list, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_set_style_pad_row(ui.source_list, row_gap, LV_PART_MAIN);
+    for (lv_obj_t *row : ui.source_rows) {
+      if (!row) continue;
+      lv_obj_set_size(row, content_w, row_h);
+      lv_obj_set_style_radius(row, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
+    }
   }
   if (ui.speaker_list) {
     lv_coord_t row_gap = control_modal_scaled_px(layout.short_side < 520 ? 10 : 12,
@@ -4796,6 +5003,7 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
     progress_tab_ready = media_control_ensure_progress_tab_button(ctx);
     media_control_ensure_speakers_tab_button(ctx);
     power_tab_ready = media_control_ensure_power_tab_button(ctx);
+    media_control_ensure_source_tab_button(ctx);
   }
 
   ui.content_box = media_control_create_box(ui.panel);

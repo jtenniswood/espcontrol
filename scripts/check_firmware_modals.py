@@ -727,7 +727,11 @@ def firmware_media_modal_power_tab_errors(root: Path) -> list[str]:
         "media_control_ensure_visible_tab(ctx)",
         "ui.tab = visible.tabs[0]",
         "visible_tabs.count",
-        "MediaControlTabLayout tabs[5]",
+        "MediaControlTabLayout tabs[espcontrol::media::CONTROL_TAB_CAPACITY]",
+        "SOURCE = 5",
+        "media_control_ensure_source_tab_button",
+        "media_control_create_source_tab_content",
+        "media_control_refresh_sources(ctx);",
     )
     if any(needle not in text for needle in required):
         return [

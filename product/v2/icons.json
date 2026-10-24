@@ -136,6 +136,12 @@
       "codepoint": "F035B",
       "mdi": "memory",
       "comment": "Build information card"
+    },
+    {
+      "name": "Login Variant",
+      "codepoint": "F05FC",
+      "mdi": "login-variant",
+      "comment": "Media Source tab (matches Home Assistant's source icon)"
     }
   ],
   "icons": [

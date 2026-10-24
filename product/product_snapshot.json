@@ -13,7 +13,7 @@
     "cardTypes": 44,
     "entityNames": 112,
     "icons": 367,
-    "structuralIcons": 22,
+    "structuralIcons": 23,
     "compatibilityFixtureGroups": 2
   },
   "deviceProfiles": {
@@ -5120,9 +5120,10 @@
               "progress",
               "volume",
               "speakers",
+              "source",
               "power"
             ],
-            "defaultValue": "controls|progress|volume|speakers",
+            "defaultValue": "controls|progress|volume|speakers|source",
             "omitDefault": true,
             "applicability": [
               {
@@ -8128,6 +8129,12 @@
         "codepoint": "F035B",
         "mdi": "memory",
         "comment": "Build information card"
+      },
+      {
+        "name": "Login Variant",
+        "codepoint": "F05FC",
+        "mdi": "login-variant",
+        "comment": "Media Source tab (matches Home Assistant's source icon)"
       }
     ],
     "icons": [

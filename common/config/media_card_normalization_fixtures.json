@@ -271,7 +271,7 @@
   },
   {
     "name": "media default tabs are omitted",
-    "input": "media_player.sonos;Living Room;Auto;Auto;control_modal;;media;;media_tabs=controls%7Cprogress%7Cvolume%7Cspeakers%7Cpower",
+    "input": "media_player.sonos;Living Room;Auto;Auto;control_modal;;media;;media_tabs=controls%7Cprogress%7Cvolume%7Cspeakers%7Csource%7Cpower",
     "expected": {
       "entity": "media_player.sonos",
       "label": "Living Room",
@@ -376,7 +376,7 @@
   },
   {
     "name": "power entity adds Power to the default tabs",
-    "input": "media_player.sonos;Living Room;Auto;Auto;control_modal;;media;;power_entity=media_player.tv,media_tabs=controls%7Cprogress%7Cvolume%7Cspeakers%7Cpower",
+    "input": "media_player.sonos;Living Room;Auto;Auto;control_modal;;media;;power_entity=media_player.tv,media_tabs=controls%7Cprogress%7Cvolume%7Cspeakers%7Csource%7Cpower",
     "expected": {
       "entity": "media_player.sonos",
       "label": "Living Room",

@@ -160,6 +160,7 @@ export function createConfigMediaOptionsFeature(
             { value: "progress", label: "Track Position" },
             { value: "volume", label: "Volume" },
             { value: "speakers", label: "Speakers" },
+            { value: "source", label: "Source" },
             { value: "power", label: "Power" },
         ];
     }
