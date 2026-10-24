@@ -207,6 +207,10 @@ target_compile_options(media_volume_capability_test PRIVATE -Wall -Wextra -Werro
 target_include_directories(media_volume_capability_test PRIVATE ../../components/espcontrol)
 add_test(NAME media_volume_capability_test COMMAND media_volume_capability_test)
 
+add_test(NAME media_mute_control_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/media_mute_control_test.py)
+
 add_test(NAME media_power_override_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/media_power_override_test.py)
