@@ -772,10 +772,15 @@ def firmware_media_modal_playback_mode_errors(root: Path) -> list[str]:
         "lv_obj_t *mode_buttons[2]",
         "transport_layout.second_row_start_x",
         "transport_layout.row_gap",
+        "if (media_control_previous_supported(ctx))",
+        "if (media_control_play_pause_supported(ctx))",
+        "if (media_control_next_supported(ctx))",
+        "media_control_transport_count(ctx)",
+        "previous_transport_mask != media_control_transport_mask(ctx)",
     )
     if any(needle not in text for needle in required):
         return [
-            "components/espcontrol/button_grid_media.h: keep conditional, state-synchronised Shuffle and Repeat controls with dynamic three/four/five-button layouts and cleanup"
+            "components/espcontrol/button_grid_media.h: keep conditional, state-synchronised transport, Shuffle and Repeat controls with dynamic layouts and cleanup"
         ]
     return []
 

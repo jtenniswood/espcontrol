@@ -269,6 +269,33 @@ inline bool media_control_repeat_supported(MediaControlCtx *ctx) {
     ctx->supported_features_known, ctx->supported_features);
 }
 
+inline bool media_control_previous_supported(MediaControlCtx *ctx) {
+  return ctx && espcontrol::media::previous_track_supported(
+    ctx->supported_features_known, ctx->supported_features);
+}
+
+inline bool media_control_play_pause_supported(MediaControlCtx *ctx) {
+  return ctx && espcontrol::media::play_pause_supported(
+    ctx->supported_features_known, ctx->supported_features);
+}
+
+inline bool media_control_next_supported(MediaControlCtx *ctx) {
+  return ctx && espcontrol::media::next_track_supported(
+    ctx->supported_features_known, ctx->supported_features);
+}
+
+inline int media_control_transport_count(MediaControlCtx *ctx) {
+  return ctx ? espcontrol::media::transport_button_count(
+    ctx->supported_features_known, ctx->supported_features) : 0;
+}
+
+// Bitmask of visible transport buttons, used to rebuild on capability changes.
+inline int media_control_transport_mask(MediaControlCtx *ctx) {
+  return (media_control_previous_supported(ctx) ? 1 : 0) |
+         (media_control_play_pause_supported(ctx) ? 2 : 0) |
+         (media_control_next_supported(ctx) ? 4 : 0);
+}
+
 inline espcontrol::media::PowerCommand media_control_power_command(
     MediaControlCtx *ctx) {
   if (!media_control_power_supported(ctx)) return espcontrol::media::PowerCommand::NONE;
@@ -1429,6 +1456,7 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
   const bool previous_power_supported = media_control_power_supported(ctx);
   const bool previous_shuffle_supported = media_control_shuffle_supported(ctx);
   const bool previous_repeat_supported = media_control_repeat_supported(ctx);
+  const int previous_transport_mask = media_control_transport_mask(ctx);
   const bool state_text_changed = state->has_state
     ? ctx->state_text != state->state_text
     : ctx->state_text != "unknown";
@@ -1561,7 +1589,8 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
   if (ui.active == ctx) {
     const bool mode_capabilities_changed =
       previous_shuffle_supported != shuffle_supported ||
-      previous_repeat_supported != repeat_supported;
+      previous_repeat_supported != repeat_supported ||
+      previous_transport_mask != media_control_transport_mask(ctx);
     bool layout_needed = metadata_changed || grouping_changed ||
                          previous_power_supported != power_supported ||
                          media_control_tab_layout_changed(ctx) ||
@@ -3280,16 +3309,23 @@ inline void media_control_create_controls_tab_content(MediaControlCtx *ctx) {
       ui.content_box, find_icon("Shuffle"), ctx->icon_font, ctx->accent_color,
       ctx->width_compensation_percent);
   }
-  ui.previous_btn = media_control_create_icon_button(
-    ui.content_box, find_icon("Skip Previous"), ctx->icon_font, ctx->accent_color,
-    ctx->width_compensation_percent);
-  ui.play_btn = media_control_create_icon_button(
-    ui.content_box, find_icon("Play"), ctx->icon_font, ctx->accent_color,
-    ctx->width_compensation_percent);
-  ui.play_icon_lbl = ui.play_btn ? lv_obj_get_child(ui.play_btn, 0) : nullptr;
-  ui.next_btn = media_control_create_icon_button(
-    ui.content_box, find_icon("Skip Next"), ctx->icon_font, ctx->accent_color,
-    ctx->width_compensation_percent);
+  // Only offer transport actions the player advertises.
+  if (media_control_previous_supported(ctx)) {
+    ui.previous_btn = media_control_create_icon_button(
+      ui.content_box, find_icon("Skip Previous"), ctx->icon_font, ctx->accent_color,
+      ctx->width_compensation_percent);
+  }
+  if (media_control_play_pause_supported(ctx)) {
+    ui.play_btn = media_control_create_icon_button(
+      ui.content_box, find_icon("Play"), ctx->icon_font, ctx->accent_color,
+      ctx->width_compensation_percent);
+    ui.play_icon_lbl = ui.play_btn ? lv_obj_get_child(ui.play_btn, 0) : nullptr;
+  }
+  if (media_control_next_supported(ctx)) {
+    ui.next_btn = media_control_create_icon_button(
+      ui.content_box, find_icon("Skip Next"), ctx->icon_font, ctx->accent_color,
+      ctx->width_compensation_percent);
+  }
   if (media_control_repeat_supported(ctx)) {
     ui.repeat_btn = media_control_create_icon_button(
       ui.content_box, find_icon("Repeat"), ctx->icon_font, ctx->accent_color,
@@ -4515,7 +4551,8 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
       media_control_shuffle_supported(ctx),
       media_control_repeat_supported(ctx),
       control_modal_uses_compact_portrait_tuning(layout) && layout.sh > layout.sw,
-      transport_button_scale_percent);
+      transport_button_scale_percent,
+      media_control_transport_count(ctx));
   const lv_coord_t btn_size = transport_layout.button_size;
   lv_coord_t progress_slider_h = content_h * 42 / 100;
   lv_coord_t progress_slider_max_h = control_modal_scaled_px(144, layout.short_side);
@@ -4611,6 +4648,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_t *transport_buttons[3] = {ui.previous_btn, ui.play_btn, ui.next_btn};
     lv_coord_t button_x = transport_layout.first_row_start_x;
     for (lv_obj_t *button : transport_buttons) {
+      if (!button) continue;
       layout_media_button(button, button_x, button_y);
       button_x += btn_size + transport_layout.gap;
     }
