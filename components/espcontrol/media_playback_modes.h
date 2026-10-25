@@ -153,4 +153,12 @@ inline MediaTransportLayout media_transport_layout(int content_width,
   return layout;
 }
 
+constexpr int SUPPORT_SELECT_SOURCE = 2048;
+
+inline bool source_select_supported(bool supported_features_known,
+                                    int supported_features) {
+  return supported_features_known &&
+         (supported_features & SUPPORT_SELECT_SOURCE) != 0;
+}
+
 }  // namespace espcontrol::media

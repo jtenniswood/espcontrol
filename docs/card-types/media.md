@@ -37,6 +37,7 @@ Add your Sonos, Spotify, Apple TV, Plex, Music Assistant, or other player integr
 - Repeat cycles through **Off**, **All**, and **One**. Its icon changes to Repeat Once in **One** mode, while active Shuffle and Repeat modes use the accent colour.
 - Volume and track position follow changes made elsewhere in Home Assistant. Some players show progress but do not support seeking; some only support volume up and down rather than an exact level.
 - All Controls hides tabs that the selected player does not support. Its speaker tab appears only when compatible speakers are available.
+- The **Source** tab lists the player's inputs or sources (such as radio stations or line-in) when it supports source selection. The current source is highlighted once Home Assistant confirms it; tap another to switch. Turn the tab on or off under **Modal Settings → Modal Tabs**.
 - For **Track, Album or Playlist**, choose the speaker, then provide the content ID or URI. You can also set the player source or input when the integration uses one.
 
 ## Modal Settings

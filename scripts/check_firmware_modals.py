@@ -727,7 +727,11 @@ def firmware_media_modal_power_tab_errors(root: Path) -> list[str]:
         "media_control_ensure_visible_tab(ctx)",
         "ui.tab = visible.tabs[0]",
         "visible_tabs.count",
-        "MediaControlTabLayout tabs[5]",
+        "MediaControlTabLayout tabs[espcontrol::media::CONTROL_TAB_CAPACITY]",
+        "SOURCE = 5",
+        "media_control_ensure_source_tab_button",
+        "media_control_create_source_tab_content",
+        "media_control_refresh_sources(ctx);",
     )
     if any(needle not in text for needle in required):
         return [
@@ -1507,17 +1511,20 @@ def valid_media_modal_playback_mode_text() -> str:
 
 def valid_media_modal_power_tab_text() -> str:
     return (
-        "enum class MediaControlTab { POWER = 4 };\n"
+        "enum class MediaControlTab { POWER = 4, SOURCE = 5 };\n"
         "inline bool media_control_power_supported() {}\n"
         "inline bool media_control_ensure_power_tab_button() {}\n"
         "inline void media_control_create_power_tab_content() {}\n"
         "inline void media_control_refresh_power() {}\n"
+        "inline bool media_control_ensure_source_tab_button() {}\n"
+        "inline void media_control_create_source_tab_content() {}\n"
+        "media_control_refresh_sources(ctx);\n"
         "bool changed = previous_power_supported != power_supported;\n"
         "media_control_ensure_visible_tab(ctx);\n"
         "  ui.tab = visible.tabs[0];\n"
         "}\n"
         "int count = visible_tabs.count;\n"
-        "MediaControlTabLayout tabs[5] = {};\n"
+        "MediaControlTabLayout tabs[espcontrol::media::CONTROL_TAB_CAPACITY] = {};\n"
     )
 
 

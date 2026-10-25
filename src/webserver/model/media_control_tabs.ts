@@ -1,5 +1,5 @@
-export const MEDIA_CONTROL_TABS = ["controls", "progress", "volume", "speakers", "power"] as const;
-export const MEDIA_CONTROL_DEFAULT_TABS = ["controls", "progress", "volume", "speakers"] as const;
+export const MEDIA_CONTROL_TABS = ["controls", "progress", "volume", "speakers", "source", "power"] as const;
+export const MEDIA_CONTROL_DEFAULT_TABS = ["controls", "progress", "volume", "speakers", "source"] as const;
 export type MediaControlTab = typeof MEDIA_CONTROL_TABS[number];
 
 export function normalizeMediaControlTabs(value: string, powerAvailable = false): MediaControlTab[] {

@@ -9,15 +9,18 @@ enum class MediaControlTab : uint8_t {
   VOLUME = 2,
   SPEAKERS = 3,
   POWER = 4,
+  SOURCE = 5,
 };
 
 namespace espcontrol::media {
 
-constexpr const char *DEFAULT_CONTROL_TABS = "controls|progress|volume|speakers";
-constexpr const char *CONTROL_TABS_WITH_POWER = "controls|progress|volume|speakers|power";
+constexpr uint8_t CONTROL_TAB_CAPACITY = 6;
+
+constexpr const char *DEFAULT_CONTROL_TABS = "controls|progress|volume|speakers|source";
+constexpr const char *CONTROL_TABS_WITH_POWER = "controls|progress|volume|speakers|source|power";
 
 struct ControlTabs {
-  MediaControlTab tabs[5] = {};
+  MediaControlTab tabs[CONTROL_TAB_CAPACITY] = {};
   uint8_t count = 0;
 
   bool contains(MediaControlTab tab) const {
@@ -32,7 +35,7 @@ struct ControlTabs {
   }
 
   void add(MediaControlTab tab) {
-    if (count < 5 && !contains(tab)) tabs[count++] = tab;
+    if (count < CONTROL_TAB_CAPACITY && !contains(tab)) tabs[count++] = tab;
   }
 };
 
@@ -43,6 +46,7 @@ inline const char *control_tab_token(MediaControlTab tab) {
     case MediaControlTab::VOLUME: return "volume";
     case MediaControlTab::SPEAKERS: return "speakers";
     case MediaControlTab::POWER: return "power";
+    case MediaControlTab::SOURCE: return "source";
   }
   return "controls";
 }
@@ -59,7 +63,7 @@ inline ControlTabs parse_control_tabs(const std::string &value, bool power_avail
     const size_t begin = token.find_first_not_of(" \t\r\n");
     if (begin != std::string::npos) {
       token = token.substr(begin, token.find_last_not_of(" \t\r\n") - begin + 1);
-      for (uint8_t i = 0; i < 5; ++i) {
+      for (uint8_t i = 0; i < CONTROL_TAB_CAPACITY; ++i) {
         const auto tab = static_cast<MediaControlTab>(i);
         if (token == control_tab_token(tab) && (tab != MediaControlTab::POWER || power_available)) result.add(tab);
       }
@@ -84,13 +88,15 @@ inline std::string normalize_control_tabs_value(const std::string &value, bool p
 inline ControlTabs visible_control_tabs(const ControlTabs &configured,
                                        bool progress_supported,
                                        bool speakers_supported,
-                                       bool power_supported) {
+                                       bool power_supported,
+                                       bool source_supported = false) {
   ControlTabs visible;
   for (uint8_t i = 0; i < configured.count; ++i) {
     const MediaControlTab tab = configured.tabs[i];
     if (tab == MediaControlTab::PROGRESS && !progress_supported) continue;
     if (tab == MediaControlTab::SPEAKERS && !speakers_supported) continue;
     if (tab == MediaControlTab::POWER && !power_supported) continue;
+    if (tab == MediaControlTab::SOURCE && !source_supported) continue;
     visible.add(tab);
   }
   // Keep the modal usable while optional capabilities are unavailable.

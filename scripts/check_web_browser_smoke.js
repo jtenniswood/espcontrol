@@ -4098,7 +4098,7 @@ async function assertMediaModalSettingsJourney(browser, testCase) {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await installFakeEventSource(page);
-  const defaults = ["controls", "progress", "volume", "speakers", "power"];
+  const defaults = ["controls", "progress", "volume", "speakers", "source", "power"];
   const rows = page.locator("#sp-inp-media-modal-settings").locator("..").locator(".sp-light-tab-row");
   async function openEditor() {
     await page.locator('.sp-main [data-slot="4"]').click();
@@ -4132,7 +4132,7 @@ async function assertMediaModalSettingsJourney(browser, testCase) {
     await power.blur();
     assert(await page.locator("#sp-inp-media-tab-power").isChecked(), `${testCase.name}: adding an entity enables Power`);
     assert(!(await page.locator("#sp-inp-media-tab-power").isDisabled()), `${testCase.name}: Power is available with an entity`);
-    for (let i = 0; i < 4; i++) await page.getByRole("button", { name: "Move Power up", exact: true }).click();
+    for (let i = 0; i < 5; i++) await page.getByRole("button", { name: "Move Power up", exact: true }).click();
     assert.strictEqual((await order())[0], "power", `${testCase.name}: arrows move Power first`);
     await page.locator("#sp-inp-media-tab-progress").locator("..").click();
     await rows.filter({ has: page.locator("#sp-inp-media-tab-volume") }).dragTo(
@@ -4154,7 +4154,7 @@ async function assertMediaModalSettingsJourney(browser, testCase) {
     }
     await page.getByRole("button", { name: "Modal Settings", exact: true }).click();
     await page.getByRole("button", { name: "Optional Power", exact: true }).click();
-    for (const tab of ["power", "controls", "speakers"]) await page.locator(`#sp-inp-media-tab-${tab}`).locator("..").click();
+    for (const tab of ["power", "controls", "speakers", "source"]) await page.locator(`#sp-inp-media-tab-${tab}`).locator("..").click();
     await page.locator("#sp-inp-media-tab-volume").locator("..").click();
     assert(await page.locator("#sp-inp-media-tab-volume").isChecked(), `${testCase.name}: the last tab stays enabled`);
     assert.strictEqual(await power.inputValue(), "media_player.living_room_tv", `${testCase.name}: hiding Power keeps its entity`);
