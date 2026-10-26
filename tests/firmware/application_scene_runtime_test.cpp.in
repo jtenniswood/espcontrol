@@ -18,6 +18,7 @@ static std::function<void()> ha_hook;
 template <class... Args>
 void log_sink(Args&&...) {}
 #define ESP_LOGE(...) log_sink(__VA_ARGS__)
+#define ESP_LOGW(...) log_sink(__VA_ARGS__)
 namespace esphome::artwork_image {
 struct TransferObserver {
   static TransferObserver& instance() {
@@ -67,7 +68,6 @@ struct Transactions {
 };
 struct NativeRuntime {
   LegacyRuntime runtime_config;
-  ApplicationConfigurationRuntime selected_runtime{runtime_config};
   Transactions transactions;
   std::array<uint8_t, 512> bytes{};
   uint8_t* boot_buffer{bytes.data()};
@@ -155,6 +155,11 @@ class FakeLegacy final : public LegacyConfigurationAdapter {
     return {LegacyStatus::OK,version,value.size()};
   }
 
+  bool publish(uint16_t, const uint8_t*, size_t) override {
+    ++publish_calls;
+    return !publish_failed;
+  }
+
   bool mirror(uint16_t document_version, const uint8_t* document, size_t document_size) override {
     ++mirror_calls;
     mirrored_version = document_version;
@@ -166,7 +171,8 @@ class FakeLegacy final : public LegacyConfigurationAdapter {
   std::vector<uint8_t> mirrored;
   uint16_t version{CURRENT_CONFIGURATION_DOCUMENT_VERSION};
   uint16_t mirrored_version{0};
-  size_t load_calls{0};
+  size_t load_calls{0}, publish_calls{0};
+  bool publish_failed{false};
   size_t mirror_calls{0};
   bool read_failed{false};
   bool mirror_failed{false};
@@ -238,7 +244,7 @@ void registration() {
   h.other.initialized = true;
   assert(h.app.selected_configuration_runtime() == &h.app.native_configuration_runtime_->runtime_config);
   h.configure();
-  assert(h.app.selected_configuration_runtime() == &h.app.native_configuration_runtime_->selected_runtime && h.app.install_application_scene(h.scene));
+  assert(h.app.selected_configuration_runtime() == &h.scene && h.app.install_application_scene(h.scene));
   assert(!h.app.install_application_scene(h.other));
   EspControlApp late;
   late.native_configuration_initialized_ = true;
@@ -264,7 +270,7 @@ void required_scene_failure() {
       loaded[0]==1 && loaded[1]==2 && loaded[2]==3);
   // Successful startup can still install before the configuration service is
   // configured; declaring the native requirement does not consume that slot.
-  h.configure();assert(h.app.selected_configuration_runtime()==&h.app.native_configuration_runtime_->selected_runtime);
+  h.configure();assert(h.app.selected_configuration_runtime()==&h.scene);
   assert(!h.app.require_application_scene());
   EspControlApp stopped;stopped.shutting_down_=true;
   assert(!stopped.require_application_scene());
@@ -340,17 +346,24 @@ void compatibility_refresh_and_publication() {
   h.scene.busy=false;h.app.apply_configuration_text_refresh();
   assert(h.app.configuration_text_refresh_pending_);
   h.app.apply_boot_configuration();
-  assert(native.runtime_config.applies==1 && h.scene.activates==1);
+  assert(native.runtime_config.applies==0 && h.legacy.publish_calls==1 && h.scene.activates==1);
   h.app.apply_configuration_text_refresh();
-  assert(!h.app.configuration_text_refresh_pending_ && native.runtime_config.applies==1 && h.scene.activates==1);
+  assert(!h.app.configuration_text_refresh_pending_ && native.runtime_config.applies==0 && h.legacy.publish_calls==1 && h.scene.activates==1);
   h.legacy.value={4,5,6};h.legacy.mirror_failed=true;
   h.app.configuration_text_refresh_pending_=true;
   h.app.apply_configuration_text_refresh();
-  assert(h.scene.current==h.legacy.value && h.scene.activates==2 && native.runtime_config.applies==2);
+  assert(h.scene.current==h.legacy.value && h.scene.activates==2 && native.runtime_config.applies==0 && h.legacy.publish_calls==2);
+  // Boot must keep the activated native document when compatibility text
+  // publication is unavailable, without attempting the old text runtime.
+  native.boot_configuration_pending=true;h.legacy.publish_failed=true;
+  h.app.apply_boot_configuration();
+  assert(!native.boot_configuration_pending && h.scene.activates==3 &&
+      native.runtime_config.applies==0 && h.legacy.publish_calls==3);
+  h.legacy.publish_failed=false;
   // Failed runtime preparation never publishes candidate text or durable data.
   h.scene.prepare_ok=false;h.legacy.value={7,8,9};
   h.app.configuration_text_refresh_pending_=true;h.app.apply_configuration_text_refresh();
-  assert(h.scene.current[0]==4 && native.runtime_config.applies==2);
+  assert(h.scene.current[0]==4 && native.runtime_config.applies==0 && h.legacy.publish_calls==3);
 }
 
 void shutdown() {

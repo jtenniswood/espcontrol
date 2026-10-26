@@ -50,6 +50,10 @@ class LegacyConfigurationAdapter {
       *changed = false;
     return {LegacyStatus::READ_FAILED};
   }
+  // Refresh compatibility views after activation, independently of persistent
+  // downgrade mirroring. This may allocate text storage and must not be part
+  // of the prepared runtime's allocation-free generation swap.
+  virtual bool publish(uint16_t, const uint8_t *, size_t) { return true; }
   virtual bool mirror(uint16_t document_version, const uint8_t *document,
                       size_t document_size) = 0;
 };

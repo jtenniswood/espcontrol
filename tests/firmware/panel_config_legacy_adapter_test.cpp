@@ -297,7 +297,8 @@ bool expanded_native_configuration_preserves_every_byte() {
     // Rejected downgrade copies must not partially overwrite existing values.
     if (bindings.persist_document(document.data(), size) || order.value() != "old-order" ||
         button.value() != "old-button" || button.persistent_writes != 0) return false;
-    if (!bindings.publish_document(document.data(), size) || button.value() != large_button) return false;
+    PanelConfigLegacyAdapter publication(bindings);
+    if (!publication.publish(1,document.data(), size) || button.value() != large_button) return false;
     std::string combined;
     for (const auto &field : fields) {
       if (!espcontrol::configuration::panel_config_valid_utf8(

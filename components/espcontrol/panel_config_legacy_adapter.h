@@ -5,8 +5,9 @@
 
 namespace espcontrol::configuration {
 
-// Imports preference-backed text fields once and mirrors native saves while
-// the checked release policy still promises downgrade compatibility.
+// Imports preference-backed fields once, publishes live compatibility text
+// after activation, and mirrors preferences while the checked release policy
+// still promises downgrade compatibility.
 class PanelConfigLegacyAdapter final : public LegacyConfigurationAdapter {
  public:
   explicit PanelConfigLegacyAdapter(PanelConfigTextBindings &bindings)
@@ -17,6 +18,8 @@ class PanelConfigLegacyAdapter final : public LegacyConfigurationAdapter {
   LegacyLoadResult merge(uint16_t version, const uint8_t *native,
                          size_t native_size, uint8_t *output,
                          size_t output_capacity, bool *changed) override;
+  bool publish(uint16_t document_version, const uint8_t *document,
+               size_t document_size) override;
   bool mirror(uint16_t document_version, const uint8_t *document,
               size_t document_size) override;
 

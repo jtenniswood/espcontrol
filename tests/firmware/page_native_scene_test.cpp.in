@@ -327,7 +327,11 @@ struct Harness {
   ~Harness() { scene->~Scene(); bank.reset(); lv_obj_delete(root); assert(coordinator.entries.empty()); }
   void apply(const Document& doc,uint32_t gen=17) {
     assert(scene->prepare(PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
+    // Native generation activation must use its prepared arenas, even when
+    // no further model/view reservation can succeed after durable commit.
+    const bool previous_failure=arena.fail;arena.fail=true;
     assert(scene->activate_prepared(gen,PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
+    arena.fail=previous_failure;
     scene->loop(); scene->loop(); scene->loop();
   }
   void media() {

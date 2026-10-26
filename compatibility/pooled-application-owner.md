@@ -72,8 +72,11 @@ physical typed press/click path. Requests revalidate configuration and connectio
 before dispatch. Full display takeover retires native image leases through the
 same draw-safe lifecycle, including the S3 camera screensaver path.
 
-Successful scene activation publishes the complete native document to live
-compatibility text entities before downgrade mirroring. Debounced direct text
+After the prepared scene activates, the configuration service publishes the
+complete native document to live compatibility text entities before downgrade
+mirroring. Publication is separate from the allocation-free scene generation
+swap. A publication failure is reported as a compatibility failure; the newly
+committed scene/document remain authoritative, including during boot restore. Debounced direct text
 edits merge only fields owned by the compatibility projection, retaining
 native-only settings. They use normal runtime preparation and durable commit;
 failed preparation/storage leaves the previous scene and document intact.

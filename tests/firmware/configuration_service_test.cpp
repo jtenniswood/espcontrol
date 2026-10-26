@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -74,6 +75,16 @@ class FakeLegacy final : public LegacyConfigurationAdapter {
     return {LegacyStatus::OK, version, value.size()};
   }
 
+  bool publish(uint16_t document_version, const uint8_t *document,
+               size_t size) override {
+    ++publish_calls;
+    published.assign(document, document + size);
+    published_version = document_version;
+    if (on_publish)
+      on_publish();
+    return !publish_failed;
+  }
+
   bool mirror(uint16_t document_version, const uint8_t *document,
               size_t document_size) override {
     ++mirror_calls;
@@ -83,7 +94,11 @@ class FakeLegacy final : public LegacyConfigurationAdapter {
   }
 
   std::vector<uint8_t> value;
-  std::vector<uint8_t> mirrored;
+  std::vector<uint8_t> mirrored, published;
+  std::function<void()> on_publish;
+  size_t publish_calls{0};
+  uint16_t published_version{0};
+  bool publish_failed{false};
   uint16_t version{CURRENT_CONFIGURATION_DOCUMENT_VERSION};
   uint16_t mirrored_version{0};
   size_t load_calls{0};
@@ -579,10 +594,85 @@ bool compatibility_edits_use_prepared_runtime_transaction() {
              .status == ServiceStatus::INVALID_ARGUMENT;
 }
 
+bool compatibility_publication_is_separate_from_runtime_activation() {
+  MemoryBackend backend(512);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  FakeRuntime runtime;
+  ConfigurationService service(store, legacy);
+  service.set_runtime_adapter(&runtime);
+  const auto document = bytes("committed native document");
+  bool published_after_activation = false;
+  legacy.on_publish = [&] {
+    published_after_activation =
+        runtime.apply_calls == 1 && runtime.applied == document;
+  };
+  legacy.publish_failed = true;
+  const auto saved =
+      service.save_if_generation(0, 1, document.data(), document.size());
+  if (saved.status != ServiceStatus::LEGACY_MIRROR_FAILED || !saved.durable() ||
+      !published_after_activation || legacy.publish_calls != 1 ||
+      legacy.mirror_calls != 1 || runtime.has_prepared ||
+      legacy.published != document)
+    return false;
+  legacy.on_publish = {};
+  std::array<uint8_t, 512> output{};
+  auto loaded = service.load(output.data(), output.size());
+  if (!loaded.ok() || loaded.generation != saved.generation ||
+      legacy.publish_calls != 1)
+    return false;
+  // Startup publication failure is a compatibility failure, after the same
+  // durable generation has been activated. Reboot must not import old text.
+  legacy.value = bytes("stale legacy value");
+  loaded = service.load_and_apply_runtime(output.data(), output.size());
+  if (loaded.status != ServiceStatus::LEGACY_MIRROR_FAILED ||
+      loaded.generation != saved.generation || runtime.apply_calls != 2 ||
+      runtime.applied != document || legacy.published != document)
+    return false;
+  legacy.publish_failed = false;
+  if (!service.load_and_apply_runtime(output.data(), output.size()).ok() ||
+      legacy.publish_calls != 3)
+    return false;
+  runtime.prepare_failed = true;
+  const auto replacement = bytes("replacement");
+  auto rejected = service.save_current(replacement.data(), replacement.size());
+  if (rejected.status != ServiceStatus::RUNTIME_PREPARE_FAILED ||
+      legacy.publish_calls != 3 || legacy.mirror_calls != 1)
+    return false;
+  runtime.prepare_failed = false;
+  backend.fail_writes(true);
+  rejected = service.save_current(replacement.data(), replacement.size());
+  if (rejected.status != ServiceStatus::STORE_FAILED ||
+      legacy.publish_calls != 3 || legacy.mirror_calls != 1)
+    return false;
+  backend.fail_writes(false);
+  rejected =
+      service.save_if_generation(0, 1, replacement.data(), replacement.size());
+  return rejected.status == ServiceStatus::GENERATION_CONFLICT &&
+         legacy.publish_calls == 3 && legacy.mirror_calls == 1 &&
+         runtime.applied == document;
+}
+
+bool import_only_still_publishes_live_compatibility_values() {
+  MemoryBackend backend(512);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  FakeRuntime runtime;
+  ConfigurationService service(store, legacy, nullptr, nullptr, 0,
+                               LegacyConfigurationMode::READ_IMPORT_ONLY);
+  service.set_runtime_adapter(&runtime);
+  const auto value = bytes("native-only persistence");
+  const auto saved = service.save_current(value.data(), value.size());
+  return saved.ok() && legacy.publish_calls == 1 && legacy.mirror_calls == 0 &&
+         legacy.published == value && runtime.applied == value;
+}
+
 }  // namespace
 
 int main() {
   const bool passed =
+      compatibility_publication_is_separate_from_runtime_activation() &&
+      import_only_still_publishes_live_compatibility_values() &&
       compatibility_edits_use_prepared_runtime_transaction() &&
       legacy_is_imported_once() &&
       partial_migration_refreshes_the_native_shadow() &&

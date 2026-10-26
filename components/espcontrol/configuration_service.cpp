@@ -157,12 +157,17 @@ ServiceLoadResult ConfigurationService::load_and_apply_runtime(
     failed.status = ServiceStatus::RUNTIME_PREPARE_FAILED;
     return failed;
   }
-  if (prepared.activate(loaded.generation)) {
-    return loaded;
+  if (!prepared.activate(loaded.generation)) {
+    ServiceLoadResult failed = loaded;
+    failed.status = ServiceStatus::RUNTIME_APPLY_FAILED;
+    return failed;
   }
-  ServiceLoadResult failed = loaded;
-  failed.status = ServiceStatus::RUNTIME_APPLY_FAILED;
-  return failed;
+  if (!legacy_.publish(loaded.document_version, output, loaded.document_size)) {
+    ServiceLoadResult failed = loaded;
+    failed.status = ServiceStatus::LEGACY_MIRROR_FAILED;
+    return failed;
+  }
+  return loaded;
 }
 
 ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
@@ -411,13 +416,15 @@ ServiceSaveResult ConfigurationService::save_unlocked(
             committed.generation, document_size};
   }
   const bool applied = prepared.activate(committed.generation);
+  const bool published =
+      legacy_.publish(document_version, document, document_size);
   const bool mirrored = !legacy_writes_enabled() ||
                         legacy_.mirror(document_version, document, document_size);
   if (!applied) {
     return {ServiceStatus::RUNTIME_APPLY_FAILED, committed.status,
             document_version, committed.generation, document_size};
   }
-  if (!mirrored) {
+  if (!published || !mirrored) {
     return {ServiceStatus::LEGACY_MIRROR_FAILED, committed.status,
             document_version, committed.generation, document_size};
   }
@@ -470,13 +477,15 @@ ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
             committed.generation, document_size};
   }
   const bool applied = prepared.activate(committed.generation);
+  const bool published =
+      legacy_.publish(document_version, document, document_size);
   const bool mirrored = !legacy_writes_enabled() ||
                         legacy_.mirror(document_version, document, document_size);
   if (!applied) {
     return {ServiceStatus::RUNTIME_APPLY_FAILED, committed.status,
             document_version, committed.generation, document_size};
   }
-  if (!mirrored) {
+  if (!published || !mirrored) {
     return {ServiceStatus::LEGACY_MIRROR_FAILED, committed.status,
             document_version, committed.generation, document_size};
   }

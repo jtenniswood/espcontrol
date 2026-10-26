@@ -74,7 +74,6 @@ class EspControlApp::NativeConfigurationRuntime {
   configuration::PanelConfigTextBindings text_bindings{};
   configuration::PanelConfigLegacyAdapter legacy_config;
   configuration::PanelConfigRuntimeAdapter runtime_config;
-  ApplicationConfigurationRuntime selected_runtime{runtime_config};
   configuration::PanelConfigDocumentValidator validator{};
   configuration::EspIdfPanelConfigBlobStorage blobs{};
   configuration::BufferedBlobStorageBackend<PANEL_CONFIG_STORAGE_SLOT_CAPACITY>
@@ -114,11 +113,8 @@ bool EspControlApp::require_application_scene() {
 }
 
 configuration::ConfigurationRuntimeAdapter* EspControlApp::selected_configuration_runtime() {
-  if (application_scene_ && native_configuration_runtime_) {
-    auto &selected = native_configuration_runtime_->selected_runtime;
-    selected.bind(*application_scene_);
-    return &selected;
-  }
+  if (application_scene_)
+    return application_scene_;
   if (application_scene_required_) {
     class Unavailable final
         : public configuration::ConfigurationRuntimeAdapter {
@@ -264,6 +260,11 @@ void EspControlApp::apply_boot_configuration() {
   const configuration::ServiceLoadResult loaded =
       panel_config_service->load_and_apply_runtime(
           runtime->boot_buffer, runtime->slot_capacity);
+  if (loaded.status == configuration::ServiceStatus::LEGACY_MIRROR_FAILED) {
+    ESP_LOGW(TAG, "Native configuration restored; compatibility text "
+                  "publication is incomplete");
+    return;
+  }
   if (!loaded.ok()) {
     ESP_LOGE(TAG, "Native configuration could not reload for the live grid (%u)",
              static_cast<unsigned>(loaded.status));
@@ -284,6 +285,13 @@ void EspControlApp::apply_configuration_text_refresh() {
   configuration_text_refresh_pending_ = false;
   const auto synchronized = service->synchronize_legacy_runtime(
       runtime->boot_buffer, runtime->slot_capacity);
+  if (synchronized.status ==
+      configuration::ServiceStatus::LEGACY_MIRROR_FAILED) {
+    ESP_LOGW(
+        TAG,
+        "Configuration updated; compatibility synchronization is incomplete");
+    return;
+  }
   if (!synchronized.ok())
     ESP_LOGE(TAG, "Configuration text edits could not be applied (%u)",
              static_cast<unsigned>(synchronized.status));

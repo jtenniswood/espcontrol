@@ -56,6 +56,14 @@ PanelConfigLegacyAdapter::merge(uint16_t version, const uint8_t *native,
   return {LegacyStatus::OK, version, size};
 }
 
+bool PanelConfigLegacyAdapter::publish(uint16_t document_version,
+                                       const uint8_t *document,
+                                       size_t document_size) {
+  return document_version == PANEL_CONFIG_DOCUMENT_VERSION &&
+         bindings_.configured() &&
+         bindings_.publish_document(document, document_size);
+}
+
 bool PanelConfigLegacyAdapter::mirror(uint16_t document_version,
                                       const uint8_t *document,
                                       size_t document_size) {
