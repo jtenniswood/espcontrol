@@ -212,6 +212,9 @@ target_include_directories(button_grid_foundations_test PRIVATE
   ../../components/espcontrol
 )
 add_test(NAME button_grid_foundations_test COMMAND button_grid_foundations_test)
+add_test(NAME local_sensor_lifetime_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/local_sensor_lifetime_test.py)
 add_test(NAME card_colour_rendering_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/card_colour_rendering_test.py ${CMAKE_CXX_COMPILER})
 
@@ -678,6 +681,10 @@ target_include_directories(saved_config_parser_test PRIVATE
 )
 add_test(NAME saved_config_parser_test COMMAND saved_config_parser_test)
 
+add_test(NAME climate_option_values_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/climate_option_values_test.py)
+
 set(CLIMATE_UPDATE_TEST_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/climate_update_test.cpp)
 add_custom_command(
   OUTPUT ${CLIMATE_UPDATE_TEST_SOURCE}
@@ -906,5 +913,24 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   target_include_directories(page_climate_modal_test PRIVATE stubs ../../components/espcontrol)
   target_link_libraries(page_climate_modal_test PRIVATE lvgl::lvgl)
   add_test(NAME page_climate_modal_test COMMAND page_climate_modal_test)
+  set(PAGE_LIGHT_COVER_MODAL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_light_cover_modal_test.cpp)
+  add_custom_command(
+    OUTPUT ${PAGE_LIGHT_COVER_MODAL_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_light_cover_modal_test.py
+      --output ${PAGE_LIGHT_COVER_MODAL_SOURCE}
+    DEPENDS generate_page_light_cover_modal_test.py generate_climate_update_test.py
+      page_light_cover_modal_test.cpp.in ../../components/espcontrol/button_grid_sliders.h
+      ../../components/espcontrol/page_light_cover_modal.h
+    VERBATIM)
+  add_executable(page_light_cover_modal_test ${PAGE_LIGHT_COVER_MODAL_SOURCE}
+    ../../components/espcontrol/page_modal_runtime.cpp
+    ../../components/espcontrol/page_card_dependencies.cpp
+    ../../components/espcontrol/page_entity_state_runtime.cpp
+    ../../components/espcontrol/page_store.cpp)
+  target_compile_features(page_light_cover_modal_test PRIVATE cxx_std_17)
+  target_compile_options(page_light_cover_modal_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_light_cover_modal_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_light_cover_modal_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_light_cover_modal_test COMMAND page_light_cover_modal_test)
 
 endif()

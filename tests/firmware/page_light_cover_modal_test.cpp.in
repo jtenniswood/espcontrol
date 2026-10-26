@@ -1,0 +1,217 @@
+#include <array>
+#include <cassert>
+#include <cstdlib>
+#include <limits>
+#include <cstdio>
+#include <cstdint>
+#include <cstring>
+#include <functional>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "lvgl.h"
+#define ESPCONTROL_HA_GENERATION_HELPERS_DEFINED
+uint32_t &ha_subscription_generation();
+#include "button_grid_subpage_parser.h"
+#include "light_cover_modal_lifetime.h"
+#include "climate_subscription_policy.h"
+#include "climate_target_logic.h"
+#include "climate_state_logic.h"
+#include "ha_read_coordinator.h"
+#include "page_card_dependencies.h"
+#include "page_entity_coordinator_adapter.h"
+#include "page_modal_runtime.h"
+#include "panel_config_document.h"
+#include "theme_palette.h"
+using namespace espcontrol;using namespace espcontrol::pages;using namespace espcontrol::configuration;
+using ClimateTargetKind=climate::TargetKind;
+constexpr uint32_t DEFAULT_ACCENT_COLOR=0xFF8C00;
+static size_t lv_live_bytes=0,lv_allocation_calls=0,cpp_allocation_calls=0;
+void *operator new(size_t size){++cpp_allocation_calls;if(void *p=std::malloc(size?size:1))return p;std::abort();}
+void *operator new[](size_t size){return ::operator new(size);}
+void operator delete(void *p)noexcept{std::free(p);}
+void operator delete[](void *p)noexcept{std::free(p);}
+void operator delete(void *p,size_t)noexcept{std::free(p);}
+void operator delete[](void *p,size_t)noexcept{std::free(p);}
+struct alignas(std::max_align_t) Allocation{size_t bytes;};
+extern "C" {
+void lv_mem_init(){}void lv_mem_deinit(){}
+lv_mem_pool_t lv_mem_add_pool(void *,size_t){return nullptr;}void lv_mem_remove_pool(lv_mem_pool_t){}
+void *lv_malloc_core(size_t size){++lv_allocation_calls;auto *p=static_cast<Allocation *>(std::malloc(size+sizeof(Allocation)));assert(p);p->bytes=size;lv_live_bytes+=size;return p+1;}
+void lv_free_core(void *ptr){if(!ptr)return;auto *p=static_cast<Allocation *>(ptr)-1;lv_live_bytes-=p->bytes;std::free(p);}
+void *lv_realloc_core(void *ptr,size_t size){void *p=lv_malloc_core(size);if(ptr){std::memcpy(p,ptr,std::min(size,(static_cast<Allocation *>(ptr)-1)->bytes));lv_free_core(ptr);}return p;}
+void lv_mem_monitor_core(lv_mem_monitor_t *out){*out={};}lv_result_t lv_mem_test_core(){return LV_RESULT_OK;}
+}
+
+#include <cmath>
+bool cover_parse_supported_features(esphome::StringRef value,int &out){std::string text(value.c_str(),value.size());char *end;long x=std::strtol(text.c_str(),&end,10);if(end==text.c_str())return false;out=int(x);return true;}
+const char *find_icon(const char *){return "i";}
+bool slider_parse_pct(esphome::StringRef value,int &out){auto text=string_ref_limited(value,32);char *end;float x=std::strtof(text.c_str(),&end);if(end==text.c_str()||!std::isfinite(x))return false;out=std::max(0,std::min(100,int(x)));return true;}
+bool slider_parse_light_brightness_pct(esphome::StringRef value,int &out){if(!slider_parse_pct(value,out))return false;return true;}
+// @contexts
+struct BtnSlot {lv_obj_t *btn=nullptr,*icon_lbl=nullptr,*text_lbl=nullptr,*sensor_container=nullptr;};
+struct SliderCtx {bool available=true;lv_obj_t *fill=nullptr;};
+const char *slider_icon_off(const std::string &,const std::string &,const std::string &){return "i";}
+const char *slider_icon_on(const std::string &,const std::string &,const std::string &,const std::string &){return "i";}
+// @production-function light_control_icon_off
+// @production-function light_control_icon_on
+// @production-function create_light_control_context
+// @production-function create_cover_control_context
+// @production-function light_control_title
+// @production-function cover_control_title
+struct Transport {
+  using State=esphome::StringRef;using Callback=std::function<void(State)>;
+  static constexpr bool RECLAIMABLE_SUBSCRIPTIONS=true;
+  struct Binding{uint32_t token;std::string entity,attribute;Callback callback;};std::vector<Binding>bindings;
+  bool connected{true};uint32_t next{1};size_t requests{0};
+  bool available()const{return true;}bool state_connected()const{return connected;}
+  uint32_t subscribe(const std::string &entity,const std::string &attribute,Callback callback){const auto token=next++;bindings.push_back({token,entity,attribute,std::move(callback)});return token;}
+  void unsubscribe(uint32_t token){bindings.erase(std::remove_if(bindings.begin(),bindings.end(),[token](const auto &b){return b.token==token;}),bindings.end());}
+  bool request(std::string_view,std::string_view){++requests;return connected;}
+  void send(const char *entity,const char *attribute,const std::string &value){for(const auto &b:bindings)if(b.entity==entity&&b.attribute==attribute){const auto callback=b.callback;callback(State(value.c_str(),value.size()));return;}}
+};
+struct Heap{bool available(const char *,size_t,size_t)const{return true;}};
+using Coordinator=HaReadCoordinator<Transport,Heap>;
+Coordinator coordinator;
+Coordinator &ha_read_coordinator(){return coordinator;}
+uint32_t &ha_subscription_generation(){return coordinator.generation_ref();}
+bool ha_api_state_connected(){return coordinator.transport().connected;}
+bool enough_heap=true;
+bool ha_internal_heap_available(const char *){return enough_heap;}
+void *callback_owner=nullptr;
+struct HaCallbackOwnerScope{void *previous;explicit HaCallbackOwnerScope(void *owner):previous(callback_owner){callback_owner=owner;}~HaCallbackOwnerScope(){callback_owner=previous;}};
+bool ha_subscribe_state(const std::string &entity,Transport::Callback callback){return coordinator.subscribe(entity,"",std::move(callback),32,callback_owner);}
+bool ha_subscribe_attribute(const std::string &entity,const std::string &attribute,Transport::Callback callback){return coordinator.subscribe(entity,attribute,std::move(callback),32,callback_owner);}
+void ha_release_callbacks_for_owner(void *owner){coordinator.release_owner(owner);}
+size_t reannouncements=0;
+void ha_reannounce_state_subscriptions(){++reannouncements;}
+
+ControlModalStateService<lv_obj_t> modal_service;
+auto &control_modal_active(){return modal_service.active();}
+auto &control_modal_service(){return modal_service;}
+std::string clock_label;void set_clock_bar_modal_label(const std::string &label){clock_label=label;}
+struct LightControlModalUi {LightControlCtx *active=nullptr;lv_obj_t *overlay=nullptr,*color_grid=nullptr,*temp_slider=nullptr,*temp_slider_fill=nullptr,*temp_slider_handle=nullptr,*button=nullptr;};
+struct CoverControlModalUi {CoverControlCtx *active=nullptr;lv_obj_t *overlay=nullptr,*button=nullptr;int pending_preset=-1;};
+LightControlModalUi light_ui;CoverControlModalUi cover_ui;
+auto &light_control_modal_ui(){return light_ui;}auto &cover_control_modal_ui(){return cover_ui;}
+void control_modal_delete_overlay(ControlModalKind kind,lv_obj_t *overlay){if(overlay)lv_obj_delete(overlay);modal_service.clear_active(kind);}
+// @production-function light_control_hide_modal
+// @production-function cover_control_hide_modal
+// @production-function light_control_can_open_modal
+// @production-function cover_control_can_open_modal
+void light_control_apply_card_visual(LightControlCtx *){}
+int light_control_display_pct(LightControlCtx *ctx){return ctx->on?ctx->current_pct:0;}
+void light_control_set_modal_value(LightControlCtx *,int){}
+void light_control_apply_modal_power(LightControlCtx *){}
+void light_control_set_temp_modal_value(LightControlCtx *,int){}
+int light_control_kelvin_to_pct(LightControlCtx *,int){return 50;}
+void light_control_update_slider_fill(lv_obj_t *,lv_obj_t *,lv_obj_t *,int,lv_color_t){}
+void light_control_update_slider_handle(lv_obj_t *,lv_obj_t *,int){}
+lv_color_t kelvin_to_fill_color(int,int,int){return lv_color_hex(0);}
+// Production colour-grid rebuild runs against real native widgets, including
+// its click payloads and gesture rebinding. Only theme/layout/transport are doubled.
+// @production-function light_control_use_temperature_swatches
+// @production-function light_control_swatch_count
+void light_control_layout_modal(LightControlCtx *){}
+void theme_set_content_background(lv_obj_t *){}
+void control_modal_apply_pressed_fill(lv_obj_t *){}
+int slider_clamp_pct(int value){return std::max(0,std::min(100,value));}
+// @production-function light_control_pct_to_kelvin
+void send_light_temp_action(const std::string &,int,int,int){}
+void send_light_rgb_action(const std::string &,uint32_t){}
+// @production-function light_control_rebuild_color_grid
+void light_control_apply_tab_visibility(){}
+void cover_control_apply_card_visual(CoverControlCtx *,const std::string & = ""){}
+void cover_control_refresh_preset_selection(CoverControlCtx *){}
+void cover_control_set_position_value(CoverControlCtx *,int){}
+void cover_control_set_tilt_value(CoverControlCtx *,int){}
+void cover_control_apply_supported_features(CoverControlCtx *ctx,bool known,int features=0){ctx->supported_features_known=known;ctx->supported_features=features;}
+// @production-function subscribe_light_control_state
+// @production-function subscribe_cover_control_state
+size_t sends=0;std::function<void()> during_send;
+void light_control_open_modal(LightControlCtx *ctx){
+ if(!light_control_can_open_modal(ctx))return;light_ui.active=ctx;light_ui.overlay=lv_obj_create(lv_layer_top());light_ui.button=lv_button_create(light_ui.overlay);
+ lv_obj_add_event_cb(light_ui.button,[](lv_event_t *){if(light_modal_action_allowed(light_ui.active)){++sends;if(during_send)during_send();}},LV_EVENT_CLICKED,nullptr);
+ modal_service.set_active(ControlModalKind::LIGHT_CONTROL,light_ui.overlay,light_control_hide_modal,ControlModalDismissPolicy::DISMISS);
+ light_ui.color_grid=lv_obj_create(light_ui.overlay);light_control_rebuild_color_grid(ctx);
+ if(light_ui.active&&!light_modal_widgets_ready(light_ui.overlay))light_control_hide_modal();
+}
+void cover_control_open_modal(CoverControlCtx *ctx){
+ if(!cover_control_can_open_modal(ctx))return;cover_ui.active=ctx;cover_ui.overlay=lv_obj_create(lv_layer_top());cover_ui.button=lv_button_create(cover_ui.overlay);
+ lv_obj_add_event_cb(cover_ui.button,[](lv_event_t *){if(cover_modal_action_allowed(cover_ui.active)){++sends;if(during_send)during_send();}},LV_EVENT_CLICKED,nullptr);
+ modal_service.set_active(ControlModalKind::COVER_CONTROL,cover_ui.overlay,cover_control_hide_modal,ControlModalDismissPolicy::DISMISS);
+ if(!cover_modal_widgets_ready(cover_ui.overlay))cover_control_hide_modal();
+}
+#include "page_light_cover_modal.h"
+struct Arena:PageArenaAllocator {
+  std::unordered_map<void *,size_t>live;int remaining{-1};
+  void *allocate(size_t size)override{if(remaining==0)return nullptr;if(remaining>0)--remaining;void *p=std::malloc(size);assert(p);live[p]=size;return p;}
+  void release(void *p,size_t size)override{assert(live.at(p)==size);live.erase(p);std::free(p);}
+};
+struct Fixture {
+ explicit Fixture(uint32_t generation=17){const auto &limits=DEVICE_UI_PROFILES[8];PanelConfigWriter writer(document.data(),document.size());assert(writer.begin()==PanelConfigStatus::OK);assert(writer.append_device_profile(reinterpret_cast<const uint8_t *>(limits.device_profile),std::strlen(limits.device_profile))==PanelConfigStatus::OK);
+ const char *cards[]={"light.room;Lamp;Auto;Auto;;;light_control;0;","cover.room;Blind;Auto;Auto;modal;;cover;0;"};
+ for(size_t i=0;i<2;++i)assert(writer.append_button(i+1,reinterpret_cast<const uint8_t *>(cards[i]),std::strlen(cards[i]))==PanelConfigStatus::OK);
+ assert(writer.finish(&size)==PanelConfigStatus::OK);assert(PageStore::stage_v1(document.data(),size,limits,generation,storage.data(),storage.size(),&store)==PageStoreStatus::OK);}
+ std::array<uint8_t,8192>document{};size_t size=0;alignas(std::max_align_t)std::array<uint8_t,32768>storage{};PageStore store;
+};
+void values(){auto &t=coordinator.transport();t.send("light.room","","on");t.send("light.room","brightness","75");t.send("light.room","color_temp_kelvin","3000");t.send("light.room","supported_color_modes","['rgb']");t.send("light.room","friendly_name","Lamp");t.send("cover.room","","open");t.send("cover.room","current_position","42");t.send("cover.room","current_tilt_position","20");t.send("cover.room","supported_features","255");}
+// One dispatcher/runtime enforces one live panel across both families.
+struct Composite:PageModalPort {
+ PageLightModalPort &light;PageCoverModalPort &cover;PageModalPort *selected=nullptr;
+ Composite(PageLightModalPort &l,PageCoverModalPort &c):light(l),cover(c){}
+ bool valid_origin(PageBindingToken t)const override{return light.valid_origin(t);}
+ ControlModalKind kind(const PageStore &s,ConfigurationHandle h)const override{auto k=light.kind(s,h);return k==ControlModalKind::NONE?cover.kind(s,h):k;}
+ bool ready()const override{return light.ready()&&cover.ready();}bool connected()const override{return light.connected();}uint32_t connection_generation()const override{return light.connection_generation();}
+ void *create(const PageStore &s,ConfigurationHandle h,PageModalToken t)override{selected=light.kind(s,h)==ControlModalKind::LIGHT_CONTROL?static_cast<PageModalPort *>(&light):&cover;return selected->create(s,h,t);}
+ bool initialize(void *p,PageModalToken t)override{return selected->initialize(p,t);}bool visible(void *p)const override{return selected->visible(p);}void update(void *p,PageModalToken t)override{selected->update(p,t);}
+ ControlModalDismissPolicy dismiss_policy(void *p)const override{return selected->dismiss_policy(p);}void retire(void *p,PageModalClose r)override{selected->retire(p,r);}void destroy(void *p)override{selected->destroy(p);selected=nullptr;}
+};
+void test_controls(){Fixture fixture,next(18);Arena arena;PageCardDependencies source;CoordinatorPageEntitySubscriptions subscriptions(coordinator,16);
+ {PageEntityStateRuntime state(source,arena,subscriptions,{64,64,8192});assert(state.prepare(fixture.store));state.activate_prepared(fixture.store);values();
+ bool styles=true;PageLightModalStyle style;style.owner=&styles;style.resolve=[](void *p,const ParsedCfg &,PageControlModalEnvironment &){return *static_cast<bool *>(p);};
+ PageLightModalPort light(arena,state,style,nullptr,[](void *,PageBindingToken){return true;});PageCoverModalStyle cover_style;cover_style.owner=&styles;cover_style.resolve=style.resolve;
+ PageCoverModalPort cover(arena,state,cover_style,nullptr,[](void *,PageBindingToken){return true;});Composite port(light,cover);PageModalRuntime runtime(port);assert(!light.install(runtime,false));assert(light.install(runtime,true)&&cover.install(runtime,true));assert(runtime.prepare(fixture.store));runtime.activate_prepared(fixture.store);
+ const auto refs=coordinator.subscription_count(),native=coordinator.transport().bindings.size(),live=arena.live.size(),lv_bytes=lv_live_bytes;
+ for(size_t i=0;i<1000;++i){for(uint16_t card=0;card<2;++card){assert(runtime.request_card({17,card}));runtime.loop();auto *ctx=card?static_cast<void *>(cover_ui.active):light_ui.active;assert(ctx);
+ if(!card){const auto before_cpp=cpp_allocation_calls;for(int n=0;n<4;++n){light_ui.active->rgb_color_supported=n%2;light_control_rebuild_color_grid(light_ui.active);}assert(cpp_allocation_calls==before_cpp);assert(lv_obj_get_child_count(light_ui.color_grid)==16);}auto *button=card?cover_ui.button:light_ui.button;const auto before=sends;lv_obj_send_event(button,LV_EVENT_CLICKED,nullptr);assert(sends==before);lv_obj_send_event(button,LV_EVENT_PRESSED,nullptr);lv_obj_send_event(button,LV_EVENT_RELEASED,nullptr);lv_obj_send_event(button,LV_EVENT_CLICKED,nullptr);assert(sends==before+1);
+ if(card){assert(cover_ui.active->current_position==42);cover_ui.active->current_position=90;}else{assert(light_ui.active->current_kelvin==3000);light_ui.active->current_kelvin=4000;}runtime.loop();if(card)assert(cover_ui.active->current_position==90);else assert(light_ui.active->current_kelvin==4000);
+ if(card)cover_control_hide_modal();else light_control_hide_modal();assert(runtime.memory().retired_contexts==1);runtime.loop();coordinator.reclaim_unused_channels();assert(arena.live.size()==live&&lv_live_bytes==lv_bytes&&coordinator.subscription_count()==refs&&coordinator.transport().bindings.size()==native);}}
+ for(uint16_t card=0;card<2;++card){assert(runtime.request_card({17,card}));runtime.loop();auto *button=card?cover_ui.button:light_ui.button;during_send=[&](){if(card)cover_control_hide_modal();else light_control_hide_modal();runtime.loop();assert(runtime.memory().retired_contexts==1);};lv_obj_send_event(button,LV_EVENT_PRESSED,nullptr);lv_obj_send_event(button,LV_EVENT_RELEASED,nullptr);lv_obj_send_event(button,LV_EVENT_CLICKED,nullptr);during_send={};runtime.loop();
+ arena.remaining=0;assert(runtime.request_card({17,card}));runtime.loop();arena.remaining=-1;assert(!light_ui.active&&!cover_ui.active);arena.remaining=1;assert(runtime.request_card({17,card}));runtime.loop();arena.remaining=-1;assert(!light_ui.active&&!cover_ui.active);
+ styles=false;assert(runtime.request_card({17,card}));runtime.loop();styles=true;assert(!light_ui.active&&!cover_ui.active);enough_heap=false;assert(runtime.request_card({17,card}));runtime.loop();enough_heap=true;assert(!light_ui.active&&!cover_ui.active);
+ assert(runtime.request_card({17,card}));runtime.loop();coordinator.transport().send(card?"cover.room":"light.room","","unavailable");runtime.loop();assert(!light_ui.active&&!cover_ui.active);values();
+ assert(runtime.request_card({17,card}));runtime.loop();const auto before=sends;coordinator.transport().connected=false;coordinator.invalidate_retained_state();assert(!light_modal_action_allowed(light_ui.active)&&!cover_modal_action_allowed(cover_ui.active));runtime.loop();assert(!light_ui.active&&!cover_ui.active&&sends==before);coordinator.transport().connected=true;values();}
+ assert(runtime.request_card({17,0}));runtime.loop();auto *ctx=light_ui.active;int owner=0;assert(coordinator.subscribe("sensor.replace","",[&](esphome::StringRef){assert(runtime.prepare(next.store));runtime.activate_prepared(next.store);assert(light_ui.active==ctx&&lv_obj_has_flag(light_ui.overlay,LV_OBJ_FLAG_HIDDEN));std::memset(fixture.storage.data(),0xA5,fixture.storage.size());runtime.loop();assert(ctx->entity_id=="light.room"&&runtime.memory().retired_contexts==1);},64,&owner,false,false));coordinator.transport().send("sensor.replace","","go");coordinator.release_owner(&owner);runtime.loop();assert(!light_ui.active);assert(runtime.request_card({18,0}));runtime.loop();assert(!light_ui.active);assert(state.prepare(next.store));state.activate_prepared(next.store);values();assert(runtime.request_card({18,1}));runtime.loop();assert(cover_ui.active);runtime.retire_active();runtime.loop();state.retire_active();}
+ coordinator.reclaim_unused_channels();assert(arena.live.empty()&&coordinator.transport().bindings.empty());
+}
+void test_gesture_budget(){Fixture fixture;Arena arena;PageCardDependencies source;CoordinatorPageEntitySubscriptions subscriptions(coordinator,16);
+ {PageEntityStateRuntime state(source,arena,subscriptions,{64,64,8192});assert(state.prepare(fixture.store));state.activate_prepared(fixture.store);values();const auto baseline=arena.live.size(),refs=coordinator.subscription_count(),lv_bytes=lv_live_bytes;
+ PageLightModalStyle style;style.gesture_capacity=1;style.resolve=[](void *,const ParsedCfg &,PageControlModalEnvironment &){return true;};PageLightModalPort port(arena,state,style,nullptr,[](void *,PageBindingToken){return true;});PageModalRuntime runtime(port);assert(port.install(runtime,true));assert(runtime.prepare(fixture.store));runtime.activate_prepared(fixture.store);assert(runtime.request_card({17,0}));runtime.loop();assert(!light_ui.active&&runtime.memory().failures==1&&arena.live.size()==baseline&&lv_live_bytes==lv_bytes&&coordinator.subscription_count()==refs);state.retire_active();}
+ coordinator.reclaim_unused_channels();assert(arena.live.empty()&&coordinator.transport().bindings.empty());
+}
+void test_deferred_titles(){
+ Fixture fixture,next(18);Arena arena;PageCardDependencies source;CoordinatorPageEntitySubscriptions subscriptions(coordinator,16);
+ {
+  PageEntityStateRuntime state(source,arena,subscriptions,{64,64,8192});
+  PageLightModalStyle style;style.resolve=[](void *,const ParsedCfg &,PageControlModalEnvironment &){return true;};
+  PageCoverModalStyle cover_style;cover_style.resolve=style.resolve;
+  PageLightModalPort light(arena,state,style,nullptr,[](void *,PageBindingToken){return true;});
+  PageCoverModalPort cover(arena,state,cover_style,nullptr,[](void *,PageBindingToken){return true;});
+  Composite port(light,cover);PageModalRuntime runtime(port);
+  assert(light.install(runtime,true)&&cover.install(runtime,true));
+  for(uint16_t card=0;card<2;++card)for(bool replace:{false,true}){
+   assert(state.prepare(fixture.store));state.activate_prepared(fixture.store);values();
+   assert(runtime.prepare(fixture.store));runtime.activate_prepared(fixture.store);
+   assert(runtime.request_card({17,card}));runtime.loop();assert(clock_label==(card?"Blind":"Lamp"));
+   if(replace){assert(runtime.prepare(next.store));runtime.activate_prepared(next.store);}
+   else runtime.retire_active();
+   assert(clock_label==(card?"Blind":"Lamp"));
+   runtime.loop();assert(clock_label.empty()&&!light_ui.active&&!cover_ui.active);
+  }
+  runtime.retire_active();state.retire_active();
+ }
+ coordinator.reclaim_unused_channels();assert(arena.live.empty()&&coordinator.transport().bindings.empty());
+}
+int main(){lv_init();auto *display=lv_display_create(480,480);assert(display);lv_timer_pause(lv_display_get_refr_timer(display));test_controls();test_gesture_budget();test_deferred_titles();lv_display_delete(display);lv_deinit();assert(lv_live_bytes==0);}
