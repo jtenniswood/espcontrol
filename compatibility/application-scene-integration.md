@@ -47,6 +47,9 @@ frame: stale status stays in the details modal and cannot shrink card geometry
 or introduce the retired side-by-side list. The independent forecast widget
 checks and native frame parity remain required after integration.
 
+The [native modal bank](native-modal-bank.md) now assembles the fifteen demanded
+panel kinds and their deferred command adapters under one owner.
+
 Next assemble and install the concrete scene, retire compiled eager grid/action
 wiring, qualify all current factory builds and capture matched S3/20-slot P4
 runtime memory and interaction behavior. Keep P4-86 reserved for its separate

@@ -108,6 +108,10 @@ class PageModalRuntime final:public PageRuntimeResources {
   void dismiss(PageModalClose=PageModalClose::USER);
   bool notify_closed(PageModalToken,PageModalClose=PageModalClose::USER);
   bool display_takeover(bool preserve_policy_active);
+  // Terminal scalar revocation, safe from a shutdown/producer/LVGL callback.
+  // Context retirement/collection waits for safe loop maintenance or destruction
+  // by the application owner after dispatch has ended. Cannot be restarted.
+  void stop();
   void loop();
   bool valid(PageModalToken)const;
   // A final edit from a user close is allowed only during safe collection.
@@ -143,6 +147,7 @@ class PageModalRuntime final:public PageRuntimeResources {
   bool creating_{false}, create_cancelled_{false};
   PageModalClose create_cancel_reason_{PageModalClose::SHUTDOWN};
   bool collecting_retired_{false}, retired_finish_allowed_{false};
-  bool changing_{false},prepared_{false};PageModalMemory memory_;
+  bool changing_{false}, prepared_{false}, stopped_{false};
+  PageModalMemory memory_;
 };
 }  // namespace espcontrol::pages

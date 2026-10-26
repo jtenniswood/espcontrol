@@ -131,21 +131,22 @@ inline bool action_card_action_allowed(const std::string &action) {
          action_card_requires_value(action);
 }
 
-inline void send_action_card_action(const ParsedCfg &p) {
+inline bool send_action_card_action(const ParsedCfg &p) {
   if (action_card_local_action(p)) {
-    if (!p.entity.empty()) send_local_action(p.entity);
-    return;
+    if (p.entity.empty()) return false;
+    send_local_action(p.entity);
+    return true;
   }
-  if (p.entity.empty() || p.sensor.empty() || !action_card_action_allowed(p.sensor)) return;
-  if (action_card_option_select(p)) return;
+  if (p.entity.empty() || p.sensor.empty() || !action_card_action_allowed(p.sensor)) return false;
+  if (action_card_option_select(p)) return false;
   const char *value_key = action_card_value_key(p.sensor);
-  if (value_key && p.unit.empty()) return;
+  if (value_key && p.unit.empty()) return false;
   std::vector<ActionCardScriptField> script_fields = p.sensor == "script.turn_on"
     ? action_card_script_fields(p.options)
     : std::vector<ActionCardScriptField>();
 
   esphome::api::HomeassistantActionRequest req;
-  if (!ha_action_begin(req, p.sensor.c_str(), false, 1 + (value_key ? 1 : 0))) return;
+  if (!ha_action_begin(req, p.sensor.c_str(), false, 1 + (value_key ? 1 : 0))) return false;
   std::string script_fields_template;
   if (!script_fields.empty()) {
     script_fields_template = action_card_script_fields_template(script_fields);
@@ -162,7 +163,7 @@ inline void send_action_card_action(const ParsedCfg &p) {
     ha_action_add_data_template(req, "variables", script_fields_template.c_str());
     action_card_add_script_field_variables(req, script_fields);
   }
-  ha_action_send(req);
+  return ha_action_send(req);
 }
 
 using WebhookHeaders = std::vector<esphome::http_request::Header>;
