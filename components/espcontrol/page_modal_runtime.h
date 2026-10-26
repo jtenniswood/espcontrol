@@ -109,6 +109,9 @@ class PageModalRuntime final:public PageRuntimeResources {
   bool display_takeover(bool preserve_policy_active);
   void loop();
   bool valid(PageModalToken)const;
+  // A final edit from a user close is allowed only during safe collection.
+  // Later replacement/takeover/cancellation revokes it even if no UI remains.
+  bool can_finish_retired(PageModalToken) const;
   bool interactive(PageModalToken token)const{return valid(token)&&port_.visible(context_);}
   PageModalToken token()const{return token_;}
   PageModalRetirement last_retirement() const {
@@ -138,6 +141,7 @@ class PageModalRuntime final:public PageRuntimeResources {
   uint64_t next_opening_{1};uint32_t connection_{0},prepared_generation_{0};
   bool creating_{false}, create_cancelled_{false};
   PageModalClose create_cancel_reason_{PageModalClose::SHUTDOWN};
+  bool collecting_retired_{false}, retired_finish_allowed_{false};
   bool changing_{false},prepared_{false};PageModalMemory memory_;
 };
 }  // namespace espcontrol::pages

@@ -42,17 +42,24 @@ reannouncement timer. Closing returns subscriptions to the graph's current
 requirements. The existing coordinator's allocator/failure contract still
 applies to modal callback allocations.
 
-Normal close or switching panels completes a valid pending temperature command.
-Disconnect, replacement, failed setup and shutdown cancel it. A valid command
+Normal close or switching panels completes a valid pending temperature command
+in safe main-loop collection, after callback/draw dispatch finishes. The closing
+callback sends nothing. A later takeover, replacement, explicit cancellation or
+connection change revokes the queued edit, even if the panel has already retired.
+Collection rechecks the full opening identity and fresh graph availability/HVAC
+mode before sending. Disconnect, replacement, failed setup and shutdown cancel it. A valid command
 rejects non-finite/out-of-range integer temperatures and clears its pending flag
 before dispatch, avoiding a second send if closing runs
 reentrantly. A callback can close the panel and continue reading its context
 until dispatch returns. Option-list callbacks copy their chosen action before
 refreshing a list whose click records can be reused.
 
-Replacement/shutdown retirement cancels callbacks/timers, removes the context
-from global refresh lists, hides its overlays and detaches shared modal-service
-state. Label/widget deletion and clock-label refresh wait for the following
+Replacement/shutdown retirement cancels callbacks/timers and removes the context
+from global refresh lists. Outside LVGL dispatch it also hides overlays and
+detaches shared modal-service state. During LVGL dispatch all overlay changes
+wait for safe collection, including shared control/select/media, alarm and weather
+panels. The opening and gestures are already invalid, so the retained widgets
+cannot accept another action. Label/widget deletion and clock-label refresh wait for the following
 safe maintenance pass, outside durable activation. Old UI strings remain owned
 by the context/LVGL during that interval. Complete activation allocation counts
 and presentation ordering still need the selected scene and physical tests.
@@ -79,6 +86,14 @@ address reuse, hidden/inactive targets, close guards, nested menus, takeover,
 configuration replacement, reconnect epochs, reentrant retirement and nonce
 exhaustion. The native LVGL tests add 1,000 option-list rebuilds and stale input
 checks, using bounded guard storage.
+
+Real LVGL refresh probes retire each control/select/media, climate, alarm control,
+alarm PIN and weather panel from its draw callback. They assert that the overlay
+and child tree remain visible and intact until drawing returns, then are collected
+by maintenance. These probes run across all nine profiles alongside the existing
+1,000-cycle lifetime checks. The runtime model also covers final-edit revocation
+with configuration generation zero and nonzero, including same-generation
+replacement and reconnect before collection.
 
 The optional `page_climate_modal_test` runs the actual adapter, coordinator,
 configuration graph, production context/subscription/temperature/teardown

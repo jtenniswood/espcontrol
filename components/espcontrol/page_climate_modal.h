@@ -99,8 +99,9 @@ class PageClimateModalPort final:public PageModalPort {
     if(context->debounce_timer)lv_timer_pause(context->debounce_timer);
     const bool finish=(reason==PageModalClose::USER||reason==PageModalClose::SWITCH)&&connected()&&
         record.connection==connection_generation()&&context->available&&context->pending_temp_send;
-    if(finish){final_send_=context;climate_send_temperature(context);final_send_=nullptr;}
-    climate_cancel_temperature_send(context);
+    record.finish_edit = finish;
+    if (!finish) climate_cancel_temperature_send(context);
+    if (page_lvgl_dispatching()) return;
     if(climate_control_modal_ui().active==context) {
       if(reason==PageModalClose::REPLACED||reason==PageModalClose::SHUTDOWN) {
         // Keep label/widget teardown out of durable activation. All UI text is
@@ -115,6 +116,22 @@ class PageClimateModalPort final:public PageModalPort {
   }
   void destroy(void *pointer)override {
     auto *record=static_cast<Record *>(pointer);assert(record==record_&&record->retired);
+    const bool finish = record->finish_edit;
+    record->finish_edit = false;
+    if (finish && runtime_->can_finish_retired(record->token) && connected() &&
+        record->connection == connection_generation() && record->context->available &&
+        record->context->pending_temp_send) {
+      const auto source = state_.read_attribute(record->card, record->context->entity_id, {});
+      const auto mode =
+          climate_hvac_service_value(std::string(source.value.substr(0, HA_SHORT_STATE_MAX_LEN)));
+      if (source.status == PageEntityStatus::AVAILABLE && !climate_unavailable_value(mode) &&
+          mode == record->context->hvac_mode) {
+        final_send_ = record->context;
+        climate_send_temperature(record->context);
+        final_send_ = nullptr;
+      }
+    }
+    climate_cancel_temperature_send(record->context);
     delete_climate_control_context(record->context);assert(record->gestures.live()==0);record_=nullptr;
     record->~Record();allocator_.release(record,sizeof(Record));
   }
@@ -123,7 +140,8 @@ class PageClimateModalPort final:public PageModalPort {
     Record(PageClimateModalPort &port,PageModalToken token,ConfigurationHandle card)
         :token(token),card(card),connection(port.connection_generation()),gestures(port.allocator_,port.style_.gesture_capacity,token,&port,gesture_valid){}
     ClimateControlCtx *context{nullptr};PageModalToken token;ConfigurationHandle card;uint32_t connection;
-    bool retired{false};PageModalGestures gestures;
+    bool retired{false}, finish_edit{false};
+    PageModalGestures gestures;
   };
   void prime(Record &record) {
     if(record.retired||!runtime_->valid(record.token))return;

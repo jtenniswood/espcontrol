@@ -33,6 +33,7 @@ struct Port:PageModalPort {
   bool reconnect_create{false}, reconnect_initialize{false};
   size_t initializes{0}, creates{0}, destroys{0}, retires{0}, sends{0}, maximum_live{0};
   PageModalClose reason{PageModalClose::SHUTDOWN};
+  std::function<void(PageModalToken)> before_destroy;
   mutable size_t kind_queries{0};
   bool valid_origin(PageBindingToken token)const override{return token.binding==binding;}
   ControlModalKind kind(const PageStore &store,ConfigurationHandle handle)const override {
@@ -85,11 +86,66 @@ struct Port:PageModalPort {
   }
   void destroy(void *pointer)override {
     assert(!busy&&pointer==context&&context->retired&&!context->callbacks&&!context->timer);
+    if (before_destroy) before_destroy(context->token);
     context->~Context();context=nullptr;++destroys;
   }
 };
 PageBindingToken origin(uint32_t generation=17,CardId card=0,uint32_t binding=99){return {generation,binding,0,card,0,false};}
 void activate(PageModalRuntime &runtime,const PageStore &store){assert(runtime.prepare(store));runtime.activate_prepared(store);}
+void deferred_close_edit_guard() {
+  for (uint32_t generation : {0u, 17u}) {
+    Fixture fixture(generation);
+    for (auto reason : {PageModalClose::USER, PageModalClose::SWITCH, PageModalClose::DISCONNECTED,
+                        PageModalClose::REPLACED, PageModalClose::TAKEOVER, PageModalClose::FAILED,
+                        PageModalClose::SHUTDOWN}) {
+      for (int revoke = 0; revoke < 5; ++revoke) {
+        Port port;
+        PageModalRuntime runtime(port);
+        port.runtime = &runtime;
+        activate(runtime, fixture.store);
+        assert(runtime.request_card({generation, 0}));
+        runtime.loop();
+        const auto token = runtime.token();
+        assert(!runtime.can_finish_retired(token));
+        port.busy = true;
+        runtime.dismiss(reason);
+        assert(!runtime.can_finish_retired(token));
+        if (revoke == 1) runtime.display_takeover(false);
+        if (revoke == 2) activate(runtime, fixture.store);
+        if (revoke == 3) runtime.dismiss(PageModalClose::FAILED);
+        if (revoke == 4) {
+          port.connected_value = false;
+          ++port.epoch;
+          port.connected_value = true;
+        }
+        size_t attempts = 0;
+        const bool allowed =
+            revoke == 0 && (reason == PageModalClose::USER || reason == PageModalClose::SWITCH);
+        port.before_destroy = [&](PageModalToken actual) {
+          ++attempts;
+          assert(actual.configuration == token.configuration && actual.opening == token.opening);
+          assert(runtime.can_finish_retired(actual) == allowed);
+          auto stale = actual;
+          ++stale.opening;
+          assert(!runtime.can_finish_retired(stale));
+          stale = actual;
+          ++stale.configuration;
+          assert(!runtime.can_finish_retired(stale));
+          stale = actual;
+          ++stale.card;
+          assert(!runtime.can_finish_retired(stale));
+          stale = actual;
+          stale.kind = ControlModalKind::NONE;
+          assert(!runtime.can_finish_retired(stale));
+          assert(!runtime.prepare(fixture.store));
+        };
+        port.busy = false;
+        runtime.loop();
+        assert(attempts == 1 && !runtime.can_finish_retired(token) && !port.context);
+      }
+    }
+  }
+}
 void queue_and_callback_lifetimes() {
   Fixture fixture;Port port;PageModalRuntime runtime(port);port.runtime=&runtime;activate(runtime,fixture.store);
   assert(!runtime.request_card({17, 0}, ControlModalKind::ALARM_CONTROL));
@@ -463,6 +519,7 @@ void bounded_cycles_failures_and_exhaustion() {
 }
 }
 int main() {
+  deferred_close_edit_guard();
   local_settings_origin();
   family_connection_policy();
   pending_request_identity();

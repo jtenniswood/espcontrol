@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "lvgl.h"
+#include "modal_draw_retirement_probe.h"
 #define ESPCONTROL_HA_GENERATION_HELPERS_DEFINED
 uint32_t& ha_subscription_generation();
 #include "button_grid_subpage_parser.h"
@@ -473,8 +474,7 @@ void test_panel(const char* wire, const char* entity) {
     assert(request_without_allocation(runtime, {18, 0}));
     runtime.loop();
     assert(ui.active);
-    option_select_hide_modal();
-    runtime.loop();
+    assert_panel_draw_retirement(runtime, ui.overlay);
     runtime.retire_active();
     runtime.loop();
     graph.retire_active();

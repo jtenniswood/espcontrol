@@ -221,6 +221,7 @@ class PageAlarmModalPort final : public PageModalPort {
     record.open_pin = record.awaiting_submission = false;
     auto& pin = alarm_pin_modal_ui();
     if (pin.active && pin.active->card == &record.context) alarm_clear_pin(pin.pin);
+    if (page_lvgl_dispatching()) return;
     if (reason == PageModalClose::REPLACED || reason == PageModalClose::SHUTDOWN || !ready()) {
       for (auto* overlay : {control_overlay(record), pin_overlay(record)})
         if (overlay) {

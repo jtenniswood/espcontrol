@@ -12,6 +12,7 @@
 #include "button_grid_subpage_parser.h"
 #include "display_mode_controller.h"
 #include "lvgl.h"
+#include "modal_draw_retirement_probe.h"
 #include "page_alarm_commands.h"
 #include "page_card_dependencies.h"
 #include "page_entity_observer_set.h"
@@ -831,6 +832,16 @@ void optional_hidden_and_failures(const DeviceUiLimits& limits) {
   assert(h.modal.memory().active_contexts == 0);
   h.arena.fail = false;
 }
+void draw_retirement(const DeviceUiLimits& limits) {
+  Fixture fixture(0, "alarm_control_panel.home", limits);
+  Harness h(limits);
+  h.publish(fixture);
+  h.report();
+  h.open(0);
+  assert_panel_draw_retirement(h.modal, alarm_control_modal_ui().overlay);
+  h.open(1);
+  assert_panel_draw_retirement(h.modal, alarm_pin_modal_ui().overlay);
+}
 int main() {
   lv_init();
   auto* display = lv_display_create(480, 480);
@@ -838,6 +849,7 @@ int main() {
   lv_timer_pause(lv_display_get_refr_timer(display));
   for (const auto& limits : DEVICE_UI_PROFILES) {
     control_pin_and_cycles(limits);
+    draw_retirement(limits);
     readonly_stale_and_retirement(limits);
     optional_hidden_and_failures(limits);
     initial_actions_and_pin_limits(limits);
