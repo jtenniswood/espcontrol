@@ -78,7 +78,10 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
     if(type=="action"||local) {
       if(out.icon.empty()||out.icon=="Auto")out.icon=local?"Gesture Tap":"Flash";
       if(out.label.empty()) {
-        if(out.entity.empty())out.default_label=local?"Local Action":"Action";
+        if(out.entity.empty()) {
+          out.default_label=local?"Local Action":"Action";
+          if(local)out.default_label_key="label_local_action";
+        }
         else if(local) {if(!copy(sentence_cap_text(std::string(out.entity)),out.label))return false;}
         else out.label=out.entity;
       }
@@ -163,6 +166,11 @@ bool read_basic_indicator(ConfigurationHandle handle,std::string_view entity,Pag
   }
   return on(primary.value);
 }
+const char *basic_card_default_label(const BasicCardDefinition &card,PageCardTranslate translate) {
+  if(card.default_label_key)return espcontrol_i18n_key(card.default_label_key);
+  const auto *translated=card.default_label&&translate?translate(card.default_label):nullptr;
+  return translated?translated:card.default_label;
+}
 BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHandle handle,PageEntityStateRuntime &state,int duration_components,std::string_view temperature_unit,PageCardTranslate translate) {
   BasicCardState result;
   if(card.kind==BasicCardKind::CLIMATE) {
@@ -190,8 +198,7 @@ BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHand
     if(friendly.status==PageEntityStatus::AVAILABLE)result.label=friendly.value.substr(0,HA_FRIENDLY_NAME_MAX_LEN);
   }
   if(result.label.empty()&&card.default_label) {
-    const auto *translated=translate?translate(card.default_label):nullptr;
-    result.label=translated?translated:card.default_label;
+    result.label=basic_card_default_label(card,translate);
   }
   const auto text_value=[&](const PageEntityValue &value,bool mapping) {
     result.unit={};
@@ -241,14 +248,15 @@ BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHand
       if(end!=text&&std::isfinite(value)) {
         // Keep the existing formatter's fast integer path and rounding for
         // normal values. A bounded float fallback handles its former overflow.
-        int scale=1;for(uint8_t i=0;i<card.precision;++i)scale*=10;
+        const int precision=std::min<int>(card.precision,3);
+        int scale=1;for(int i=0;i<precision;++i)scale*=10;
         const float rounded=std::fabs(value)*scale+0.5f;
         if(static_cast<double>(rounded)<2147483648.0) {
           const int scaled=static_cast<int>(rounded),whole=scaled/scale,fraction=scaled%scale;
           const char *sign=value<0?"-":"";
-          if(card.precision==0)std::snprintf(result.number,sizeof(result.number),"%s%d",sign,whole);
-          else std::snprintf(result.number,sizeof(result.number),"%s%d.%0*d",sign,whole,card.precision,fraction);
-        } else std::snprintf(result.number,sizeof(result.number),"%.*f",card.precision,static_cast<double>(value));
+          if(precision==0)std::snprintf(result.number,sizeof(result.number),"%s%d",sign,whole);
+          else std::snprintf(result.number,sizeof(result.number),"%s%d.%0*d",sign,whole,precision,fraction);
+        } else std::snprintf(result.number,sizeof(result.number),"%.*f",precision,static_cast<double>(value));
         result.numeric=true;
         if(action_number)result.on=value>0;
         if(card.kind==BasicCardKind::NUMBER&&card.active_color&&value>0)result.on=true;

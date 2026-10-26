@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "bounded_display_text.h"
+#include "i18n_generated.h"
 #include "button_grid_subpage_parser.h"
 #include "page_basic_card.h"
 #include "page_card_dependencies.h"
@@ -17,6 +18,8 @@ void *operator new(size_t bytes){++allocations;if(void *p=std::malloc(bytes?byte
 void *operator new[](size_t bytes){return ::operator new(bytes);}
 void operator delete(void *p)noexcept{std::free(p);}
 void operator delete[](void *p)noexcept{std::free(p);}
+void operator delete(void *p,size_t)noexcept{std::free(p);}
+void operator delete[](void *p,size_t)noexcept{std::free(p);}
 namespace {
 struct Arena:PageArenaAllocator {
   void *allocate(size_t bytes)override{return std::malloc(bytes);}
@@ -234,6 +237,18 @@ void status_actions_profile(const DeviceUiLimits &limits) {
     assert(state.memory().active_channels==0);
   }
   Fixture confirmation(limits,"script.scene;;;;script.turn_on;;action;;confirm_on");
+  Fixture local_default(limits,";;;;local;;action;;");
+  assert(prepare_basic_card(local_default.store,0,definition,&strings));
+  assert(definition.default_label_key&&std::strcmp(definition.default_label_key,"label_local_action")==0);
+  assert(state.prepare(local_default.store));state.activate_prepared(local_default.store);
+  const auto phrases=[](const char *text)->const char *{return espcontrol_i18n(text);};
+  for(const auto language:{"de","fi","en"}) {
+    set_espcontrol_language(language);
+    const auto expected=espcontrol_i18n_key("label_local_action");const auto before=allocations;
+    value=read_basic_card(definition,{17,0},state,2,u8"°C",phrases);
+    assert(value.label==expected&&allocations==before);
+    assert(std::strcmp(basic_card_default_label(definition,phrases),expected)==0);
+  }
   assert(!prepare_basic_card(confirmation.store,0,definition,&strings));
 }
 

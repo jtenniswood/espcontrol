@@ -15,6 +15,7 @@ struct BasicCardDefinition {
   BasicActionDisplay action_display{BasicActionDisplay::NONE};
   std::string_view entity,sensor,label,unit,icon,icon_on;
   const char *default_label{nullptr};
+  const char *default_label_key{nullptr};
   std::string_view text_input,text_output,text_input_2,text_output_2,time_unit;
   bool text_overlay{false};
   uint32_t off_color{0},on_color{0};
@@ -41,6 +42,7 @@ struct BasicCardState {
 // Pull only from the configuration-owned cache. It neither registers a callback
 // nor owns a copy of HA state. The result's views last until the next delivery.
 std::string_view basic_folder_child_indicator(const PageStore &,CardId);
+const char *basic_card_default_label(const BasicCardDefinition &,PageCardTranslate translate=nullptr);
 bool read_basic_indicator(ConfigurationHandle,std::string_view,PageEntityStateRuntime &,BasicFolderMode=BasicFolderMode::ENTITY);
 BasicCardState read_basic_card(const BasicCardDefinition &,ConfigurationHandle,PageEntityStateRuntime &,int duration_components=2,
     std::string_view temperature_unit="°C",PageCardTranslate translate=nullptr);
