@@ -41,7 +41,7 @@ class CardEmitter {
     return !config.label.empty() || pair(entity, "friendly_name");
   }
   bool progress(const std::string &entity) {
-    return attributes(entity, {"media_duration", "media_position", "media_position_updated_at"});
+    return attributes(entity, {"media_duration", "media_position", "media_position_updated_at", "media_content_id"});
   }
   bool content(const std::string &entity) {
     return attributes(entity, {"media_content_type", "media_content_id"});

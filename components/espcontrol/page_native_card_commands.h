@@ -5,14 +5,17 @@
 #include "modal_callback_dispatch.h"
 #include "page_card_commands.h"
 #include "page_lvgl_dispatch.h"
+#include "page_media_command_policy.h"
 #include "page_modal_admission.h"
 
 namespace espcontrol::pages {
 class PageNativeCardCommandPort final : public PageCardCommandPort {
  public:
   using OriginValid = bool (*)(void*, PageBindingToken);
-  PageNativeCardCommandPort(void* owner, OriginValid valid, PageCardControlPolicy* controls = nullptr)
-      : owner_(owner), valid_(valid), controls_(controls) {}
+  using Accepted = void (*)(void*, PageBindingToken, PageCardCommandKind, const PageCardCommandValue&);
+  PageNativeCardCommandPort(void* owner, OriginValid valid, PageCardControlPolicy* controls = nullptr,
+                            Accepted accepted = nullptr)
+      : owner_(owner), valid_(valid), controls_(controls), accepted_(accepted) {}
   bool admit_control(const PageStore& store, PageBindingToken origin, PageCardCommandKind kind,
                      PageCardCommandValue& value) override {
     return controls_ && controls_->admit(store, origin, kind, value);
@@ -27,11 +30,23 @@ class PageNativeCardCommandPort final : public PageCardCommandPort {
   }
   void accepted_control(PageBindingToken origin, PageCardCommandKind kind,
                         const PageCardCommandValue& value) override {
+    assert(ready());
     if (controls_) controls_->accepted(origin, kind, value);
+    if (accepted_) accepted_(owner_, origin, kind, value);
   }
   bool dispatch_control(const PageCardCommandSnapshot& snapshot) override {
     assert(ready());
     const auto& config = snapshot.config;
+    if (snapshot.kind == PageCardCommandKind::MEDIA_ACTION) {
+      const auto mode = page_media_command_mode(config.sensor);
+      return mode == "playlist"
+                 ? send_media_playlist_action(config)
+                 : send_media_playback_action(config.entity,
+                                              mode == "now_playing" ? "play_pause" : std::string(mode));
+    }
+    if (snapshot.kind == PageCardCommandKind::MEDIA_SEEK)
+      return send_media_seek_action(config.entity, snapshot.value.integer,
+                                    static_cast<float>(snapshot.value.number));
     if (snapshot.kind == PageCardCommandKind::PERCENT)
       return send_slider_action(config.entity, snapshot.value.integer,
                                 config.type == "cover" && config.sensor == "tilt");
@@ -129,6 +144,8 @@ class PageNativeCardCommandPort final : public PageCardCommandPort {
       case PageCardCommandKind::SLIDER_TOGGLE:
       case PageCardCommandKind::TIMER_START:
       case PageCardCommandKind::TIMER_CANCEL:
+      case PageCardCommandKind::MEDIA_ACTION:
+      case PageCardCommandKind::MEDIA_SEEK:
         dispatch_control(snapshot);
         break;
     }
@@ -138,5 +155,6 @@ class PageNativeCardCommandPort final : public PageCardCommandPort {
   void* owner_;
   OriginValid valid_;
   PageCardControlPolicy* controls_;
+  Accepted accepted_;
 };
 }  // namespace espcontrol::pages

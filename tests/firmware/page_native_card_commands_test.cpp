@@ -85,6 +85,21 @@ bool send_numeric_slider_action(const std::string& target, double value,
   numeric_metadata = metadata;
   return accepted;
 }
+bool send_media_playback_action(const std::string& target, const std::string& mode) {
+  record(mode.c_str(), target);
+  return accepted;
+}
+bool send_media_seek_action(const std::string& target, int percent, float duration) {
+  record("seek", target);
+  percentage = percent;
+  numeric = duration;
+  return accepted;
+}
+bool send_media_playlist_action(const ParsedCfg& config) {
+  record("playlist", config.entity);
+  event.data = {{"options", config.options}};
+  return accepted;
+}
 void send_turn_on_action(const std::string& target) { record("on", target); }
 void send_turn_off_action(const std::string& target) { record("off", target); }
 void send_action_card_action(const ParsedCfg& p) { record("action", p.entity); }
@@ -220,6 +235,18 @@ int main() {
          event.data[0].first == "color_temp_kelvin" && event.data[0].second == "4700");
   snapshot.kind = PageCardCommandKind::SLIDER_TOGGLE;
   assert(port.dispatch_control(snapshot) && called == "homeassistant.toggle");
+  snapshot.config.entity = "media_player.room";
+  snapshot.kind = PageCardCommandKind::MEDIA_ACTION;
+  for (const auto* mode : {"play_pause", "previous", "next", "playlist"}) {
+    snapshot.config.sensor = mode;
+    assert(port.dispatch_control(snapshot) && called == mode);
+  }
+  snapshot.config.sensor = "now_playing";
+  assert(port.dispatch_control(snapshot) && called == "play_pause");
+  snapshot.kind = PageCardCommandKind::MEDIA_SEEK;
+  snapshot.value.integer = 61;
+  snapshot.value.number = 300;
+  assert(port.dispatch_control(snapshot) && called == "seek" && percentage == 61 && numeric == 300);
   snapshot.config.entity = "timer.room";
   snapshot.kind = PageCardCommandKind::TIMER_START;
   assert(port.dispatch_control(snapshot) && called == "timer.start" && entity == "timer.room");
@@ -227,6 +254,19 @@ int main() {
   assert(port.dispatch_control(snapshot) && called == "timer.cancel");
   accepted = false;
   assert(!port.dispatch_control(snapshot));
+  size_t notifications = 0;
+  PageNativeCardCommandPort observed(
+      &notifications, [](void*, PageBindingToken) { return true; }, nullptr,
+      [](void* owner, PageBindingToken t, PageCardCommandKind kind, const PageCardCommandValue& v) {
+        assert(t.binding == 1 && kind == PageCardCommandKind::MEDIA_SEEK && v.integer == 61 &&
+               v.number == 300);
+        ++*static_cast<size_t*>(owner);
+      });
+  PageCardCommandValue preview;
+  preview.integer = 61;
+  preview.number = 300;
+  observed.accepted_control(origin, PageCardCommandKind::MEDIA_SEEK, preview);
+  assert(notifications == 1);
   lv_display_delete(display);
   lv_deinit();
 }

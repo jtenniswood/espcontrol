@@ -16,10 +16,14 @@ class PageMediaTransport {
   virtual int64_t epoch_seconds() const = 0;
   virtual void reannounce() = 0;
 };
+struct PageMediaSeekProof {
+  uint32_t connection{0}, revision{0};
+};
 struct PageMediaPlaybackSnapshot {
   float seconds{0}, duration{0};
   uint8_t percent{0};
   bool available{false}, playing{false}, has_duration{false}, has_position{false};
+  uint32_t seek_revision{0};
 };
 struct PageMediaSourceSnapshot {
   bool state_known{false}, available{false}, usable{false}, has_content{false};
@@ -92,7 +96,7 @@ class PageMediaStateRuntime final : public PageRuntimeResources, public PageEnti
     media::PlaybackClock clock;
     media::MediaInputState input;
     uint64_t content_fingerprint{0};
-    uint32_t title_refresh_started_ms{0}, group_revision{0};
+    uint32_t title_refresh_started_ms{0}, group_revision{0}, seek_revision{0};
     media::MediaItemKind content_kind{media::MediaItemKind::UNKNOWN},
         type_kind{media::MediaItemKind::UNKNOWN};
     bool title_awaiting_refresh{false}, metadata_refresh{false};
@@ -116,13 +120,14 @@ class PageMediaStateRuntime final : public PageRuntimeResources, public PageEnti
   static bool content_present(const Source&);
   static PageMediaSourceSnapshot snapshot(const Source&);
   static uint16_t attribute_bit(std::string_view);
+  void advance_seek(Source&);
   void synchronize();
   void release(int);
   PageArenaAllocator& allocator_;
   PageMediaTransport& transport_;
   Slot slots_[2];
   int active_{-1}, staged_{-1};
-  uint32_t connection_, tick_ms_;
+  uint32_t connection_, tick_ms_, next_seek_revision_{0};
   uint64_t revision_{0};
   PageMediaMemory memory_;
 };

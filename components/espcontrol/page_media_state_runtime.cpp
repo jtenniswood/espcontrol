@@ -169,6 +169,7 @@ bool PageMediaStateRuntime::prepare(const PageStore& store) {
               *source = slots_[active_].sources[old];
               break;
             }
+        if (!source->seek_revision) advance_seek(*source);
         source->requirements = 0;
         std::memcpy(text, entity.data(), entity.size());
         text[entity.size()] = '\0';
@@ -248,6 +249,10 @@ uint16_t PageMediaStateRuntime::attribute_bit(std::string_view attribute) {
   if (attribute == "entity_picture_local") return 1u << 6;
   return 0;
 }
+void PageMediaStateRuntime::advance_seek(Source& source) {
+  // Exhaustion fails closed until this application owner is recreated.
+  source.seek_revision = next_seek_revision_ == UINT32_MAX ? 0 : ++next_seek_revision_;
+}
 void PageMediaStateRuntime::synchronize() {
   const auto connection = transport_.connection_generation();
   if (connection_ == connection) return;
@@ -260,6 +265,7 @@ void PageMediaStateRuntime::synchronize() {
       source.state_known = false;
       source.state[0] = '\0';
       source.clock = {};
+      advance_seek(source);
       source.input = {};
       source.content_fingerprint = 0;
       source.content_kind = source.type_kind = media::MediaItemKind::UNKNOWN;
@@ -304,6 +310,7 @@ void PageMediaStateRuntime::observed_update(uint32_t generation, std::string_vie
     if (!copied) source->input.state_observed();
     const bool next_usable = usable(state);
     if (!next_usable && (!source->state_known || std::strcmp(source->state, state) != 0)) {
+      advance_seek(*source);
       source->fresh = source->present = 0;
       source->artwork_content = 0;
       source->input.invalidate_content();
@@ -328,7 +335,10 @@ void PageMediaStateRuntime::observed_update(uint32_t generation, std::string_vie
     return;
   }
   if (attribute == "media_duration") {
+    const auto old_duration = source->clock.duration;
+    const bool known = source->clock.has_duration;
     source->clock.duration_value(value);
+    if (old_duration != source->clock.duration || known != source->clock.has_duration) advance_seek(*source);
     ++revision_;
     return;
   }
@@ -352,6 +362,8 @@ void PageMediaStateRuntime::observed_update(uint32_t generation, std::string_vie
                           : decode_html_entities_bounded(decoded, capacity, value.substr(0, capacity - 1));
   if (metadata == "unknown" || metadata == "unavailable" || (picture && metadata == "None")) metadata = {};
   const bool present = !metadata.empty();
+  if (attribute == "media_content_id" && (source->requirements & REQUIRE_PROGRESS) && value != previous)
+    advance_seek(*source);
   if (picture) {
     const uint8_t mask = remote_picture ? 1u : 2u;
     const bool current = present && source->state_known && usable(source->state);
@@ -521,7 +533,7 @@ bool PageMediaStateRuntime::playback(ConfigurationHandle handle, std::string_vie
   const bool available = item->state_known && item->state[0] && std::strcmp(item->state, "unknown") != 0 &&
                          std::strcmp(item->state, "unavailable") != 0;
   output = {clock.seconds(now), clock.duration,     clock.percent(now), available,
-            clock.playing,      clock.has_duration, clock.has_position};
+            clock.playing,      clock.has_duration, clock.has_position, item->seek_revision};
   return true;
 }
 void PageMediaStateRuntime::loop() {

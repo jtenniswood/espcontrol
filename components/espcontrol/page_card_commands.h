@@ -7,6 +7,7 @@
 #include "number_slider_policy.h"
 #include "page_confirmation_policy.h"
 #include "page_entity_state_runtime.h"
+#include "page_media_state_runtime.h"
 #include "page_renderer_runtime.h"
 #include "page_timer_runtime.h"
 #include "page_toggle_state.h"
@@ -32,7 +33,9 @@ enum class PageCardCommandKind : uint8_t {
   TEMPERATURE,
   SLIDER_TOGGLE,
   TIMER_START,
-  TIMER_CANCEL
+  TIMER_CANCEL,
+  MEDIA_ACTION,
+  MEDIA_SEEK
 };
 struct PageCardCommandValue {
   double number{0};
@@ -80,6 +83,8 @@ class PageCardCommandPort {
   }
   virtual void discard_control(PageBindingToken, PageCardCommandKind, const PageCardCommandValue&) {}
   virtual bool dispatch_control(const PageCardCommandSnapshot&) { return false; }
+  // Safe dispatch notification. The scene can validate/apply a view preview;
+  // this may reenter, and receives only the consumed intent's owned scalars.
   virtual void accepted_control(PageBindingToken, PageCardCommandKind, const PageCardCommandValue&) {}
 };
 enum class PageCardCommandResult : uint8_t { NONE, CANCELLED, DISPATCHED, FAILED };
@@ -89,7 +94,7 @@ struct PageCardCommandMemory {
 
 // A fixed FIFO of basic-card intents, independent of configured card count. The
 // native adapter consumes existing service/local/webhook policies in dispatch.
-// Typed sliders and timers share this queue. Media/alarm routes remain separate.
+// Typed sliders, timers and media share this queue. Alarm routes remain separate.
 class PageCardCommands final : public PageRuntimeResources {
   struct Pending;
 
@@ -175,10 +180,21 @@ class PageCardCommands final : public PageRuntimeResources {
                                                             : PageCardCommandKind::TIMER_CANCEL,
                            value);
   }
+  bool request_media(PageBindingToken origin, uint32_t connection) {
+    return request_control(origin, connection, PageCardCommandKind::MEDIA_ACTION, {});
+  }
+  bool request_seek(PageBindingToken origin, PageMediaSeekProof proof, uint8_t percent, float duration) {
+    PageCardCommandValue value;
+    value.integer = percent;
+    value.number = duration;
+    value.write_revision = proof.revision;
+    return request_control(origin, proof.connection, PageCardCommandKind::MEDIA_SEEK, value);
+  }
   static bool control(PageCardCommandKind kind) {
     return kind == PageCardCommandKind::PERCENT || kind == PageCardCommandKind::NUMBER ||
            kind == PageCardCommandKind::TEMPERATURE || kind == PageCardCommandKind::SLIDER_TOGGLE ||
-           kind == PageCardCommandKind::TIMER_START || kind == PageCardCommandKind::TIMER_CANCEL;
+           kind == PageCardCommandKind::TIMER_START || kind == PageCardCommandKind::TIMER_CANCEL ||
+           kind == PageCardCommandKind::MEDIA_ACTION || kind == PageCardCommandKind::MEDIA_SEEK;
   }
 
  private:
