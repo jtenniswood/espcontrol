@@ -1,16 +1,17 @@
 #include <array>
 #include <cassert>
-#include <cstdlib>
-#include <limits>
-#include <cstdio>
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <functional>
+#include <limits>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "lvgl.h"
+#include "modal_draw_retirement_probe.h"
 #define ESPCONTROL_HA_GENERATION_HELPERS_DEFINED
 uint32_t &ha_subscription_generation();
 #include "button_grid_subpage_parser.h"
@@ -231,6 +232,11 @@ void test_controls(){Fixture fixture,next(18);Arena arena;PageCardDependencies s
          assert(light_ui.active->current_kelvin == 4000);
        if (card)cover_control_hide_modal();else light_control_hide_modal();assert(runtime.memory().retired_contexts==1);runtime.loop();coordinator.reclaim_unused_channels();assert(arena.live.size()==live&&lv_live_bytes==lv_bytes&&coordinator.subscription_count()==refs&&coordinator.transport().bindings.size()==native);
      }
+   }
+   for (uint16_t card = 0; card < 2; ++card) {
+     assert(runtime.request_card({17, card}));
+     runtime.loop();
+     assert_panel_draw_retirement(runtime, card ? cover_ui.overlay : light_ui.overlay);
    }
  for(uint16_t card=0;card<2;++card){assert(runtime.request_card({17,card}));runtime.loop();auto *button=card?cover_ui.button:light_ui.button;during_send=[&](){if(card)cover_control_hide_modal();else light_control_hide_modal();runtime.loop();assert(runtime.memory().retired_contexts==1);};lv_obj_send_event(button,LV_EVENT_PRESSED,nullptr);lv_obj_send_event(button,LV_EVENT_RELEASED,nullptr);lv_obj_send_event(button,LV_EVENT_CLICKED,nullptr);during_send={};runtime.loop();
  arena.remaining=0;assert(runtime.request_card({17,card}));runtime.loop();arena.remaining=-1;assert(!light_ui.active&&!cover_ui.active);arena.remaining=1;assert(runtime.request_card({17,card}));runtime.loop();arena.remaining=-1;assert(!light_ui.active&&!cover_ui.active);

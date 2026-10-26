@@ -1,16 +1,17 @@
 #include <array>
 #include <cassert>
-#include <cstdlib>
-#include <limits>
-#include <cstdio>
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <functional>
+#include <limits>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "lvgl.h"
+#include "modal_draw_retirement_probe.h"
 #define ESPCONTROL_HA_GENERATION_HELPERS_DEFINED
 uint32_t &ha_subscription_generation();
 #include "button_grid_subpage_parser.h"
@@ -190,11 +191,47 @@ void test_adapter() {
       ctx->target_tenths=230;runtime.loop();assert(ctx->target_tenths==230); // Initial replay must not reset edits.
       const auto before=commands.size();climate_control_hide_modal();
       assert(!runtime.valid(token)&&runtime.memory().retired_contexts==1&&ctx->entity_id=="climate.room");
-      assert(commands.size()==before+1&&commands.back().data[0].second=="23.0");
-      climate_send_temperature(ctx);assert(commands.size()==before+1); // Retired timer cannot send.
-      runtime.loop();coordinator.reclaim_unused_channels();assert(!ui.active&&climate_control_ref_count()==0);
+      assert(commands.size() == before);
+      climate_send_temperature(ctx);
+      assert(commands.size() == before);  // Retired timers cannot send or erase the edit.
+      runtime.loop();
+      assert(commands.size() == before + 1 && commands.back().data[0].second == "23.0");
+      coordinator.reclaim_unused_channels();
+      assert(!ui.active && climate_control_ref_count() == 0);
       assert(coordinator.subscription_count()==graph_refs&&coordinator.transport().bindings.size()==native&&arena.live.size()==arena_count);
       assert(lv_live_bytes==baseline_lv&&climate_optional_subscription_timer()==nullptr&&reannouncements==0);
+    }
+    assert(runtime.request_card({17, 0}));
+    runtime.loop();
+    assert(ui.active);
+    assert_panel_draw_retirement(runtime, ui.overlay);
+    // Revoke a closed edit before collection, including a same-generation replacement.
+    for (int revoke = 0; revoke < 5; ++revoke) {
+      assert(runtime.request_card({17, 0}));
+      runtime.loop();
+      auto* closing = ui.active;
+      assert(closing);
+      closing->target_tenths = 240;
+      climate_schedule_temperature_send(closing);
+      const auto sends_before = commands.size();
+      runtime.dismiss();
+      assert(commands.size() == sends_before);
+      if (revoke == 0) runtime.display_takeover(false);
+      if (revoke == 1) {
+        assert(runtime.prepare(fixture.store));
+        runtime.activate_prepared(fixture.store);
+      }
+      if (revoke == 2) {
+        coordinator.transport().connected = false;
+        coordinator.invalidate_retained_state();
+        coordinator.transport().connected = true;
+        values();
+      }
+      if (revoke == 3) coordinator.transport().send("climate.room", "", "unavailable");
+      if (revoke == 4) coordinator.transport().send("climate.room", "", "cool");
+      runtime.loop();
+      assert(commands.size() == sends_before && !ui.active);
+      values();
     }
     // Invalid live values must not overflow integer temperatures or leave
     // a pending command enabled. The raw graph keeps the full incoming state.

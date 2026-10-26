@@ -117,14 +117,26 @@ bool PageModalRuntime::valid(PageModalToken token)const {
          token.kind == token_.kind && token.configuration == active_store_.generation() &&
          port_.connected_for(token.kind) && connection_ == port_.connection_generation_for(token.kind);
 }
+bool PageModalRuntime::can_finish_retired(PageModalToken token) const {
+  const auto& retired = last_retirement_.token;
+  return collecting_retired_ && retired_finish_allowed_ && port_.ready() && !modal_callback_dispatching() &&
+         token.opening && token.opening == retired.opening && token.configuration == retired.configuration &&
+         token.card == retired.card && token.kind == retired.kind &&
+         (last_retirement_.reason == PageModalClose::USER ||
+          last_retirement_.reason == PageModalClose::SWITCH) &&
+         active_store_.card({token.configuration, token.card}) && port_.connected_for(token.kind) &&
+         connection_ == port_.connection_generation_for(token.kind);
+}
 void PageModalRuntime::retire_context(PageModalClose reason) {
   if(!context_)return;
   assert(retired_==nullptr);Guard guard(changing_);
   last_retirement_ = {token_, reason, port_.dismiss_policy(context_), port_.source_revision(context_)};
+  retired_finish_allowed_ = reason == PageModalClose::USER || reason == PageModalClose::SWITCH;
   retired_=context_;context_=nullptr;token_={};
   port_.retire(retired_,reason);
 }
 void PageModalRuntime::dismiss(PageModalClose reason) {
+  if (reason != PageModalClose::USER && reason != PageModalClose::SWITCH) retired_finish_allowed_ = false;
   if (creating_) {
     create_cancelled_ = true;
     create_cancel_reason_ = reason;
@@ -141,6 +153,7 @@ bool PageModalRuntime::notify_closed(PageModalToken token,PageModalClose reason)
   retire_context(reason);return true;
 }
 bool PageModalRuntime::display_takeover(bool preserve_policy_active) {
+  retired_finish_allowed_ = false;
   if (creating_) {
     create_cancelled_ = true;
     create_cancel_reason_ = PageModalClose::TAKEOVER;
@@ -151,7 +164,13 @@ bool PageModalRuntime::display_takeover(bool preserve_policy_active) {
 }
 void PageModalRuntime::collect_retired() {
   if(!retired_||modal_callback_dispatching()||!port_.ready())return;
-  Guard guard(changing_);void *context=retired_;retired_=nullptr;port_.destroy(context);
+  Guard guard(changing_);
+  void* context = retired_;
+  retired_ = nullptr;
+  collecting_retired_ = true;
+  port_.destroy(context);
+  collecting_retired_ = false;
+  retired_finish_allowed_ = false;
 }
 void PageModalRuntime::loop() {
   if(changing_||modal_callback_dispatching()||!port_.ready())return;

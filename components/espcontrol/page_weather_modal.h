@@ -143,6 +143,7 @@ class PageWeatherModalPort final : public PageModalPort {
     auto& record = *static_cast<Record*>(pointer);
     record.retired = true;
     record.gestures.invalidate();
+    if (page_lvgl_dispatching()) return;
     if (weather_daily_modal().source != &record.source) return;
     if (reason == PageModalClose::REPLACED || reason == PageModalClose::SHUTDOWN) {
       auto* overlay = weather_daily_modal().overlay;

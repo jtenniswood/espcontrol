@@ -12,6 +12,7 @@
 #include "button_grid_subpage_parser.h"
 #include "button_grid_weather_daily_data.h"
 #include "lvgl.h"
+#include "modal_draw_retirement_probe.h"
 #include "page_forecast_runtime.h"
 #include "page_modal_runtime.h"
 #include "panel_config_document.h"
@@ -376,6 +377,9 @@ void test_weather_modal() {
     modal.loop();
     enough_heap = true;
     assert(!weather_daily_modal().overlay);
+    assert(request_without_allocation(modal, {17, 0}));
+    modal.loop();
+    assert_panel_draw_retirement(modal, weather_daily_modal().overlay);
     assert(request_without_allocation(modal, {17, 0}));
     modal.loop();
     auto* source = weather_daily_modal().source;

@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "lvgl.h"
+#include "modal_draw_retirement_probe.h"
 #define ESPCONTROL_HA_GENERATION_HELPERS_DEFINED
 uint32_t& ha_subscription_generation();
 #include "button_grid_subpage_parser.h"
@@ -1020,6 +1021,7 @@ void test_panels() {
     open(20);
     assert(ui.active->group_only && ui.tab == MediaControlTab::SPEAKERS && !ui.tab_row &&
            ui.speaker_rows.size() == 2);
+    assert_panel_draw_retirement(runtime, ui.overlay);
     close();
     group_calls.clear();
     runtime.retire_active();

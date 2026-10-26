@@ -109,7 +109,9 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
   ControlModalDismissPolicy dismiss_policy(void *)const override{return ControlModalDismissPolicy::DISMISS;}
   void retire(void *pointer,PageModalClose reason)override {
     auto &record=*static_cast<Record *>(pointer);record.retired=true;record.gestures.invalidate();
-    ha_release_callbacks_for_owner(&record.context);Family::cancel(&record.context);
+    ha_release_callbacks_for_owner(&record.context);
+    if (page_lvgl_dispatching()) return;
+    Family::cancel(&record.context);
     if(Family::active()!=&record.context)return;
     if(reason==PageModalClose::REPLACED||reason==PageModalClose::SHUTDOWN||!ready()) {
       // Widget/clock teardown is maintenance after dispatch, never part of the
@@ -121,6 +123,7 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
   }
   void destroy(void *pointer)override {
     auto *record=static_cast<Record *>(pointer);assert(record==record_&&record->retired);
+    Family::cancel(&record->context);
     if(Family::active()==&record->context)Family::hide();
     assert(record->gestures.live()==0);record_=nullptr;release_record(record);
   }
