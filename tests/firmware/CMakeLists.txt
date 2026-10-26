@@ -93,6 +93,14 @@ target_compile_options(page_modal_router_test PRIVATE -Wall -Wextra -Werror -fno
 target_include_directories(page_modal_router_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_modal_router_test COMMAND page_modal_router_test)
 
+add_executable(page_card_commands_test page_card_commands_test.cpp
+  ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp)
+target_compile_features(page_card_commands_test PRIVATE cxx_std_17)
+target_compile_options(page_card_commands_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_card_commands_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_card_commands_test COMMAND page_card_commands_test)
+
 add_executable(page_entity_state_benchmark EXCLUDE_FROM_ALL page_entity_state_benchmark.cpp
   ../../components/espcontrol/page_entity_state_runtime.cpp
   ../../components/espcontrol/page_store.cpp)
@@ -1415,6 +1423,13 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   # All optional LVGL executables share this library, including the modal test,
   # because the pinned label translation unit is routed through its wrappers.
   link_libraries(page_label_refresh_test_support)
+
+  add_executable(page_native_card_commands_test page_native_card_commands_test.cpp)
+  target_compile_features(page_native_card_commands_test PRIVATE cxx_std_17)
+  target_compile_options(page_native_card_commands_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+  target_include_directories(page_native_card_commands_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_native_card_commands_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_native_card_commands_test COMMAND page_native_card_commands_test)
   set(FORECAST_REFERENCE ${CMAKE_CURRENT_BINARY_DIR}/forecast_reference.h)
   add_custom_command(OUTPUT ${FORECAST_REFERENCE}
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_forecast_reference.py --output ${FORECAST_REFERENCE}
