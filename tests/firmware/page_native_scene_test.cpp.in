@@ -383,7 +383,7 @@ void mode_and_feedback() {
     // A reply to an already-sent grouping action may update its current panel.
     // The same callback still cannot run configuration/scene maintenance or
     // admit a fresh grid command through the covered bank.
-    assert(bank.runtime().interactive(token) && !h.scene->maintenance_ready());
+    assert(bank.runtime().valid(token) && !bank.runtime().interactive(token) && !h.scene->maintenance_ready());
     bank.styles.media.state_confirmed(bank.styles.media.owner,token,true);
     click(h.widgets[0].button);
     assert(h.scene->memory().commands.pending==0);
