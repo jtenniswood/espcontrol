@@ -32,6 +32,7 @@ class PagePercentSliderRuntime final : public PageRuntimeResources, public PageE
   void loop();
   PagePercentSliderSnapshot read(ConfigurationHandle) const;
   bool preview(ConfigurationHandle, uint8_t percent);
+  void discard_preview(ConfigurationHandle, uint8_t expected, uint32_t write_revision);
   uint32_t connection_generation() const {
     return subscriptions_.connection_generation();
   }

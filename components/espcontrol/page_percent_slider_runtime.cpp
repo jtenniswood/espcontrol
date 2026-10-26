@@ -286,6 +286,20 @@ bool PagePercentSliderRuntime::preview(ConfigurationHandle handle, uint8_t perce
   }
   return false;
 }
+void PagePercentSliderRuntime::discard_preview(ConfigurationHandle handle, uint8_t expected,
+                                               uint32_t write_revision) {
+  loop();
+  if (!active_.valid || handle.generation != active_.generation) return;
+  for (size_t i = 0; i < active_.cards; ++i) {
+    auto& card = active_.card[i];
+    if (card.card == handle.index && card.preview && card.percent == expected &&
+        active_.source[card.source].write_revision == write_revision) {
+      card.preview = false;
+      ++revision_;
+      return;
+    }
+  }
+}
 PagePercentSliderMemory PagePercentSliderRuntime::memory() const {
   return {sizeof(*this), active_.bytes, staged_.bytes, peak_, active_.sources, active_.cards, failures_};
 }

@@ -290,6 +290,34 @@ void PageLightTemperatureRuntime::cancel(ConfigurationHandle handle) {
   card->gesture = card->dragging = false;
   ++revision_;
 }
+void PageLightTemperatureRuntime::discard_finished(ConfigurationHandle handle, int expected,
+                                                   uint32_t write_revision, PageEntityStateRuntime& graph) {
+  loop();
+  auto* card = find(handle);
+  if (!card || card->gesture || card->write_revision != write_revision || card->last_kelvin != expected)
+    return;
+  const auto entity = active_.source[card->source].entity;
+  const auto primary = graph.read_attribute(handle, entity, {});
+  const auto kelvin = graph.read_attribute(handle, entity, "color_temp_kelvin");
+  const auto value = primary.value.substr(0, HA_SHORT_STATE_MAX_LEN);
+  card->known = primary.status == PageEntityStatus::AVAILABLE;
+  card->available = card->known && !fan_mode_trim(value).empty() && !fan_mode_equal(value, "unknown") &&
+                    !fan_mode_equal(value, "unavailable");
+  card->on = card->known && on(value);
+  card->last_kelvin = card->minimum;
+  card->has_kelvin = kelvin.status == PageEntityStatus::AVAILABLE && parse(kelvin.value, card->last_kelvin);
+  card->percent = 0;
+  card->display_kelvin = card->minimum;
+  card->fill_kelvin = card->minimum + (card->maximum - card->minimum) / 2;
+  if (card->on && card->has_kelvin) {
+    apply_kelvin(*card);
+    const auto rounded = (static_cast<int64_t>(card->fill_kelvin) + 25) / 50 * 50;
+    card->display_kelvin =
+        static_cast<int>(std::max<int64_t>(card->minimum, std::min<int64_t>(card->maximum, rounded)));
+  }
+  ++card->write_revision;
+  ++revision_;
+}
 PageLightTemperatureMemory PageLightTemperatureRuntime::memory() const {
   return {sizeof(*this), active_.bytes, staged_.bytes, peak_, active_.sources, active_.cards, failures_};
 }

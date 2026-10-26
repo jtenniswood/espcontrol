@@ -35,6 +35,7 @@ class PageNumberSliderRuntime final : public PageRuntimeResources, public PageEn
   bool drag(ConfigurationHandle, int position);
   bool finish(ConfigurationHandle, int position, double& value);
   void cancel(ConfigurationHandle);
+  void discard_finished(ConfigurationHandle, double expected, const number_slider::Metadata&);
   uint64_t revision() const {
     return revision_;
   }

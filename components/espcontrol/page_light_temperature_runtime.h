@@ -31,6 +31,7 @@ class PageLightTemperatureRuntime final : public PageRuntimeResources, public Pa
   bool drag(ConfigurationHandle, int percent);
   bool finish(ConfigurationHandle, int percent, int& kelvin);
   void cancel(ConfigurationHandle);
+  void discard_finished(ConfigurationHandle, int expected, uint32_t write_revision, PageEntityStateRuntime&);
   uint64_t revision() const {
     return revision_;
   }

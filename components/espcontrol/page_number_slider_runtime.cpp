@@ -286,6 +286,19 @@ void PageNumberSliderRuntime::cancel(ConfigurationHandle handle) {
   apply_state(*card, active_.source[card->source]);
   ++revision_;
 }
+void PageNumberSliderRuntime::discard_finished(ConfigurationHandle handle, double expected,
+                                               const number_slider::Metadata& metadata) {
+  loop();
+  auto* card = find(handle);
+  if (!card || card->gesture) return;
+  const auto& source = active_.source[card->source];
+  if (metadata.minimum != source.metadata.minimum || metadata.maximum != source.metadata.maximum ||
+      metadata.step != source.metadata.step ||
+      number_slider::value_for_position(source.metadata, card->position) != expected)
+    return;
+  apply_state(*card, source);
+  ++revision_;
+}
 PageNumberSliderMemory PageNumberSliderRuntime::memory() const {
   return {sizeof(*this), active_.bytes, staged_.bytes, peak_, active_.sources, active_.cards, failures_};
 }

@@ -3,8 +3,9 @@
 `PageCardCommands` is the basic-action owner for the pooled scene migration.
 Production still uses the existing renderer. It does not enable nested pages,
 select the new scene, retire compiled legacy handlers or establish device memory
-savings. Slider, media, access, cleaning, timer and other control routes still
-need their own final main-loop dispatch integration.
+savings. [Slider dispatch](pooled-slider-commands.md) shares this queue. Media,
+access, cleaning, timer and other control routes still need their own final
+main-loop dispatch integration.
 
 An eight-entry fixed FIFO accepts validated grid bindings and the connection
 captured with input. Admission allocates nothing and retains no configuration

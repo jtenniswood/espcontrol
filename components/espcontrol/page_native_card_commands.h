@@ -11,7 +11,37 @@ namespace espcontrol::pages {
 class PageNativeCardCommandPort final : public PageCardCommandPort {
  public:
   using OriginValid = bool (*)(void*, PageBindingToken);
-  PageNativeCardCommandPort(void* owner, OriginValid valid) : owner_(owner), valid_(valid) {}
+  PageNativeCardCommandPort(void* owner, OriginValid valid, PageCardControlPolicy* controls = nullptr)
+      : owner_(owner), valid_(valid), controls_(controls) {}
+  bool admit_control(const PageStore& store, PageBindingToken origin, PageCardCommandKind kind,
+                     PageCardCommandValue& value) override {
+    return controls_ && controls_->admit(store, origin, kind, value);
+  }
+  bool valid_control(const PageStore& store, PageBindingToken origin, PageCardCommandKind kind,
+                     const PageCardCommandValue& value) override {
+    return controls_ && controls_->valid(store, origin, kind, value);
+  }
+  void discard_control(PageBindingToken origin, PageCardCommandKind kind,
+                       const PageCardCommandValue& value) override {
+    if (controls_) controls_->discard(origin, kind, value);
+  }
+  bool dispatch_control(const PageCardCommandSnapshot& snapshot) override {
+    assert(ready());
+    const auto& config = snapshot.config;
+    if (snapshot.kind == PageCardCommandKind::PERCENT)
+      return send_slider_action(config.entity, snapshot.value.integer,
+                                config.type == "cover" && config.sensor == "tilt");
+    if (snapshot.kind == PageCardCommandKind::NUMBER)
+      return send_numeric_slider_action(config.entity, snapshot.value.number, snapshot.value.metadata);
+    if (snapshot.kind == PageCardCommandKind::SLIDER_TOGGLE)
+      return ha_send_entity_action(config.entity, "homeassistant.toggle");
+    if (snapshot.kind == PageCardCommandKind::TEMPERATURE) {
+      char buffer[16];
+      snprintf(buffer, sizeof(buffer), "%d", snapshot.value.integer);
+      return ha_send_entity_action(config.entity, "light.turn_on", "color_temp_kelvin", buffer);
+    }
+    return false;
+  }
   bool ready() const override {
     return lv_is_initialized() && !page_lvgl_dispatching() && !modal_callback_dispatching() &&
            !ha_read_coordinator().dispatching();
@@ -85,11 +115,18 @@ class PageNativeCardCommandPort final : public PageCardCommandPort {
       }
       case PageCardCommandKind::NONE:
         break;
+      case PageCardCommandKind::PERCENT:
+      case PageCardCommandKind::NUMBER:
+      case PageCardCommandKind::TEMPERATURE:
+      case PageCardCommandKind::SLIDER_TOGGLE:
+        dispatch_control(snapshot);
+        break;
     }
   }
 
  private:
   void* owner_;
   OriginValid valid_;
+  PageCardControlPolicy* controls_;
 };
 }  // namespace espcontrol::pages
