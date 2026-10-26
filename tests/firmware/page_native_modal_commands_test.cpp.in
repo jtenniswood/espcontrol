@@ -633,8 +633,17 @@ void bank_composition() {
   assert(bank.runtime().request_local({f.store.generation(), 1, 0}, ControlModalKind::NETWORK_STATUS));
   bank.loop();
   assert(bank.runtime().token().kind == ControlModalKind::NETWORK_STATUS);
-  bank.retire_active();
+  busy = true;
+  const auto old = bank.runtime().token();
+  bank.stop();
+  bank.stop();
+  assert(!bank.ready() && !bank.maintenance_ready() && !bank.prepare(f.store) && !bank.initialize(true));
+  assert(!bank.runtime().valid(old) && live_contexts == 1 && bank.runtime().memory().active_contexts == 1);
   bank.loop();
+  assert(live_contexts == 1);
+  busy = false;
+  bank.loop();
+  bank.retire_active();
   online = true;
   assert(!live_contexts && !bank.confirmations().memory().contexts &&
          !bank.alarm_commands().memory().pending);

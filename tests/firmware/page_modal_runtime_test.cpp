@@ -34,6 +34,7 @@ struct Port:PageModalPort {
   size_t initializes{0}, creates{0}, destroys{0}, retires{0}, sends{0}, maximum_live{0};
   PageModalClose reason{PageModalClose::SHUTDOWN};
   std::function<void(PageModalToken)> before_destroy;
+  std::function<void()> on_create, on_initialize, on_update;
   mutable size_t kind_queries{0};
   bool valid_origin(PageBindingToken token)const override{return token.binding==binding;}
   ControlModalKind kind(const PageStore &store,ConfigurationHandle handle)const override {
@@ -50,6 +51,7 @@ struct Port:PageModalPort {
         new (storage.data()) Context{std::string(store.field(*store.card(handle), CardField::ENTITY)), token};
     ++creates;
     maximum_live = 1;
+    if (on_create) on_create();
     if (reconnect_create) ++epoch;
     return context;
   }
@@ -60,6 +62,7 @@ struct Port:PageModalPort {
     if (reconnect_initialize) ++epoch;
     if(fail_initialize)return false;
     service.set_active(token.kind,&overlay,nullptr,dismiss_policy(ctx));
+    if (on_initialize) on_initialize();
     if(close_initialize) {
       busy=true;assert(runtime->notify_closed(token));runtime->loop();
       assert(context==ctx&&ctx->retired&&!ctx->entity.empty());busy=false;
@@ -69,6 +72,7 @@ struct Port:PageModalPort {
   bool visible(void *pointer)const override{return pointer==context&&service.active().overlay==&overlay;}
   void update(void *pointer,PageModalToken token)override {
     auto *ctx=static_cast<Context *>(pointer);assert(ctx==context);
+    if (on_update) on_update();
     if(close_update) {
       busy=true;assert(runtime->notify_closed(token));runtime->loop();
       assert(context==ctx&&ctx->retired&&!ctx->callbacks&&!ctx->timer&&!ctx->entity.empty());busy=false;
@@ -499,6 +503,108 @@ void action_response_dispatch_lifetime() {
   }
   assert(!espcontrol::modal_callback_dispatching());runtime.loop();assert(!port.context);
 }
+void terminal_stop_lifetime() {
+  Fixture fixture;
+  {
+    Port port;
+    PageModalRuntime runtime(port);
+    port.runtime = &runtime;
+    activate(runtime, fixture.store);
+    assert(runtime.request(origin()));
+    runtime.stop();
+    runtime.stop();
+    const auto queries = port.kind_queries;
+    assert(!runtime.pending_request() && !runtime.prepare(fixture.store));
+    runtime.activate_prepared(fixture.store);
+    assert(!runtime.request(origin()) && !runtime.request_card({17, 0}) &&
+           !runtime.request_local({17, 1, 0}, ControlModalKind::NETWORK_STATUS));
+    assert(port.kind_queries == queries);
+    runtime.loop();
+    assert(!port.creates && !port.retires && !port.destroys);
+  }
+  {
+    Port port;
+    PageModalRuntime runtime(port);
+    port.runtime = &runtime;
+    activate(runtime, fixture.store);
+    assert(runtime.request(origin()));
+    runtime.loop();
+    auto* context = port.context;
+    const auto token = runtime.token();
+    assert(runtime.valid(token));
+    assert(runtime.request_card({17, 1}));
+    {
+      ModalCallbackDispatchScope callback;
+      runtime.stop();
+      runtime.loop();
+      assert(port.context == context && !context->retired && context->callbacks && context->timer &&
+             !port.retires && !port.destroys && !runtime.valid(token) && !runtime.interactive(token) &&
+             !runtime.pending_request());
+    }
+    port.busy = true;
+    runtime.loop();
+    assert(port.context == context && !port.retires);
+    port.busy = false;
+    runtime.loop();
+    assert(!port.context && port.retires == 1 && port.destroys == 1 &&
+           port.reason == PageModalClose::SHUTDOWN && !port.sends);
+  }
+  {
+    Port port;
+    PageModalRuntime runtime(port);
+    port.runtime = &runtime;
+    activate(runtime, fixture.store);
+    assert(runtime.request(origin()));
+    runtime.loop();
+    const auto token = runtime.token();
+    runtime.stop();
+    // A late user-close callback cannot turn terminal retirement into a final edit.
+    assert(runtime.notify_closed(token));
+    assert(port.reason == PageModalClose::SHUTDOWN && !port.sends);
+    runtime.loop();
+    assert(!port.context);
+  }
+  for (int phase = 0; phase < 3; ++phase) {
+    Port port;
+    PageModalRuntime runtime(port);
+    port.runtime = &runtime;
+    activate(runtime, fixture.store);
+    auto stop = [&] {
+      const auto retires = port.retires, destroys = port.destroys;
+      runtime.stop();
+      runtime.loop();
+      assert(port.retires == retires && port.destroys == destroys && !runtime.valid(runtime.token()));
+    };
+    if (phase == 0) port.on_create = stop;
+    if (phase == 1) port.on_initialize = stop;
+    assert(runtime.request(origin()));
+    runtime.loop();
+    if (phase == 2) {
+      port.on_update = stop;
+      runtime.loop();
+    }
+    assert(!port.context && port.retires == 1 && port.destroys == 1 && !port.sends &&
+           port.reason == PageModalClose::SHUTDOWN);
+    if (phase == 0) assert(!port.initializes);
+  }
+  {
+    Port port;
+    PageModalRuntime runtime(port);
+    port.runtime = &runtime;
+    activate(runtime, fixture.store);
+    assert(runtime.request(origin()));
+    runtime.loop();
+    const auto token = runtime.token();
+    port.busy = true;
+    runtime.notify_closed(token);
+    runtime.stop();
+    port.before_destroy = [&](PageModalToken t) { assert(!runtime.can_finish_retired(t)); };
+    port.busy = false;
+    runtime.loop();
+    assert(!port.context && port.destroys == 1);
+  }
+}
+
 void bounded_cycles_failures_and_exhaustion() {
   Fixture fixture;Port port;PageModalRuntime runtime(port);port.runtime=&runtime;activate(runtime,fixture.store);
   port.fail_create=true;assert(runtime.request_card({17,0}));runtime.loop();assert(!port.context&&runtime.memory().failures==1);
@@ -519,6 +625,7 @@ void bounded_cycles_failures_and_exhaustion() {
 }
 }
 int main() {
+  terminal_stop_lifetime();
   deferred_close_edit_guard();
   local_settings_origin();
   family_connection_policy();

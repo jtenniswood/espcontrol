@@ -18,6 +18,12 @@ configuration preparation is blocked until every family has installed.
 All panel kinds use the same modal request/retirement boundary. A retiring
 context continues to occupy that owner until its family is safe to collect.
 Commands run before collection, with recursive bank maintenance blocked.
+The terminal `stop()` path revokes all modal tokens and queued commands using
+scalar state only. It closes or deletes no widgets from a shutdown/producer
+callback. A later safe loop collects the context, or the application-lifetime
+owner destroys it after dispatch ends. Setup, preparation, new openings and final
+retired edits cannot revive a stopped bank. The application may stop looping
+entirely after shutdown, so that owner and its borrowed sources must outlive it.
 Configuration replacement retires the panel before cancelling its borrowed
 command state; shared graph/source storage must follow the bank in the scene's
 resource group. The scene must retain original grid bindings under ordinary

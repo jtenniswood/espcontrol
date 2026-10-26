@@ -112,6 +112,7 @@ class PageNativeModalBank final : public PageRuntimeResources {
   PageNativeModalBank& operator=(const PageNativeModalBank&) = delete;
 
   bool initialize(bool legacy_renderer_retired) {
+    if (stopped_) return false;
     if (initialized_) return true;
     if (!configured_ || !legacy_renderer_retired || !page_native_command_ready()) return false;
     // Failed setup is retryable before configuration activation. No family may
@@ -125,9 +126,9 @@ class PageNativeModalBank final : public PageRuntimeResources {
                    wifi_.install(runtime_, true) && network_.install(runtime_, true);
     return initialized_;
   }
-  bool ready() const { return initialized_; }
+  bool ready() const { return initialized_ && !stopped_; }
   bool maintenance_ready() const {
-    return initialized_ && !running_ && page_native_command_ready() && router_.ready();
+    return ready() && !running_ && page_native_command_ready() && router_.ready();
   }
   bool prepare(const PageStore& store) override {
     discard_prepared();
@@ -146,7 +147,7 @@ class PageNativeModalBank final : public PageRuntimeResources {
     prepared_ = false;
   }
   void activate_prepared(const PageStore& store) override {
-    if (!prepared_) return;
+    if (!prepared_ || stopped_) return;
     // Retire demanded contexts before their command or shared-state storage.
     runtime_.activate_prepared(store);
     confirmation_.activate_prepared(store);
@@ -161,15 +162,22 @@ class PageNativeModalBank final : public PageRuntimeResources {
     guest_.retire();
   }
   void loop() {
-    if (!maintenance_ready()) return;
+    if (!initialized_ || running_ || !page_native_command_ready() || !router_.ready()) return;
     running_ = true;
     // Commands run before modal collection. Accepted effects can use the source
     // binding retained under an overlay; a closed/replaced token cancels first.
-    confirmation_.loop();
-    alarm_commands_.loop();
-    guest_.loop();
+    if (!stopped_) confirmation_.loop();
+    if (!stopped_) alarm_commands_.loop();
+    if (!stopped_) guest_.loop();
     runtime_.loop();
     running_ = false;
+  }
+  void stop() {
+    stopped_ = true;
+    runtime_.stop();
+    confirmation_.cancel();
+    alarm_commands_.cancel();
+    guest_.retire();
   }
   PageModalRuntime& runtime() { return runtime_; }
   PageConfirmationRuntime& confirmations() { return confirmation_; }
@@ -183,7 +191,7 @@ class PageNativeModalBank final : public PageRuntimeResources {
   static bool selected_pin(void* owner, PageModalToken token, alarm::Action action) {
     return static_cast<PageNativeModalBank*>(owner)->alarm_modal_.selected_pin(token, action);
   }
-  bool configured_{false}, initialized_{false}, prepared_{false}, running_{false};
+  bool configured_{false}, initialized_{false}, prepared_{false}, running_{false}, stopped_{false};
   PageNativeConfirmationPort confirmation_port_;
   PageNativeAlarmCommandPort alarm_port_;
   PageNativeGuestWifiPort guest_port_;
