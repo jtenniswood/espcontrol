@@ -23,7 +23,8 @@ inline size_t format_sensor_text(char *output,size_t capacity,std::string_view i
       cap_next=true;last_space=false;++offset;continue;
     }
     if(ch=='-'&&used&&output[used-1]!='\n'&&output[used-1]!=' ') {
-      if(!append(ch))break;cap_next=true;last_space=false;++offset;continue;
+      if(!append(ch))break;
+      cap_next=true;last_space=false;++offset;continue;
     }
     if(ch=='_'||(c<0x80&&std::isspace(c))) {
       if(used&&!last_space&&output[used-1]!='\n'){if(!append(' '))break;last_space=true;}

@@ -16,6 +16,8 @@ void *operator new(size_t size){++cpp_allocations;if(void *p=std::malloc(size?si
 void *operator new[](size_t size){return ::operator new(size);}
 void operator delete(void *p)noexcept{std::free(p);}
 void operator delete[](void *p)noexcept{std::free(p);}
+void operator delete(void *p, size_t) noexcept { std::free(p); }
+void operator delete[](void *p, size_t) noexcept { std::free(p); }
 struct alignas(std::max_align_t) Allocation {size_t bytes;};
 extern "C" {
 void lv_mem_init(){}

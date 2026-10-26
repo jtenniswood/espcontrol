@@ -37,11 +37,13 @@ bool PageModalRuntime::valid_request(const Request &request)const {
 }
 bool PageModalRuntime::request(PageBindingToken origin) {
   const Request request{{origin.configuration,origin.card},origin,true,true};
-  if(!valid_request(request))return false;pending_=request;return true;
+  if(!valid_request(request))return false;
+  pending_=request;return true;
 }
 bool PageModalRuntime::request_card(ConfigurationHandle card) {
   const Request request{card,{},true,false};
-  if(!valid_request(request))return false;pending_=request;return true;
+  if(!valid_request(request))return false;
+  pending_=request;return true;
 }
 bool PageModalRuntime::valid(PageModalToken token)const {
   return context_&&token.opening!=0&&token.opening==token_.opening&&
@@ -99,7 +101,8 @@ void PageModalRuntime::loop() {
   const bool initialized=port_.initialize(created,next);
   if(!initialized)++memory_.failures;
   if(context_==created&&(!initialized||!valid(next)||!port_.visible(created))) {
-    if(initialized)++memory_.failures;retire_context(!port_.connected()||connection_!=port_.connection_generation()?PageModalClose::DISCONNECTED:PageModalClose::FAILED);
+    if(initialized)++memory_.failures;
+    retire_context(!port_.connected()||connection_!=port_.connection_generation()?PageModalClose::DISCONNECTED:PageModalClose::FAILED);
   } else if(context_==created)++memory_.openings;
   collect_retired();
 }
