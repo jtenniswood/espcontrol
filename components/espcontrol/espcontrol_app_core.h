@@ -173,9 +173,10 @@ class EspControlAppCore {
   cards::CardRuntimeRegistryService card_runtime_registry_{};
   std::optional<configuration::ConfigurationService> configuration_service_;
   HomeAssistantCallbackOwnerService home_assistant_callback_owner_{};
-  // The binding service is 200 bytes: coordinator metadata and vector handles
-  // are fixed here, while pointed-to request data remains demand-allocated.
-  FixedRuntimeServiceSlot<224> home_assistant_binding_service_{};
+  // Keep the 224-byte firmware budget on 32-bit targets. Host standard-library
+  // containers can have larger handles, so reserve a bounded 256-byte slot on
+  // 64-bit hosts. Pointed-to request data remains demand-allocated.
+  FixedRuntimeServiceSlot<sizeof(void *) == 8 ? 256 : 224> home_assistant_binding_service_{};
   // The concrete UI services assert their own sizes when they bind to these
   // slots. Keeping each bound small avoids reserving a generic 128-byte buffer
   // for every service in every firmware image.
