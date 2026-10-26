@@ -16,6 +16,8 @@ void *operator new(size_t bytes){++allocations;if(void *p=std::malloc(bytes?byte
 void *operator new[](size_t bytes){return ::operator new(bytes);}
 void operator delete(void *p)noexcept{std::free(p);}
 void operator delete[](void *p)noexcept{std::free(p);}
+void operator delete(void *p,size_t)noexcept{std::free(p);}
+void operator delete[](void *p,size_t)noexcept{std::free(p);}
 namespace {
 struct Arena:PageArenaAllocator {
   void *allocate(size_t bytes)override{return std::malloc(bytes);}
@@ -94,6 +96,16 @@ void profile(const DeviceUiLimits &limits) {
   assert(state.prepare(overlay.store));state.activate_prepared(overlay.store);subs.send("light.test","","on");subs.send("sensor.temp","","pre_wash");
   value=read_basic_card(definition,{17,0},state);assert(value.formatted_label&&std::strcmp(value.text,"Pre Wash")==0);
   subs.send("light.test","","off");value=read_basic_card(definition,{17,0},state);assert(!value.formatted_label&&value.label=="Standby");
+  for(const auto type:{"","light_switch"})for(const auto label:{"Standby",""}) {
+    Fixture no_overlay(limits,std::string("light.test;")+label+";Auto;Auto;;;"+type+";text;");
+    assert(prepare_basic_card(no_overlay.store,0,definition)&&!definition.text_overlay);
+    assert(state.prepare(no_overlay.store));state.activate_prepared(no_overlay.store);
+    subs.send("light.test","friendly_name","Room light");
+    for(const auto state_text:{"on","off"}) {
+      subs.send("light.test","",state_text);value=read_basic_card(definition,{17,0},state);
+      assert(!value.formatted_label&&!value.numeric&&value.label==(label[0]?label:"Room light"));
+    }
+  }
   Fixture duration(limits,";;;;sensor.temp;;sensor;time;");assert(prepare_basic_card(duration.store,0,definition));assert(definition.kind==BasicCardKind::DURATION);
   assert(state.prepare(duration.store));state.activate_prepared(duration.store);subs.send("sensor.temp","","90");assert(!read_basic_card(definition,{17,0},state).numeric);
   subs.send("sensor.temp","unit_of_measurement","seconds");value=read_basic_card(definition,{17,0},state,2);assert(value.numeric&&std::strcmp(value.number,"1m 30s")==0&&value.unit.empty());
