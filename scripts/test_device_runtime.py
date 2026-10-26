@@ -426,14 +426,13 @@ async def run_suite(args, client_factory=None):
         # Keep the native connection alive until the modal's finally block has
         # closed it. Stopping both workers first races against UI cleanup.
         if active_tasks:
-            # On a stop signal, let the worker finish its existing cleanup.
-            # Cancelling it again could interrupt an in-flight close command.
-            if not stop.is_set():
-                active_tasks[2].cancel()
+            # Wake a dwell and stop new cycles, while the native worker waits
+            # for modal_finished. Cancel only if the cleanup budget expires.
+            stop.set()
             try:
                 cleanup = await asyncio.wait_for(
                     asyncio.gather(active_tasks[2], return_exceptions=True), args.timeout * 3 + 1)
-                if any(isinstance(result, Exception) for result in cleanup):
+                if any(isinstance(result, BaseException) for result in cleanup):
                     evidence.event("modal_cleanup_incomplete", failure=True)
             except (Exception, asyncio.CancelledError):
                 evidence.event("modal_cleanup_incomplete", failure=True)

@@ -165,10 +165,12 @@ class FakeProbe:
 
 class RunnerTests(unittest.IsolatedAsyncioTestCase):
     async def run_fake(self, *, crash=False, disconnected=False, acknowledge=True,
-                       modal=True, duration=.15, cycles=2, dwell=.005, memory=True, http_mac="ddeeff", change_identity_after_open=False, close_delay=0):
+                       modal=True, duration=.15, cycles=2, dwell=.005, memory=True, http_mac="ddeeff", change_identity_after_open=False, close_delay=0,
+                       record_close=False, cancel_run=False, cancel_close=False, timeout=.05):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         calls=[]
+        suite_task=None
         levels = SimpleNamespace(LOG_LEVEL_INFO=3, LOG_LEVEL_WARN=2)
         class Client:
             def __init__(self, *args, **kwargs): self.connected=False
@@ -190,9 +192,15 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
                 if not self.connected: raise ConnectionError()
                 assert kwargs['return_response'] is None, 'These actions do not advertise responses'
                 calls.append(service.name)
+                if service.name=='close_modal' and cancel_close:
+                    raise asyncio.CancelledError()
                 if service.name=='close_modal' and close_delay:
+                    if cancel_run:
+                        asyncio.get_running_loop().call_later(close_delay / 2, suite_task.cancel)
                     await asyncio.sleep(close_delay)
                     if not self.connected: raise ConnectionError()
+                if service.name=='close_modal' and record_close:
+                    calls.append('close_complete')
                 if service.name=='open_modal' and change_identity_after_open:
                     FakeProbe.mac_suffix = 'aabbcc'
                 if service.name=='open_modal' and acknowledge:
@@ -201,14 +209,15 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
             async def disconnect(self):
                 calls.append('disconnect'); self.connected=False
                 await self.on_stop(True)
-        args=SimpleNamespace(host='fake',http_port=80,api_port=6053,timeout=.05,
+        args=SimpleNamespace(host='fake',http_port=80,api_port=6053,timeout=timeout,
             output=Path(tmp.name)/'results',min_heap_percent=5,interval=.005,duration=duration,
             expect_version='2026.9.1',expect_build='test-build',
             modal_entity='media_player.office' if modal else None,
             modal_cycles=cycles,modal_dwell=dwell)
         with patch.dict('sys.modules',{'aioesphomeapi':SimpleNamespace(LogLevel=levels)}), \
              patch.object(runtime,'HttpProbe',FakeProbe), patch.object(FakeProbe,'mac_suffix',http_mac), redirect_stdout(io.StringIO()):
-            code=await runtime.run_suite(args,Client)
+            suite_task=asyncio.create_task(runtime.run_suite(args,Client))
+            code=await suite_task
         report=json.loads((args.output/'report.json').read_text())
         events=(args.output/'events.jsonl').read_text()
         self.assertNotIn('secret config',events)
@@ -269,6 +278,24 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
         code,report,_=await self.run_fake(crash=True,modal=False)
         self.assertEqual(code,1)
         self.assertIn('crash_signature',report['failures'])
+
+    async def test_duration_expiring_during_close_allows_completion(self):
+        code,report,calls=await self.run_fake(duration=.06,cycles=1,close_delay=.15,record_close=True,timeout=.5)
+        self.assertEqual(code,0,report)
+        self.assertEqual(calls,['open_modal','close_modal','close_complete','disconnect'])
+        self.assertNotIn('modal_cleanup_incomplete',report['failures'])
+
+    async def test_interruption_during_close_allows_completion(self):
+        code,report,calls=await self.run_fake(duration=1,cycles=1,close_delay=.15,record_close=True,cancel_run=True,timeout=.5)
+        self.assertEqual(code,1)
+        self.assertEqual(calls,['open_modal','close_modal','close_complete','disconnect'])
+        self.assertIn('interrupted',report['failures'])
+        self.assertNotIn('modal_cleanup_incomplete',report['failures'])
+
+    async def test_cancelled_close_is_recorded_as_incomplete_cleanup(self):
+        code,report,_=await self.run_fake(duration=.04,cycles=1,cancel_close=True)
+        self.assertEqual(code,1)
+        self.assertIn('modal_cleanup_incomplete',report['failures'])
 
     async def test_native_disconnect_is_failure_without_claiming_a_crash(self):
         code,report,_=await self.run_fake(disconnected=True,modal=False)
