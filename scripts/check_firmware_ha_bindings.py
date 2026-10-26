@@ -3613,7 +3613,7 @@ def firmware_open_modal_api_errors(root: Path, package_paths: tuple[Path, ...]) 
     script_positions = [modal_script.find(value) for value in script_required]
     if (modal_script_start < 0 or -1 in api_positions or api_positions != sorted(api_positions)
             or -1 in script_positions or script_positions != sorted(script_positions)
-            or modal_script.count("grid_phase2_complete()") < 2):
+            or modal_script.count("espcontrol_navigation_ready()") < 2):
         errors.append("common/device/api_open_modal.yaml: validate, wake, revalidate, open, then reset idle timers")
     for path in package_paths:
         has_modal = package_api_open_modal_enabled(path, root)
@@ -8264,7 +8264,7 @@ def run_self_test() -> int:
         api.write_text(original)
         assert not firmware_open_modal_api_errors(root, (package,))
         for token in ("mode: restart", "espcontrol_can_open_modal", "script.wait: screensaver_wake",
-                      "espcontrol_open_modal", "script.execute: home_screen_idle_check"):
+                      "espcontrol_open_modal", "espcontrol_navigation_ready", "script.execute: home_screen_idle_check"):
             source_path = api if token in original else scripts
             source_text = original if source_path == api else scripts.read_text(encoding="utf-8")
             source_path.write_text(source_text.replace(token, "removed"))
