@@ -73,8 +73,8 @@ struct PageBasicActions {
   void (*action)(void *,PageBindingToken){nullptr};
   void (*control)(void *,PageBindingToken){nullptr};
   void (*forecast)(void *,PageBindingToken){nullptr};
-  void (*media)(void *,PageBindingToken){nullptr};
-  void (*seek)(void *,PageBindingToken,uint8_t percent,float duration){nullptr};
+  void (*media)(void*, PageBindingToken, uint32_t pressed_connection){nullptr};
+  void (*seek)(void*, PageBindingToken, PageMediaSeekProof, uint8_t percent, float duration){nullptr};
   void (*media_control)(void*, PageBindingToken){nullptr};
   void (*media_volume)(void*, PageBindingToken){nullptr};
   void (*percent_slider)(void*, PageBindingToken, int percent){nullptr};
@@ -320,6 +320,25 @@ class PageBasicLvglPort final:public PageRendererPort {
     shell.pending_target = std::min(percent, definition.media.volume_max);
     shell.pending_ms = media_->now_ms();
     shell.gesture_connection = media_->connection_generation();
+    media_layout_dirty_ = true;
+    return true;
+  }
+  // Apply feedback only after a seek send was accepted in maintenance.
+  bool preview_seek(PageBindingToken token, PageMediaSeekProof proof, uint8_t percent, float duration) {
+    if (token.shell >= Slots || !same(shells_[token.shell].token, token) || !actions_.valid ||
+        !actions_.valid(actions_.owner, token) || !media_ ||
+        proof.connection != media_->connection_generation())
+      return false;
+    auto& shell = shells_[token.shell];
+    PageMediaPlaybackSnapshot snapshot;
+    if (shell.dragging || !seek_card(shell) || !position_snapshot(shell, snapshot) ||
+        !seek_available(snapshot) || snapshot.seek_revision != proof.revision ||
+        snapshot.duration != duration || percent > 100)
+      return false;
+    shell.seek_revision = proof.revision;
+    shell.pending_target = static_cast<float>(static_cast<double>(duration) * percent / 100);
+    shell.pending_ms = media_->now_ms();
+    shell.gesture_connection = proof.connection;
     media_layout_dirty_ = true;
     return true;
   }
@@ -1378,7 +1397,11 @@ class PageBasicLvglPort final:public PageRendererPort {
     lv_indev_t* input{nullptr};
     PageForecastFrame* frame{nullptr};
     PageCoverArtFrame cover;
-    uint64_t cover_asset{0};
+    // Artwork and inline seek modes never share a shell at the same time.
+    union {
+      uint64_t cover_asset{0};
+      uint32_t seek_revision;
+    };
     bool media_idle{false};
     uint32_t background{0}, foreground{0};
     const lv_font_t* painted_font{nullptr};
@@ -1813,11 +1836,16 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (!media_ || !seek_card(shell))
       return false;
     const auto& definition = shell.definition->definition;
-    return media_->playback({shell.token.configuration, shell.token.card}, definition.entity, snapshot);
+    const ConfigurationHandle handle{shell.token.configuration, shell.token.card};
+    if (!media_->playback(handle, definition.entity, snapshot)) return false;
+    for (const auto* attribute : {"", "media_duration", "media_content_id"})
+      if (state_.read_attribute(handle, definition.entity, attribute).status == PageEntityStatus::EXHAUSTED)
+        snapshot.available = false;
+    return true;
   }
   static bool seek_available(const PageMediaPlaybackSnapshot& snapshot) {
     int seconds;
-    return snapshot.available && snapshot.has_duration &&
+    return snapshot.available && snapshot.has_duration && snapshot.seek_revision &&
            media::seek_seconds(snapshot.duration, 100, seconds);
   }
   void update_fill_geometry(Shell& shell) {
@@ -1917,8 +1945,12 @@ class PageBasicLvglPort final:public PageRendererPort {
   void position_feedback(Shell& shell, BasicCardState& value) {
     const auto& w = widgets_[shell.index];
     PageMediaPlaybackSnapshot snapshot;
-    if (shell.dragging && shell.gesture_connection != media_->connection_generation())
+    if ((shell.dragging || shell.pending_target >= 0) &&
+        (shell.gesture_connection != media_->connection_generation() || !position_snapshot(shell, snapshot) ||
+         shell.seek_revision != snapshot.seek_revision)) {
       cancel_position_gesture(shell);
+      shell.pending_target = -1;
+    }
     const bool interactive = position_snapshot(shell, snapshot) && seek_available(snapshot);
     lv_obj_clear_flag(w.slider, LV_OBJ_FLAG_HIDDEN);
     if (interactive)
@@ -1996,6 +2028,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         shell->dragging = true;
         shell->input = lv_indev_active();
         shell->gesture_connection = port->media_->connection_generation();
+        shell->seek_revision = snapshot.seek_revision;
+        shell->pending_target = -1;
       } else
         lv_event_stop_processing(event);
       return;
@@ -2041,15 +2075,16 @@ class PageBasicLvglPort final:public PageRendererPort {
         !port->actions_.valid(port->actions_.owner, origin))
       return;
     PageMediaPlaybackSnapshot snapshot;
-    if (!port->position_snapshot(*shell, snapshot) || !seek_available(snapshot)) {
+    if (!port->position_snapshot(*shell, snapshot) || !seek_available(snapshot) ||
+        snapshot.seek_revision != shell->seek_revision) {
       port->paint_position_feedback(*shell);
       return;
     }
     const auto percent = static_cast<uint8_t>(lv_slider_get_value(port->widgets_[shell->index].slider));
-    shell->pending_target = static_cast<float>(static_cast<double>(snapshot.duration) * percent / 100);
-    shell->pending_ms = port->media_->now_ms();
+    const PageMediaSeekProof proof{shell->gesture_connection, shell->seek_revision};
     port->paint_position_feedback(*shell);
-    if (port->actions_.seek) port->actions_.seek(port->actions_.owner, origin, percent, snapshot.duration);
+    if (port->actions_.seek)
+      port->actions_.seek(port->actions_.owner, origin, proof, percent, snapshot.duration);
   }
   static bool media_text(BasicCardKind kind) {
     return kind == BasicCardKind::MEDIA_NOW_PLAYING || kind == BasicCardKind::MEDIA_COVER_ART;
@@ -2483,7 +2518,7 @@ class PageBasicLvglPort final:public PageRendererPort {
         if(kind==MediaActionKind::PREVIOUS||kind==MediaActionKind::NEXT) {
           const auto origin=shell->pressed;shell->pressed={};
           if(port->actions_.valid&&port->actions_.valid(port->actions_.owner,origin)&&port->actions_.media)
-            port->actions_.media(port->actions_.owner,origin);
+            port->actions_.media(port->actions_.owner, origin, shell->button_press_connection);
         }
       }
       return;
@@ -2626,7 +2661,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     else if(definition.kind==BasicCardKind::FORECAST&&port->actions_.forecast)
       port->actions_.forecast(port->actions_.owner,origin);
     else if((definition.kind==BasicCardKind::MEDIA_ACTION||(definition.kind==BasicCardKind::MEDIA_NOW_PLAYING&&definition.media.play_pause_background))&&port->actions_.media)
-      port->actions_.media(port->actions_.owner,origin);
+      port->actions_.media(port->actions_.owner, origin, shell->button_press_connection);
     else if (definition.kind == BasicCardKind::IMAGE && port->actions_.image) {
       if (shell->gesture_connection == port->state_.connection_generation() &&
           port->image_tiles_->surface(origin).policy.can_open)

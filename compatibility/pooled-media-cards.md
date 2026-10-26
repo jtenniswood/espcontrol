@@ -12,7 +12,8 @@ The shared entity graph owns raw state. These views create no card contexts or
 subscriptions when navigating. Play/Pause follows the existing exact `playing`
 predicate and optional translated state label. Previous and Next dispatch on
 press and suppress the later click; other actions use the validated press/click
-binding token. Playlist highlighting preserves the existing URI, suffix, case,
+binding token. [Deferred grid dispatch](pooled-media-commands.md) now consumes
+these intents in maintenance and installs seek feedback after helper acceptance. Playlist highlighting preserves the existing URI, suffix, case,
 leaf-ID and content-type matching rules without allocating temporary strings.
 Identity metadata keeps its existing HTML decoding and byte limits; display-only
 transliteration is not applied to playlist identifiers.

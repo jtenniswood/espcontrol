@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -13,11 +14,12 @@
 #include "page_entity_observer_set.h"
 #include "page_label_refresh.h"
 #include "page_lvgl_dispatch.h"
-#include "page_slider_command_policy.h"
-#include "page_timer_command_policy.h"
+#include "page_media_command_policy.h"
 #include "page_modal_gestures.h"
 #include "page_pooled_qr_tile_view.h"
 #include "page_runtime_resources_group.h"
+#include "page_slider_command_policy.h"
+#include "page_timer_command_policy.h"
 #include "panel_config_document.h"
 #include "position_reference.h"
 using namespace espcontrol;using namespace espcontrol::pages;using namespace espcontrol::configuration;
@@ -64,6 +66,34 @@ struct Fixture {
            PanelConfigStatus::OK);
     assert(writer.append_setting(reinterpret_cast<const uint8_t*>("button_order"), 12,
                                  reinterpret_cast<const uint8_t*>("1"), 1) == PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
+  struct DeferredMedia {};
+  Fixture(const DeviceUiLimits& limits, DeferredMedia) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string rows[] = {"media_player.room;Play;Auto;Auto;play_pause;;media;;",
+                                "media_player.room;Previous;Auto;Auto;previous;;media;;",
+                                "media_player.room;Next;Auto;Auto;next;;media;;",
+                                "media_player.room;Playlist;Auto;Auto;playlist;;media;;playlist_content_id="
+                                "spotify%3Aplaylist%3Atest,playlist_player_source=Living%20Room",
+                                "media_player.room;Position;Auto;Auto;position;;media;;",
+                                ";Media;Auto;Auto;;;subpage;;"};
+    for (size_t i = 0; i < 6; ++i)
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(rows[i].data()), rows[i].size()) ==
+             PanelConfigStatus::OK);
+    const std::string child =
+        "~B,1,2|M,media_player.room,Progress,Auto,Auto,now_playing,,progress,|M,media_player.room,Play,Auto,"
+        "Auto,now_playing,,play_pause,";
+    assert(writer.append_subpage(6, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>("button_order"), 12,
+                                 reinterpret_cast<const uint8_t*>("1,2,3,4,5,6"),
+                                 11) == PanelConfigStatus::OK);
     assert(writer.finish(&size) == PanelConfigStatus::OK);
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
@@ -784,6 +814,9 @@ struct Fixture {
   std::array<uint8_t,8192>document{};size_t size{0};alignas(std::max_align_t)std::array<uint8_t,65536>arena{};PageStore store;
 };
 template<size_t Slots>struct Actions {
+  PageBasicLvglPort<Slots>* basic_port{nullptr};
+  PageMediaSeekProof seek_proof;
+  bool admitted{false};
   PageCardCommands* deferred{nullptr};
   PageEntityStateRuntime* command_state{nullptr};
   PageRendererRuntime<Slots> *renderer{nullptr};size_t toggles{0},climates{0},commands{0},icon_resolves{0},seeks{0};uint8_t seek_percent{0};float seek_duration{0};PageId seek_page{NO_PAGE};PageBindingToken last;char entity[64]{};
@@ -817,7 +850,20 @@ template<size_t Slots>struct Actions {
   static void back(void *owner,PageBindingToken){assert(static_cast<Actions *>(owner)->renderer->back());}
   static void climate(void *owner,PageBindingToken token){auto &a=*static_cast<Actions *>(owner);++a.climates;a.last=token;}
   static void action(void *owner,PageBindingToken token){auto &a=*static_cast<Actions *>(owner);++a.commands;a.last=token;}
-  static void seek(void *owner,PageBindingToken token,uint8_t percent,float duration){auto &a=*static_cast<Actions *>(owner);++a.seeks;a.last=token;a.seek_percent=percent;a.seek_duration=duration;if(a.seek_page!=NO_PAGE)assert(a.renderer->open_page(a.seek_page));}
+  static void media(void* owner, PageBindingToken token, uint32_t) { action(owner, token); }
+  static void seek(void* owner, PageBindingToken token, PageMediaSeekProof proof, uint8_t percent,
+                   float duration) {
+    auto& a = *static_cast<Actions*>(owner);
+    ++a.seeks;
+    a.last = token;
+    a.seek_percent = percent;
+    a.seek_duration = duration;
+    a.seek_proof = proof;
+    // This legacy geometry fixture models an already accepted transport send.
+    if (a.basic_port && a.basic_port->preview_seek(token, proof, percent, duration))
+      a.renderer->update_visible();
+    if (a.seek_page != NO_PAGE) assert(a.renderer->open_page(a.seek_page));
+  }
   bool locked{false}, lock_screensaver{false};
   size_t locks{0};
   size_t confirmations{0};
@@ -838,8 +884,8 @@ template<size_t Slots>struct Actions {
     return result;
   }
   PageBasicActions callbacks() {
-    auto result = PageBasicActions{this,    icon,   valid,  toggle, open,   back,
-                                   climate, action, action, action, action, seek};
+    auto result =
+        PageBasicActions{this, icon, valid, toggle, open, back, climate, action, action, action, media, seek};
     result.bound = bound;
     result.screen_locked = [](void* owner) { return static_cast<Actions*>(owner)->locked; };
     result.screen_lock = [](void* owner, PageBindingToken token, bool saver) {
@@ -3430,7 +3476,10 @@ struct DeferredGridPort final : PageCardCommandPort {
   PageCardControlPolicy& policy;
   PageRendererRuntime<Slots>* renderer{nullptr};
   bool accepted{true};
-  size_t sends{0};
+  size_t sends{0}, previews{0};
+  PageBasicLvglPort<Slots>* view{nullptr};
+  PageEntityStateRuntime* graph{nullptr};
+  std::function<void(const PageCardCommandSnapshot&)> on_send;
   PageCardCommandKind last{PageCardCommandKind::NONE};
   explicit DeferredGridPort(PageCardControlPolicy& p) : policy(p) {}
   bool ready() const override { return !page_lvgl_dispatching(); }
@@ -3451,14 +3500,224 @@ struct DeferredGridPort final : PageCardCommandPort {
   }
   void accepted_control(PageBindingToken t, PageCardCommandKind k, const PageCardCommandValue& v) override {
     policy.accepted(t, k, v);
+    if (view && k == PageCardCommandKind::MEDIA_SEEK &&
+        view->preview_seek(t, {graph->connection_generation(), v.write_revision},
+                           static_cast<uint8_t>(v.integer), static_cast<float>(v.number)))
+      ++previews;
   }
   bool dispatch_control(const PageCardCommandSnapshot& s) override {
     assert(ready());
     ++sends;
     last = s.kind;
+    if (on_send) on_send(s);
     return accepted;
   }
 };
+template <size_t Slots>
+void deferred_media_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, Fixture::DeferredMedia{});
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  struct Transport : PageMediaTransport {
+    Subscriptions& subscriptions;
+    explicit Transport(Subscriptions& s) : subscriptions(s) {}
+    bool connected() const override { return true; }
+    uint32_t connection_generation() const override { return subscriptions.generation; }
+    uint32_t now_ms() const override { return 100; }
+    int64_t epoch_seconds() const override { return 0; }
+    void reannounce() override {}
+  } transport(subscriptions);
+  PageMediaStateRuntime media(arena, transport);
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192}, &media);
+  PageMediaCommandPolicy policy(state, media);
+  DeferredGridPort<Slots> sender(policy);
+  PageCardCommands commands(state, sender);
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  const auto count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    w.fill = lv_obj_create(w.button);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+    w.slider = lv_slider_create(w.button);
+  }
+  PointerInput input;
+  auto* device = lv_indev_create();
+  lv_indev_set_type(device, LV_INDEV_TYPE_POINTER);
+  lv_indev_set_display(device, lv_display_get_default());
+  lv_indev_set_user_data(device, &input);
+  lv_indev_set_read_cb(device, PointerInput::read);
+  lv_timer_pause(lv_indev_get_read_timer(device));
+  {
+    PageBasicTheme theme;
+    theme.media_title_font = &lv_font_montserrat_14;
+    Actions<Slots> actions;
+    actions.deferred = &commands;
+    auto callbacks = actions.callbacks();
+    callbacks.media = [](void* owner, PageBindingToken token, uint32_t connection) {
+      auto& a = *static_cast<Actions<Slots>*>(owner);
+      const auto before = cpp_allocations;
+      a.admitted = a.deferred->request_media(token, connection);
+      assert(cpp_allocations == before && a.deferred->loop() == PageCardCommandResult::NONE);
+    };
+    callbacks.seek = [](void* owner, PageBindingToken token, PageMediaSeekProof proof, uint8_t percent,
+                        float duration) {
+      auto& a = *static_cast<Actions<Slots>*>(owner);
+      const auto before = cpp_allocations;
+      ++a.seeks;
+      a.last = token;
+      a.seek_proof = proof;
+      a.seek_percent = percent;
+      a.seek_duration = duration;
+      a.admitted = a.deferred->request_seek(token, proof, percent, duration);
+      assert(cpp_allocations == before && a.deferred->loop() == PageCardCommandResult::NONE);
+    };
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  callbacks, nullptr, &media);
+    assert(port.initialize());
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t used = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[used++] = label;
+    assert(cache.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    sender.renderer = &renderer;
+    sender.view = &port;
+    sender.graph = &state;
+    PageRuntimeResourcesGroup<4> resources({&renderer, &commands, &media, &state});
+    assert(resources.prepare(fixture.store));
+    resources.activate_prepared(fixture.store);
+    subscriptions.send("media_player.room", "", "playing");
+    subscriptions.send("media_player.room", "media_duration", "300");
+    subscriptions.send("media_player.room", "media_position", "60");
+    subscriptions.send("media_player.room", "media_content_id", "track-a");
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    auto release = [&](size_t slot, int percent) {
+      pointer(device, input, widgets[slot].slider, percent, true);
+      pointer(device, input, widgets[slot].slider, percent, false);
+    };
+    const auto child = fixture.store.card(5)->target;
+    const auto reservations = arena.allocations, registrations = subscriptions.bindings.size();
+    size_t retained = 0;
+    for (size_t cycle = 0; cycle < 1000; ++cycle) {
+      const auto sent = sender.sends;
+      for (size_t slot : {size_t(1), size_t(2)}) {
+        lv_obj_send_event(widgets[slot].button, LV_EVENT_PRESSED, nullptr);
+        assert(commands.memory().pending == slot && sender.sends == sent);
+        lv_obj_send_event(widgets[slot].button, LV_EVENT_RELEASED, nullptr);
+        lv_obj_send_event(widgets[slot].button, LV_EVENT_CLICKED, nullptr);
+        assert(commands.memory().pending == slot);
+      }
+      click(widgets[0].button);
+      click(widgets[3].button);
+      release(4, 65);
+      assert(actions.admitted && commands.memory().pending == 5 && sender.sends == sent);
+      assert(lv_slider_get_value(widgets[4].slider) == 20);  // Queue admission is not preview acceptance.
+      for (int i = 0; i < 5; ++i) assert(commands.loop() == PageCardCommandResult::DISPATCHED);
+      renderer.update_visible();
+      assert(lv_slider_get_value(widgets[4].slider) == actions.seek_percent);
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      release(1, 70);
+      click(widgets[2].button);
+      assert(commands.memory().pending == 2);
+      assert(commands.loop() == PageCardCommandResult::DISPATCHED &&
+             commands.loop() == PageCardCommandResult::DISPATCHED);
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(sender.sends == sent + 7 && arena.allocations == reservations &&
+             subscriptions.bindings.size() == registrations);
+      if (!cycle)
+        retained = lv_live_bytes;
+      else
+        assert(lv_live_bytes == retained);
+    }
+    sender.accepted = false;
+    release(4, 80);
+    assert(commands.loop() == PageCardCommandResult::FAILED);
+    renderer.update_visible();
+    assert(lv_slider_get_value(widgets[4].slider) == 20);
+    sender.accepted = true;
+    for (int i = 0; i < 8; ++i) click(widgets[0].button);
+    release(4, 80);
+    assert(!actions.admitted && commands.memory().pending == 8);
+    commands.cancel();
+    const auto seeks = actions.seeks;
+    pointer(device, input, widgets[4].slider, 50, true);
+    subscriptions.send("media_player.room", "media_content_id", "track-b");
+    subscriptions.send("media_player.room", "media_content_id", "track-a");
+    renderer.update_visible();
+    pointer(device, input, widgets[4].slider, 50, false);
+    assert(actions.seeks == seeks && commands.memory().pending == 0);
+    release(4, 75);
+    subscriptions.send("media_player.room", "media_content_id", "track-b");
+    subscriptions.send("media_player.room", "media_content_id", "track-a");
+    assert(commands.loop() == PageCardCommandResult::CANCELLED);
+    renderer.update_visible();
+    assert(lv_slider_get_value(widgets[4].slider) == 20);
+    pointer(device, input, widgets[4].slider, 65, true);
+    subscriptions.send("media_player.room", "media_content_id", "track-a");
+    renderer.update_visible();
+    pointer(device, input, widgets[4].slider, 65, false);
+    assert(commands.loop() == PageCardCommandResult::DISPATCHED);
+    renderer.update_visible();
+    // An accepted send cannot install an old seek hint onto a new track.
+    release(4, 70);
+    const auto previews = sender.previews;
+    sender.on_send = [&](const PageCardCommandSnapshot&) {
+      subscriptions.send("media_player.room", "media_content_id", "track-b");
+    };
+    assert(commands.loop() == PageCardCommandResult::DISPATCHED && sender.previews == previews);
+    sender.on_send = {};
+    renderer.update_visible();
+    assert(lv_slider_get_value(widgets[4].slider) == 20);
+    // An old accepted seek must not overwrite a newer physical drag.
+    release(4, 65);
+    pointer(device, input, widgets[4].slider, 45, true);
+    const auto dragged = lv_slider_get_value(widgets[4].slider);
+    assert(commands.loop() == PageCardCommandResult::DISPATCHED);
+    renderer.update_visible();
+    assert(lv_slider_get_value(widgets[4].slider) == dragged);
+    pointer(device, input, widgets[4].slider, 45, false);
+    assert(commands.loop() == PageCardCommandResult::DISPATCHED);
+    release(4, 60);
+    assert(renderer.suspend());
+    assert(commands.loop() == PageCardCommandResult::CANCELLED);
+    assert(renderer.resume());
+    renderer.update_visible();
+    assert(commands.memory().pending == 0);
+    const std::string large(8193, 'x');
+    subscriptions.send("media_player.room", "media_content_id", large);
+    renderer.update_visible();
+    assert(!lv_obj_has_flag(widgets[4].slider, LV_OBJ_FLAG_CLICKABLE));
+    subscriptions.send("media_player.room", "media_content_id", "track-a");
+    renderer.update_visible();
+    assert(lv_obj_has_flag(widgets[4].slider, LV_OBJ_FLAG_CLICKABLE));
+    resources.retire_active();
+  }
+  lv_indev_delete(device);
+  lv_obj_delete(page);
+  assert(arena.live == 0);
+  std::printf("%s: 1000 deferred root/child media cycles, real seek touches and track-change guards\n",
+              limits.device_profile);
+}
 template <size_t Slots>
 void timer_profile(const DeviceUiLimits& limits) {
   timer_tick = 100;
@@ -4631,6 +4890,7 @@ void media_position_profile(const DeviceUiLimits& limits) {
     assert(cache.initialize(labels.data(), labels.size()));
     PageRendererRuntime<Slots> renderer(limits, arena, port);
     actions.renderer = &renderer;
+    actions.basic_port = &port;
     assert(media.prepare(fixture.store) && renderer.prepare(fixture.store) && state.prepare(fixture.store));
     media.activate_prepared(fixture.store);
     renderer.activate_prepared(fixture.store);
@@ -5792,6 +6052,7 @@ void now_playing_profile(const DeviceUiLimits& limits) {
     assert(cache.initialize(labels.data(), labels.size()));
     PageRendererRuntime<Slots> renderer(limits, arena, port);
     actions.renderer = &renderer;
+    actions.basic_port = &port;
     assert(media.prepare(fixture.store) && renderer.prepare(fixture.store) && state.prepare(fixture.store));
     media.activate_prepared(fixture.store);
     renderer.activate_prepared(fixture.store);
@@ -6871,6 +7132,52 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (family && std::strcmp(family, "media_parity") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          media_action_profile<6>(limits);
+          media_position_profile<6>(limits);
+          now_playing_profile<6>(limits);
+          break;
+        case 9:
+          media_action_profile<9>(limits);
+          media_position_profile<9>(limits);
+          now_playing_profile<9>(limits);
+          break;
+        case 15:
+          media_action_profile<15>(limits);
+          media_position_profile<15>(limits);
+          now_playing_profile<15>(limits);
+          break;
+        case 20:
+          media_action_profile<20>(limits);
+          media_position_profile<20>(limits);
+          now_playing_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      continue;
+    }
+    if (!family || std::strcmp(family, "media_commands") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          deferred_media_profile<6>(limits);
+          break;
+        case 9:
+          deferred_media_profile<9>(limits);
+          break;
+        case 15:
+          deferred_media_profile<15>(limits);
+          break;
+        case 20:
+          deferred_media_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      if (family) continue;
+    }
     if (!family || std::strcmp(family, "slider_commands") == 0) {
       switch(limits.slot_count) {
         case 6: deferred_slider_profile<6>(limits); break;

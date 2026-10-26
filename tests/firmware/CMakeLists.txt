@@ -101,6 +101,25 @@ target_compile_options(page_card_commands_test PRIVATE -Wall -Wextra -Werror -fn
 target_include_directories(page_card_commands_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_card_commands_test COMMAND page_card_commands_test)
 
+add_executable(page_media_commands_test page_media_commands_test.cpp
+  ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_media_state_runtime.cpp)
+target_compile_features(page_media_commands_test PRIVATE cxx_std_17)
+target_compile_options(page_media_commands_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_media_commands_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_media_commands_test COMMAND page_media_commands_test)
+
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/media_action_helpers_test.cpp
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_media_action_helpers_test.py
+    --output ${CMAKE_CURRENT_BINARY_DIR}/media_action_helpers_test.cpp
+  DEPENDS generate_media_action_helpers_test.py generate_climate_update_test.py media_action_helpers_test.cpp.in
+    ../../components/espcontrol/button_grid_actions.h VERBATIM)
+add_executable(media_action_helpers_test ${CMAKE_CURRENT_BINARY_DIR}/media_action_helpers_test.cpp)
+target_compile_features(media_action_helpers_test PRIVATE cxx_std_17)
+target_compile_options(media_action_helpers_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(media_action_helpers_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME media_action_helpers_test COMMAND media_action_helpers_test)
+
 add_executable(page_timer_commands_test page_timer_commands_test.cpp
   ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_card_dependencies.cpp
   ../../components/espcontrol/page_entity_state_runtime.cpp

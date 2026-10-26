@@ -667,18 +667,16 @@ inline const char *media_service_for_mode(const std::string &mode) {
   return card_runtime_media_playback_service(mode);
 }
 
-inline void send_media_player_action(const std::string &entity_id,
-                                     const char *service,
-                                     const char *value_key = nullptr,
-                                     const char *value = nullptr) {
-  if (entity_id.empty() || service == nullptr || service[0] == '\0') return;
+inline bool send_media_player_action(const std::string& entity_id, const char* service,
+                                     const char* value_key = nullptr, const char* value = nullptr) {
+  if (entity_id.empty() || service == nullptr || service[0] == '\0') return false;
   esphome::api::HomeassistantActionRequest req;
-  if (!ha_action_begin(req, service, false, value_key && value ? 2 : 1)) return;
+  if (!ha_action_begin(req, service, false, value_key && value ? 2 : 1)) return false;
   ha_action_add_entity(req, entity_id);
   if (value_key && value) {
     ha_action_add_data(req, value_key, value);
   }
-  ha_action_send(req);
+  return ha_action_send(req);
 }
 
 inline void send_media_shuffle_action(const std::string &entity_id,
@@ -718,15 +716,15 @@ inline void send_media_volume_command(
   }
 }
 
-inline void send_media_seek_action(const std::string &entity_id, int value, float duration) {
-  if (duration <= 0.0f) return;
+inline bool send_media_seek_action(const std::string& entity_id, int value, float duration) {
+  if (duration <= 0.0f) return false;
   if (value < 0) value = 0;
   if (value > 100) value = 100;
   int seconds;
-  if (!espcontrol::media::seek_seconds(duration, static_cast<uint8_t>(value), seconds)) return;
+  if (!espcontrol::media::seek_seconds(duration, static_cast<uint8_t>(value), seconds)) return false;
   char buf[16];
   snprintf(buf, sizeof(buf), "%d", seconds);
-  send_media_player_action(entity_id, "media_player.media_seek", "seek_position", buf);
+  return send_media_player_action(entity_id, "media_player.media_seek", "seek_position", buf);
 }
 
 inline void send_media_source_action(const std::string &entity_id,
@@ -735,10 +733,9 @@ inline void send_media_source_action(const std::string &entity_id,
   send_media_player_action(entity_id, "media_player.select_source", "source", source.c_str());
 }
 
-inline void send_media_playback_action(const std::string &entity_id,
-                                       const std::string &mode) {
-  if (entity_id.empty()) return;
-  send_media_player_action(entity_id, media_service_for_mode(mode));
+inline bool send_media_playback_action(const std::string& entity_id, const std::string& mode) {
+  if (entity_id.empty()) return false;
+  return send_media_player_action(entity_id, media_service_for_mode(mode));
 }
 
 inline uint32_t next_media_playlist_call_id() {
@@ -746,13 +743,13 @@ inline uint32_t next_media_playlist_call_id() {
   return call_id++;
 }
 
-inline void send_media_playlist_action(const ParsedCfg &p) {
-  if (p.entity.empty()) return;
+inline bool send_media_playlist_action(const ParsedCfg& p) {
+  if (p.entity.empty()) return false;
   const auto config = espcontrol::media::decode_config_v1(p);
   const std::string &content_id = config.playlist_content_id;
   if (content_id.empty()) {
     ESP_LOGW("media", "Playlist button for %s has no media content ID", p.entity.c_str());
-    return;
+    return false;
   }
   const std::string &content_type = config.playlist_content_type;
   const std::string &player_source = config.playlist_player_source;
@@ -785,7 +782,7 @@ inline void send_media_playlist_action(const ParsedCfg &p) {
   }
   esphome::api::HomeassistantActionRequest req;
   uint32_t play_call_id = next_media_playlist_call_id();
-  if (!ha_action_begin(req, "media_player.play_media", false, 3, play_call_id)) return;
+  if (!ha_action_begin(req, "media_player.play_media", false, 3, play_call_id)) return false;
   ha_action_add_entity(req, p.entity);
   ha_action_add_data(req, "media_content_id", content_id.c_str());
   ha_action_add_data(req, "media_content_type", content_type.c_str());
@@ -804,7 +801,9 @@ inline void send_media_playlist_action(const ParsedCfg &p) {
     });
   if (!ha_action_send(req)) {
     ha_cancel_action_response_callback(req.call_id, "send failed");
+    return false;
   }
+  return true;
 }
 
 inline bool media_fast_press_mode(const std::string &mode) {
