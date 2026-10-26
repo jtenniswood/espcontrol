@@ -4043,6 +4043,7 @@ void deferred_slider_profile(const DeviceUiLimits& limits) {
       }
       sender.accepted = false;
       release();
+      if (kind == 2) subscriptions.send("light.temp", "", "on");
       assert(commands.loop() == PageCardCommandResult::FAILED);
       renderer.update_visible();
       const ConfigurationHandle handle{fixture.store.generation(), 0};

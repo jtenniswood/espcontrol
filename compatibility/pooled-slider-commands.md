@@ -18,7 +18,10 @@ only from a safe main-loop turn, outside LVGL events/timers and native callbacks
 Rejected, cancelled or failed edits restore the authoritative history if that
 edit still owns the preview. A newer queued value, active numeric/Kelvin gesture,
 source report or configuration activation prevents an older failure from
-rolling back newer state. Configuration activation has its own monotonic epoch,
+rolling back newer state. A primary on/off report alone does not replace a
+Kelvin target: failed Kelvin sends still restore the graph's actual temperature,
+while a different authoritative Kelvin report or active drag remains protected.
+Configuration activation has its own monotonic epoch,
 so even same-generation replacement during a reentrant send is isolated.
 Put the command owner before the histories and graph in the resource group.
 Cancel it when input is covered/locked; merely hiding the grid is insufficient.

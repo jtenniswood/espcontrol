@@ -243,6 +243,23 @@ void rollback_and_revocation() {
   assert(h.queue_temperature());
   assert(h.commands.loop() == PageCardCommandResult::FAILED);
   assert(h.temperature.read({0, 4}).display_kelvin == 3200);
+  // Primary-state-only reports rewrite the widget but leave the optimistic
+  // Kelvin target intact, so they must not disable rollback after a failed send.
+  assert(h.queue_temperature());
+  h.transport.report("light.temp", "on");
+  assert(h.commands.loop() == PageCardCommandResult::FAILED);
+  assert(h.temperature.read({0, 4}).display_kelvin == 3200);
+  assert(h.queue_temperature());
+  h.transport.report("light.temp", "off");
+  assert(h.commands.loop() == PageCardCommandResult::FAILED);
+  assert(h.temperature.read({0, 4}).percent == 0);
+  h.transport.report("light.temp", "on");
+  assert(h.temperature.read({0, 4}).fill_kelvin == 3200);
+  assert(h.queue_temperature());
+  h.transport.report("light.temp", "4300", "color_temp_kelvin");
+  assert(h.commands.loop() == PageCardCommandResult::FAILED);
+  assert(h.temperature.read({0, 4}).fill_kelvin == 4300);
+  h.values();
   // An older failed send cannot erase a newer queued edit or a newer drag.
   assert(h.queue_percent(0, 20) && h.queue_percent(0, 70));
   assert(h.commands.loop() == PageCardCommandResult::FAILED);

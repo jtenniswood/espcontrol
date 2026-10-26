@@ -19,8 +19,6 @@ class PageSliderCommandPolicy final : public PageCardControlPolicy {
              PageCardCommandValue& value) override {
     const ConfigurationHandle handle{origin.configuration, origin.card};
     if (kind == PageCardCommandKind::PERCENT) value.write_revision = percent_.read(handle).write_revision;
-    if (kind == PageCardCommandKind::TEMPERATURE)
-      value.write_revision = temperature_.read(handle).write_revision;
     return valid(store, origin, kind, value);
   }
   bool valid(const PageStore& store, PageBindingToken origin, PageCardCommandKind kind,
@@ -71,7 +69,7 @@ class PageSliderCommandPolicy final : public PageCardControlPolicy {
       percent_.discard_preview(handle, static_cast<uint8_t>(value.integer), value.write_revision);
     if (kind == PageCardCommandKind::NUMBER) number_.discard_finished(handle, value.number, value.metadata);
     if (kind == PageCardCommandKind::TEMPERATURE)
-      temperature_.discard_finished(handle, value.integer, value.write_revision, graph_);
+      temperature_.discard_finished(handle, value.integer, graph_);
   }
 
  private:

@@ -291,11 +291,14 @@ void PageLightTemperatureRuntime::cancel(ConfigurationHandle handle) {
   ++revision_;
 }
 void PageLightTemperatureRuntime::discard_finished(ConfigurationHandle handle, int expected,
-                                                   uint32_t write_revision, PageEntityStateRuntime& graph) {
+                                                   PageEntityStateRuntime& graph) {
   loop();
   auto* card = find(handle);
-  if (!card || card->gesture || card->write_revision != write_revision || card->last_kelvin != expected)
-    return;
+  // Primary on/off reports can rewrite the widget without replacing this target.
+  // The FIFO protects newer queued edits; a gesture or different target protects
+  // newer local edits and authoritative Kelvin reports. Always restore from the
+  // graph, which also makes an authoritative report equal to the target harmless.
+  if (!card || card->gesture || card->last_kelvin != expected) return;
   const auto entity = active_.source[card->source].entity;
   const auto primary = graph.read_attribute(handle, entity, {});
   const auto kelvin = graph.read_attribute(handle, entity, "color_temp_kelvin");
