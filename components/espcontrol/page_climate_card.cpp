@@ -82,9 +82,14 @@ const char *status_key(climate::Status status,std::string_view mode) {
     case climate::Status::FAN:return "Fan";
     case climate::Status::IDLE:return "Idle";
     case climate::Status::MODE_FALLBACK:
-      if(mode=="heat")return "Heat";if(mode=="cool")return "Cool";if(mode=="heat_cool")return "Heat/Cool";
-      if(mode=="auto")return "Auto";if(mode=="dry")return "Dry";if(mode=="fan_only")return "Fan";
-      if(mode=="nohold")return "Nohold";if(mode=="holduntil"||mode=="hold_until")return "Holduntil";
+      if(mode=="heat")return "Heat";
+      if(mode=="cool")return "Cool";
+      if(mode=="heat_cool")return "Heat/Cool";
+      if(mode=="auto")return "Auto";
+      if(mode=="dry")return "Dry";
+      if(mode=="fan_only")return "Fan";
+      if(mode=="nohold")return "Nohold";
+      if(mode=="holduntil"||mode=="hold_until")return "Holduntil";
       if(mode=="permanenthold"||mode=="permanent_hold")return "Permanenthold";
       if(mode=="temporaryhold"||mode=="temporary_hold")return "Temporaryhold";
       if(mode=="vacationhold"||mode=="vacation_hold")return "Vacationhold";
