@@ -37,7 +37,22 @@ struct PageBasicActions {
   void (*open)(void *,PageBindingToken,PageId){nullptr};
   void (*back)(void *,PageBindingToken){nullptr};
   void (*climate)(void *,PageBindingToken){nullptr};
+  void (*action)(void *,PageBindingToken){nullptr};
 };
+inline const lv_style_transition_dsc_t *page_basic_push_transition() {
+  static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
+  static lv_style_transition_dsc_t transition{};static bool initialized=false;
+  if(!initialized){lv_style_transition_dsc_init(&transition,properties,lv_anim_path_ease_out,400,0,nullptr);initialized=true;}
+  return &transition;
+}
+inline const lv_style_transition_dsc_t *page_basic_no_transition() {
+  // LVGL 9.5 dereferences an explicitly stored null transition pointer after
+  // the widget has been drawn. Keep a valid descriptor with no properties.
+  static const lv_style_prop_t properties[]={LV_STYLE_PROP_INV};
+  static lv_style_transition_dsc_t transition{};static bool initialized=false;
+  if(!initialized){lv_style_transition_dsc_init(&transition,properties,lv_anim_path_linear,0,0,nullptr);initialized=true;}
+  return &transition;
+}
 struct PageBasicMemory {size_t fixed_bytes{0},borrowed_widgets{0},active_bytes{0},staged_bytes{0},peak_bytes{0},text_truncations{0},invalid_text{0};};
 
 template<size_t Slots>
@@ -64,6 +79,8 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(initialized_)return true;
     if(callbacks_!=0)return false;
     if(actions_.icon==nullptr)return false;
+    page_basic_push_transition();
+    page_basic_no_transition();
     std::array<lv_obj_t *,Slots*6> unique{};size_t used=0;
     for(const auto &w:widgets_) {
       for(auto *object:{w.button,w.icon,w.label,w.sensor_container,w.value,w.unit}) {
@@ -82,7 +99,7 @@ class PageBasicLvglPort final:public PageRendererPort {
            (static_cast<lv_style_selector_t>(LV_PART_MAIN)|static_cast<lv_style_selector_t>(LV_STATE_CHECKED))}) {
         lv_obj_set_style_bg_color(w.button,lv_color_hex(theme_.surface),selector);
         lv_obj_set_style_text_color(w.button,lv_color_hex(theme_.text),selector);
-        lv_obj_set_style_transition(w.button,nullptr,selector);
+        lv_obj_set_style_transition(w.button,page_basic_no_transition(),selector);
       }
       lv_obj_set_grid_cell(w.button,LV_GRID_ALIGN_STRETCH,0,1,LV_GRID_ALIGN_STRETCH,0,1);
       lv_obj_set_style_grid_cell_row_pos(w.button,0,LV_PART_MAIN);
@@ -111,7 +128,11 @@ class PageBasicLvglPort final:public PageRendererPort {
       for(CardId card=p->first_card;card<p->first_card+p->card_count;++card) {
         BasicCardDefinition view;if(!prepare_basic_card(store,card,view,&strings))return false;
         if(view.kind==BasicCardKind::CLIMATE&&actions_.climate==nullptr)return false;
-        if(view.kind==BasicCardKind::TEXT||view.kind==BasicCardKind::CLIMATE||view.text_overlay||view.folder_mode==BasicFolderMode::TEXT)label_capacity=std::max<size_t>(label_capacity,257);
+        if(view.kind==BasicCardKind::ACTION&&actions_.action==nullptr)return false;
+        if(view.kind==BasicCardKind::TEXT||view.kind==BasicCardKind::CLIMATE||view.text_overlay||view.folder_mode==BasicFolderMode::TEXT||view.action_display==BasicActionDisplay::TEXT)label_capacity=std::max<size_t>(label_capacity,257);
+        if(view.default_label) {
+          label_capacity=std::max(label_capacity,std::strlen(basic_card_default_label(view,theme_.translate))+1);
+        }
         label_capacity=std::max(label_capacity,view.label.size()+1);unit_capacity=std::max(unit_capacity,view.unit.size()+1);
       }
     }
@@ -121,6 +142,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       summary_count+=used;
     }
     label_capacity=std::max(label_capacity,strings.largest+1);
+    unit_capacity=std::max(unit_capacity,strings.unit_largest+1);
     unit_capacity=std::max(unit_capacity,theme_.temperature_unit.size()+1);
     const size_t records=store.card_count()*sizeof(Prepared);
     if(label_capacity>SIZE_MAX-unit_capacity-48)return false;
@@ -177,8 +199,18 @@ class PageBasicLvglPort final:public PageRendererPort {
     release(active_);store_={};
   }
   void unbind(size_t index,PageBindingToken)override {
-    if(index>=Slots)return;auto &s=shells_[index];s.token={};s.pressed={};s.definition=nullptr;s.back={};s.cell={};s.label=s.unit=s.number=nullptr;
+    if(index>=Slots)return;auto &s=shells_[index];
+    const bool feedback=s.definition&&s.definition->definition.push_feedback;
+    s.token={};s.pressed={};s.definition=nullptr;s.back={};s.cell={};s.label=s.unit=s.number=nullptr;
     const auto &w=widgets_[index];lv_obj_add_flag(w.button,LV_OBJ_FLAG_HIDDEN);
+    for(const auto selector:{static_cast<lv_style_selector_t>(LV_PART_MAIN),
+         static_cast<lv_style_selector_t>(LV_PART_MAIN)|static_cast<lv_style_selector_t>(LV_STATE_CHECKED)})
+      lv_obj_set_style_transition(w.button,page_basic_no_transition(),selector);
+    // Writing the existing background property cancels LVGL's running colour
+    // transition. A press animation must not repaint this shell after rebind.
+    if(feedback&&s.painted)for(const auto selector:{static_cast<lv_style_selector_t>(LV_PART_MAIN),
+         static_cast<lv_style_selector_t>(LV_PART_MAIN)|static_cast<lv_style_selector_t>(LV_STATE_CHECKED)})
+      lv_obj_set_style_bg_color(w.button,lv_color_hex(s.background),selector);
     lv_obj_clear_state(w.button,static_cast<lv_state_t>(LV_STATE_CHECKED|LV_STATE_PRESSED));
     lv_obj_clear_flag(w.button,LV_OBJ_FLAG_CLICKABLE);
     // Hidden static text only refers to this port's reusable buffers or
@@ -192,7 +224,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     s.label=text;s.unit=text+active_.label_capacity;s.number=s.unit+active_.unit_capacity;
     lv_obj_set_grid_cell(w.button,LV_GRID_ALIGN_STRETCH,cell.column,cell.column_span,LV_GRID_ALIGN_STRETCH,cell.row,cell.row_span);
     lv_obj_clear_flag(w.button,LV_OBJ_FLAG_HIDDEN);
-    const bool clickable=cell.back||(s.definition&&(s.definition->definition.kind==BasicCardKind::TOGGLE||s.definition->definition.kind==BasicCardKind::FOLDER||s.definition->definition.kind==BasicCardKind::CLIMATE));
+    const bool clickable=cell.back||(s.definition&&(s.definition->definition.kind==BasicCardKind::TOGGLE||s.definition->definition.kind==BasicCardKind::FOLDER||s.definition->definition.kind==BasicCardKind::CLIMATE||s.definition->definition.kind==BasicCardKind::ACTION));
     if(clickable)lv_obj_add_flag(w.button,LV_OBJ_FLAG_CLICKABLE);else lv_obj_clear_flag(w.button,LV_OBJ_FLAG_CLICKABLE);
     // Do not read the new state graph here: its activation may follow ours.
   }
@@ -214,12 +246,15 @@ class PageBasicLvglPort final:public PageRendererPort {
       if(definition.kind==BasicCardKind::FOLDER&&definition.folder_mode==BasicFolderMode::NUMBER&&value.label.empty())value.label=theme_.folder_label;
       if(definition.kind==BasicCardKind::EMPTY&&value.label.empty())value.label=theme_.empty_label;
       checked=value.on&&(definition.kind==BasicCardKind::TOGGLE||definition.active_color);
-      number=(definition.kind==BasicCardKind::CLIMATE&&definition.climate.number!=ClimateCardNumber::ICON)||definition.kind==BasicCardKind::NUMBER||definition.kind==BasicCardKind::DURATION||definition.folder_mode==BasicFolderMode::NUMBER||(definition.kind==BasicCardKind::TOGGLE&&!definition.text_overlay&&!definition.sensor.empty()&&value.on);
+      number=(definition.kind==BasicCardKind::CLIMATE&&definition.climate.number!=ClimateCardNumber::ICON)||definition.kind==BasicCardKind::NUMBER||definition.kind==BasicCardKind::DURATION||definition.folder_mode==BasicFolderMode::NUMBER||definition.action_display==BasicActionDisplay::NUMBER||(definition.kind==BasicCardKind::TOGGLE&&!definition.text_overlay&&!definition.sensor.empty()&&value.on);
       const bool state_icon=definition.kind==BasicCardKind::TOGGLE||definition.kind==BasicCardKind::ICON||
-        definition.folder_mode==BasicFolderMode::ENTITY||definition.folder_mode==BasicFolderMode::CLIMATE||definition.folder_mode==BasicFolderMode::MOWER||definition.folder_mode==BasicFolderMode::CHILDREN;
+        definition.kind==BasicCardKind::STATUS||definition.action_display==BasicActionDisplay::ICON||definition.folder_mode==BasicFolderMode::ENTITY||definition.folder_mode==BasicFolderMode::CLIMATE||definition.folder_mode==BasicFolderMode::MOWER||definition.folder_mode==BasicFolderMode::CHILDREN;
       glyph=definition.kind==BasicCardKind::CLIMATE?(value.climate_icon_on?s.definition->on:s.definition->off):state_icon&&value.on?s.definition->on:s.definition->off;
     }
     write(w.label,s.label,active_.label_capacity,value.formatted_label?std::string_view(value.text):value.label);
+    for(const auto selector:{static_cast<lv_style_selector_t>(LV_PART_MAIN),
+         static_cast<lv_style_selector_t>(LV_PART_MAIN)|static_cast<lv_style_selector_t>(LV_STATE_CHECKED)})
+      lv_obj_set_style_transition(w.button,definition.push_feedback?page_basic_push_transition():page_basic_no_transition(),selector);
     write(w.unit,s.unit,active_.unit_capacity,value.unit);
     write(w.value,s.number,48,value.numeric?std::string_view(value.number):std::string_view{});
     if(std::strcmp(lv_label_get_text(w.icon),glyph)!=0)lv_label_set_text_static(w.icon,glyph);
@@ -229,7 +264,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(font&&s.painted_font!=font){lv_obj_set_style_text_font(w.value,font,LV_PART_MAIN);s.painted_font=font;}
     if(checked!=lv_obj_has_state(w.button,LV_STATE_CHECKED)){if(checked)lv_obj_add_state(w.button,LV_STATE_CHECKED);else lv_obj_clear_state(w.button,LV_STATE_CHECKED);}
     const auto correct=[this](uint32_t raw){return correct_display_color(raw,theme_.red_percent,theme_.green_percent,theme_.blue_percent);};
-    uint32_t background=definition.custom_off?correct(definition.off_color):(definition.kind==BasicCardKind::NUMBER||definition.kind==BasicCardKind::TEXT||definition.kind==BasicCardKind::DURATION)?theme_.sensor_surface:theme_.surface;
+    uint32_t background=definition.custom_off?correct(definition.off_color):(definition.kind==BasicCardKind::NUMBER||definition.kind==BasicCardKind::TEXT||definition.kind==BasicCardKind::DURATION||definition.kind==BasicCardKind::STATUS)?theme_.sensor_surface:theme_.surface;
     if(checked)background=definition.custom_on?correct(definition.on_color):definition.custom_off&&!definition.theme_active?correct(active_card_color(definition.off_color)):theme_.active;
     const auto foreground=checked||definition.custom_off?display_text_color_for_bg(background):theme_.text;
     if(!s.painted||s.background!=background||s.foreground!=foreground) {
@@ -261,10 +296,11 @@ class PageBasicLvglPort final:public PageRendererPort {
   }
   struct TextCounter final:BasicCardTextSink {
     bool copy(std::string_view value,std::string_view &out)override {
-      if(value.size()>SIZE_MAX-bytes)return false;
-      bytes+=value.size();largest=std::max(largest,value.size());out={};return true;
+      largest=std::max(largest,value.size());return count(value,out);
     }
-    size_t bytes{0},largest{0};
+    bool copy_unit(std::string_view value,std::string_view &out)override{unit_largest=std::max(unit_largest,value.size());return count(value,out);}
+    bool count(std::string_view value,std::string_view &out){if(value.size()>SIZE_MAX-bytes)return false;bytes+=value.size();out={};return true;}
+    size_t bytes{0},largest{0},unit_largest{0};
   };
   struct TextWriter final:BasicCardTextSink {
     TextWriter(char *memory,size_t capacity):memory(memory),capacity(capacity){}
@@ -303,6 +339,8 @@ class PageBasicLvglPort final:public PageRendererPort {
       port->actions_.climate(port->actions_.owner,origin);
     else if(definition.kind==BasicCardKind::TOGGLE&&port->actions_.toggle)
       port->actions_.toggle(port->actions_.owner,origin,definition.entity);
+    else if(definition.kind==BasicCardKind::ACTION&&port->actions_.action)
+      port->actions_.action(port->actions_.owner,origin);
   }
   PageArenaAllocator &allocator_;PageEntityStateRuntime &state_;std::array<PageBasicWidgets,Slots>widgets_;
   PageViewGeometry geometry_;const PageBasicTheme &theme_;PageBasicActions actions_;std::array<Shell,Slots>shells_{};

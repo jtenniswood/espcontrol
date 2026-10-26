@@ -6,6 +6,8 @@
 #include <vector>
 
 #include "bounded_display_text.h"
+#include "i18n_generated.h"
+#include "button_grid_subpage_parser.h"
 #include "page_basic_card.h"
 #include "page_card_dependencies.h"
 #include "panel_config_document.h"
@@ -16,6 +18,8 @@ void *operator new(size_t bytes){++allocations;if(void *p=std::malloc(bytes?byte
 void *operator new[](size_t bytes){return ::operator new(bytes);}
 void operator delete(void *p)noexcept{std::free(p);}
 void operator delete[](void *p)noexcept{std::free(p);}
+void operator delete(void *p,size_t)noexcept{std::free(p);}
+void operator delete[](void *p,size_t)noexcept{std::free(p);}
 namespace {
 struct Arena:PageArenaAllocator {
   void *allocate(size_t bytes)override{return std::malloc(bytes);}
@@ -170,5 +174,83 @@ void climate_profile(const DeviceUiLimits &limits) {
     if(std::strcmp(label,"status")==0)assert(std::strcmp(value.text,"Heating")==0);
   }
 }
+
+void status_actions_profile(const DeviceUiLimits &limits) {
+  Arena arena;Subscriptions subs;PageCardDependencies dependencies;
+  PageEntityStateRuntime state(dependencies,arena,subs,{32,32,4096});
+  BasicCardDefinition definition;
+  for(const auto &kind:{std::string("presence"),std::string("door_window")}) {
+    Fixture status(limits,";;Auto;Auto;binary_sensor.room;;"+kind+";window;active_color");
+    assert(prepare_basic_card(status.store,0,definition));assert(definition.kind==BasicCardKind::STATUS);
+    assert(state.prepare(status.store));state.activate_prepared(status.store);
+    subs.send("binary_sensor.room","friendly_name","");
+    auto value=read_basic_card(definition,{17,0},state);
+    assert(value.label==(kind=="presence"?"Presence":"Window"));
+    for(const auto text:{" ON ","off","detected","Detected ","home","OPEN","opening","unlocked","jammed","true","1","0","unknown","unavailable","", "2"}) {
+      const auto ref=esphome::StringRef(text);
+      const bool expected=!ha_state_unavailable_ref(ref)&&(kind=="presence"?presence_detected_ref(ref):is_entity_on_ref(ref));
+      subs.send("binary_sensor.room","",text);
+      const auto before=allocations;
+      for(size_t i=0;i<100;++i){value=read_basic_card(definition,{17,0},state);assert(value.on==expected&&!value.numeric);}
+      assert(allocations==before);
+    }
+    subs.send("binary_sensor.room","friendly_name","Front window");
+    assert(read_basic_card(definition,{17,0},state).label=="Front window");
+  }
+  for(const auto mode:{"icon","text","0","1","2",""}) {
+    const std::string settings=std::string("state_entity=sensor.power,state_precision=")+mode;
+    Fixture action(limits,"script.scene;;Auto;Lightbulb;script.turn_on;;action;;"+settings);
+    TextPool strings;assert(prepare_basic_card(action.store,0,definition,&strings));
+    assert(definition.kind==BasicCardKind::ACTION&&definition.active_color);
+    assert(state.prepare(action.store));state.activate_prepared(action.store);
+    for(const auto text:{" ON ","off","playing","true","1","0","-3","21.25","unknown","unavailable","nan","inf",""}) {
+      subs.send("sensor.power","",text);
+      const auto ref=esphome::StringRef(text);
+      const bool numeric=mode[0]>='0'&&mode[0]<='2';
+      const bool expected=!ha_entity_state_unavailable_ref("sensor.power",ref)&&
+        (numeric?numeric_state_positive_ref(ref):is_entity_on_ref(ref));
+      const auto expected_text=text_sensor_display_text(ref,HA_STATE_TEXT_MAX_LEN);
+      const auto before=allocations;
+      for(size_t i=0;i<100;++i) {
+        const auto value=read_basic_card(definition,{17,0},state);
+        assert(value.on==expected);
+        if(std::strcmp(mode,"text")==0)assert(value.formatted_label&&value.text==expected_text);
+        else assert(value.label=="script.scene");
+      }
+      assert(allocations==before);
+    }
+  }
+  const std::string long_unit(600,'W');
+  Fixture unit(limits,"script.scene;;Auto;Auto;script.turn_on;;action;;state_entity=sensor.power,state_precision=2,state_unit="+long_unit);
+  TextPool strings;assert(prepare_basic_card(unit.store,0,definition,&strings));
+  assert(state.prepare(unit.store));state.activate_prepared(unit.store);subs.send("sensor.power","","12.345");
+  auto value=read_basic_card(definition,{17,0},state);assert(value.numeric&&value.on&&value.unit==long_unit&&std::strcmp(value.number,"12.35")==0);
+  for(const auto &entry:std::array<std::pair<std::string,std::string>,4>{{
+    {"ble_keyboard_action;;;;local;;action;;","Ble Keyboard Action"},
+    {";;;;;;push;;","Push"},
+    {";Ignored;Auto;Auto;;;screensaver;;","Screensaver"},
+    {"https://example.test/hook;Send;Auto;Auto;;;webhook;;","Send"}}}) {
+    Fixture fixture(limits,entry.first);TextPool text;
+    assert(prepare_basic_card(fixture.store,0,definition,&text));
+    assert(state.prepare(fixture.store));state.activate_prepared(fixture.store);
+    value=read_basic_card(definition,{17,0},state);assert(value.label==entry.second&&!value.on&&!value.numeric);
+    assert(state.memory().active_channels==0);
+  }
+  Fixture confirmation(limits,"script.scene;;;;script.turn_on;;action;;confirm_on");
+  Fixture local_default(limits,";;;;local;;action;;");
+  assert(prepare_basic_card(local_default.store,0,definition,&strings));
+  assert(definition.default_label_key&&std::strcmp(definition.default_label_key,"label_local_action")==0);
+  assert(state.prepare(local_default.store));state.activate_prepared(local_default.store);
+  const auto phrases=[](const char *text)->const char *{return espcontrol_i18n(text);};
+  for(const auto language:{"de","fi","en"}) {
+    set_espcontrol_language(language);
+    const auto expected=espcontrol_i18n_key("label_local_action");const auto before=allocations;
+    value=read_basic_card(definition,{17,0},state,2,u8"°C",phrases);
+    assert(value.label==expected&&allocations==before);
+    assert(std::strcmp(basic_card_default_label(definition,phrases),expected)==0);
+  }
+  assert(!prepare_basic_card(confirmation.store,0,definition,&strings));
 }
-int main(){display_text();for(const auto &limits:DEVICE_UI_PROFILES){profile(limits);climate_profile(limits);}}
+
+}
+int main(){display_text();for(const auto &limits:DEVICE_UI_PROFILES){profile(limits);climate_profile(limits);status_actions_profile(limits);}}
