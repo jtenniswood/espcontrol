@@ -22,6 +22,11 @@ Wi-Fi commands without discarding the panel's ownership or an already-sent
 guest acknowledgement. Shutdown revokes tokens immediately and collects only
 after native/HA/LVGL dispatch ends.
 
+An accepted media action reply may still update its current panel inside native
+callback dispatch. The scene's read-only modal input policy does not confuse
+that with maintenance readiness: recursive scene/configuration maintenance and
+new grid commands remain blocked during the callback.
+
 `PageNativeDeviceStyles` resolves colours and fonts from the original owning
 page, including authenticated hidden-card openings. Device wiring must capture
 root/child source font roles before rebinding the bank. Resolvers reject wrong

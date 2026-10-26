@@ -378,6 +378,16 @@ void mode_and_feedback() {
   click(h.widgets[3].button);h.scene->loop();
   auto& bank=*PageNativeModalBank::instance;const auto token=bank.runtime().token();
   assert(token.kind==ControlModalKind::MEDIA_CONTROL);
+  {
+    ModalCallbackDispatchScope response;
+    // A reply to an already-sent grouping action may update its current panel.
+    // The same callback still cannot run configuration/scene maintenance or
+    // admit a fresh grid command through the covered bank.
+    assert(bank.runtime().interactive(token) && !h.scene->maintenance_ready());
+    bank.styles.media.state_confirmed(bank.styles.media.owner,token,true);
+    click(h.widgets[0].button);
+    assert(h.scene->memory().commands.pending==0);
+  }
   bank.styles.media.numeric_action_sent(bank.styles.media.owner,token,45);
   h.scene->loop();
   assert(std::string(lv_label_get_text(h.widgets[3].value))=="45");

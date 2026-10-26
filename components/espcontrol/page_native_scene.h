@@ -486,12 +486,14 @@ private:
     return *static_cast<PageNativeScene *>(owner);
   }
   static bool modal_input(void *owner) {
+    // Accepted media replies query this inside native callback dispatch too.
+    // Maintenance/reentrancy belongs to page_native_command_ready(), while
+    // this read-only policy describes the still-current panel's usability.
     const auto &scene = self(owner);
     return scene.ready() && scene.platform_.grid_active() &&
            scene.platform_.input_allowed() &&
            !espcontrol::screensaver_pin().locked() &&
-           !ha_read_coordinator().dispatching() &&
-           !modal_callback_dispatching();
+           !ha_read_coordinator().dispatching();
   }
   static bool grid_valid(void *owner, PageBindingToken t) {
     auto &scene = self(owner);
