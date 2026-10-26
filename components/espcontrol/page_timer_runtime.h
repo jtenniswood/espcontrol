@@ -3,6 +3,11 @@
 namespace espcontrol::pages {
 enum class PageTimerMode : uint8_t { UNAVAILABLE, IDLE, ACTIVE, PAUSED };
 enum class PageTimerAction : uint8_t { NONE, START, CANCEL };
+// Captured by the validated view before repainting or admitting a queued action.
+struct PageTimerCommandProof {
+  uint32_t connection{0}, state_revision{0};
+  bool confirmed{false};
+};
 struct PageTimerSnapshot {
   PageTimerMode mode{PageTimerMode::UNAVAILABLE};
   int seconds{0};

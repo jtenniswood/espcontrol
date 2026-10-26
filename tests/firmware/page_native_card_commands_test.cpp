@@ -220,6 +220,11 @@ int main() {
          event.data[0].first == "color_temp_kelvin" && event.data[0].second == "4700");
   snapshot.kind = PageCardCommandKind::SLIDER_TOGGLE;
   assert(port.dispatch_control(snapshot) && called == "homeassistant.toggle");
+  snapshot.config.entity = "timer.room";
+  snapshot.kind = PageCardCommandKind::TIMER_START;
+  assert(port.dispatch_control(snapshot) && called == "timer.start" && entity == "timer.room");
+  snapshot.kind = PageCardCommandKind::TIMER_CANCEL;
+  assert(port.dispatch_control(snapshot) && called == "timer.cancel");
   accepted = false;
   assert(!port.dispatch_control(snapshot));
   lv_display_delete(display);

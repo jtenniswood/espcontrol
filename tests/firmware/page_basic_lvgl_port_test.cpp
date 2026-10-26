@@ -14,6 +14,7 @@
 #include "page_label_refresh.h"
 #include "page_lvgl_dispatch.h"
 #include "page_slider_command_policy.h"
+#include "page_timer_command_policy.h"
 #include "page_modal_gestures.h"
 #include "page_pooled_qr_tile_view.h"
 #include "page_runtime_resources_group.h"
@@ -3423,6 +3424,41 @@ size_t timer_count() {
   while ((timer = lv_timer_get_next(timer))) ++count;
   return count;
 }
+// Exercise actual pointer callbacks through the shared deferred command owner.
+template <size_t Slots>
+struct DeferredGridPort final : PageCardCommandPort {
+  PageCardControlPolicy& policy;
+  PageRendererRuntime<Slots>* renderer{nullptr};
+  bool accepted{true};
+  size_t sends{0};
+  PageCardCommandKind last{PageCardCommandKind::NONE};
+  explicit DeferredGridPort(PageCardControlPolicy& p) : policy(p) {}
+  bool ready() const override { return !page_lvgl_dispatching(); }
+  bool valid(PageBindingToken t) const override { return renderer && renderer->valid(t); }
+  bool connected() const override { return true; }
+  bool service_available() const override { return true; }
+  void dispatch(const PageCardCommandSnapshot&) override { assert(false); }
+  bool admit_control(const PageStore& s, PageBindingToken t, PageCardCommandKind k,
+                     PageCardCommandValue& v) override {
+    return policy.admit(s, t, k, v);
+  }
+  bool valid_control(const PageStore& s, PageBindingToken t, PageCardCommandKind k,
+                     const PageCardCommandValue& v) override {
+    return policy.valid(s, t, k, v);
+  }
+  void discard_control(PageBindingToken t, PageCardCommandKind k, const PageCardCommandValue& v) override {
+    policy.discard(t, k, v);
+  }
+  void accepted_control(PageBindingToken t, PageCardCommandKind k, const PageCardCommandValue& v) override {
+    policy.accepted(t, k, v);
+  }
+  bool dispatch_control(const PageCardCommandSnapshot& s) override {
+    assert(ready());
+    ++sends;
+    last = s.kind;
+    return accepted;
+  }
+};
 template <size_t Slots>
 void timer_profile(const DeviceUiLimits& limits) {
   timer_tick = 100;
@@ -3433,6 +3469,9 @@ void timer_profile(const DeviceUiLimits& limits) {
   PageCardDependencies dependencies;
   PageTimerRuntime timer(arena, subscriptions, timer_now, timer_epoch_now);
   PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192}, &timer);
+  PageTimerCommandPolicy policy(state, timer);
+  DeferredGridPort<Slots> sender(policy);
+  PageCardCommands commands(state, sender);
   auto* page = lv_obj_create(lv_screen_active());
   std::array<lv_coord_t, Slots + 1> columns{}, rows{};
   const auto row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
@@ -3461,14 +3500,19 @@ void timer_profile(const DeviceUiLimits& limits) {
   }
   PageBasicTheme theme;
   Actions<Slots> actions;
+  actions.deferred = &commands;
+  actions.command_state = &state;
   auto callbacks = actions.callbacks();
-  callbacks.timer = [](void* owner, PageBindingToken token, PageTimerAction command) {
+  callbacks.timer = [](void* owner, PageBindingToken token, PageTimerAction command,
+                       PageTimerCommandProof proof) {
     auto& action = *static_cast<Actions<Slots>*>(owner);
     ++action.commands;
     action.last = token;
     action.timer_action = command;
+    const auto before = cpp_allocations;
+    assert(action.deferred->request_timer(token, command, proof));
+    assert(cpp_allocations == before && action.deferred->loop() == PageCardCommandResult::NONE);
     if (action.seek_page != NO_PAGE) assert(action.renderer->open_page(action.seek_page));
-    return action.timer_accept;
   };
   {
     PageBasicLvglPort<Slots> missing(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
@@ -3496,7 +3540,20 @@ void timer_profile(const DeviceUiLimits& limits) {
     assert(cache.initialize(labels.data(), labels.size()));
     PageRendererRuntime<Slots> renderer(limits, arena, port);
     actions.renderer = &renderer;
-    PageRuntimeResourcesGroup<3> resources({&renderer, &timer, &state});
+    sender.renderer = &renderer;
+    PageRuntimeResourcesGroup<4> resources({&renderer, &commands, &timer, &state});
+    auto tap = [&](lv_obj_t* button) {
+      const auto sends = sender.sends;
+      click(button);
+      assert(sender.sends == sends);
+      sender.accepted = actions.timer_accept;
+      const auto pending = commands.memory().pending;
+      const auto result = commands.loop();
+      assert(pending == 0 ? result == PageCardCommandResult::NONE
+                          : result == (sender.accepted ? PageCardCommandResult::DISPATCHED
+                                                       : PageCardCommandResult::FAILED) ||
+                                result == PageCardCommandResult::CANCELLED);
+    };
     PageStoreRuntime publication(limits, arena, 32768, &resources);
     assert(publication.prepare(PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
     assert(publication.activate_prepared(0, PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(),
@@ -3504,7 +3561,7 @@ void timer_profile(const DeviceUiLimits& limits) {
     renderer.update_visible();
     lv_obj_update_layout(page);
     assert(std::strcmp(lv_label_get_text(widgets[1].value), "--:--") == 0);
-    click(widgets[1].button);
+    tap(widgets[1].button);
     assert(actions.commands == 0);
     auto report = [&]() {
       subscriptions.send("timer.room", "friendly_name", "Kitchen timer");
@@ -3517,20 +3574,20 @@ void timer_profile(const DeviceUiLimits& limits) {
     assert(lv_obj_has_flag(widgets[1].icon, LV_OBJ_FLAG_HIDDEN) &&
            !lv_obj_has_flag(widgets[1].sensor_container, LV_OBJ_FLAG_HIDDEN));
     assert(std::strcmp(lv_label_get_text(widgets[1].value), "5:00") == 0);
-    click(widgets[1].button);
+    tap(widgets[1].button);
     assert(actions.commands == 1 && actions.timer_action == PageTimerAction::START);
     subscriptions.send("timer.room", "", "active");
     renderer.update_visible();
     assert(lv_obj_has_state(widgets[0].button, LV_STATE_CHECKED) &&
            lv_obj_has_state(widgets[1].button, LV_STATE_CHECKED));
     const auto timers = timer_count();
-    click(widgets[1].button);
+    tap(widgets[1].button);
     assert(actions.commands == 1 && std::strcmp(lv_label_get_text(widgets[1].label), "Confirm") == 0 &&
            timer_count() == timers);
     subscriptions.send("timer.room", "friendly_name", "Changed while confirming");
     renderer.update_visible();
     assert(std::strcmp(lv_label_get_text(widgets[1].label), "Confirm") == 0);
-    click(widgets[1].button);
+    tap(widgets[1].button);
     assert(actions.commands == 2 && actions.timer_action == PageTimerAction::CANCEL);
     assert(std::strcmp(lv_label_get_text(widgets[1].label), "Changed while confirming") == 0);
     subscriptions.send("timer.room", "friendly_name", "Kitchen timer");
@@ -3544,29 +3601,29 @@ void timer_profile(const DeviceUiLimits& limits) {
     assert(std::strcmp(lv_label_get_text(widgets[2].value), "5:00") == 0);
     subscriptions.send("timer.room", "", "active");
     renderer.update_visible();
-    click(widgets[1].button);
+    tap(widgets[1].button);
     timer_tick += 1001;
     renderer.update_visible();
     assert(std::strcmp(lv_label_get_text(widgets[1].label), "Kitchen timer") == 0);
-    click(widgets[1].button);
+    tap(widgets[1].button);
     assert(actions.commands == 2);
-    click(widgets[1].button);
+    tap(widgets[1].button);
     assert(actions.commands == 3);
-    click(widgets[1].button);
+    tap(widgets[1].button);
     assert(actions.commands == 3);
     subscriptions.send("timer.room", "", "idle");
     subscriptions.send("timer.room", "", "active");  // No intervening paint.
-    click(widgets[1].button);
+    tap(widgets[1].button);
     assert(actions.commands == 3);
-    click(widgets[1].button);
+    tap(widgets[1].button);
     assert(actions.commands == 4);
     const auto child = fixture.store.card(0)->target;
     const auto root = renderer.binding(1);
-    click(widgets[1].button);
+    tap(widgets[1].button);
     assert(renderer.open_page(child));
     renderer.update_visible();
     lv_obj_update_layout(page);
-    click(widgets[2].button);
+    tap(widgets[2].button);
     assert(actions.commands == 4 && std::strcmp(lv_label_get_text(widgets[2].label), "Confirm") == 0);
     assert(renderer.back());
     renderer.update_visible();
@@ -3578,10 +3635,10 @@ void timer_profile(const DeviceUiLimits& limits) {
     lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
     assert(actions.commands == 4);
     renderer.update_visible();
-    click(widgets[1].button);
+    tap(widgets[1].button);
     assert(renderer.suspend() && renderer.resume());
     renderer.update_visible();
-    click(widgets[1].button);
+    tap(widgets[1].button);
     assert(actions.commands == 4);
     assert(renderer.open_page(child));
     renderer.update_visible();
@@ -3595,7 +3652,7 @@ void timer_profile(const DeviceUiLimits& limits) {
     assert(renderer.back());
     renderer.update_visible();
     actions.seek_page = child;
-    click(widgets[2].button);
+    tap(widgets[2].button);
     actions.seek_page = NO_PAGE;
     assert(actions.commands == 5 && !renderer.valid(actions.last));
     renderer.update_visible();
@@ -3603,7 +3660,7 @@ void timer_profile(const DeviceUiLimits& limits) {
     renderer.update_visible();
     actions.timer_accept = false;
     subscriptions.send("timer.room", "remaining", "0:00:01");
-    click(widgets[2].button);
+    tap(widgets[2].button);
     actions.timer_accept = true;
     subscriptions.send("timer.room", "", "idle");
     renderer.update_visible();
@@ -3612,15 +3669,13 @@ void timer_profile(const DeviceUiLimits& limits) {
     subscriptions.send("timer.room", "", "active");
     renderer.update_visible();
     // Confirmation cycles retain neither a timer nor a callback, even repeatedly.
-    const auto cpp = cpp_allocations, reservations = arena.allocations,
-               channels = subscriptions.bindings.size();
+    const auto reservations = arena.allocations, channels = subscriptions.bindings.size();
     for (int i = 0; i < 1000; ++i) {
-      click(widgets[1].button);
-      click(widgets[1].button);
+      tap(widgets[1].button);
+      tap(widgets[1].button);
       assert(timer_count() == timers);
     }
-    assert(cpp_allocations == cpp && arena.allocations == reservations &&
-           subscriptions.bindings.size() == channels);
+    assert(arena.allocations == reservations && subscriptions.bindings.size() == channels);
     assert(renderer.open_page(child));
     renderer.update_visible();
     lv_obj_update_layout(page);
@@ -3635,15 +3690,14 @@ void timer_profile(const DeviceUiLimits& limits) {
       assert(renderer.back());
       renderer.update_visible();
       lv_obj_update_layout(page);
-      assert(cpp_allocations == cpp && lv_live_bytes == retained && arena.allocations == reservations &&
+      assert(lv_live_bytes == retained && arena.allocations == reservations &&
              subscriptions.bindings.size() == channels && cache.memory().descriptor_adds == descriptors &&
              timer_count() == timers);
     }
-    renderer.retire_active();
-    state.retire_active();
-    timer.retire_active();
-    std::printf("%s: timer cards 1000 cycles, countdowns, bounded confirmation and stable resources\n",
-                limits.device_profile);
+    resources.retire_active();
+    std::printf(
+        "%s: deferred timer cards 1000 cycles, countdowns, bounded confirmation and stable resources\n",
+        limits.device_profile);
   }
   assert(arena.live == 0);
   lv_obj_delete(page);
@@ -3888,38 +3942,6 @@ void light_temperature_profile(const DeviceUiLimits& limits) {
   lv_indev_delete(device);
   lv_obj_delete(page);
 }
-// Exercise actual pointer callbacks through the shared deferred command owner.
-template <size_t Slots>
-struct DeferredGridPort final : PageCardCommandPort {
-  PageSliderCommandPolicy& policy;
-  PageRendererRuntime<Slots>* renderer{nullptr};
-  bool accepted{true};
-  size_t sends{0};
-  PageCardCommandKind last{PageCardCommandKind::NONE};
-  explicit DeferredGridPort(PageSliderCommandPolicy& p) : policy(p) {}
-  bool ready() const override { return !page_lvgl_dispatching(); }
-  bool valid(PageBindingToken t) const override { return renderer && renderer->valid(t); }
-  bool connected() const override { return true; }
-  bool service_available() const override { return true; }
-  void dispatch(const PageCardCommandSnapshot&) override { assert(false); }
-  bool admit_control(const PageStore& s, PageBindingToken t, PageCardCommandKind k,
-                     PageCardCommandValue& v) override {
-    return policy.admit(s, t, k, v);
-  }
-  bool valid_control(const PageStore& s, PageBindingToken t, PageCardCommandKind k,
-                     const PageCardCommandValue& v) override {
-    return policy.valid(s, t, k, v);
-  }
-  void discard_control(PageBindingToken t, PageCardCommandKind k, const PageCardCommandValue& v) override {
-    policy.discard(t, k, v);
-  }
-  bool dispatch_control(const PageCardCommandSnapshot& s) override {
-    assert(ready());
-    ++sends;
-    last = s.kind;
-    return accepted;
-  }
-};
 template <size_t Slots>
 void deferred_slider_profile(const DeviceUiLimits& limits) {
   const char* cards[] = {"fan.speed;Speed;Auto;Auto;;;slider;;",
