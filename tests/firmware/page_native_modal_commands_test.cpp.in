@@ -1,0 +1,665 @@
+#include <cassert>
+#include <cstdlib>
+#include <functional>
+#include <map>
+#include <string>
+#include <vector>
+
+#include "lvgl.h"
+#include "page_card_dependencies.h"
+#include "page_confirmation_runtime.h"
+#include "panel_config_document.h"
+
+extern "C" {
+void lv_mem_init() {}
+void lv_mem_deinit() {}
+lv_mem_pool_t lv_mem_add_pool(void*, size_t) { return nullptr; }
+void lv_mem_remove_pool(lv_mem_pool_t) {}
+void* lv_malloc_core(size_t size) { return std::malloc(size); }
+void lv_free_core(void* ptr) { std::free(ptr); }
+void* lv_realloc_core(void* ptr, size_t size) { return std::realloc(ptr, size); }
+void lv_mem_monitor_core(lv_mem_monitor_t* out) { *out = {}; }
+lv_result_t lv_mem_test_core() { return LV_RESULT_OK; }
+}
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+static bool online = true, api = true, busy = false, locked = false, begin_ok = true, send_ok = true;
+static uint32_t epoch = 1;
+static std::function<void()> on_send;
+struct Coordinator {
+  bool dispatching() const { return busy; }
+};
+Coordinator& ha_read_coordinator() {
+  static Coordinator c;
+  return c;
+}
+bool ha_api_available() { return api; }
+bool ha_api_state_connected() { return online; }
+namespace espcontrol {
+struct Pin {
+  bool locked() const { return ::locked; }
+};
+Pin& screensaver_pin() {
+  static Pin pin;
+  return pin;
+}
+}  // namespace espcontrol
+namespace esphome::api {
+struct Fields : std::map<std::string, std::string> {
+  size_t reserved{0};
+  void init(size_t n) { reserved = n; }
+};
+struct HomeassistantActionRequest {
+  std::string service;
+  Fields data, data_template, variables;
+};
+}  // namespace esphome::api
+using Request = esphome::api::HomeassistantActionRequest;
+static std::vector<Request> requests;
+static size_t begins = 0, local_calls = 0;
+bool ha_action_begin(Request& r, const char* service, bool event, size_t) {
+  assert(!event);
+  ++begins;
+  if (!begin_ok) return false;
+  r.service = service;
+  return true;
+}
+void ha_action_add_entity(Request& r, const std::string& entity) { r.data["entity_id"] = entity; }
+void ha_action_add_data(Request& r, const char* k, const char* v) { r.data[k] = v; }
+void ha_action_add_data_template(Request& r, const char* k, const char* v) { r.data_template[k] = v; }
+void ha_action_add_variable(Request& r, const char* k, const char* v) { r.variables[k] = v; }
+bool ha_action_send(Request& r) {
+  const auto before = r;
+  requests.push_back(r);
+  if (on_send) on_send();
+  assert(before.service == r.service && before.data == r.data && before.variables == r.variables);
+  return send_ok;
+}
+bool ha_send_entity_action(const std::string& entity, const char* service) {
+  if (entity.empty()) return false;
+  Request request;
+  if (!ha_action_begin(request, service, false, 1)) return false;
+  ha_action_add_entity(request, entity);
+  return ha_action_send(request);
+}
+void send_local_action(const std::string&) { ++local_calls; }
+// @production-function action_card_requires_value
+// @production-function action_card_value_key
+// @production-function action_card_trim_text
+// @production-function action_card_script_field_name_valid
+// @production-function action_card_parse_script_field
+// @production-record
+// @production-function action_card_script_fields
+// @production-function action_card_script_fields_template
+// @production-function action_card_add_script_field_variables
+// @production-function action_card_action_allowed
+// @production-function send_action_card_action
+#include "page_native_modal_commands.h"
+
+struct Arena : PageArenaAllocator {
+  void* allocate(size_t n) override { return std::malloc(n); }
+  void release(void* p, size_t) override { std::free(p); }
+};
+struct Subscriptions : PageEntitySubscriptions {
+  bool subscribe(const char*, const char*, void*, uint32_t, uint32_t, Deliver) override { return true; }
+  void release(void*) override {}
+  uint32_t connection_generation() const override { return epoch; }
+};
+struct Fixture {
+  alignas(std::max_align_t) std::array<uint8_t, 32768> arena{};
+  std::array<uint8_t, 8192> bytes{};
+  PageStore store;
+  Arena allocator;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageEntityStateRuntime graph{dependencies, allocator, subscriptions, {128, 64, 8192}};
+  uint32_t binding{1};
+  alarm::Action selected{alarm::Action::NONE};
+  struct Family : PageModalPort {
+    Fixture& f;
+    ParsedCfg config;
+    PageModalToken token;
+    bool present{false}, retired{false};
+    explicit Family(Fixture& owner) : f(owner) {}
+    bool valid_origin(PageBindingToken t) const override {
+      return !locked && t.binding == f.binding && t.configuration == f.store.generation() && !t.back;
+    }
+    ControlModalKind kind(const PageStore&, ConfigurationHandle) const override {
+      return ControlModalKind::SWITCH_CONFIRMATION;
+    }
+    ControlModalKind kind(const PageStore&, ConfigurationHandle, ControlModalKind requested) const override {
+      return requested == ControlModalKind::SWITCH_CONFIRMATION || requested == ControlModalKind::ALARM_PIN ||
+                     requested == ControlModalKind::ALARM_CONTROL || requested == ControlModalKind::WIFI_QR
+                 ? requested
+                 : ControlModalKind::NONE;
+    }
+    bool ready() const override { return page_native_command_ready(); }
+    bool connected() const override { return online; }
+    uint32_t connection_generation() const override { return epoch; }
+    void* create(const PageStore& store, ConfigurationHandle h, PageModalToken t) override {
+      assert(!present);
+      token = t;
+      const auto& card = *store.card(h);
+      config.entity = store.field(card, CardField::ENTITY);
+      config.type = store.field(card, CardField::TYPE);
+      config.sensor = store.field(card, CardField::SENSOR);
+      config.options = store.field(card, CardField::OPTIONS);
+      config.unit = store.field(card, CardField::UNIT);
+      present = true;
+      retired = false;
+      return this;
+    }
+    bool initialize(void*, PageModalToken t) override {
+      return t.kind != ControlModalKind::SWITCH_CONFIRMATION || f.confirm.bind(t, config);
+    }
+    bool visible(void*) const override { return present && !retired; }
+    void update(void*, PageModalToken) override {}
+    ControlModalDismissPolicy dismiss_policy(void*) const override {
+      return ControlModalDismissPolicy::DISMISS;
+    }
+    void retire(void*, PageModalClose) override {
+      retired = true;
+      f.confirm.cancel(token);
+    }
+    void destroy(void*) override {
+      assert(retired);
+      present = false;
+      config = {};
+    }
+  } family{*this};
+  PageModalRuntime modal{family};
+  static bool origin(void* owner, PageBindingToken t) {
+    return static_cast<Fixture*>(owner)->family.valid_origin(t);
+  }
+  PageNativeConfirmationPort port{modal, this, origin};
+  PageNativeGuestWifiPort guest{modal};
+  PageConfirmationRuntime confirm{graph, port};
+  PageNativeAlarmCommandPort alarms{
+      modal, this, origin, [](void* owner, PageModalToken t, alarm::Action action) {
+        const auto& f = *static_cast<Fixture*>(owner);
+        return f.modal.interactive(t) && f.selected != alarm::Action::NONE && action == f.selected;
+      }};
+  Fixture() {
+    const auto& profile = DEVICE_UI_PROFILES[8];
+    PanelConfigWriter writer(bytes.data(), bytes.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(profile.device_profile),
+                                        std::strlen(profile.device_profile)) == PanelConfigStatus::OK);
+    const std::string row =
+        "script.test;Script;;;script.turn_on;;action;;confirm_on,script_fields=message%3Dhello%2Cworld%"
+        "0Acount%3D3";
+    assert(writer.append_button(1, reinterpret_cast<const uint8_t*>(row.data()), row.size()) ==
+           PanelConfigStatus::OK);
+    size_t size = 0;
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(bytes.data(), size, profile, 17, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+    assert(graph.prepare(store) && confirm.prepare(store) && modal.prepare(store));
+    graph.activate_prepared(store);
+    confirm.activate_prepared(store);
+    modal.activate_prepared(store);
+  }
+  ~Fixture() {
+    modal.retire_active();
+    modal.loop();
+    confirm.retire_active();
+    graph.retire_active();
+  }
+  PageBindingToken token() const { return {store.generation(), binding, 0, 0, 0, false}; }
+  PageModalToken open() {
+    assert(confirm.request(token(), epoch, false));
+    modal.loop();
+    assert(modal.interactive(modal.token()));
+    return modal.token();
+  }
+  void close() {
+    modal.dismiss();
+    modal.loop();
+  }
+};
+
+void confirmations() {
+  Fixture f;
+  assert(f.port.ready() && f.port.valid(f.token()) && f.port.connected() && f.port.service_available());
+  auto t = f.open();
+  assert(f.port.valid(t) && !f.alarms.valid(t));
+  const auto before = requests.size();
+  assert(f.confirm.queue(t, epoch));
+  busy = true;
+  assert(f.confirm.loop() == PageConfirmationResult::NONE && requests.size() == before);
+  busy = false;
+  assert(f.confirm.loop() == PageConfirmationResult::SENT && requests.size() == before + 1);
+  const auto& r = requests.back();
+  assert(r.service == "script.turn_on" && r.data.at("entity_id") == "script.test");
+  assert(r.variables.at("message") == "hello,world" && r.variables.at("count") == "3");
+  assert(r.data_template.at("variables") == "{{ dict(message=message, count=count) }}" &&
+         r.variables.reserved == 2 && r.data_template.reserved == 1);
+  f.modal.loop();
+  assert(!f.port.valid(t) && !f.confirm.queue(t, epoch));
+  for (bool reject_begin : {false, true}) {
+    t = f.open();
+    assert(f.confirm.queue(t, epoch));
+    begin_ok = !reject_begin;
+    send_ok = reject_begin;
+    assert(f.confirm.loop() == PageConfirmationResult::FAILED);
+    f.modal.loop();
+    begin_ok = send_ok = true;
+  }
+  t = f.open();
+  assert(f.confirm.queue(t, epoch));
+  ++epoch;
+  assert(f.confirm.loop() == PageConfirmationResult::CANCELLED);
+  f.modal.loop();
+  assert(!f.port.valid(t));
+  t = f.open();
+  assert(f.confirm.queue(t, epoch));
+  locked = true;
+  assert(!f.port.valid(t) && !f.port.valid(f.token()));
+  assert(f.confirm.loop() == PageConfirmationResult::CANCELLED);
+  locked = false;
+  f.modal.loop();
+  t = f.open();
+  assert(f.confirm.queue(t, epoch));
+  on_send = [&] {
+    f.close();
+    assert(!f.confirm.memory().contexts);
+  };
+  assert(f.confirm.loop() == PageConfirmationResult::SENT);
+  on_send = {};
+  assert(!f.family.present);
+
+  // A stale cancellation/close must not cancel a replacement opening.
+  const auto old = f.port.request(f.token());
+  const auto newer = f.port.request(f.token());
+  assert(old && newer > old);
+  f.port.cancel_request(old);
+  assert(!f.port.pending_request(old) && f.port.pending_request(newer));
+  f.port.close(t);
+  assert(f.port.pending_request(newer));
+  f.port.cancel_request(newer);
+  assert(!f.port.pending_request(newer) && !f.port.pending_request(0));
+  const auto pending = f.port.request(f.token());
+  assert(pending);
+  ++f.binding;
+  f.modal.loop();
+  assert(!f.modal.token().opening && !f.port.pending_request(pending));
+}
+
+void dispatch_guards() {
+  Fixture f;
+  ParsedCfg config;
+  config.entity = "cover.test";
+  for (const auto& item : std::vector<std::pair<PageConfirmationAction, std::string>>{
+           {PageConfirmationAction::TURN_ON, "homeassistant.turn_on"},
+           {PageConfirmationAction::TURN_OFF, "homeassistant.turn_off"},
+           {PageConfirmationAction::OPEN, "cover.open_cover"},
+           {PageConfirmationAction::CLOSE, "cover.close_cover"}}) {
+    assert(f.port.send(item.first, config) && requests.back().service == item.second);
+    send_ok = false;
+    assert(!f.port.send(item.first, config));
+    send_ok = true;
+  }
+  assert(!f.port.send(PageConfirmationAction::NONE, config));
+  assert(!f.port.send(PageConfirmationAction::SCRIPT, config));
+  config.type = "action";
+  config.sensor = "automation.trigger";
+  assert(!f.port.send(PageConfirmationAction::SCRIPT, config));
+  const auto before = begins;
+  for (bool* flag : {&busy, &locked}) {
+    *flag = true;
+    assert(!f.port.send(PageConfirmationAction::OPEN, config));
+    assert(!f.alarms.send("alarm_control_panel.home", "alarm_control_panel.alarm_disarm", "1234"));
+    assert(!f.guest.send("switch.guest", true));
+    *flag = false;
+  }
+  for (bool* flag : {&online, &api}) {
+    *flag = false;
+    assert(!f.port.send(PageConfirmationAction::OPEN, config));
+    assert(!f.alarms.send("alarm_control_panel.home", "alarm_control_panel.alarm_disarm", "1234"));
+    assert(!f.guest.send("switch.guest", true));
+    *flag = true;
+  }
+  {
+    ModalCallbackDispatchScope guard;
+    assert(!f.port.ready() && !f.alarms.ready() && !f.guest.ready());
+    assert(!f.port.send(PageConfirmationAction::OPEN, config));
+  }
+  assert(begins == before);
+  auto* button = lv_button_create(lv_screen_active());
+  bool visited = false;
+  struct Probe {
+    Fixture& f;
+    bool& visited;
+  } probe{f, visited};
+  lv_obj_add_event_cb(
+      button,
+      [](lv_event_t* e) {
+        auto& p = *static_cast<Probe*>(lv_event_get_user_data(e));
+        assert(!p.f.port.ready() && !p.f.alarms.ready() && !p.f.guest.ready());
+        assert(p.f.confirm.request(p.f.token(), epoch, false));
+        assert(!p.f.family.present && p.f.modal.memory().pending_requests == 1);
+        p.visited = true;
+      },
+      LV_EVENT_CLICKED, &probe);
+  lv_obj_send_event(button, LV_EVENT_CLICKED, nullptr);
+  assert(visited && f.port.ready());
+  f.modal.loop();
+  assert(f.modal.interactive(f.modal.token()));
+  f.close();
+  lv_obj_delete(button);
+}
+
+void alarm_adapter() {
+  Fixture f;
+  assert(f.modal.request(f.token(), ControlModalKind::ALARM_PIN));
+  f.modal.loop();
+  auto t = f.modal.token();
+  assert(f.alarms.valid(t) && !f.port.valid(t));
+  assert(!f.alarms.selected_pin(t, alarm::Action::AWAY));
+  f.selected = alarm::Action::AWAY;
+  assert(f.alarms.selected_pin(t, alarm::Action::AWAY));
+  assert(!f.alarms.selected_pin(t, alarm::Action::DISARM));
+  auto wrong = t;
+  ++wrong.opening;
+  assert(!f.alarms.selected_pin(wrong, alarm::Action::AWAY));
+  f.close();
+  assert(!f.alarms.selected_pin(t, alarm::Action::AWAY));
+  assert(f.modal.request(f.token(), ControlModalKind::ALARM_CONTROL));
+  f.modal.loop();
+  t = f.modal.token();
+  assert(f.alarms.selected_pin(t, alarm::Action::AWAY));
+  ++epoch;
+  assert(!f.alarms.valid(t));
+  f.modal.loop();
+  for (const auto* service : {"alarm_control_panel.alarm_arm_away", "alarm_control_panel.alarm_arm_home",
+                              "alarm_control_panel.alarm_arm_night", "alarm_control_panel.alarm_arm_vacation",
+                              "alarm_control_panel.alarm_disarm"}) {
+    const std::string entity = "alarm_control_panel.homeSUFFIX", code = "1234SUFFIX";
+    assert(
+        f.alarms.send(std::string_view(entity).substr(0, 24), service, std::string_view(code).substr(0, 4)));
+    assert(requests.back().service == service &&
+           requests.back().data.at("entity_id") == "alarm_control_panel.home" &&
+           requests.back().data.at("code") == "1234" && requests.back().data.size() == 2);
+    assert(f.alarms.send("alarm_control_panel.home", service, {}));
+    assert(requests.back().data.size() == 1 && !requests.back().data.count("code"));
+    send_ok = false;
+    assert(!f.alarms.send("alarm_control_panel.home", service, "1234"));
+    send_ok = true;
+    begin_ok = false;
+    assert(!f.alarms.send("alarm_control_panel.home", service, "1234"));
+    begin_ok = true;
+  }
+  const auto before = begins;
+  assert(!f.alarms.send({}, "alarm_control_panel.alarm_disarm", "1234"));
+  assert(!f.alarms.send("alarm_control_panel.home", nullptr, "1234"));
+  assert(
+      !f.alarms.send("alarm_control_panel.home", "alarm_control_panel.alarm_disarm", std::string(17, '1')));
+  assert(!f.alarms.send("alarm_control_panel.home", "alarm_control_panel.alarm_disarm",
+                        std::string("12\0x", 4)));
+  assert(begins == before);
+}
+
+void guest_adapter() {
+  Fixture f;
+  assert(f.modal.request(f.token(), ControlModalKind::WIFI_QR));
+  f.modal.loop();
+  auto t = f.modal.token();
+  assert(f.guest.valid(t) && !f.port.valid(t) && !f.alarms.valid(t));
+  locked = true;
+  assert(!f.guest.valid(t));
+  locked = false;
+  ++epoch;
+  assert(!f.guest.valid(t));
+  f.modal.loop();
+  for (const auto* entity : {"switch.guest", "switch.guest_network"}) {
+    for (bool target : {false, true}) {
+      assert(f.guest.send(entity, target));
+      assert(requests.back().data.at("entity_id") == entity &&
+             requests.back().service == (target ? "homeassistant.turn_on" : "homeassistant.turn_off"));
+      send_ok = false;
+      assert(!f.guest.send(entity, target));
+      send_ok = true;
+      begin_ok = false;
+      assert(!f.guest.send(entity, target));
+      begin_ok = true;
+    }
+  }
+  const auto before = begins;
+  for (const auto* entity :
+       {"", "sensor.guest", "script.guest", "input_boolean.guest", "switch.", "input_boolean."})
+    assert(!f.guest.send(entity, true));
+  assert(begins == before);
+}
+
+void canonical_actions() {
+  ParsedCfg config;
+  config.type = "action";
+  config.entity = "scene.evening";
+  config.sensor = "scene.turn_on";
+  assert(send_action_card_action(config) && requests.back().service == "scene.turn_on");
+  assert(requests.back().data_template.empty() && requests.back().variables.empty());
+  config.sensor = "number.set_value";
+  const auto before = begins;
+  assert(!send_action_card_action(config) && begins == before);
+  config.unit = "10.5";
+  assert(send_action_card_action(config) && requests.back().data.at("value") == "10.5");
+  config.sensor = "select.select_option";
+  assert(!send_action_card_action(config));
+  config.sensor = "invalid.command";
+  assert(!send_action_card_action(config));
+  config.sensor = "local";
+  const auto locals = local_calls;
+  assert(send_action_card_action(config) && local_calls == locals + 1);
+  config.entity.clear();
+  assert(!send_action_card_action(config) && local_calls == locals + 1);
+  config.sensor = "script.turn_on";
+  assert(!send_action_card_action(config));
+}
+
+// UI doubles isolate the production bank's composition/activation order. Each
+// real native family has its own LVGL lifetime/payload test; this checks the
+// exact assembled route table, single-context ownership and retry boundary.
+namespace espcontrol::pages {
+struct TestModalStyle {
+  bool resolve{true};
+};
+using PageClimateModalStyle = TestModalStyle;
+using PageWeatherModalStyle = TestModalStyle;
+using PageConfirmationModalStyle = TestModalStyle;
+using PageAlarmModalStyle = TestModalStyle;
+using PageExpandedImageModalStyle = TestModalStyle;
+using PageWifiQrModalStyle = TestModalStyle;
+using PageNetworkStatusStyle = TestModalStyle;
+template <class>
+using PageLegacyModalStyle = TestModalStyle;
+class PageQrEncoder {};
+class PageExpandedImageView {};
+class PageNetworkStatusSource {};
+class PageForecastRuntime {};
+static ControlModalKind wanted_kind = ControlModalKind::NONE, fail_install = ControlModalKind::NONE;
+static size_t live_contexts = 0, peak_contexts = 0, installed_families = 0;
+template <ControlModalKind Kind>
+struct TestModalFamily {
+  static constexpr auto kind = Kind;
+};
+using PageLightModalFamily = TestModalFamily<ControlModalKind::LIGHT_CONTROL>;
+using PageCoverModalFamily = TestModalFamily<ControlModalKind::COVER_CONTROL>;
+using PageFanControlModalFamily = TestModalFamily<ControlModalKind::FAN_CONTROL>;
+using PageFanPresetModalFamily = TestModalFamily<ControlModalKind::FAN_PRESET>;
+using PageOptionSelectModalFamily = TestModalFamily<ControlModalKind::OPTION_SELECT>;
+using PageMediaVolumeModalFamily = TestModalFamily<ControlModalKind::MEDIA_VOLUME>;
+using PageMediaControlModalFamily = TestModalFamily<ControlModalKind::MEDIA_CONTROL>;
+template <ControlModalKind Kind>
+class TestModalPort : public PageModalPort {
+ public:
+  template <class... Args>
+  explicit TestModalPort(Args&&...) {}
+  template <class... Args>
+  bool install(PageModalRuntime& runtime, Args&&...) {
+    if (fail_install == Kind) return false;
+    if (!installed_) ++installed_families;
+    installed_ = true;
+    runtime_ = &runtime;
+    return true;
+  }
+  bool valid_origin(PageBindingToken) const override { return true; }
+  ControlModalKind kind(const PageStore&, ConfigurationHandle) const override {
+    return installed_ && wanted_kind == Kind && Kind != ControlModalKind::NETWORK_STATUS
+               ? Kind
+               : ControlModalKind::NONE;
+  }
+  ControlModalKind kind(const PageStore& s, ConfigurationHandle h,
+                        ControlModalKind requested) const override {
+    if (installed_ && Kind == ControlModalKind::ALARM_CONTROL && requested == ControlModalKind::ALARM_PIN)
+      return ControlModalKind::ALARM_PIN;
+    return PageModalPort::kind(s, h, requested);
+  }
+  ControlModalKind local_kind(ControlModalKind requested) const override {
+    return installed_ && Kind == ControlModalKind::NETWORK_STATUS && requested == Kind
+               ? Kind
+               : ControlModalKind::NONE;
+  }
+  bool valid_local_origin(PageLocalModalOrigin, ControlModalKind requested) const override {
+    return local_kind(requested) == requested;
+  }
+  bool ready() const override { return page_native_command_ready(); }
+  bool connected() const override { return Kind == ControlModalKind::NETWORK_STATUS || online; }
+  uint32_t connection_generation() const override {
+    return Kind == ControlModalKind::NETWORK_STATUS ? 1 : epoch;
+  }
+  void* create(const PageStore&, ConfigurationHandle, PageModalToken) override {
+    assert(!present_ && !live_contexts);
+    present_ = true;
+    retired_ = false;
+    peak_contexts = std::max(peak_contexts, ++live_contexts);
+    return this;
+  }
+  void* create_local(const PageStore& s, PageLocalModalOrigin, PageModalToken t) override {
+    return create(s, {}, t);
+  }
+  bool initialize(void*, PageModalToken) override { return true; }
+  bool visible(void*) const override { return present_ && !retired_; }
+  void update(void*, PageModalToken) override {}
+  ControlModalDismissPolicy dismiss_policy(void*) const override {
+    return ControlModalDismissPolicy::DISMISS;
+  }
+  void retire(void*, PageModalClose) override { retired_ = true; }
+  void destroy(void*) override {
+    assert(present_ && retired_ && live_contexts == 1);
+    present_ = false;
+    --live_contexts;
+  }
+  bool selected_pin(PageModalToken t, alarm::Action) const { return runtime_->interactive(t); }
+
+ private:
+  PageModalRuntime* runtime_{nullptr};
+  bool installed_{false}, present_{false}, retired_{false};
+};
+template <class Family>
+using PageLegacyModalPort = TestModalPort<Family::kind>;
+using PageClimateModalPort = TestModalPort<ControlModalKind::CLIMATE>;
+using PageWeatherModalPort = TestModalPort<ControlModalKind::WEATHER_FORECAST>;
+using PageConfirmationModalPort = TestModalPort<ControlModalKind::SWITCH_CONFIRMATION>;
+using PageAlarmModalPort = TestModalPort<ControlModalKind::ALARM_CONTROL>;
+using PageExpandedImageModalPort = TestModalPort<ControlModalKind::IMAGE_CARD>;
+using PageWifiQrModalPort = TestModalPort<ControlModalKind::WIFI_QR>;
+using PageNetworkStatusModalPort = TestModalPort<ControlModalKind::NETWORK_STATUS>;
+}  // namespace espcontrol::pages
+#include "page_modal_router.h"
+// @production-modal-bank
+
+void bank_composition() {
+  Fixture f;
+  PageAlarmStateRuntime alarms(f.allocator, f.subscriptions, [] { return 100u; });
+  PageAlarmAckRuntime acknowledgements(f.allocator, f.subscriptions, alarms, [] { return 100u; });
+  PageForecastRuntime forecasts;
+  PageQrEncoder qr;
+  PageExpandedImageView images;
+  PageNetworkStatusSource network;
+  PageNativeModalSources sources{f.allocator, f.graph, forecasts,           alarms, acknowledgements, qr,
+                                 images,      network, [] { return 100u; }, 6};
+  PageNativeModalOrigins origins{&f, Fixture::origin, [](void*, PageLocalModalOrigin) { return true; }};
+  PageNativeModalStyles styles;
+  {
+    auto missing = styles;
+    missing.wifi.resolve = false;
+    PageNativeModalBank bank(sources, missing, origins);
+    assert(!bank.initialize(true) && !bank.prepare(f.store) && installed_families == 0);
+  }
+  PageNativeModalBank bank(sources, styles, origins);
+  assert(!bank.ready() && !bank.prepare(f.store) && !bank.initialize(false));
+  busy = true;
+  assert(!bank.initialize(true));
+  busy = false;
+  fail_install = ControlModalKind::MEDIA_CONTROL;
+  assert(!bank.initialize(true) && !bank.ready() && !bank.prepare(f.store));
+  assert(installed_families > 0 && installed_families < 14);
+  fail_install = ControlModalKind::NONE;
+  assert(bank.initialize(true) && bank.ready() && bank.maintenance_ready());
+  assert(installed_families == 14 && bank.initialize(true) && installed_families == 14);
+  assert(bank.prepare(f.store));
+  bank.discard_prepared();
+  assert(bank.prepare(f.store));
+  bank.activate_prepared(f.store);
+  for (int cycle = 0; cycle < 1000; ++cycle) {
+    for (auto kind :
+         {ControlModalKind::MEDIA_VOLUME, ControlModalKind::CLIMATE, ControlModalKind::SWITCH_CONFIRMATION,
+          ControlModalKind::OPTION_SELECT, ControlModalKind::FAN_PRESET, ControlModalKind::FAN_CONTROL,
+          ControlModalKind::NETWORK_STATUS, ControlModalKind::ALARM_PIN, ControlModalKind::ALARM_CONTROL,
+          ControlModalKind::IMAGE_CARD, ControlModalKind::WIFI_QR, ControlModalKind::COVER_CONTROL,
+          ControlModalKind::LIGHT_CONTROL, ControlModalKind::MEDIA_CONTROL,
+          ControlModalKind::WEATHER_FORECAST}) {
+      wanted_kind = kind;
+      if (kind == ControlModalKind::NETWORK_STATUS)
+        assert(bank.runtime().request_local({f.store.generation(), 1, 0}, kind));
+      else
+        assert(bank.runtime().request_card({f.store.generation(), 0}, kind));
+      bank.loop();
+      const auto old = bank.runtime().token();
+      assert(old.kind == kind && bank.runtime().interactive(old) && live_contexts == 1);
+      bank.runtime().dismiss();
+      busy = true;
+      bank.loop();
+      assert(!bank.runtime().valid(old) && bank.runtime().memory().retired_contexts == 1);
+      busy = false;
+      bank.loop();
+      assert(!live_contexts && !bank.runtime().memory().retired_contexts);
+    }
+  }
+  assert(peak_contexts == 1 && installed_families == 14);
+  // Offline local settings shares the owner without adopting the HA epoch.
+  online = false;
+  assert(bank.runtime().request_local({f.store.generation(), 1, 0}, ControlModalKind::NETWORK_STATUS));
+  bank.loop();
+  assert(bank.runtime().token().kind == ControlModalKind::NETWORK_STATUS);
+  bank.retire_active();
+  bank.loop();
+  online = true;
+  assert(!live_contexts && !bank.confirmations().memory().contexts &&
+         !bank.alarm_commands().memory().pending);
+}
+
+int main() {
+  assert(!page_native_command_ready());
+  lv_init();
+  auto* display = lv_display_create(480, 480);
+  assert(display);
+  confirmations();
+  dispatch_guards();
+  alarm_adapter();
+  guest_adapter();
+  canonical_actions();
+  bank_composition();
+  for (int i = 0; i < 1000; ++i) {
+    Fixture f;
+    const auto t = f.open();
+    assert(f.confirm.queue(t, epoch));
+    assert(f.confirm.loop() == PageConfirmationResult::SENT);
+    f.modal.loop();
+    assert(!f.modal.memory().active_contexts && !f.modal.memory().retired_contexts &&
+           !f.confirm.memory().contexts);
+  }
+  lv_display_delete(display);
+  lv_deinit();
+}

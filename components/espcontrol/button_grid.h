@@ -87,3 +87,5 @@
 #include "page_option_select_modal.h"
 #include "page_esphome_local_sensor_provider.h"
 #include "page_internal_relay_provider.h"
+
+#include "page_native_modal_bank.h"

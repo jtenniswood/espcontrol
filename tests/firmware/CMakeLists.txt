@@ -1512,6 +1512,26 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   target_include_directories(page_native_card_commands_test PRIVATE stubs ../../components/espcontrol)
   target_link_libraries(page_native_card_commands_test PRIVATE lvgl::lvgl)
   add_test(NAME page_native_card_commands_test COMMAND page_native_card_commands_test)
+
+  set(NATIVE_MODAL_COMMANDS_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_native_modal_commands_test.cpp)
+  add_custom_command(OUTPUT ${NATIVE_MODAL_COMMANDS_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_native_modal_commands_test.py
+      --output ${NATIVE_MODAL_COMMANDS_SOURCE}
+    DEPENDS generate_native_modal_commands_test.py generate_climate_update_test.py
+      page_native_modal_commands_test.cpp.in ../../components/espcontrol/button_grid_actions.h
+      ../../components/espcontrol/button_grid_config_parser.h
+      ../../components/espcontrol/page_native_modal_bank.h
+    VERBATIM)
+  add_executable(page_native_modal_commands_test ${NATIVE_MODAL_COMMANDS_SOURCE}
+    ../../components/espcontrol/page_alarm_commands.cpp ../../components/espcontrol/page_alarm_ack_runtime.cpp
+    ../../components/espcontrol/page_alarm_state_runtime.cpp
+    ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_store.cpp
+    ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp)
+  target_compile_features(page_native_modal_commands_test PRIVATE cxx_std_17)
+  target_compile_options(page_native_modal_commands_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+  target_include_directories(page_native_modal_commands_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_native_modal_commands_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_native_modal_commands_test COMMAND page_native_modal_commands_test)
   set(FORECAST_REFERENCE ${CMAKE_CURRENT_BINARY_DIR}/forecast_reference.h)
   add_custom_command(OUTPUT ${FORECAST_REFERENCE}
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_forecast_reference.py --output ${FORECAST_REFERENCE}
