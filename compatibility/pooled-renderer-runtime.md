@@ -56,3 +56,6 @@ routes, modal/forecast/local-value ownership and main-loop transaction wiring.
 Physically qualify S3, then a 20-slot P4 and the remaining grid sizes. Record
 whole-device and owner-level steady/peak memory, navigation latency and image
 peaks. Ship one selected renderer implementation per production build.
+
+Normal overlay input cancellation while retaining feedback origins is described
+in [covered grid input](pooled-covered-input.md).
