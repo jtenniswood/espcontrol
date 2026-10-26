@@ -22,9 +22,9 @@ struct PageRuntimeMemory {
   size_t preparation_failures{0};
 };
 
-// Opt-in replacement runtime for the shadow migration. It is not selected by
-// production device wiring until the entity registry and pooled renderer pass
-// the hardware gates. The allocator must outlive this owner.
+// Owns immutable page definitions across a prepared configuration replacement.
+// The capacity is a hard staging ceiling; retained arenas contain only the
+// bytes used by that generation. The allocator must outlive this owner.
 class PageStoreRuntime final : public configuration::ConfigurationRuntimeAdapter {
  public:
   PageStoreRuntime(const DeviceUiLimits &limits, PageArenaAllocator &allocator,

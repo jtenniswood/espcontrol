@@ -14,6 +14,15 @@ activation retires modals and image leases before rebinding the renderer, then
 publishes commands and semantic state before the graph. Navigation creates no
 widgets or per-card contexts.
 
+The page-definition arena capacity remains the admission ceiling, while each
+generation retains only its used bytes. Preparation first validates privately
+at the ceiling, rebuilds into an exact-size arena, then prepares resources that
+borrow its strings. The ceiling scratch is released before those resources are
+reserved. Compaction allocation or resource failure leaves the active generation
+intact. Activation allocates nothing and retires arenas with their actual sizes.
+Memory accounting includes the transient ceiling, compact and active arenas;
+this does not yet remove the full-size staging peak or HA state-cache reserve.
+
 Ordinary panels cover input while retaining the underlying full bindings and
 artwork. Retired panels continue covering input until safe collection. Full
 display/PIN takeovers suspend the bank; critical alarm presentation uses the

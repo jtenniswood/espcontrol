@@ -1,9 +1,10 @@
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <string>
-#include <unordered_set>
+#include <unordered_map>
 #include <vector>
 
 #include "page_store_runtime.h"
@@ -18,17 +19,25 @@ namespace {
 class Allocator final : public PageArenaAllocator {
  public:
   void *allocate(size_t bytes) override {
-    if (fail) return nullptr;
+    if (fail || ++attempts == fail_at)
+      return nullptr;
     void *arena = std::malloc(bytes);
-    if (arena != nullptr) allocations.insert(arena);
+    if (arena != nullptr) {
+      allocations.emplace(arena, bytes);
+      live_bytes += bytes;
+      peak_bytes = std::max(peak_bytes, live_bytes);
+    }
     return arena;
   }
-  void release(void *arena, size_t) override {
+  void release(void *arena, size_t bytes) override {
+    assert(allocations.at(arena) == bytes);
+    live_bytes -= bytes;
     assert(allocations.erase(arena) == 1);
     std::free(arena);
   }
   bool fail{false};
-  std::unordered_set<void *> allocations;
+  size_t attempts{0}, fail_at{0}, live_bytes{0}, peak_bytes{0};
+  std::unordered_map<void *, size_t> allocations;
 };
 
 class Backend final : public StorageBackend {
@@ -115,11 +124,116 @@ void staged_service_lifecycle() {
     std::array<uint8_t, 512> restored{};
     assert(service.load_and_apply_runtime(restored.data(), restored.size()).ok());
     assert(runtime.active().generation() == 2 && allocator.allocations.size() == 1);
-    assert(runtime.memory().active_reserved_bytes == 8192);
-    assert(runtime.memory().peak_reserved_bytes == 16384);
+    assert(runtime.memory().active_reserved_bytes ==
+           runtime.active().memory().arena_bytes);
+    assert(runtime.memory().active_reserved_bytes < 8192);
+    assert(runtime.memory().peak_reserved_bytes == allocator.peak_bytes);
     assert(runtime.memory().preparation_failures == 1);
   }
   assert(allocator.allocations.empty());
+}
+
+class Resources final : public PageRuntimeResources {
+public:
+  bool prepare(const PageStore &store) override {
+    ++prepares;
+    prepared = store;
+    assert(prepared.field(*prepared.card(0), CardField::LABEL) ==
+           "Replacement");
+    return !fail;
+  }
+  void discard_prepared() override { prepared = {}; }
+  void activate_prepared(const PageStore &store) override {
+    assert(prepared.source_document() == store.source_document());
+    assert(prepared.field(*prepared.card(0), CardField::LABEL) ==
+           "Replacement");
+    active = store;
+    prepared = {};
+  }
+  void retire_active() override { active = {}; }
+  PageStore prepared, active;
+  bool fail{false};
+  size_t prepares{0};
+};
+
+void compact_preparation_and_failures() {
+  const auto &limits = DEVICE_UI_PROFILES[8];
+  Allocator allocator;
+  Resources resources;
+  const auto original = document(limits, "Original");
+  const auto replacement = document(limits, "Replacement");
+  {
+    PageStoreRuntime runtime(limits, allocator, 8192);
+    assert(runtime.prepare(1, original.data(), original.size()));
+    assert(runtime.activate_prepared(1, 1, original.data(), original.size()));
+    const size_t original_bytes = allocator.live_bytes;
+    const auto *original_source = runtime.active().source_document();
+    // Fail the exact-size allocation, after a successful ceiling-sized parse.
+    allocator.fail_at = allocator.attempts + 2;
+    assert(!runtime.prepare(1, replacement.data(), replacement.size()));
+    assert(runtime.last_stage_status() == PageStoreStatus::BUFFER_TOO_SMALL);
+    assert(allocator.live_bytes == original_bytes &&
+           allocator.allocations.size() == 1);
+    assert(runtime.memory().staged_reserved_bytes == 0);
+    assert(runtime.active().source_document() == original_source);
+    assert(runtime.active().field(*runtime.active().card(0),
+                                  CardField::LABEL) == "Original");
+    assert(runtime.prepare(1, replacement.data(), replacement.size()));
+    const size_t replacement_bytes = runtime.memory().staged_reserved_bytes;
+    assert(allocator.live_bytes == original_bytes + replacement_bytes);
+    assert(runtime.memory().peak_reserved_bytes ==
+           original_bytes + 8192 + replacement_bytes);
+    assert(runtime.memory().peak_reserved_bytes == allocator.peak_bytes);
+    // Publication must need no additional arena allocation.
+    allocator.fail = true;
+    assert(runtime.activate_prepared(2, 1, replacement.data(),
+                                     replacement.size()));
+    assert(allocator.live_bytes == replacement_bytes);
+    assert(runtime.active().memory().arena_bytes == replacement_bytes);
+    assert(runtime.memory().active_reserved_bytes == replacement_bytes);
+    assert(runtime.active().field(*runtime.active().card(0),
+                                  CardField::LABEL) == "Replacement");
+    allocator.fail = false;
+  }
+  assert(allocator.allocations.empty() && allocator.live_bytes == 0);
+  {
+    PageStoreRuntime runtime(limits, allocator, 8192, &resources);
+    resources.fail = true;
+    assert(!runtime.prepare(1, replacement.data(), replacement.size()));
+    assert(runtime.last_stage_status() ==
+           PageStoreStatus::RESOURCE_UNAVAILABLE);
+    assert(allocator.allocations.empty() && allocator.live_bytes == 0);
+    resources.fail = false;
+    assert(runtime.prepare(1, replacement.data(), replacement.size()));
+    // Resources receive only the retained compact view, which survives
+    // activation.
+    assert(allocator.allocations.size() == 1);
+    assert(allocator.live_bytes == resources.prepared.memory().arena_bytes);
+    allocator.fail = true;
+    assert(runtime.activate_prepared(3, 1, replacement.data(),
+                                     replacement.size()));
+    assert(resources.active.field(*resources.active.card(0),
+                                  CardField::LABEL) == "Replacement");
+    allocator.fail = false;
+  }
+  assert(allocator.allocations.empty() && allocator.live_bytes == 0);
+  // A document filling its ceiling needs no compaction allocation.
+  alignas(std::max_align_t) std::array<uint8_t, 8192> scratch{};
+  PageStore sized;
+  assert(PageStore::stage_v1(replacement.data(), replacement.size(), limits, 0,
+                             scratch.data(), scratch.size(),
+                             &sized) == PageStoreStatus::OK);
+  {
+    PageStoreRuntime runtime(limits, allocator, sized.memory().arena_bytes);
+    allocator.fail_at = allocator.attempts + 2;
+    assert(runtime.prepare(1, replacement.data(), replacement.size()));
+    assert(runtime.activate_prepared(1, 1, replacement.data(),
+                                     replacement.size()));
+    assert(runtime.memory().active_reserved_bytes ==
+           sized.memory().arena_bytes);
+    assert(runtime.memory().peak_reserved_bytes == sized.memory().arena_bytes);
+  }
+  assert(allocator.allocations.empty() && allocator.live_bytes == 0);
 }
 
 void bounded_replacements_and_validation() {
@@ -167,5 +281,6 @@ void bounded_replacements_and_validation() {
 
 int main() {
   staged_service_lifecycle();
+  compact_preparation_and_failures();
   bounded_replacements_and_validation();
 }
