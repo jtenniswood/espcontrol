@@ -22,3 +22,8 @@ static_assert(MAX_GRID_SLOTS > 0, "ESPCONTROL_MAX_GRID_SLOTS must be positive");
 // Keep the existing conservative per-page scratch capacity during migration.
 // DeviceUiLimits::max_child_cards() describes the actual configuration bound.
 constexpr int MAX_SUBPAGE_ITEMS = MAX_GRID_SLOTS * MAX_GRID_SLOTS;
+
+inline int bounded_grid_slots(int num_slots) {
+  if (num_slots < 0) return 0;
+  return num_slots > MAX_GRID_SLOTS ? MAX_GRID_SLOTS : num_slots;
+}

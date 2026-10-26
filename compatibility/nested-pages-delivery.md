@@ -39,7 +39,8 @@ depth of two. Production remains at depth one until the prerequisites pass.
    host coverage. The [card dependency declarations](page-card-dependencies.md)
    cover registered drivers in host tests; production ownership wiring, full
    parity and renderer cutover remain.
-4. **Reusable renderer:** give every card driver bind/update/unbind operations;
+4. **Reusable renderer:** the [prepared binding/navigation owner](pooled-renderer-runtime.md)
+   has host cycle/transaction coverage. Give every real card driver bind/update/unbind operations;
    bound widgets, contexts and modals by the visible profile, and guard delayed
    work with configuration/binding generations. Physically qualify the S3 and
    a 20-slot P4, then check all remaining grid sizes.

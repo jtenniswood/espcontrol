@@ -1,9 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include "page_store.h"
 
 namespace espcontrol::pages {
-class PageStore;
 
 // Resources that must be reserved before durable publication. The owner must
 // outlive PageStoreRuntime. Activation and retirement cannot allocate or fail.
@@ -14,7 +14,7 @@ class PageRuntimeResources {
   virtual ~PageRuntimeResources() = default;
   virtual bool prepare(const PageStore &store) = 0;
   virtual void discard_prepared() = 0;
-  virtual void activate_prepared(uint32_t generation) = 0;
+  virtual void activate_prepared(const PageStore &active) = 0;
   virtual void retire_active() = 0;
 };
 }  // namespace espcontrol::pages
