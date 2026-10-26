@@ -21,8 +21,9 @@ constexpr uint32_t HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS = 1u << 3;
 #include <esp_http_server.h>
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #endif
-#include "display_color.h"
 #include "button_grid_limits.h"
+#include "display_color.h"
+#include "page_scene_selection.h"
 
 inline std::function<void()> &dashboard_content_changed_callback() {
   static std::function<void()> callback;
@@ -70,6 +71,11 @@ inline void climate_update_card(ClimateControlCtx *ctx);
 inline void climate_control_set_modal_value(ClimateControlCtx *ctx);
 
 inline void refresh_temperature_unit_labels() {
+  if (espcontrol::pooled_application_selected()) {
+    auto *scene = espcontrol::application_scene_navigation();
+    if (scene)
+      scene->refresh_temperature_unit(display_temperature_uses_fahrenheit());
+  }
   ClimateControlCtx **climate_refs = climate_control_refs();
   int climate_count = climate_control_ref_count();
   for (int i = 0; i < climate_count; i++) {

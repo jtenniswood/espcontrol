@@ -14,6 +14,12 @@ activation retires modals and image leases before rebinding the renderer, then
 publishes commands and semantic state before the graph. Navigation creates no
 widgets or per-card contexts.
 
+Live unit, timezone and time-sync notifications update the native temperature
+suffix snapshot and repaint on the safe scene loop. They retain bindings,
+subscriptions and configuration generations, including across display sleep.
+The prepared text buffers fit both supported suffixes. Card-curve changes use
+scene-aware readiness so a running native bank refreshes without a reboot.
+
 The page-definition arena capacity remains the admission ceiling, while each
 generation retains only its used bytes. Preparation first validates privately
 at the ceiling, rebuilds into an exact-size arena, then prepares resources that

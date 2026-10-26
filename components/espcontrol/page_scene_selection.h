@@ -25,6 +25,9 @@ public:
   virtual void close_settings() = 0;
   virtual void display_takeover() = 0;
   virtual void refresh_chrome() = 0;
+  // Temperature policy can change through units, timezone or time sync.
+  // Only repaint the retained bank; this is not a configuration replacement.
+  virtual void refresh_temperature_unit(bool) {}
 };
 inline ApplicationSceneNavigation *&application_scene_navigation() {
   static ApplicationSceneNavigation *navigation = nullptr;

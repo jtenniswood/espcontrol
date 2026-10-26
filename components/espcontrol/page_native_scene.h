@@ -526,6 +526,17 @@ public:
     return ready() && !changing_ && active().page_count() &&
            active().page(0)->navigable;
   }
+  void refresh_temperature_unit(bool fahrenheit) override {
+    if (stopped_)
+      return;
+    const std::string_view unit = fahrenheit ? "°F" : "°C";
+    if (theme_.temperature_unit == unit)
+      return;
+    // Both supported suffixes fit the already-prepared unit buffers. Change
+    // only the borrowed policy snapshot; LVGL updates wait for the safe loop.
+    theme_.temperature_unit = unit;
+    renderer_.refresh();
+  }
   bool grid_configured() const override {
     if (!navigation_ready())
       return false;

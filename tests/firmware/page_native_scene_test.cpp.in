@@ -223,8 +223,8 @@ using namespace espcontrol;
 using namespace espcontrol::pages;
 using namespace espcontrol::configuration;
 struct Arena : PageArenaAllocator {
-  size_t live{0}; bool fail{false};
-  void* allocate(size_t n) override { if(fail) return nullptr; ++live; return std::malloc(n); }
+  size_t live{0}, calls{0}; bool fail{false};
+  void* allocate(size_t n) override { if(fail) return nullptr; ++live; ++calls; return std::malloc(n); }
   void release(void* p,size_t) override { assert(live); --live; std::free(p); }
   ~Arena() { assert(!live); }
 };
@@ -362,6 +362,42 @@ void navigation_and_state() {
   assert(h.scene->active_page()==0);
   assert(h.scene->request_settings(epoch));
   PageNativeModalBank::instance->runtime().dismiss(); h.scene->loop();
+}
+void live_temperature_policy() {
+  Document doc(DEVICE_UI_PROFILES[8]); Harness h; h.apply(doc);
+  for (const auto* entity : {"climate.root", "climate.child"}) {
+    coordinator.report(entity, "", "heat");
+    coordinator.report(entity, "supported_features", "1");
+    coordinator.report(entity, "temperature", "23");
+    coordinator.report(entity, "current_temperature", "20");
+  }
+  h.scene->loop();
+  assert(std::string_view(lv_label_get_text(h.widgets[2].unit)) == "°C");
+  const auto token = h.scene->binding(2);
+  const auto allocations = h.arena.calls, registrations = coordinator.entries.size();
+  const auto count = objects(h.root);
+  h.arena.fail = true;
+  {
+    ModalCallbackDispatchScope callback;
+    h.scene->refresh_temperature_unit(true);
+    h.scene->loop();
+    // Policy notifications do not paint inside native callback dispatch.
+    assert(std::string_view(lv_label_get_text(h.widgets[2].unit)) == "°C");
+  }
+  h.scene->loop();
+  assert(std::string_view(lv_label_get_text(h.widgets[2].unit)) == "°F");
+  assert(h.scene->valid(token));
+  click(h.widgets[1].button); h.scene->loop();
+  assert(h.scene->active_page() == 1);
+  assert(std::string_view(lv_label_get_text(h.widgets[2].unit)) == "°F");
+  h.platform.shown = false; h.scene->loop();
+  h.scene->refresh_temperature_unit(false); h.scene->loop();
+  h.platform.shown = true; h.scene->loop();
+  assert(h.scene->active_page() == 1);
+  assert(std::string_view(lv_label_get_text(h.widgets[2].unit)) == "°C");
+  assert(h.scene->active().generation() == 17 && coordinator.entries.size() == registrations);
+  assert(h.arena.calls == allocations && objects(h.root) == count);
+  h.arena.fail = false;
 }
 void panels_and_retirement() {
   Document doc(DEVICE_UI_PROFILES[8]); Harness h; h.apply(doc);
@@ -674,7 +710,7 @@ int main() {
   lv_display_set_buffers(display,pixels.data(),nullptr,sizeof(pixels),LV_DISPLAY_RENDER_MODE_PARTIAL);
   lv_display_set_flush_cb(display,[](lv_display_t* d,const lv_area_t*,uint8_t*) { lv_display_flush_ready(d); });
   native_dispatch_safe=[] { return lv_is_initialized() && !page_lvgl_dispatching() && !modal_callback_dispatching(); };
-  navigation_and_state();panels_and_retirement();mode_and_feedback();source_styles();slider_input();appearance_transactions();initial_appearance();appearance_wake_without_intermediate_maintenance();remote_navigation();
+  navigation_and_state();live_temperature_policy();panels_and_retirement();mode_and_feedback();source_styles();slider_input();appearance_transactions();initial_appearance();appearance_wake_without_intermediate_maintenance();remote_navigation();
   assert(!application_scene_navigation());
   remote_selection_order();qr_images_and_transactions();
   native_dispatch_safe=nullptr;

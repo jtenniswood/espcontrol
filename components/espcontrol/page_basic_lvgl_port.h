@@ -676,7 +676,9 @@ class PageBasicLvglPort final:public PageRendererPort {
     }
     label_capacity=std::max(label_capacity,strings.largest+1);
     unit_capacity=std::max(unit_capacity,strings.unit_largest+1);
-    unit_capacity=std::max(unit_capacity,theme_.temperature_unit.size()+1);
+    // Live temperature policy switches reuse these buffers for both suffixes.
+    unit_capacity = std::max(
+        {unit_capacity, theme_.temperature_unit.size() + 1, sizeof("°C")});
     const size_t records=store.card_count()*sizeof(Prepared);
     if(label_capacity>SIZE_MAX-unit_capacity-number_capacity)return false;
     const size_t stride=label_capacity+unit_capacity+number_capacity;
