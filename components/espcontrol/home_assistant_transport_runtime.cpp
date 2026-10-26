@@ -15,7 +15,7 @@
 // This bridge deliberately uses only public SDK record definitions. ESPHome
 // exposes a const view but no unsubscribe API. Audit enumeration and dispatch
 // again when changing the pinned SDK, rather than assuming its contract holds.
-static_assert(ESPHOME_VERSION_CODE == VERSION_CODE(2026, 9, 1),
+static_assert(ESPHOME_VERSION_CODE == VERSION_CODE(2026, 10, 0),
               "Audit owned HA subscription removal for the new ESPHome version");
 
 namespace espcontrol::ha {

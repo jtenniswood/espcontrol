@@ -10,9 +10,14 @@ struct APIConnection {
   bool removed{false};
   int cursor{-1};
   size_t enumerations{0};
+  bool home_assistant_states{false};
   bool is_marked_for_removal() const { return removed; }
   bool is_authenticated() const { return authenticated; }
-  void on_subscribe_home_assistant_states_request() { cursor = 0; ++enumerations; }
+  void on_subscribe_home_assistant_states_request() {
+    cursor = 0;
+    home_assistant_states = true;
+    ++enumerations;
+  }
 };
 struct APIServer {
   struct HomeAssistantStateSubscription {
@@ -20,6 +25,8 @@ struct APIServer {
     const char *attribute;
     std::function<void(StringRef)> callback;
     bool once;
+    std::unique_ptr<std::string> entity_id_dynamic_storage{};
+    std::unique_ptr<std::string> attribute_dynamic_storage{};
   };
   std::vector<HomeAssistantStateSubscription> subscriptions;
   std::vector<std::unique_ptr<APIConnection>> clients;
