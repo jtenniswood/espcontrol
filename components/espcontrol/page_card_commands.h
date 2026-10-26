@@ -35,7 +35,8 @@ enum class PageCardCommandKind : uint8_t {
   TIMER_START,
   TIMER_CANCEL,
   MEDIA_ACTION,
-  MEDIA_SEEK
+  MEDIA_SEEK,
+  DEVICE_ACTION
 };
 struct PageCardCommandValue {
   double number{0};
@@ -190,11 +191,15 @@ class PageCardCommands final : public PageRuntimeResources {
     value.write_revision = proof.revision;
     return request_control(origin, proof.connection, PageCardCommandKind::MEDIA_SEEK, value);
   }
+  bool request_device(PageBindingToken origin, uint32_t connection) {
+    return request_control(origin, connection, PageCardCommandKind::DEVICE_ACTION, {});
+  }
   static bool control(PageCardCommandKind kind) {
     return kind == PageCardCommandKind::PERCENT || kind == PageCardCommandKind::NUMBER ||
            kind == PageCardCommandKind::TEMPERATURE || kind == PageCardCommandKind::SLIDER_TOGGLE ||
            kind == PageCardCommandKind::TIMER_START || kind == PageCardCommandKind::TIMER_CANCEL ||
-           kind == PageCardCommandKind::MEDIA_ACTION || kind == PageCardCommandKind::MEDIA_SEEK;
+           kind == PageCardCommandKind::MEDIA_ACTION || kind == PageCardCommandKind::MEDIA_SEEK ||
+           kind == PageCardCommandKind::DEVICE_ACTION;
   }
 
  private:

@@ -161,7 +161,7 @@ MEDIA_CONTROL_STATE_PATTERN = re.compile(
     re.DOTALL,
 )
 COVER_COMMAND_REQUEST_PATTERN = re.compile(
-    r"inline\s+void\s+send_cover_command_action\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+    r"inline\s+(?:void|bool)\s+send_cover_command_action\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
     re.DOTALL,
 )
 YAML_SCRIPT_PATTERN_TEMPLATE = r"(?ms)^  - id: {script_id}\n(?P<body>.*?)(?=^  - id: |\Z)"
@@ -6029,6 +6029,30 @@ def run_self_test() -> int:
         "}\n",
         "api:\n  on_client_connected:\n    - lambda: refresh_weather_forecast_cards();\n",
         ("cancel pending cover stop callbacks when the HA API disconnects",),
+    )
+    expect_cover_request_errors(
+        "acceptance-returning cover helper keeps cleanup coverage",
+        "inline void cover_stop_track_pending() {}\n"
+        "inline void cover_stop_clear_pending() {}\n"
+        "inline void cover_stop_cancel_pending_request() {}\n"
+        "inline bool send_cover_command_action() {\n"
+        "  bool cover_stop_tracked = true;\n"
+        "  ha_cancel_action_response_callback(req.call_id, \"send failed\");\n"
+        "  return sent;\n"
+        "}\n",
+        "api:\n  on_client_disconnected:\n    - lambda: cover_stop_cancel_pending_request();\n",
+        (),
+    )
+    expect_cover_request_errors(
+        "acceptance-returning cover helper still requires send-failure cleanup",
+        "inline void cover_stop_track_pending() {}\n"
+        "inline void cover_stop_clear_pending() {}\n"
+        "inline void cover_stop_cancel_pending_request() {}\n"
+        "inline bool send_cover_command_action() {\n"
+        "  return ha_action_send(req);\n"
+        "}\n",
+        "api:\n  on_client_disconnected:\n    - lambda: cover_stop_cancel_pending_request();\n",
+        ("cancel cover stop callbacks when sends fail",),
     )
     expect_cover_art_external_input_errors(
         "missing cover art source handling",

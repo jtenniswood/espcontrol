@@ -47,3 +47,6 @@ native fixture uses real LVGL callback dispatch and the native adapter with
 transport/helper spies, checking readiness, lock guards, helper routing and
 1,000 root/child/custom Push event cycles with French child labels. This is not
 a physical display, real HTTP/HA delivery or current SDK firmware build test.
+
+Remaining fan, cover, access and cleaning grid routes are covered by the
+[pooled device commands](pooled-device-commands.md) stage.

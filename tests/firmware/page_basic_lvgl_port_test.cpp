@@ -11,6 +11,7 @@
 #include "forecast_reference.h"
 #include "now_playing_reference.h"
 #include "page_card_dependencies.h"
+#include "page_device_command_policy.h"
 #include "page_entity_observer_set.h"
 #include "page_label_refresh.h"
 #include "page_lvgl_dispatch.h"
@@ -66,6 +67,32 @@ struct Fixture {
            PanelConfigStatus::OK);
     assert(writer.append_setting(reinterpret_cast<const uint8_t*>("button_order"), 12,
                                  reinterpret_cast<const uint8_t*>("1"), 1) == PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
+           PageStoreStatus::OK);
+  }
+  struct DeviceCommands {};
+  Fixture(const DeviceUiLimits& limits, DeviceCommands) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {
+        "fan.room;Power;Auto;Auto;;;fan_switch;;",        "fan.room;Oscillate;Auto;Auto;;;fan_oscillate;;",
+        "fan.room;Direction;Auto;Auto;;;fan_direction;;", "cover.room;Open;Auto;Auto;open;;cover;;",
+        "cover.room;Cover;Auto;Auto;toggle;;cover;;",     ";Devices;Auto;Auto;;;subpage;;"};
+    for (size_t i = 0; i < 6; ++i)
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(cards[i].data()),
+                                  cards[i].size()) == PanelConfigStatus::OK);
+    const std::string child =
+        "~B,1,2,3,4,5|garage,cover.room,Garage,Auto,Auto,,,,|gate,cover.gate,Gate,Auto,Auto,open,,,|lock,"
+        "lock.room,Lock,Auto,Auto,,,,|vacuum,vacuum.room,Vacuum,Auto,Auto,start_stop,,,|lawn_mower,lawn_"
+        "mower.room,Mower,Auto,Auto,pause_resume,,,";
+    assert(writer.append_subpage(6, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>("button_order"), 12,
+                                 reinterpret_cast<const uint8_t*>("1,2,3,4,5,6"),
+                                 11) == PanelConfigStatus::OK);
     assert(writer.finish(&size) == PanelConfigStatus::OK);
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
@@ -3500,6 +3527,9 @@ struct DeferredGridPort final : PageCardCommandPort {
   }
   void accepted_control(PageBindingToken t, PageCardCommandKind k, const PageCardCommandValue& v) override {
     policy.accepted(t, k, v);
+    if (view && k == PageCardCommandKind::DEVICE_ACTION &&
+        view->preview_device(t, graph->connection_generation(), v.write_revision))
+      ++previews;
     if (view && k == PageCardCommandKind::MEDIA_SEEK &&
         view->preview_seek(t, {graph->connection_generation(), v.write_revision},
                            static_cast<uint8_t>(v.integer), static_cast<float>(v.number)))
@@ -3513,6 +3543,177 @@ struct DeferredGridPort final : PageCardCommandPort {
     return accepted;
   }
 };
+template <size_t Slots>
+void deferred_device_profile(const DeviceUiLimits& limits) {
+  Fixture fixture(limits, Fixture::DeviceCommands{});
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageFanStatusRuntime fan(arena, subscriptions, fan_status_now);
+  PageAccessStateRuntime access(arena, subscriptions, fan_status_now);
+  PageCoverToggleRuntime cover(arena, subscriptions, fan_status_now);
+  PageEntityObserverSet<3> observers;
+  assert(observers.add(fan) && observers.add(access) && observers.add(cover));
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192}, &observers);
+  PageDeviceCommandPolicy policy(state, fan, access);
+  DeferredGridPort<Slots> sender(policy);
+  PageCardCommands commands(state, sender);
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  const auto count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+  }
+  PointerInput input;
+  auto* device = lv_indev_create();
+  lv_indev_set_type(device, LV_INDEV_TYPE_POINTER);
+  lv_indev_set_display(device, lv_display_get_default());
+  lv_indev_set_user_data(device, &input);
+  lv_indev_set_read_cb(device, PointerInput::read);
+  lv_timer_pause(lv_indev_get_read_timer(device));
+  {
+    PageBasicTheme theme;
+    Actions<Slots> actions;
+    actions.deferred = &commands;
+    auto callbacks = actions.callbacks();
+    callbacks.action = nullptr;
+    callbacks.toggle = nullptr;
+    callbacks.device = [](void* owner, PageBindingToken token, uint32_t connection) {
+      auto& a = *static_cast<Actions<Slots>*>(owner);
+      const auto before = cpp_allocations;
+      a.admitted = a.deferred->request_device(token, connection);
+      ++a.commands;
+      assert(cpp_allocations == before && a.deferred->loop() == PageCardCommandResult::NONE);
+    };
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                  callbacks, nullptr, nullptr, nullptr, nullptr, nullptr, &fan, nullptr,
+                                  nullptr, nullptr, nullptr, &cover, &access);
+    assert(port.initialize());
+    std::array<lv_obj_t*, Slots * 4> labels{};
+    size_t used = 0;
+    for (const auto& w : widgets)
+      for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[used++] = label;
+    assert(cache.initialize(labels.data(), labels.size()));
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    sender.renderer = &renderer;
+    sender.view = &port;
+    sender.graph = &state;
+    PageRuntimeResourcesGroup<6> resources({&renderer, &commands, &fan, &access, &cover, &state});
+    assert(resources.prepare(fixture.store));
+    resources.activate_prepared(fixture.store);
+    const auto report = [&] {
+      subscriptions.send("fan.room", "", "on");
+      subscriptions.send("fan.room", "oscillating", "false");
+      subscriptions.send("fan.room", "direction", "forward");
+      subscriptions.send("cover.room", "", "closed");
+      subscriptions.send("cover.room", "supported_features", "1");
+      subscriptions.send("cover.gate", "", "closed");
+      subscriptions.send("lock.room", "", "locked");
+      subscriptions.send("vacuum.room", "", "cleaning");
+      subscriptions.send("lawn_mower.room", "", "mowing");
+    };
+    report();
+    renderer.update_visible();
+    lv_obj_update_layout(page);
+    const auto child = fixture.store.card(5)->target;
+    const auto reservations = arena.allocations, registrations = subscriptions.bindings.size();
+    assert(renderer.valid(renderer.binding(0)));
+    click(widgets[0].button);
+    assert(commands.memory().pending == 1);
+    commands.cancel();
+    const auto press = [&](size_t slot) {
+      pointer(device, input, widgets[slot].button, 50, true);
+      pointer(device, input, widgets[slot].button, 50, false);
+    };
+    const auto drain = [&] {
+      for (size_t i = 0; i < 5; ++i) assert(commands.loop() == PageCardCommandResult::DISPATCHED);
+    };
+    size_t retained = 0;
+    for (size_t cycle = 0; cycle < 1000; ++cycle) {
+      const auto sent = sender.sends;
+      for (size_t i = 0; i < 5; ++i) press(i);
+      assert(actions.admitted && commands.memory().pending == 5 && sender.sends == sent);
+      drain();
+      assert(renderer.open_page(child));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      for (size_t i = 1; i < 6; ++i) press(i);
+      assert(actions.admitted && commands.memory().pending == 5 && sender.sends == sent + 5);
+      drain();
+      assert(renderer.back());
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      assert(sender.sends == sent + 10 && arena.allocations == reservations &&
+             subscriptions.bindings.size() == registrations);
+      if (!cycle)
+        retained = lv_live_bytes;
+      else
+        assert(lv_live_bytes == retained);
+    }
+    // Pending and rejected sends cannot paint optimistic cover feedback.
+    lv_obj_remove_state(widgets[4].button, LV_STATE_CHECKED);
+    sender.accepted = false;
+    press(4);
+    assert(!lv_obj_has_state(widgets[4].button, LV_STATE_CHECKED));
+    assert(commands.loop() == PageCardCommandResult::FAILED &&
+           !lv_obj_has_state(widgets[4].button, LV_STATE_CHECKED));
+    sender.accepted = true;
+    press(4);
+    assert(!lv_obj_has_state(widgets[4].button, LV_STATE_CHECKED));
+    assert(commands.loop() == PageCardCommandResult::DISPATCHED &&
+           lv_obj_has_state(widgets[4].button, LV_STATE_CHECKED));
+    press(0);
+    subscriptions.send("fan.room", "", "off");
+    assert(commands.loop() == PageCardCommandResult::CANCELLED);
+    report();
+    press(0);
+    assert(renderer.open_page(child));
+    assert(commands.loop() == PageCardCommandResult::CANCELLED);
+    assert(renderer.back());
+    renderer.update_visible();
+    lv_obj_send_event(widgets[0].button, LV_EVENT_PRESSED, nullptr);
+    ++subscriptions.generation;
+    renderer.update_visible();
+    report();
+    renderer.update_visible();
+    const auto requested = actions.commands;
+    lv_obj_send_event(widgets[0].button, LV_EVENT_CLICKED, nullptr);
+    assert(actions.commands == requested);
+    press(0);
+    ++subscriptions.generation;
+    assert(commands.loop() == PageCardCommandResult::CANCELLED);
+    report();
+    renderer.update_visible();
+    press(4);
+    sender.on_send = [&](const PageCardCommandSnapshot&) { assert(renderer.open_page(child)); };
+    const auto previews = sender.previews;
+    assert(commands.loop() == PageCardCommandResult::DISPATCHED && sender.previews == previews);
+    sender.on_send = {};
+    assert(renderer.back());
+    renderer.update_visible();
+    assert(resources.prepare(fixture.store));
+    resources.activate_prepared(fixture.store);
+    assert(commands.memory().pending == 0);
+    resources.retire_active();
+  }
+  lv_indev_delete(device);
+  lv_obj_delete(page);
+  assert(arena.live == 0);
+}
 template <size_t Slots>
 void deferred_media_profile(const DeviceUiLimits& limits) {
   Fixture fixture(limits, Fixture::DeferredMedia{});
@@ -7158,6 +7359,25 @@ int main() {
           assert(false);
       }
       continue;
+    }
+    if (!family || std::strcmp(family, "device_commands") == 0) {
+      switch (limits.slot_count) {
+        case 6:
+          deferred_device_profile<6>(limits);
+          break;
+        case 9:
+          deferred_device_profile<9>(limits);
+          break;
+        case 15:
+          deferred_device_profile<15>(limits);
+          break;
+        case 20:
+          deferred_device_profile<20>(limits);
+          break;
+        default:
+          assert(false);
+      }
+      if (family) continue;
     }
     if (!family || std::strcmp(family, "media_commands") == 0) {
       switch (limits.slot_count) {

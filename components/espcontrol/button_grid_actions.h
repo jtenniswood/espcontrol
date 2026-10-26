@@ -449,17 +449,17 @@ inline void cover_stop_cancel_pending_request() {
   ha_cancel_action_response_callback(call_id, "api disconnected");
 }
 
-inline void send_cover_command_action(const ParsedCfg &p, bool tilt_command = false) {
+inline bool send_cover_command_action(const ParsedCfg &p, bool tilt_command = false) {
   const char *service = tilt_command
     ? cover_tilt_command_service(p.sensor)
     : cover_command_service(p.sensor);
-  if (p.entity.empty() || service == nullptr) return;
+  if (p.entity.empty() || service == nullptr) return false;
 
   bool has_position = p.sensor == "set_position";
   bool wants_stop_response = p.sensor == "stop" && !tilt_command;
   esphome::api::HomeassistantActionRequest req;
   uint32_t call_id = wants_stop_response ? next_cover_stop_call_id() : 0;
-  if (!ha_action_begin(req, service, false, has_position ? 2 : 1, call_id)) return;
+  if (!ha_action_begin(req, service, false, has_position ? 2 : 1, call_id)) return false;
   if (wants_stop_response) {
     req.call_id = call_id;
   }
@@ -489,10 +489,12 @@ inline void send_cover_command_action(const ParsedCfg &p, bool tilt_command = fa
       }
     }
   }
-  if (!ha_action_send(req) && cover_stop_tracked) {
+  const bool sent = ha_action_send(req);
+  if (!sent && cover_stop_tracked) {
     cover_stop_clear_pending(req.call_id);
     ha_cancel_action_response_callback(req.call_id, "send failed");
   }
+  return sent;
 }
 
 inline void send_cover_command_action(const std::string &entity_id,
