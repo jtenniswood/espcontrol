@@ -12,6 +12,7 @@
 
 #include "lvgl.h"
 #include "modal_draw_retirement_probe.h"
+#include "modal_test_router.h"
 #define ESPCONTROL_HA_GENERATION_HELPERS_DEFINED
 uint32_t& ha_subscription_generation();
 #include "button_grid_subpage_parser.h"
@@ -347,7 +348,8 @@ void test_panel(const char* wire, const char* entity) {
     };
     PageOptionSelectModalPort port(arena, graph, style, nullptr,
                                    [](void*, PageBindingToken) { return true; });
-    PageModalRuntime runtime(port);
+    auto router = modal_test_router<ControlModalKind::OPTION_SELECT>(port);
+    PageModalRuntime runtime(router);
     assert(!port.install(runtime, false) && port.install(runtime, true));
     assert(runtime.prepare(fixture.store));
     runtime.activate_prepared(fixture.store);
@@ -502,7 +504,8 @@ void test_failures() {
       };
       PageOptionSelectModalPort port(arena, graph, style, nullptr,
                                      [](void*, PageBindingToken) { return true; });
-      PageModalRuntime runtime(port);
+      auto router = modal_test_router<ControlModalKind::OPTION_SELECT>(port);
+      PageModalRuntime runtime(router);
       assert(port.install(runtime, true) && runtime.prepare(fixture.store));
       runtime.activate_prepared(fixture.store);
       const auto live = arena.live.size(), lv = lv_live_bytes;

@@ -12,6 +12,7 @@
 
 #include "lvgl.h"
 #include "modal_draw_retirement_probe.h"
+#include "modal_test_router.h"
 #define ESPCONTROL_HA_GENERATION_HELPERS_DEFINED
 uint32_t& ha_subscription_generation();
 #include "button_grid_subpage_parser.h"
@@ -353,7 +354,8 @@ void test_volume() {
       if (during_preview) during_preview();
     };
     PageMediaVolumeModalPort port(arena, state, style, nullptr, [](void*, PageBindingToken) { return true; });
-    PageModalRuntime runtime(port);
+    auto router = modal_test_router<ControlModalKind::MEDIA_VOLUME>(port);
+    PageModalRuntime runtime(router);
     assert(!port.install(runtime, false));
     assert(port.install(runtime, true));
     assert(runtime.prepare(fixture.store));
@@ -546,7 +548,8 @@ void test_gesture_budget() {
       return true;
     };
     PageMediaVolumeModalPort port(arena, state, style, nullptr, [](void*, PageBindingToken) { return true; });
-    PageModalRuntime runtime(port);
+    auto router = modal_test_router<ControlModalKind::MEDIA_VOLUME>(port);
+    PageModalRuntime runtime(router);
     assert(port.install(runtime, true));
     assert(runtime.prepare(fixture.store));
     runtime.activate_prepared(fixture.store);

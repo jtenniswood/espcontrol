@@ -10,6 +10,7 @@
 
 #include "button_grid_subpage_parser.h"
 #include "lvgl.h"
+#include "modal_test_router.h"
 #include "page_card_dependencies.h"
 #include "page_modal_runtime.h"
 #include "panel_config_document.h"
@@ -218,6 +219,7 @@ struct Harness {
   PageLocalModalOrigin styled_origin{};
   PageModalToken styled_token{};
   PageNetworkStatusModalPort port;
+  PageModalRouter<1> router{modal_test_router<ControlModalKind::NETWORK_STATUS>(port)};
   PageModalRuntime modal;
   Harness(const DeviceUiLimits& limits, bool wifi = true, uint64_t first_opening = 1)
       : document(limits),
@@ -227,7 +229,7 @@ struct Harness {
                return o.configuration == h.document.store.generation() && o.binding == h.chrome &&
                       o.page == h.page;
              }),
-        modal(port, first_opening) {
+        modal(router, first_opening) {
     source.wifi = wifi;
     environment.label_font = LV_FONT_DEFAULT;
     environment.icon_font = LV_FONT_DEFAULT;

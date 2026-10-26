@@ -12,6 +12,7 @@
 
 #include "lvgl.h"
 #include "modal_draw_retirement_probe.h"
+#include "modal_test_router.h"
 #define ESPCONTROL_HA_GENERATION_HELPERS_DEFINED
 uint32_t &ha_subscription_generation();
 #include "button_grid_subpage_parser.h"
@@ -175,7 +176,10 @@ void test_adapter() {
       last_style_token = token;
       return *static_cast<bool*>(owner);
     };
-    PageClimateModalPort port(arena,state,style,nullptr,[](void *,PageBindingToken){return true;});PageModalRuntime runtime(port);assert(port.install(runtime));
+    PageClimateModalPort port(arena, state, style, nullptr, [](void*, PageBindingToken) { return true; });
+    auto router = modal_test_router<ControlModalKind::CLIMATE>(port);
+    PageModalRuntime runtime(router);
+    assert(port.install(runtime));
     assert(runtime.prepare(fixture.store));runtime.activate_prepared(fixture.store);
     const auto baseline_lv=lv_live_bytes;
     for(size_t cycle=0;cycle<1000;++cycle) {

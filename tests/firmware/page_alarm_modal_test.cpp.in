@@ -13,6 +13,7 @@
 #include "display_mode_controller.h"
 #include "lvgl.h"
 #include "modal_draw_retirement_probe.h"
+#include "modal_test_router.h"
 #include "page_alarm_commands.h"
 #include "page_card_dependencies.h"
 #include "page_entity_observer_set.h"
@@ -398,7 +399,9 @@ struct Harness {
   PageAlarmCommands commands{graph, state, ack, sender};
   PageAlarmModalStyle style;
   PageAlarmModalPort port;
-  PageModalRuntime modal{port};
+  PageModalRouter<2> router{
+      modal_test_router<ControlModalKind::ALARM_CONTROL, ControlModalKind::ALARM_PIN>(port)};
+  PageModalRuntime modal{router};
   PageRuntimeResourcesGroup<5> resources{{&modal, &commands, &ack, &state, &graph}};
   PageStoreRuntime publication;
   static PageAlarmModalStyle make_style(size_t capacity) {

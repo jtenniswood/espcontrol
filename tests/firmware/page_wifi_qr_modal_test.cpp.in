@@ -10,6 +10,7 @@
 
 #include "button_grid_subpage_parser.h"
 #include "lvgl.h"
+#include "modal_test_router.h"
 #include "page_card_dependencies.h"
 #include "page_entity_observer_set.h"
 #include "panel_config_document.h"
@@ -329,6 +330,7 @@ struct Harness {
   GuestPort guest_port;
   PageGuestWifiRuntime guest;
   PageWifiQrModalPort port;
+  PageModalRouter<1> router{modal_test_router<ControlModalKind::WIFI_QR>(port)};
   PageModalRuntime modal;
   std::function<void()> on_style;
   PageModalToken styled_token{};
@@ -344,7 +346,7 @@ struct Harness {
         guest(graph, guest_port, now),
         port(arena, graph, encoder, guest, style(this), this,
              [](void*, PageBindingToken t) { return t.binding != 0; }),
-        modal(port, first_opening) {
+        modal(router, first_opening) {
     guest_port.modal = &modal;
     assert(port.install(modal, true));
     assert(graph.prepare(document.store) && modal.prepare(document.store));

@@ -92,6 +92,7 @@ class PageModalRuntime final:public PageRuntimeResources {
   void activate_prepared(const PageStore &)override;
   void retire_active()override;
   bool request(PageBindingToken);
+  bool request(PageBindingToken, ControlModalKind);
   bool request_local(PageLocalModalOrigin, ControlModalKind);
   // Authenticated modal APIs can address a current navigable card directly,
   // including a hidden page. They must resolve against this generation.
