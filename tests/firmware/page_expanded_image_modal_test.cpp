@@ -10,6 +10,7 @@
 
 #include "button_grid_subpage_parser.h"
 #include "lvgl.h"
+#include "modal_test_router.h"
 #include "page_card_dependencies.h"
 #include "page_entity_observer_set.h"
 #include "panel_config_document.h"
@@ -314,6 +315,7 @@ struct Harness {
   PageEntityStateRuntime graph;
   View view;
   PageExpandedImageModalPort port;
+  PageModalRouter<1> router{modal_test_router<ControlModalKind::IMAGE_CARD>(port)};
   PageModalRuntime modal;
   bool covered{false};
   PageModalToken styled{};
@@ -324,7 +326,7 @@ struct Harness {
       : document(limits),
         graph(deps, arena, transport, {256, 128, 32768}),
         port(arena, graph, view, style(this), this, [](void*, PageBindingToken t) { return t.binding != 0; }),
-        modal(port) {
+        modal(router) {
     hidden_card = document.store.page(1)->first_card;
     hidden_font = *LV_FONT_DEFAULT;
     hidden_font.line_height += 2;

@@ -12,6 +12,7 @@
 
 #include "lvgl.h"
 #include "modal_draw_retirement_probe.h"
+#include "modal_test_router.h"
 #define ESPCONTROL_HA_GENERATION_HELPERS_DEFINED
 uint32_t &ha_subscription_generation();
 #include "button_grid_subpage_parser.h"
@@ -159,16 +160,7 @@ struct Fixture {
 };
 void values(){auto &t=coordinator.transport();t.send("light.room","","on");t.send("light.room","brightness","75");t.send("light.room","color_temp_kelvin","3000");t.send("light.room","supported_color_modes","['rgb']");t.send("light.room","friendly_name","Lamp");t.send("cover.room","","open");t.send("cover.room","current_position","42");t.send("cover.room","current_tilt_position","20");t.send("cover.room","supported_features","255");}
 // One dispatcher/runtime enforces one live panel across both families.
-struct Composite:PageModalPort {
- PageLightModalPort &light;PageCoverModalPort &cover;PageModalPort *selected=nullptr;
- Composite(PageLightModalPort &l,PageCoverModalPort &c):light(l),cover(c){}
- bool valid_origin(PageBindingToken t)const override{return light.valid_origin(t);}
- ControlModalKind kind(const PageStore &s,ConfigurationHandle h)const override{auto k=light.kind(s,h);return k==ControlModalKind::NONE?cover.kind(s,h):k;}
- bool ready()const override{return light.ready()&&cover.ready();}bool connected()const override{return light.connected();}uint32_t connection_generation()const override{return light.connection_generation();}
- void *create(const PageStore &s,ConfigurationHandle h,PageModalToken t)override{selected=light.kind(s,h)==ControlModalKind::LIGHT_CONTROL?static_cast<PageModalPort *>(&light):&cover;return selected->create(s,h,t);}
- bool initialize(void *p,PageModalToken t)override{return selected->initialize(p,t);}bool visible(void *p)const override{return selected->visible(p);}void update(void *p,PageModalToken t)override{selected->update(p,t);}
- ControlModalDismissPolicy dismiss_policy(void *p)const override{return selected->dismiss_policy(p);}void retire(void *p,PageModalClose r)override{selected->retire(p,r);}void destroy(void *p)override{selected->destroy(p);selected=nullptr;}
-};
+
 static PageModalToken last_style_token{};
 void test_controls(){Fixture fixture,next(18);Arena arena;PageCardDependencies source;CoordinatorPageEntitySubscriptions subscriptions(coordinator,16);
  {PageEntityStateRuntime state(source,arena,subscriptions,{64,64,8192});assert(state.prepare(fixture.store));state.activate_prepared(fixture.store);values();
@@ -184,7 +176,9 @@ void test_controls(){Fixture fixture,next(18);Arena arena;PageCardDependencies s
    cover_style.owner = &styles;
    cover_style.resolve = style.resolve;
    PageCoverModalPort cover(arena, state, cover_style, nullptr, [](void*, PageBindingToken) { return true; });
-   Composite port(light, cover);
+   PageModalRouter<2> port(
+       {{{ControlModalKind::LIGHT_CONTROL, &light}, {ControlModalKind::COVER_CONTROL, &cover}}}, nullptr,
+       [](void*, PageBindingToken) { return true; });
    PageModalRuntime runtime(port);
    assert(!light.install(runtime, false));
    assert(light.install(runtime, true) && cover.install(runtime, true));
@@ -252,7 +246,8 @@ void test_gesture_budget(){Fixture fixture;Arena arena;PageCardDependencies sour
    style.gesture_capacity = 1;
    style.resolve = [](void*, PageModalToken, const ParsedCfg&, PageControlModalEnvironment&) { return true; };
    PageLightModalPort port(arena, state, style, nullptr, [](void*, PageBindingToken) { return true; });
-   PageModalRuntime runtime(port);
+   auto router = modal_test_router<ControlModalKind::LIGHT_CONTROL>(port);
+   PageModalRuntime runtime(router);
    assert(port.install(runtime, true));
    assert(runtime.prepare(fixture.store));
    runtime.activate_prepared(fixture.store);

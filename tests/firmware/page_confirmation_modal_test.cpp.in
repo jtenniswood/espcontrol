@@ -10,6 +10,7 @@
 
 #include "button_grid_subpage_parser.h"
 #include "lvgl.h"
+#include "modal_test_router.h"
 #include "page_card_dependencies.h"
 #include "page_entity_observer_set.h"
 #include "panel_config_document.h"
@@ -310,6 +311,7 @@ struct Harness {
   PageConfirmationAction sent{PageConfirmationAction::NONE};
   std::string sent_options;
   PageConfirmationModalPort ui;
+  PageModalRouter<1> router{modal_test_router<ControlModalKind::SWITCH_CONFIRMATION>(ui)};
   PageModalRuntime modal;
   struct CommandPort : PageConfirmationPort {
     Harness& h;
@@ -356,7 +358,7 @@ struct Harness {
       : doc(limits, options),
         ui(arena, graph, style(this), this,
            [](void* owner, PageBindingToken t) { return static_cast<Harness*>(owner)->valid(t); }),
-        modal(ui, opening) {
+        modal(router, opening) {
     assert(ui.install(modal, commands, true));
     assert(graph.prepare(doc.store) && commands.prepare(doc.store) && modal.prepare(doc.store));
     graph.activate_prepared(doc.store);

@@ -12,6 +12,7 @@
 
 #include "lvgl.h"
 #include "modal_draw_retirement_probe.h"
+#include "modal_test_router.h"
 #define ESPCONTROL_HA_GENERATION_HELPERS_DEFINED
 uint32_t& ha_subscription_generation();
 #include "button_grid_subpage_parser.h"
@@ -430,7 +431,8 @@ void test_controls() {
       return true;
     };
     PageFanControlModalPort port(arena, state, style, nullptr, [](void*, PageBindingToken) { return true; });
-    PageModalRuntime runtime(port);
+    auto router = modal_test_router<ControlModalKind::FAN_CONTROL>(port);
+    PageModalRuntime runtime(router);
     assert(!port.install(runtime, false));
     assert(port.install(runtime, true));
     PageFanPresetModalStyle preset_style;
@@ -629,7 +631,8 @@ void test_failures() {
       };
       PageLegacyModalPort<Family> port(arena, state, style, nullptr,
                                        [](void*, PageBindingToken) { return true; });
-      PageModalRuntime runtime(port);
+      auto router = modal_test_router<Family::kind>(port);
+      PageModalRuntime runtime(router);
       assert(port.install(runtime, true));
       assert(runtime.prepare(fixture.store));
       runtime.activate_prepared(fixture.store);
@@ -683,7 +686,8 @@ void test_presets() {
       return *static_cast<bool*>(owner);
     };
     PageFanPresetModalPort port(arena, state, style, nullptr, [](void*, PageBindingToken) { return true; });
-    PageModalRuntime runtime(port);
+    auto router = modal_test_router<ControlModalKind::FAN_PRESET>(port);
+    PageModalRuntime runtime(router);
     assert(!port.install(runtime, false));
     assert(port.install(runtime, true));
     // Both observers coexist despite using the same FanCardCtx type.

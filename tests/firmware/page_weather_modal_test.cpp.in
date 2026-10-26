@@ -13,6 +13,7 @@
 #include "button_grid_weather_daily_data.h"
 #include "lvgl.h"
 #include "modal_draw_retirement_probe.h"
+#include "modal_test_router.h"
 #include "page_forecast_runtime.h"
 #include "page_modal_runtime.h"
 #include "panel_config_document.h"
@@ -281,7 +282,8 @@ void test_weather_modal() {
       return settings.allowed;
     };
     PageWeatherModalPort port(arena, forecasts, style, nullptr, [](void*, PageBindingToken) { return true; });
-    PageModalRuntime modal(port);
+    auto router = modal_test_router<ControlModalKind::WEATHER_FORECAST>(port);
+    PageModalRuntime modal(router);
     auto* legacy = weather_daily_acquire_source("weather.legacy");
     assert(!port.install(modal));
     weather_daily_release_source(legacy);

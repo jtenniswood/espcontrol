@@ -86,6 +86,13 @@ target_compile_options(page_modal_runtime_test PRIVATE -Wall -Wextra -Werror -fn
 target_include_directories(page_modal_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_modal_runtime_test COMMAND page_modal_runtime_test)
 
+add_executable(page_modal_router_test page_modal_router_test.cpp
+  ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_modal_router_test PRIVATE cxx_std_17)
+target_compile_options(page_modal_router_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_modal_router_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_modal_router_test COMMAND page_modal_router_test)
+
 add_executable(page_entity_state_benchmark EXCLUDE_FROM_ALL page_entity_state_benchmark.cpp
   ../../components/espcontrol/page_entity_state_runtime.cpp
   ../../components/espcontrol/page_store.cpp)

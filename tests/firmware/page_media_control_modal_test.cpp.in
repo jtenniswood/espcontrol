@@ -12,6 +12,7 @@
 
 #include "lvgl.h"
 #include "modal_draw_retirement_probe.h"
+#include "modal_test_router.h"
 #define ESPCONTROL_HA_GENERATION_HELPERS_DEFINED
 uint32_t& ha_subscription_generation();
 #include "button_grid_subpage_parser.h"
@@ -663,7 +664,8 @@ void test_panels() {
     };
     PageMediaControlModalPort port(arena, state, style, nullptr,
                                    [](void*, PageBindingToken) { return true; });
-    PageModalRuntime runtime(port);
+    auto router = modal_test_router<ControlModalKind::MEDIA_CONTROL>(port);
+    PageModalRuntime runtime(router);
     assert(!port.install(runtime, false));
     assert(port.install(runtime, true));
     assert(runtime.prepare(invalid.store));
