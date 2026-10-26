@@ -100,6 +100,11 @@ bool send_media_playlist_action(const ParsedCfg& config) {
   event.data = {{"options", config.options}};
   return accepted;
 }
+bool send_cover_command_action(const ParsedCfg& config, bool cover_tilt = false) {
+  record("cover", config.entity);
+  tilt = cover_tilt;
+  return accepted;
+}
 void send_turn_on_action(const std::string& target) { record("on", target); }
 void send_turn_off_action(const std::string& target) { record("off", target); }
 void send_action_card_action(const ParsedCfg& p) { record("action", p.entity); }
@@ -247,6 +252,17 @@ int main() {
   snapshot.value.integer = 61;
   snapshot.value.number = 300;
   assert(port.dispatch_control(snapshot) && called == "seek" && percentage == 61 && numeric == 300);
+  snapshot.config.entity = "fan.room";
+  snapshot.kind = PageCardCommandKind::DEVICE_ACTION;
+  snapshot.value.integer = static_cast<int>(PageDeviceAction::REVERSE);
+  assert(port.dispatch_control(snapshot) && called == "fan.set_direction" &&
+         event.data[0].second == "reverse");
+  accepted = false;
+  assert(!port.dispatch_control(snapshot));
+  accepted = true;
+  snapshot.config.entity = "cover.room";
+  snapshot.value.integer = static_cast<int>(PageDeviceAction::COVER_TILT);
+  assert(port.dispatch_control(snapshot) && called == "cover" && tilt);
   snapshot.config.entity = "timer.room";
   snapshot.kind = PageCardCommandKind::TIMER_START;
   assert(port.dispatch_control(snapshot) && called == "timer.start" && entity == "timer.room");

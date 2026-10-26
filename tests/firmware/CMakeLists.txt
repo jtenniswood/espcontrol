@@ -130,6 +130,17 @@ target_compile_options(media_action_helpers_test PRIVATE -Wall -Wextra -Werror -
 target_include_directories(media_action_helpers_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME media_action_helpers_test COMMAND media_action_helpers_test)
 
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/device_action_helpers_test.cpp
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_device_action_helpers_test.py
+    --output ${CMAKE_CURRENT_BINARY_DIR}/device_action_helpers_test.cpp
+  DEPENDS ../../components/espcontrol/page_device_command_policy.h ../../components/espcontrol/page_native_device_commands.h generate_device_action_helpers_test.py generate_climate_update_test.py device_action_helpers_test.cpp.in
+    ../../components/espcontrol/button_grid_actions.h VERBATIM)
+add_executable(device_action_helpers_test ${CMAKE_CURRENT_BINARY_DIR}/device_action_helpers_test.cpp)
+target_compile_features(device_action_helpers_test PRIVATE cxx_std_17)
+target_compile_options(device_action_helpers_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(device_action_helpers_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME device_action_helpers_test COMMAND device_action_helpers_test)
+
 add_executable(page_timer_commands_test page_timer_commands_test.cpp
   ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_card_dependencies.cpp
   ../../components/espcontrol/page_entity_state_runtime.cpp
@@ -543,6 +554,14 @@ target_compile_features(page_basic_card_test PRIVATE cxx_std_17)
 target_compile_options(page_basic_card_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
 target_include_directories(page_basic_card_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_basic_card_test COMMAND page_basic_card_test)
+get_target_property(PAGE_BASIC_CARD_SOURCES page_basic_card_test SOURCES)
+list(REMOVE_ITEM PAGE_BASIC_CARD_SOURCES page_basic_card_test.cpp)
+add_executable(page_device_commands_test page_device_commands_test.cpp ${PAGE_BASIC_CARD_SOURCES})
+target_compile_features(page_device_commands_test PRIVATE cxx_std_17)
+target_compile_options(page_device_commands_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_device_commands_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_device_commands_test COMMAND page_device_commands_test)
+
 add_executable(page_basic_card_no_forecast_test page_basic_card_test.cpp
     ../../components/espcontrol/page_number_slider_runtime.cpp
     ../../components/espcontrol/page_light_temperature_runtime.cpp

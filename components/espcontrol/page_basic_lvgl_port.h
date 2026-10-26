@@ -97,6 +97,8 @@ struct PageBasicActions {
   bool (*screen_locked)(void*){nullptr};
   // Admit a deferred local intent; the scene rechecks PIN/mode in maintenance.
   void (*screen_lock)(void*, PageBindingToken, bool screensaver_on_lock){nullptr};
+  // Optional pooled device route. Admission only; never send from this callback.
+  void (*device)(void*, PageBindingToken, uint32_t pressed_connection){nullptr};
 };
 inline const lv_style_transition_dsc_t *page_basic_push_transition() {
   static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
@@ -323,6 +325,24 @@ class PageBasicLvglPort final:public PageRendererPort {
     media_layout_dirty_ = true;
     return true;
   }
+  // Called only after a pooled device helper accepts a send. Keep existing
+  // toggle feedback without treating queue admission as transport success.
+  bool preview_device(PageBindingToken token, uint32_t connection, uint32_t revision) {
+    if (token.shell >= Slots || !same(shells_[token.shell].token, token) || !actions_.valid ||
+        !actions_.valid(actions_.owner, token) || connection != state_.connection_generation())
+      return false;
+    const auto* prepared = shells_[token.shell].definition;
+    if (!prepared) return false;
+    const auto& definition = prepared->definition;
+    if (definition.kind != BasicCardKind::COVER_TOGGLE &&
+        !(definition.kind == BasicCardKind::ACCESS && !definition.access.command &&
+          definition.access.kind != BasicAccessKind::LOCK))
+      return false;
+    const auto primary = state_.read_attribute({token.configuration, token.card}, definition.entity, {});
+    if (primary.status == PageEntityStatus::EXHAUSTED || primary.revision != revision) return false;
+    lv_obj_add_state(widgets_[token.shell].button, LV_STATE_CHECKED);
+    return true;
+  }
   // Apply feedback only after a seek send was accepted in maintenance.
   bool preview_seek(PageBindingToken token, PageMediaSeekProof proof, uint8_t percent, float duration) {
     if (token.shell >= Slots || !same(shells_[token.shell].token, token) || !actions_.valid ||
@@ -399,7 +419,8 @@ class PageBasicLvglPort final:public PageRendererPort {
             label_capacity = std::max(label_capacity, std::strlen(caption ? caption : key) + 1);
           }
         }
-        if (view.kind == BasicCardKind::COVER_COMMAND && !actions_.cover_command) return false;
+        if (view.kind == BasicCardKind::COVER_COMMAND && !actions_.cover_command && !actions_.device)
+          return false;
         if (view.kind == BasicCardKind::ALARM) {
           if (!alarm_ || !actions_.alarm) return false;
           has_alarm |= view.alarm.panel && view.alarm.status_icon && !view.entity.empty();
@@ -427,7 +448,8 @@ class PageBasicLvglPort final:public PageRendererPort {
           }
         }
         if (view.kind == BasicCardKind::CLEANING) {
-          if (view.cleaning.mode != cleaning::Mode::STATUS && !actions_.cleaning) return false;
+          if (view.cleaning.mode != cleaning::Mode::STATUS && !actions_.cleaning && !actions_.device)
+            return false;
           has_cleaning |=
               view.cleaning.automatic_icon && cleaning::needs_state(view.cleaning) && !view.entity.empty();
           if (view.cleaning.mode == cleaning::Mode::STATUS)
@@ -438,11 +460,11 @@ class PageBasicLvglPort final:public PageRendererPort {
             }
         }
         if (view.kind == BasicCardKind::ACCESS) {
-          if (!access_ || !actions_.access) return false;
+          if (!access_ || (!actions_.access && !actions_.device)) return false;
           label_capacity = std::max<size_t>(label_capacity, 97);
         }
         if (view.kind == BasicCardKind::COVER_TOGGLE) {
-          if (!cover_toggle_ || !actions_.toggle) return false;
+          if (!cover_toggle_ || (!actions_.toggle && !actions_.device)) return false;
           label_capacity = std::max<size_t>(label_capacity, 97);
         }
         if (view.kind == BasicCardKind::TIMER) {
@@ -493,7 +515,7 @@ class PageBasicLvglPort final:public PageRendererPort {
         if(view.kind==BasicCardKind::CLIMATE&&actions_.climate==nullptr)return false;
         if(view.kind==BasicCardKind::ACTION&&actions_.action==nullptr)return false;
         if ((view.kind == BasicCardKind::FAN_SWITCH || view.kind == BasicCardKind::FAN_OSCILLATE)) {
-          if (!fan_status_ || !actions_.action) return false;
+          if (!fan_status_ || (!actions_.action && !actions_.device)) return false;
           label_capacity = std::max<size_t>(label_capacity, HA_FRIENDLY_NAME_MAX_LEN + 1);
           for (const auto status :
                {PageFanStatus::UNAVAILABLE, PageFanStatus::ON, PageFanStatus::OFF, PageFanStatus::UNSUPPORTED,
@@ -503,7 +525,7 @@ class PageBasicLvglPort final:public PageRendererPort {
             label_capacity = std::max(label_capacity, std::strlen(translated ? translated : key) + 1);
           }
         }
-        if (view.kind == BasicCardKind::FAN_DIRECTION && !actions_.action) return false;
+        if (view.kind == BasicCardKind::FAN_DIRECTION && !actions_.action && !actions_.device) return false;
         if (view.kind == BasicCardKind::FAN_PRESET && !actions_.control) return false;
         if (view.kind == BasicCardKind::OPTION_SELECT) {
           if (!actions_.control) return false;
@@ -2578,9 +2600,12 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (definition.kind == BasicCardKind::CLEANING) {
       const auto snapshot =
           read_basic_cleaning(definition, {origin.configuration, origin.card}, port->state_);
-      if (snapshot.service && shell->gesture_connection == port->state_.connection_generation() &&
-          port->actions_.cleaning)
-        port->actions_.cleaning(port->actions_.owner, origin, snapshot.service);
+      if (snapshot.service && shell->gesture_connection == port->state_.connection_generation()) {
+        if (port->actions_.device)
+          port->actions_.device(port->actions_.owner, origin, shell->button_press_connection);
+        else if (port->actions_.cleaning)
+          port->actions_.cleaning(port->actions_.owner, origin, snapshot.service);
+      }
       return;
     }
     if (definition.kind == BasicCardKind::ACCESS) {
@@ -2595,6 +2620,10 @@ class PageBasicLvglPort final:public PageRendererPort {
                                       currently_on);
         return;
       }
+      if (port->actions_.device) {
+        port->actions_.device(port->actions_.owner, origin, shell->button_press_connection);
+        return;
+      }
       if (!definition.access.command && definition.access.kind != BasicAccessKind::LOCK)
         lv_obj_add_state(port->widgets_[shell->index].button, LV_STATE_CHECKED);
       if (port->actions_.access)
@@ -2606,6 +2635,10 @@ class PageBasicLvglPort final:public PageRendererPort {
       if (definition.entity.empty() || shell->gesture_connection != port->state_.connection_generation() ||
           port->state_.read_attribute(card, definition.entity, {}).status == PageEntityStatus::EXHAUSTED)
         return;
+      if (port->actions_.device) {
+        port->actions_.device(port->actions_.owner, origin, shell->button_press_connection);
+        return;
+      }
       // Existing cover toggles dispatch without an availability gate and optimistically check the card.
       lv_obj_add_state(port->widgets_[shell->index].button, LV_STATE_CHECKED);
       if (port->actions_.toggle) port->actions_.toggle(port->actions_.owner, origin, definition.entity);
@@ -2614,9 +2647,12 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (definition.kind == BasicCardKind::COVER_COMMAND) {
       const auto command =
           read_basic_cover_command(definition, {origin.configuration, origin.card}, port->state_);
-      if (shell->gesture_connection == port->state_.connection_generation() && command.supported &&
-          port->actions_.cover_command)
-        port->actions_.cover_command(port->actions_.owner, origin, command);
+      if (shell->gesture_connection == port->state_.connection_generation() && command.supported) {
+        if (port->actions_.device)
+          port->actions_.device(port->actions_.owner, origin, shell->button_press_connection);
+        else if (port->actions_.cover_command)
+          port->actions_.cover_command(port->actions_.owner, origin, command);
+      }
       return;
     }
     if (definition.kind == BasicCardKind::FAN_SWITCH || definition.kind == BasicCardKind::FAN_OSCILLATE) {
@@ -2641,11 +2677,14 @@ class PageBasicLvglPort final:public PageRendererPort {
     } else if ((definition.kind == BasicCardKind::FAN_DIRECTION ||
                 definition.kind == BasicCardKind::FAN_SWITCH ||
                 definition.kind == BasicCardKind::FAN_OSCILLATE) &&
-               port->actions_.action)
-      port->actions_.action(port->actions_.owner, origin);
-    else if ((definition.kind == BasicCardKind::FAN_PRESET ||
-              definition.kind == BasicCardKind::OPTION_SELECT) &&
-             port->actions_.control)
+               (port->actions_.device || port->actions_.action)) {
+      if (port->actions_.device)
+        port->actions_.device(port->actions_.owner, origin, shell->button_press_connection);
+      else
+        port->actions_.action(port->actions_.owner, origin);
+    } else if ((definition.kind == BasicCardKind::FAN_PRESET ||
+                definition.kind == BasicCardKind::OPTION_SELECT) &&
+               port->actions_.control)
       port->actions_.control(port->actions_.owner, origin);
     else if (definition.kind == BasicCardKind::CLIMATE && port->actions_.climate)
       port->actions_.climate(port->actions_.owner,origin);

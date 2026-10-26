@@ -7,6 +7,7 @@
 #include "page_lvgl_dispatch.h"
 #include "page_media_command_policy.h"
 #include "page_modal_admission.h"
+#include "page_native_device_commands.h"
 
 namespace espcontrol::pages {
 class PageNativeCardCommandPort final : public PageCardCommandPort {
@@ -37,6 +38,8 @@ class PageNativeCardCommandPort final : public PageCardCommandPort {
   bool dispatch_control(const PageCardCommandSnapshot& snapshot) override {
     assert(ready());
     const auto& config = snapshot.config;
+    if (snapshot.kind == PageCardCommandKind::DEVICE_ACTION)
+      return send_page_device_action(config, static_cast<PageDeviceAction>(snapshot.value.integer));
     if (snapshot.kind == PageCardCommandKind::MEDIA_ACTION) {
       const auto mode = page_media_command_mode(config.sensor);
       return mode == "playlist"
@@ -146,6 +149,7 @@ class PageNativeCardCommandPort final : public PageCardCommandPort {
       case PageCardCommandKind::TIMER_CANCEL:
       case PageCardCommandKind::MEDIA_ACTION:
       case PageCardCommandKind::MEDIA_SEEK:
+      case PageCardCommandKind::DEVICE_ACTION:
         dispatch_control(snapshot);
         break;
     }
