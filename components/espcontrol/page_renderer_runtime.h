@@ -132,7 +132,7 @@ class PageRendererRuntime final : public PageRuntimeResources {
     bind_view(target,binding);
   }
   void retire_active() override {
-    if(active_arena_==nullptr)return;
+    if(changing_ || active_arena_==nullptr)return;
     Guard guard(changing_);unbind_view();port_.retire_active();
     allocator_.release(active_arena_,active_bytes_);active_arena_=nullptr;active_bytes_=0;
     active_store_={};active_page_=NO_PAGE;suspended_=false;
