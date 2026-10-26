@@ -24,6 +24,7 @@
 #include "page_cover_art_view.h"
 #include "page_forecast_frame.h"
 #include "page_image_tile_view.h"
+#include "page_lvgl_dispatch.h"
 #include "page_media_group.h"
 #include "page_media_label.h"
 #include "page_qr_tile_view.h"
@@ -302,11 +303,48 @@ class PageBasicLvglPort final:public PageRendererPort {
     }
     initialized_=true;return true;
   }
+  // Scalar-only overlay notification: safe even during HA/LVGL dispatch.
+  // Keep origin bindings/artwork alive. The scene also cancels queued commands
+  // and includes input_enabled() in its shared input validator.
+  void set_input_covered(bool covered) {
+    if (covered && !input_covered_) {
+      input_cancel_pending_ = true;
+      for (auto& shell : shells_) shell.pressed = {};
+    }
+    input_covered_ = covered;
+  }
+  bool input_enabled() const { return !input_covered_ && !input_cancel_pending_ && !input_settling_; }
+  // Call from safe scene maintenance before dispatching commands or reopening
+  // grid input. A cover/uncover pair between ticks still cancels held gestures.
+  bool settle_input() {
+    if (page_lvgl_dispatching() || input_settling_) return false;
+    if (!input_cancel_pending_) return true;
+    input_settling_ = true;
+    input_cancel_pending_ = false;
+    for (auto& shell : shells_) {
+      const auto token = shell.token;
+      const bool dragging = shell.dragging;
+      const bool kelvin_drag = dragging && temperature_card(shell) && temperature_;
+      const auto temperature = kelvin_drag ? temperature_->read({token.configuration, token.card})
+                                           : PageLightTemperatureSnapshot{};
+      cancel_position_gesture(shell);
+      if (!same(token, shell.token)) continue;
+      if (kelvin_drag && temperature.dragging)
+        temperature_->discard_finished({token.configuration, token.card}, temperature.fill_kelvin, state_);
+      // Accepted seek/volume/group feedback survives an overlay. Only an
+      // unfinished drag or timer's pending confirmation belongs to old input.
+      if (dragging || timer_card(shell)) shell.pending_target = -1;
+      lv_obj_clear_state(widgets_[shell.index].button, LV_STATE_PRESSED);
+    }
+    media_layout_dirty_ = true;
+    input_settling_ = false;
+    return !input_cancel_pending_;
+  }
   // Preview an accepted panel action in its originating card. This neither
   // mutates HA state nor dispatches a service call; pending display lasts 1.5s.
   bool preview_volume(PageBindingToken token, uint8_t percent) {
-    if (token.shell >= Slots || !same(shells_[token.shell].token, token) || !actions_.valid ||
-        !actions_.valid(actions_.owner, token) || !media_)
+    if (token.shell >= Slots || !same(shells_[token.shell].token, token) || !feedback_current(token) ||
+        !media_)
       return false;
     auto& shell = shells_[token.shell];
     if (!shell.definition || shell.definition->definition.kind != BasicCardKind::MEDIA_CONTROL ||
@@ -328,8 +366,8 @@ class PageBasicLvglPort final:public PageRendererPort {
   // Called only after a pooled device helper accepts a send. Keep existing
   // toggle feedback without treating queue admission as transport success.
   bool preview_device(PageBindingToken token, uint32_t connection, uint32_t revision) {
-    if (token.shell >= Slots || !same(shells_[token.shell].token, token) || !actions_.valid ||
-        !actions_.valid(actions_.owner, token) || connection != state_.connection_generation())
+    if (token.shell >= Slots || !same(shells_[token.shell].token, token) || !feedback_current(token) ||
+        connection != state_.connection_generation())
       return false;
     const auto* prepared = shells_[token.shell].definition;
     if (!prepared) return false;
@@ -345,9 +383,8 @@ class PageBasicLvglPort final:public PageRendererPort {
   }
   // Apply feedback only after a seek send was accepted in maintenance.
   bool preview_seek(PageBindingToken token, PageMediaSeekProof proof, uint8_t percent, float duration) {
-    if (token.shell >= Slots || !same(shells_[token.shell].token, token) || !actions_.valid ||
-        !actions_.valid(actions_.owner, token) || !media_ ||
-        proof.connection != media_->connection_generation())
+    if (token.shell >= Slots || !same(shells_[token.shell].token, token) || !feedback_current(token) ||
+        !media_ || proof.connection != media_->connection_generation())
       return false;
     auto& shell = shells_[token.shell];
     PageMediaPlaybackSnapshot snapshot;
@@ -363,8 +400,8 @@ class PageBasicLvglPort final:public PageRendererPort {
     return true;
   }
   bool preview_group(PageBindingToken token, bool grouped) {
-    if (token.shell >= Slots || !same(shells_[token.shell].token, token) || !actions_.valid ||
-        !actions_.valid(actions_.owner, token) || !media_)
+    if (token.shell >= Slots || !same(shells_[token.shell].token, token) || !feedback_current(token) ||
+        !media_)
       return false;
     auto& shell = shells_[token.shell];
     if (!group_card(shell)) return false;
@@ -903,6 +940,22 @@ class PageBasicLvglPort final:public PageRendererPort {
   }
 
  private:
+  bool feedback_current(PageBindingToken token) const {
+    return actions_.bound ? actions_.bound(actions_.owner, token)
+                          : actions_.valid && actions_.valid(actions_.owner, token);
+  }
+  static bool is_input(lv_event_code_t code) {
+    return code == LV_EVENT_PRESSED || code == LV_EVENT_PRESSING || code == LV_EVENT_PRESS_LOST ||
+           code == LV_EVENT_RELEASED || code == LV_EVENT_CLICKED || code == LV_EVENT_SHORT_CLICKED ||
+           code == LV_EVENT_LONG_PRESSED || code == LV_EVENT_LONG_PRESSED_REPEAT ||
+           code == LV_EVENT_VALUE_CHANGED || code == LV_EVENT_KEY || code == LV_EVENT_ROTARY ||
+           code == LV_EVENT_INDEV_RESET;
+  }
+  bool stop_covered_input(lv_event_t* event) const {
+    if (input_enabled() || !is_input(lv_event_get_code(event))) return false;
+    lv_event_stop_processing(event);
+    return true;
+  }
   void paint(size_t index, PageBindingToken token, bool commit_seen) {
     if(index>=Slots||!same(shells_[index].token,token)||!active_.arena)return;
     auto &s=shells_[index];const auto &w=widgets_[index];
@@ -2028,6 +2081,7 @@ class PageBasicLvglPort final:public PageRendererPort {
   static void slider_guard(lv_event_t* event) {
     auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
     auto* port = shell->port;
+    if (port->stop_covered_input(event)) return;
     if (temperature_card(*shell)) {
       temperature_slider_guard(event);
       return;
@@ -2068,6 +2122,7 @@ class PageBasicLvglPort final:public PageRendererPort {
   static void slider_event(lv_event_t* event) {
     auto* shell = static_cast<Shell*>(lv_event_get_user_data(event));
     auto* port = shell->port;
+    if (port->stop_covered_input(event)) return;
     if (temperature_card(*shell)) {
       temperature_slider_event(event);
       return;
@@ -2507,6 +2562,7 @@ class PageBasicLvglPort final:public PageRendererPort {
   }
   static void event(lv_event_t *event) {
     auto *shell=static_cast<Shell *>(lv_event_get_user_data(event));auto *port=shell->port;
+    if (port->stop_covered_input(event)) return;
     const auto code=lv_event_get_code(event);
     if (code == LV_EVENT_SIZE_CHANGED) {
       port->update_fill_geometry(*shell);
@@ -2742,6 +2798,7 @@ class PageBasicLvglPort final:public PageRendererPort {
   Arena active_, staged_;
   PageStore store_;
   bool initialized_{false}, media_layout_dirty_{false}, media_finishing_{false}, seen_screen_locked_{false};
+  bool input_covered_{false}, input_cancel_pending_{false}, input_settling_{false};
   size_t callbacks_{0};
   uint64_t seen_alarm_{0}, seen_timezone_{0}, seen_calendar_{0}, seen_access_{0}, seen_cover_toggle_{0},
       seen_timer_{0}, seen_temperature_{0}, seen_number_slider_{0}, seen_percent_slider_{0},

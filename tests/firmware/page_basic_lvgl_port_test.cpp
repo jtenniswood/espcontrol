@@ -13,6 +13,7 @@
 #include "page_card_dependencies.h"
 #include "page_device_command_policy.h"
 #include "page_entity_observer_set.h"
+#include "page_grid_input.h"
 #include "page_label_refresh.h"
 #include "page_lvgl_dispatch.h"
 #include "page_media_command_policy.h"
@@ -871,7 +872,10 @@ template<size_t Slots>struct Actions {
            : name == "Blinds"                   ? "CLOSED"
                                                 : "I";
   }
-  static bool valid(void *owner,PageBindingToken t){return static_cast<Actions *>(owner)->renderer->valid(t);}
+  static bool valid(void* owner, PageBindingToken t) {
+    auto& actions = *static_cast<Actions*>(owner);
+    return actions.renderer->valid(t) && (!actions.basic_port || actions.basic_port->input_enabled());
+  }
   static void toggle(void *owner,PageBindingToken t,std::string_view entity){auto &a=*static_cast<Actions *>(owner);++a.toggles;a.last=t;assert(entity.size()<sizeof(a.entity));std::memcpy(a.entity,entity.data(),entity.size());a.entity[entity.size()]='\0';}
   static void open(void *owner,PageBindingToken,PageId page){assert(static_cast<Actions *>(owner)->renderer->open_page(page));}
   static void back(void *owner,PageBindingToken){assert(static_cast<Actions *>(owner)->renderer->back());}
@@ -3510,7 +3514,9 @@ struct DeferredGridPort final : PageCardCommandPort {
   PageCardCommandKind last{PageCardCommandKind::NONE};
   explicit DeferredGridPort(PageCardControlPolicy& p) : policy(p) {}
   bool ready() const override { return !page_lvgl_dispatching(); }
-  bool valid(PageBindingToken t) const override { return renderer && renderer->valid(t); }
+  bool valid(PageBindingToken t) const override {
+    return renderer && renderer->valid(t) && (!view || view->input_enabled());
+  }
   bool connected() const override { return true; }
   bool service_available() const override { return true; }
   void dispatch(const PageCardCommandSnapshot&) override { assert(false); }
@@ -3602,6 +3608,7 @@ void deferred_device_profile(const DeviceUiLimits& limits) {
                                   callbacks, nullptr, nullptr, nullptr, nullptr, nullptr, &fan, nullptr,
                                   nullptr, nullptr, nullptr, &cover, &access);
     assert(port.initialize());
+    actions.basic_port = &port;
     std::array<lv_obj_t*, Slots * 4> labels{};
     size_t used = 0;
     for (const auto& w : widgets)
@@ -3676,6 +3683,12 @@ void deferred_device_profile(const DeviceUiLimits& limits) {
     assert(!lv_obj_has_state(widgets[4].button, LV_STATE_CHECKED));
     assert(commands.loop() == PageCardCommandResult::DISPATCHED &&
            lv_obj_has_state(widgets[4].button, LV_STATE_CHECKED));
+    const auto origin = renderer.binding(4);
+    const auto primary = state.read_attribute({origin.configuration, origin.card}, "cover.room", {});
+    port.set_input_covered(true); assert(port.settle_input());
+    assert(!Actions<Slots>::valid(&actions, origin) && renderer.bound(origin));
+    assert(port.preview_device(origin, subscriptions.generation, primary.revision));
+    port.set_input_covered(false);
     press(0);
     subscriptions.send("fan.room", "", "off");
     assert(commands.loop() == PageCardCommandResult::CANCELLED);
@@ -3789,12 +3802,14 @@ void deferred_media_profile(const DeviceUiLimits& limits) {
     PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
                                   callbacks, nullptr, &media);
     assert(port.initialize());
+    actions.basic_port = &port;
     std::array<lv_obj_t*, Slots * 4> labels{};
     size_t used = 0;
     for (const auto& w : widgets)
       for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[used++] = label;
     assert(cache.initialize(labels.data(), labels.size()));
     PageRendererRuntime<Slots> renderer(limits, arena, port);
+    PageGridInput<Slots> grid_input(port, renderer, commands);
     actions.renderer = &renderer;
     sender.renderer = &renderer;
     sender.view = &port;
@@ -3850,6 +3865,71 @@ void deferred_media_profile(const DeviceUiLimits& limits) {
       else
         assert(lv_live_bytes == retained);
     }
+    const auto covered_origin = renderer.binding(4);
+    pointer(device, input, widgets[4].slider, 80, true);
+    grid_input.cover(true);
+    assert(!port.input_enabled() && renderer.bound(covered_origin));
+    grid_input.cover(false);  // Cover/uncover between maintenance ticks cannot revive this drag.
+    assert(!port.input_enabled());
+    pointer(device, input, widgets[4].slider, 85, false);
+    assert(commands.memory().pending == 0);
+    assert(grid_input.settle() && port.input_enabled() && renderer.bound(covered_origin));
+    pointer(device, input, widgets[4].slider, 85, false);
+    renderer.update_visible();
+    assert(lv_slider_get_value(widgets[4].slider) == 20);
+    release(4, 70);
+    assert(commands.loop() == PageCardCommandResult::DISPATCHED);
+    renderer.update_visible();
+    const auto accepted_percent = lv_slider_get_value(widgets[4].slider);
+    grid_input.cover(true);
+    assert(grid_input.settle() && !port.input_enabled());
+    renderer.update_visible();
+    assert(lv_slider_get_value(widgets[4].slider) == accepted_percent);
+    // An accepted modal edit may update its bound origin while grid input is blocked.
+    assert(!Actions<Slots>::valid(&actions, covered_origin) &&
+           Actions<Slots>::bound(&actions, covered_origin));
+    assert(port.preview_seek(covered_origin, actions.seek_proof, 60, 300));
+    renderer.update_visible();
+    assert(lv_slider_get_value(widgets[4].slider) == 60);
+    grid_input.cover(false);
+    click(widgets[0].button);
+    assert(commands.memory().pending == 1);
+    grid_input.cover(true);
+    assert(commands.memory().pending == 0);
+    grid_input.cover(false);
+    assert(grid_input.settle());
+    assert(grid_input.valid(covered_origin) && grid_input.bound(covered_origin));
+    const auto sends_before = sender.sends;
+    for (size_t cycle = 0; cycle < 1000; ++cycle) {
+      grid_input.cover(false);
+      lv_obj_send_event(widgets[0].button, LV_EVENT_PRESSED, nullptr);
+      grid_input.cover(true);
+      grid_input.cover(false);
+      lv_obj_send_event(widgets[0].button, LV_EVENT_CLICKED, nullptr);
+      assert(!port.input_enabled() && commands.memory().pending == 0);
+      assert(grid_input.settle() && port.input_enabled());
+    }
+    assert(sender.sends == sends_before && renderer.bound(covered_origin));
+    // Blocking is scalar-only during draw; collecting input is deferred.
+    struct CoverDraw {
+      PageGridInput<Slots>* input;
+      bool fired{false};
+    } draw{&grid_input};
+    lv_obj_add_event_cb(
+        widgets[0].button,
+        [](lv_event_t* event) {
+          auto& state = *static_cast<CoverDraw*>(lv_event_get_user_data(event));
+          state.input->cover(true);
+          state.fired = true;
+          assert(!state.input->settle());
+        },
+        LV_EVENT_DRAW_MAIN, &draw);
+    lv_obj_invalidate(widgets[0].button);
+    lv_refr_now(lv_display_get_default());
+    assert(draw.fired && !port.input_enabled());
+    lv_obj_remove_event_cb_with_user_data(widgets[0].button, nullptr, &draw);
+    grid_input.cover(false);
+    assert(grid_input.settle());
     sender.accepted = false;
     release(4, 80);
     assert(commands.loop() == PageCardCommandResult::FAILED);
@@ -3993,14 +4073,17 @@ void timer_profile(const DeviceUiLimits& limits) {
                                   callbacks, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
                                   nullptr, nullptr, &timer);
     assert(port.initialize());
+    actions.basic_port = &port;
     std::array<lv_obj_t*, Slots * 4> labels{};
     size_t used = 0;
     for (const auto& w : widgets)
       for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[used++] = label;
     assert(cache.initialize(labels.data(), labels.size()));
     PageRendererRuntime<Slots> renderer(limits, arena, port);
+    PageGridInput<Slots> grid_input(port, renderer, commands);
     actions.renderer = &renderer;
     sender.renderer = &renderer;
+    sender.view = &port;
     PageRuntimeResourcesGroup<4> resources({&renderer, &commands, &timer, &state});
     auto tap = [&](lv_obj_t* button) {
       const auto sends = sender.sends;
@@ -4154,6 +4237,23 @@ void timer_profile(const DeviceUiLimits& limits) {
              subscriptions.bindings.size() == channels && cache.memory().descriptor_adds == descriptors &&
              timer_count() == timers);
     }
+    subscriptions.send("timer.room", "", "idle");
+    subscriptions.send("timer.room", "", "active");
+    renderer.update_visible();
+    const auto before_cover = actions.commands;
+    tap(widgets[1].button);
+    assert(actions.commands == before_cover &&
+           std::strcmp(lv_label_get_text(widgets[1].label), "Confirm") == 0);
+    const auto origin = renderer.binding(1);
+    grid_input.cover(true);
+    grid_input.cover(false);
+    assert(grid_input.settle());
+    renderer.update_visible();
+    assert(grid_input.bound(origin) && grid_input.valid(origin));
+    tap(widgets[1].button);
+    assert(actions.commands == before_cover);
+    tap(widgets[1].button);
+    assert(actions.commands == before_cover + 1);
     resources.retire_active();
     std::printf(
         "%s: deferred timer cards 1000 cycles, countdowns, bounded confirmation and stable resources\n",
@@ -4483,14 +4583,17 @@ void deferred_slider_profile(const DeviceUiLimits& limits) {
                                     callbacks, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
                                     &percentages, &numbers, &temperature);
       assert(port.initialize());
+      actions.basic_port = &port;
       std::array<lv_obj_t*, Slots * 4> labels{};
       size_t used = 0;
       for (const auto& w : widgets)
         for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[used++] = label;
       assert(cache.initialize(labels.data(), labels.size()));
       PageRendererRuntime<Slots> renderer(limits, arena, port);
+      PageGridInput<Slots> grid_input(port, renderer, commands);
       actions.renderer = &renderer;
       sender.renderer = &renderer;
+      sender.view = &port;
       PageRuntimeResourcesGroup<6> resources(
           {&renderer, &commands, &percentages, &numbers, &temperature, &state});
       assert(resources.prepare(fixture.store));
@@ -4542,6 +4645,42 @@ void deferred_slider_profile(const DeviceUiLimits& limits) {
       assert(renderer.resume());
       renderer.update_visible();
       assert(commands.memory().pending == 0 && sender.sends == 1001);
+      sender.accepted = true;
+      const auto origin = renderer.binding(0);
+      const auto sent = sender.sends;
+      const auto current = [&] {
+        return kind == 0   ? percentages.read(handle).percent
+               : kind == 1 ? numbers.read(handle).position
+                           : temperature.read(handle).percent;
+      };
+      const auto reported = current();
+      vertical_pointer(device, input, widgets[0].slider, 80, true);
+      grid_input.cover(true);
+      assert(!grid_input.valid(origin) && grid_input.bound(origin) && commands.memory().pending == 0);
+      grid_input.cover(false);
+      vertical_pointer(device, input, widgets[0].slider, 85, false);
+      assert(commands.memory().pending == 0 && !port.input_enabled());
+      assert(grid_input.settle());
+      vertical_pointer(device, input, widgets[0].slider, 85, false);
+      renderer.update_visible();
+      assert(current() == reported && !numbers.read(handle).gesture && !temperature.read(handle).gesture);
+      assert(lv_slider_get_value(widgets[0].slider) == reported && grid_input.valid(origin));
+      // Released-but-unsent previews roll back before a fast cover/uncover can dispatch them.
+      release();
+      grid_input.cover(true);
+      assert(commands.memory().pending == 0);
+      grid_input.cover(false);
+      assert(grid_input.settle());
+      renderer.update_visible();
+      assert(commands.loop() == PageCardCommandResult::NONE && sender.sends == sent && current() == reported);
+      release();
+      assert(commands.loop() == PageCardCommandResult::DISPATCHED);
+      const auto accepted = current();
+      grid_input.cover(true);
+      assert(grid_input.settle());
+      grid_input.cover(false);
+      renderer.update_visible();
+      assert(current() == accepted && grid_input.bound(origin) && arena.allocations == allocations);
       resources.retire_active();
     }
     lv_indev_delete(device);
@@ -5359,6 +5498,7 @@ void media_control_profile(const DeviceUiLimits& limits) {
     PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
                                   callbacks, nullptr, &media);
     assert(port.initialize());
+    actions.basic_port = &port;
     std::array<lv_obj_t*, Slots * 4> labels{};
     size_t index = 0;
     for (const auto& w : widgets)
@@ -5406,7 +5546,11 @@ void media_control_profile(const DeviceUiLimits& limits) {
     subscriptions.send("media_player.room", "group_members", "['media_player.room']");
     renderer.update_visible();
     assert(!lv_obj_has_state(widgets[5].button, LV_STATE_CHECKED));
+    port.set_input_covered(true);
+    assert(port.settle_input());
+    assert(!Actions<Slots>::valid(&actions, group_binding) && renderer.bound(group_binding));
     assert(port.preview_group(group_binding, true));
+    port.set_input_covered(false);
     renderer.update_visible();
     assert(lv_obj_has_state(widgets[5].button, LV_STATE_CHECKED));
     transport.now += 20000;
@@ -5440,7 +5584,11 @@ void media_control_profile(const DeviceUiLimits& limits) {
     subscriptions.send("media_player.room", "volume_level", ".2");
     renderer.update_visible();
     const auto origin = renderer.binding(1);
+    port.set_input_covered(true);
+    assert(port.settle_input());
+    assert(!Actions<Slots>::valid(&actions, origin) && renderer.bound(origin));
     assert(port.preview_volume(origin, 50));
+    port.set_input_covered(false);
     renderer.update_visible();
     assert(std::strcmp(lv_label_get_text(widgets[1].value), "50") == 0);
     subscriptions.send("media_player.room", "volume_level", ".25");
