@@ -224,7 +224,7 @@ template<size_t Slots>void profile(const DeviceUiLimits &limits) {
   assert(arena.live==0);lv_obj_delete(page);
 }
 void modal_gesture_cycles() {
-  Arena arena;PageModalToken current{17,1,0,ControlModalKind::CLIMATE};size_t clicks=0,changes=0;
+  Arena arena;PageModalToken current{17,1,0,ControlModalKind::CLIMATE};size_t clicks=0,changes=0,releases=0;
   const auto valid=[](void *owner,PageModalToken token){const auto &now=*static_cast<PageModalToken *>(owner);return token.configuration==now.configuration&&token.opening==now.opening&&token.card==now.card&&token.kind==now.kind;};
   auto *root=lv_obj_create(lv_screen_active());
   {
@@ -234,9 +234,15 @@ void modal_gesture_cycles() {
       // Install the real action first; the preprocessing guard must still win.
       lv_obj_add_event_cb(button,[](lv_event_t *e){++*static_cast<size_t *>(lv_event_get_user_data(e));},LV_EVENT_CLICKED,&clicks);
       lv_obj_add_event_cb(button,[](lv_event_t *e){++*static_cast<size_t *>(lv_event_get_user_data(e));},LV_EVENT_VALUE_CHANGED,&changes);
+      lv_obj_add_event_cb(button,[](lv_event_t *e){++*static_cast<size_t *>(lv_event_get_user_data(e));},LV_EVENT_RELEASED,&releases);
+      lv_obj_clear_flag(button,LV_OBJ_FLAG_CLICKABLE);
       assert(guards.attach(root));assert(guards.attach(root));const auto before=clicks;
+      // A delayed temperature can enable the same control without reattaching.
+      lv_obj_add_flag(button,LV_OBJ_FLAG_CLICKABLE);
+      lv_obj_send_event(button,LV_EVENT_RELEASED,nullptr);assert(releases==cycle);
       lv_obj_send_event(button,LV_EVENT_CLICKED,nullptr);assert(clicks==before);
-      click(button);assert(clicks==before+1);
+      lv_obj_send_event(button,LV_EVENT_PRESSED,nullptr);lv_obj_send_event(button,LV_EVENT_RELEASED,nullptr);
+      lv_obj_send_event(button,LV_EVENT_CLICKED,nullptr);assert(clicks==before+1&&releases==cycle+1);
       lv_obj_send_event(button,LV_EVENT_PRESSED,nullptr);lv_obj_send_event(button,LV_EVENT_PRESS_LOST,nullptr);lv_obj_send_event(button,LV_EVENT_CLICKED,nullptr);assert(clicks==before+1);
       lv_obj_send_event(button,LV_EVENT_PRESSED,nullptr);lv_obj_send_event(button,LV_EVENT_VALUE_CHANGED,nullptr);assert(changes==cycle+1);
       ++current.opening;lv_obj_send_event(button,LV_EVENT_CLICKED,nullptr);assert(clicks==before+1);--current.opening;
