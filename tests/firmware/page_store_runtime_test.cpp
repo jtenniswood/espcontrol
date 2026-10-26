@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "page_counted_arena.h"
 #include "page_store_runtime.h"
 #include "panel_config_service_validator.h"
 
@@ -89,12 +90,13 @@ std::vector<uint8_t> document(const DeviceUiLimits &limits, const char *label) {
 void staged_service_lifecycle() {
   const auto &limits = DEVICE_UI_PROFILES[8];
   Allocator allocator;
+  PageCountedArena counted(allocator);
   Backend backend;
   ConfigurationStore store(backend);
   Legacy legacy;
   PanelConfigDocumentValidator validator;
   {
-    PageStoreRuntime runtime(limits, allocator, 8192);
+    PageStoreRuntime runtime(limits, counted, 8192);
     legacy.runtime = &runtime;
     ConfigurationService service(store, legacy, &validator);
     service.set_runtime_adapter(&runtime);
@@ -129,8 +131,14 @@ void staged_service_lifecycle() {
     assert(runtime.memory().active_reserved_bytes < 8192);
     assert(runtime.memory().peak_reserved_bytes == allocator.peak_bytes);
     assert(runtime.memory().preparation_failures == 1);
+    assert(counted.memory().reserved_bytes == allocator.live_bytes);
+    assert(counted.memory().peak_reserved_bytes == allocator.peak_bytes);
+    assert(counted.memory().allocation_failures == 1);
   }
   assert(allocator.allocations.empty());
+  assert(counted.memory().reserved_bytes == 0 &&
+         counted.memory().live_allocations == 0);
+  assert(counted.memory().accounting_errors == 0);
 }
 
 class Resources final : public PageRuntimeResources {
@@ -239,10 +247,11 @@ void compact_preparation_and_failures() {
 void bounded_replacements_and_validation() {
   const auto &limits = DEVICE_UI_PROFILES[8];
   Allocator allocator;
+  PageCountedArena counted(allocator);
   const auto a = document(limits, "A");
   const auto b = document(limits, "B");
   {
-    PageStoreRuntime runtime(limits, allocator, 8192);
+    PageStoreRuntime runtime(limits, counted, 8192);
     for (uint32_t generation = 1; generation <= 1000; ++generation) {
       const auto &source = generation % 2 ? a : b;
       assert(runtime.prepare(1, source.data(), source.size()));
@@ -268,6 +277,10 @@ void bounded_replacements_and_validation() {
     assert(runtime.active().card(ConfigurationHandle{1000, 0}) == nullptr);
   }
   assert(allocator.allocations.empty());
+  assert(counted.memory().reserved_bytes == 0 &&
+         counted.memory().live_allocations == 0);
+  assert(counted.memory().peak_reserved_bytes == allocator.peak_bytes);
+  assert(counted.memory().accounting_errors == 0);
   {
     PageStoreRuntime too_small(limits, allocator, 4);
     assert(!too_small.prepare(1, a.data(), a.size()));

@@ -3,6 +3,7 @@
 // The device startup owner is deliberately outside the ESPHome component's
 // constructor: PSRAM, restored settings and LVGL must be available first.
 #include "button_grid.h"
+#include "page_counted_arena.h"
 #include "page_local_network_status_source.h"
 #include "page_native_device_platform.h"
 #include "page_native_device_styles.h"
@@ -180,6 +181,7 @@ public:
   }
   PageNativeDevice(const PageNativeDevice &) = delete;
   Scene &scene() { return scene_; }
+  PageArenaMemory arena_memory() const { return allocator_.memory(); }
   bool install(EspControlApp &app) {
     auto *&navigation = application_scene_navigation();
     if (navigation && navigation != &scene_)
@@ -285,7 +287,8 @@ private:
     return theme;
   }
 
-  PageDeviceArena allocator_;
+  PageDeviceArena backing_allocator_;
+  PageCountedArena allocator_{backing_allocator_};
   PageNativeWidgetBank<Slots> bank_;
   PageNativeDeviceStyles styles_;
   PageNativeDevicePlatform platform_;

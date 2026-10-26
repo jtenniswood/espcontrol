@@ -7,6 +7,7 @@
 #include "lvgl.h"
 #include "application_scene_runtime.h"
 #include "page_scene_selection.h"
+#include "page_counted_arena.h"
 #include "page_alarm_commands.h"
 #include "page_alarm_presentation.h"
 #include "page_artwork_cover_view.h"
@@ -294,6 +295,7 @@ void click(lv_obj_t* obj) {
 size_t objects(lv_obj_t* obj) { size_t n=1; for(uint32_t i=0;i<lv_obj_get_child_count(obj);++i)n+=objects(lv_obj_get_child(obj,i)); return n; }
 struct Harness {
   Arena arena; Styles styles; Platform platform; PageNetworkStatusSource network;
+  PageCountedArena counted{arena};
   lv_obj_t* root;
   std::array<PageBasicWidgets,9> widgets{};
   std::optional<PageNativeWidgetBank<9>> bank;
@@ -319,12 +321,16 @@ struct Harness {
     theme.sensor_font=theme.large_sensor_font=theme.media_title_font=theme.icon_font=theme.label_font=
       theme.media_control_title_font=theme.media_control_artist_font=theme.cover_title_font=theme.cover_artist_font=
       theme.option_select_font=&lv_font_montserrat_14;
-    scene=new(memory.data()) Scene(DEVICE_UI_PROFILES[8],arena,{{128,16384,{1024,512,65536,SIZE_MAX,elastic_state?size_t{1024}:SIZE_MAX},{128,128,8192}},65536},
+    scene=new(memory.data()) Scene(DEVICE_UI_PROFILES[8],counted,{{128,16384,{1024,512,65536,SIZE_MAX,elastic_state?size_t{1024}:SIZE_MAX},{128,128,8192}},65536},
       widgets,{9,3},theme,page_timezone_resolver(),{},nullptr,styles,platform,network);
     assert(!scene->ready() && !scene->initialize(images,2,&modal,false));
     assert(scene->initialize(images,2,&modal,true) && scene->initialize(images,2,&modal,true));
   }
-  ~Harness() { scene->~Scene(); bank.reset(); lv_obj_delete(root); assert(coordinator.entries.empty()); }
+  ~Harness() {
+    scene->~Scene(); bank.reset(); lv_obj_delete(root); assert(coordinator.entries.empty());
+    const auto counters=counted.memory();
+    assert(counters.reserved_bytes==0&&counters.live_allocations==0&&counters.accounting_errors==0);
+  }
   void apply(const Document& doc,uint32_t gen=17) {
     assert(scene->prepare(PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
     // Native generation activation must use its prepared arenas, even when

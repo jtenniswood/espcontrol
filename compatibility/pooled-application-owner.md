@@ -44,6 +44,15 @@ separately from quota overflows. Owner counters include value capacity and the
 overlap of active/staged metadata and old/new value buffers. Replacing the
 configuration releases its retired pool rather than retaining past demand.
 
+The concrete device wraps its scene allocator with `PageCountedArena`, tracking
+live requests, allocation failures and the actual overlapping arena high-water
+mark without a per-allocation registry. Device-object bytes, LVGL widgets,
+image download/decode storage, platform framebuffers and allocator overhead are
+separate from these requested-byte counters. Read snapshots on the main loop;
+an accounting error invalidates the counter snapshot without changing the
+backing allocator's behavior. Complete-scene shutdown tests require the counted
+reservations to return to zero.
+
 Ordinary panels cover input while retaining the underlying full bindings and
 artwork. Retired panels continue covering input until safe collection. Full
 display/PIN takeovers suspend the bank; critical alarm presentation uses the
