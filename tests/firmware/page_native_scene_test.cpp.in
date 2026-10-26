@@ -523,6 +523,34 @@ void appearance_transactions() {
   assert(!h.scene->valid(h.scene->binding(1)));
   h.platform.shown=true;h.scene->loop();assert(h.scene->active_page()==1);
 }
+void appearance_wake_without_intermediate_maintenance() {
+  Document doc(DEVICE_UI_PROFILES[8]);Harness h;h.apply(doc);
+  const auto registrations=coordinator.entries.size(),count=objects(h.root);
+  auto theme=h.theme;
+  for(bool wake_before_refresh : {false,true}) {
+    h.platform.shown=false;h.scene->loop();
+    if(wake_before_refresh) h.platform.shown=true;
+    ++theme.revision;
+    assert(h.scene->reconfigure({9,3},theme));
+    if(!wake_before_refresh) {
+      for(size_t i=0;i<9;++i) {
+        assert(!h.scene->valid(h.scene->binding(i)));
+        assert(lv_obj_has_flag(h.widgets[i].button,LV_OBJ_FLAG_HIDDEN));
+      }
+      h.platform.shown=true;
+    }
+    h.scene->loop();
+    for(size_t i=0;i<9;++i) assert(h.scene->valid(h.scene->binding(i)));
+    assert(objects(h.root)==count && coordinator.entries.size()==registrations);
+  }
+  // The same race can occur between a suspended bank and a native save.
+  h.platform.shown=false;h.scene->loop();
+  h.platform.shown=true;
+  h.apply(doc,18);
+  for(size_t i=0;i<9;++i) assert(h.scene->valid(h.scene->binding(i)));
+  h.scene->loop();
+  assert(objects(h.root)==count && coordinator.entries.size()==registrations);
+}
 void initial_appearance() {
   Document doc(DEVICE_UI_PROFILES[8]);Harness h;
   assert(!h.scene->reconfigure({0,0},h.theme));
@@ -642,7 +670,7 @@ int main() {
   lv_display_set_buffers(display,pixels.data(),nullptr,sizeof(pixels),LV_DISPLAY_RENDER_MODE_PARTIAL);
   lv_display_set_flush_cb(display,[](lv_display_t* d,const lv_area_t*,uint8_t*) { lv_display_flush_ready(d); });
   native_dispatch_safe=[] { return lv_is_initialized() && !page_lvgl_dispatching() && !modal_callback_dispatching(); };
-  navigation_and_state();panels_and_retirement();mode_and_feedback();source_styles();slider_input();appearance_transactions();initial_appearance();remote_navigation();
+  navigation_and_state();panels_and_retirement();mode_and_feedback();source_styles();slider_input();appearance_transactions();initial_appearance();appearance_wake_without_intermediate_maintenance();remote_navigation();
   assert(!application_scene_navigation());
   remote_selection_order();qr_images_and_transactions();
   native_dispatch_safe=nullptr;

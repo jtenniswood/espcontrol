@@ -131,7 +131,11 @@ class PageRendererRuntime final : public PageRuntimeResources {
     active_arena_=staged_arena_;active_bytes_=staged_bytes_;active_store_=active;
     staged_arena_=nullptr;staged_bytes_=0;
     const uint32_t binding=staged_binding_;staged_binding_=0;
-    bind_view(target,binding);
+    // A replacement owns prepared resources while the display is covered, but
+    // must not attach new view/image bindings until the existing suspension
+    // ends. resume() will allocate the next binding generation.
+    if(suspended_) {active_page_=target;refresh_=true;}
+    else bind_view(target,binding);
   }
   void retire_active() override {
     if(active_arena_==nullptr)return;
@@ -146,6 +150,7 @@ class PageRendererRuntime final : public PageRuntimeResources {
     if(next_binding_==0)return false;
     Guard guard(changing_);unbind_view();bind_view(page,next_binding_++);return true;
   }
+  bool suspended() const { return suspended_; }
   bool return_home(){return open_page(0);}
   bool back() {
     if(active_page_==NO_PAGE || active_page_==0)return false;

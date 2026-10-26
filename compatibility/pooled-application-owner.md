@@ -60,7 +60,9 @@ Production boot and refresh no longer enter the eager legacy renderer. A failed
 native reservation blocks configuration writes rather than selecting a mixed
 renderer. The existing YAML wake actions remain, while native bindings own card
 commands. Initial configuration can activate while loading/setup pages own the
-display; the bank stays suspended until the main page is shown.
+display; the bank stays suspended until the main page is shown. Appearance and
+configuration activation synchronize with the renderer's actual suspension state,
+including a wake that occurs before the next scene-maintenance iteration.
 
 Remote modal/page/navigation APIs and network settings delegate to one native
 navigation owner. Selection uses immutable definitions and compiled visible

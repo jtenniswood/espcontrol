@@ -341,10 +341,10 @@ public:
       origin_ = {};
       advance_chrome();
       chrome_dirty_ = layout_dirty_ = true;
-      // First activation can occur while a loading/screensaver page owns the
-      // display. Reconcile the newly bound renderer, not its previous empty
-      // one.
-      suspended_ = false;
+      // Empty startup has no suspended renderer yet; replacement/appearance
+      // activation preserves the renderer's previous suspension. Sample its
+      // actual state before reconciling the current display owner.
+      suspended_ = renderer_.suspended();
       reconcile_display();
     }
     return activated;
@@ -383,10 +383,11 @@ public:
     renderer_.activate_prepared(store_.active());
     if (ui_request_.kind == UiKind::ACTIVATE)
       ui_request_ = {};
-    suspended_ = false;
+    suspended_ = renderer_.suspended();
     origin_ = {};
     advance_chrome();
     chrome_dirty_ = layout_dirty_ = true;
+    reconcile_display();
     return true;
   }
   void stop() override {
