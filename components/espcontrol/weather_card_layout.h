@@ -20,8 +20,8 @@ inline CardFrameLayout card_frame_layout(int width, int height, int font_height,
   const int day_gap = std::max(8, font_height), row_gap = std::max(8, font_height / 2);
   const int minimum_height = icon_height + font_height + temperature_height + 4;
   auto& layout = result.layout;
-  layout = card_layout(width, content_height, minimum_day_width, minimum_height, day_gap, row_gap,
-                       available_days);
+  layout =
+      card_layout(width, content_height, minimum_day_width, minimum_height, day_gap, row_gap, available_days);
   if (layout.count == 0) return result;
   const bool grid = layout.rows > 1;
   const int icon_gap = grid ? std::min(std::max(6, font_height / 3),
@@ -50,7 +50,7 @@ inline CardFrameLayout card_frame_layout(int width, int height, int font_height,
     const int text_x = x, text_width = cell_width;
     const int text_top =
         grid ? icon_y + icon_height + icon_gap
-                    : y + std::max(icon_height + 2, cell_height - temperature_height - font_height - 2);
+             : y + std::max(icon_height + 2, cell_height - temperature_height - font_height - 2);
     result.days[i] = {{x, icon_y, cell_width, icon_height},
                       {text_x, text_top, text_width, font_height},
                       {text_x, text_top + font_height + 2, text_width, temperature_height}};

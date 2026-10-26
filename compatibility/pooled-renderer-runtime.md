@@ -59,3 +59,6 @@ peaks. Ship one selected renderer implementation per production build.
 
 Normal overlay input cancellation while retaining feedback origins is described
 in [covered grid input](pooled-covered-input.md).
+
+The native configuration/loop lifecycle bridge is described in
+[application scene integration](application-scene-integration.md).

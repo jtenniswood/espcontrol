@@ -85,6 +85,7 @@ class EspControlApp::NativeConfigurationRuntime {
   uint8_t *boot_buffer{nullptr};
   size_t slot_capacity{0};
   bool boot_configuration_pending{false};
+  bool boot_configuration_due{false};
   configuration::EspHomePanelConfigTextValue button_order{};
   configuration::EspHomePanelConfigTextValue button_on_color{};
   std::array<LegacyButtonTextSources, configuration::PANEL_CONFIG_MAX_SLOT_COUNT>
@@ -94,6 +95,19 @@ class EspControlApp::NativeConfigurationRuntime {
 EspControlApp::EspControlApp() = default;
 
 EspControlApp::~EspControlApp() = default;
+
+bool EspControlApp::install_application_scene(ApplicationSceneRuntime& scene) {
+  if (shutting_down_ || !scene.ready()) return false;
+  if (application_scene_) return application_scene_ == &scene;
+  if (native_configuration_initialized_ || core_.configuration_service()) return false;
+  application_scene_ = &scene;
+  return true;
+}
+
+configuration::ConfigurationRuntimeAdapter* EspControlApp::selected_configuration_runtime() {
+  if (application_scene_) return application_scene_;
+  return native_configuration_runtime_ ? &native_configuration_runtime_->runtime_config : nullptr;
+}
 
 void EspControlApp::set_panel_config_device_profile(const char *device_profile) {
   panel_config_device_profile_ = device_profile;
@@ -203,12 +217,18 @@ void EspControlApp::register_panel_config_endpoints() {
 }
 
 void EspControlApp::apply_boot_configuration() {
+  if (shutting_down_) return;
   NativeConfigurationRuntime *const runtime = native_configuration_runtime_.get();
   if (runtime == nullptr || !runtime->boot_configuration_pending ||
       runtime->boot_buffer == nullptr)
     return;
 
+  // The timeout establishes the startup delay. A busy scene keeps this work
+  // pending for a later safe application loop, without scheduling more timers.
+  runtime->boot_configuration_due = true;
+  if (application_scene_ && !application_scene_->maintenance_ready()) return;
   runtime->boot_configuration_pending = false;
+  runtime->boot_configuration_due = false;
   configuration::ConfigurationService *const panel_config_service =
       core_.configuration_service();
   if (panel_config_service == nullptr) return;
@@ -260,6 +280,7 @@ void EspControlApp::setup() {
 }
 
 void EspControlApp::initialize_native_configuration() {
+  if (shutting_down_) return;
   ESP_LOGI(TAG, "Starting native configuration initialization");
   if (!native_configuration_requested()) {
     ESP_LOGD(TAG, "Native configuration is not requested for this device");
@@ -289,7 +310,9 @@ void EspControlApp::initialize_native_configuration() {
     register_panel_config_endpoints();
     return;
   }
-  panel_config_service->set_runtime_adapter(&runtime.runtime_config);
+  // The selected scene uses the same durable prepare/commit/activate protocol
+  // as HTTP writes and boot restore. Legacy text remains the downgrade mirror.
+  panel_config_service->set_runtime_adapter(selected_configuration_runtime());
   if (!runtime.legacy_config.configured()) {
     ESP_LOGW(TAG, "Native configuration sources are not configured");
   } else {
@@ -373,14 +396,21 @@ void EspControlApp::initialize_native_configuration() {
 }
 
 void EspControlApp::loop() {
-  if (native_configuration_runtime_ != nullptr && core_.configuration_service() != nullptr)
+  if (shutting_down_) return;
+  const bool scene_ready = !application_scene_ || application_scene_->maintenance_ready();
+  if (scene_ready && native_configuration_runtime_ != nullptr && core_.configuration_service() != nullptr) {
     native_configuration_runtime_->transactions.process(*core_.configuration_service());
+    if (native_configuration_runtime_->boot_configuration_due) apply_boot_configuration();
+  }
+  if (shutting_down_) return;
   home_assistant_endpoint_.loop();
   core_.run_once();
   ha::maintain_subscriptions();
   // The app core starts before WiFi so Home Assistant boot automations are
   // safe. The IDF web server starts later, so retry idempotent registrations.
+  if (shutting_down_) return;
   register_panel_config_endpoints();
+  if (application_scene_ && application_scene_->maintenance_ready()) application_scene_->loop();
 }
 
 void EspControlApp::on_safe_shutdown() {
@@ -391,8 +421,11 @@ void EspControlApp::on_safe_shutdown() {
 }
 
 void EspControlApp::on_shutdown() {
+  if (shutting_down_) return;
+  shutting_down_ = true;
   if (native_configuration_runtime_ != nullptr)
     native_configuration_runtime_->transactions.stop();
+  if (application_scene_) application_scene_->stop();
   esphome::artwork_image::TransferObserver::instance().set({}, {});
   cards::set_card_runtime_registry_service(nullptr);
   core_.stop();

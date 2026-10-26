@@ -5,12 +5,12 @@
 #include <cstdint>
 #include <memory>
 
+#include "application_scene_runtime.h"
+#include "espcontrol_app_core.h"
 #include "esphome/components/text/text.h"
 #include "esphome/core/component.h"
-
-#include "espcontrol_app_core.h"
-#include "panel_identity.h"
 #include "home_assistant_endpoint_resolver.h"
+#include "panel_identity.h"
 namespace espcontrol {
 
 // The main ESPHome component boundary for EspControl runtime services.
@@ -44,6 +44,9 @@ class EspControlApp : public esphome::Component {
     return home_assistant_endpoint_;
   }
 
+  // The scene belongs to the firmware application's UI owner and outlives this
+  // component. Installation cannot switch a running legacy grid underneath it.
+  bool install_application_scene(ApplicationSceneRuntime& scene);
   void set_panel_config_device_profile(const char *device_profile);
   void set_panel_config_button_order(esphome::text::Text *button_order);
   void set_panel_config_button_on_color(esphome::text::Text *button_on_color);
@@ -66,6 +69,7 @@ class EspControlApp : public esphome::Component {
  private:
   class NativeConfigurationRuntime;
 
+  configuration::ConfigurationRuntimeAdapter* selected_configuration_runtime();
   void register_panel_config_endpoints();
   void initialize_native_configuration();
   void apply_boot_configuration();
@@ -88,6 +92,8 @@ class EspControlApp : public esphome::Component {
   std::unique_ptr<NativeConfigurationRuntime> native_configuration_runtime_;
   EspControlAppCore core_{};
   HomeAssistantEndpointResolver home_assistant_endpoint_{};
+  ApplicationSceneRuntime* application_scene_{nullptr};
+  bool shutting_down_{false};
   bool native_configuration_initialized_{false};
   bool panel_config_http_context_bound_{false};
   const char *web_auth_username_{nullptr};
