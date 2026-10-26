@@ -69,7 +69,7 @@ The admin webserver examples below use `weather.forecast_home`; replace it with 
 
 Forecasts show whole-degree high/low temperatures, such as **18°/2°**, using the panel's **Temperature Unit** setting. Today and Tomorrow always show one day. Daily Forecast adapts to the card's size: a row on wide cards, a grid on larger cards, or a column on tall narrow cards. Enlarge the card to show more days; the count also depends on your provider's data and font sizes.
 
-Forecasts refresh hourly and after reconnecting. **Loading** appears while fetching data. If a refresh fails, the previous forecast remains with **Last forecast**; if no data is available for the requested date, the card shows **Forecast unavailable**. Your Home Assistant provider must support daily forecasts.
+Forecasts refresh hourly and after reconnecting. **Loading** appears while fetching data. If a refresh fails, the previous forecast keeps the same card layout, with **Last forecast** shown in the details popup; if no data is available for the requested date, the card shows **Forecast unavailable**. Your Home Assistant provider must support daily forecasts.
 
 All forecast modes work on supported panels, including the 4-inch ESP32-S3. The panel supports up to eight weather entities and sixteen forecast cards across the home screen and subpages.
 
