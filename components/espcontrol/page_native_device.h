@@ -321,7 +321,7 @@ inline bool page_native_device_start(
       {cards,
        cards * 512,
        {cards * 40, cards * 40, constrained ? 128u * 1024 : 512u * 1024,
-        32u * 1024},
+        32u * 1024, 4u * 1024},
        {cards, cards, 16u * 1024, HA_TEXT_SENSOR_STATE_MAX_LEN}},
       constrained ? 128u * 1024 : 256u * 1024};
   float (*wifi)() = nullptr;

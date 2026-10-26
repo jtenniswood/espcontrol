@@ -33,10 +33,23 @@ struct Arena final : PageArenaAllocator {
     if (fail || remaining == 0) return nullptr;
     if (remaining > 0) --remaining;
     ++calls;
-    auto *p = std::malloc(bytes); assert(p); live[p] = bytes; return p;
+    auto *p = std::malloc(bytes);
+    assert(p);
+    live[p] = bytes;
+    peak_bytes = std::max(peak_bytes, live_bytes());
+    return p;
   }
   void release(void *p, size_t bytes) override { assert(live.at(p) == bytes); live.erase(p); std::free(p); }
-  bool fail{false}; int remaining{-1}; size_t calls{0}; std::unordered_map<void *, size_t> live;
+  size_t live_bytes() const {
+    size_t bytes = 0;
+    for (const auto &item : live)
+      bytes += item.second;
+    return bytes;
+  }
+  bool fail{false};
+  int remaining{-1};
+  size_t calls{0}, peak_bytes{0};
+  std::unordered_map<void *, size_t> live;
 };
 struct Source final : PageDependencySource {
   struct Item { CardId card; std::string entity, attribute; };
@@ -275,6 +288,263 @@ void packed_state_matches_reference_without_allocations() {
     }
   }
 }
+
+void elastic_growth_preserves_full_ceilings() {
+  Fixture f;
+  Arena arena;
+  Subscriptions transport;
+  Source source;
+  for (uint16_t i = 0; i < 5; ++i)
+    source.items.push_back({i, "sensor." + std::to_string(i), ""});
+  PageEntityStateRuntime state(source, arena, transport,
+                               {5, 5, 128 * 1024, 32 * 1024, 4096});
+  assert(state.prepare(f.store));
+  state.activate_prepared(17);
+  assert(state.memory().active_state_capacity_bytes == 4096 &&
+         arena.live.size() == 2);
+  const std::string large(32768, 'a'), other(32768, 'b'), shorter(1000, 'z'),
+      too_long(32769, 'x');
+  for (size_t i = 0; i < 4; ++i) {
+    const auto &e = transport.entries[i];
+    e.deliver(e.owner, e.revision, e.channel, i == 0 ? large : other);
+  }
+  assert(state.memory().active_state_bytes == 128 * 1024);
+  assert(state.memory().active_state_capacity_bytes == 128 * 1024);
+  assert(state.memory().state_reservations == 4);
+  const auto fifth = transport.entries[4];
+  fifth.deliver(fifth.owner, fifth.revision, fifth.channel, "x");
+  assert(state.dependency({17, 4}, 0).status == PageEntityStatus::EXHAUSTED);
+  const auto first = transport.entries[0];
+  first.deliver(first.owner, first.revision, first.channel, too_long);
+  assert(state.dependency({17, 0}, 0).status == PageEntityStatus::EXHAUSTED);
+  assert(state.memory().state_overflows == 2 &&
+         state.memory().state_allocation_failures == 0);
+  for (uint16_t i = 1; i < 4; ++i)
+    assert(state.dependency({17, i}, 0).value == other);
+  const auto calls = arena.calls, all_calls = allocation_calls;
+  for (size_t i = 0; i < 1000; ++i) {
+    first.deliver(first.owner, first.revision, first.channel,
+                  i % 2 ? large : shorter);
+    assert(state.dependency({17, 0}, 0).value == (i % 2 ? large : shorter));
+    for (uint16_t other_card = 1; other_card < 4; ++other_card)
+      assert(state.dependency({17, other_card}, 0).value == other);
+  }
+  assert(arena.calls == calls && allocation_calls == all_calls);
+  ++transport.connection;
+  assert(state.dependency({17, 0}, 0).status == PageEntityStatus::UNKNOWN);
+  assert(state.memory().active_state_bytes == 0);
+  assert(state.prepare(f.store));
+  assert(state.memory().staged_state_capacity_bytes == 4096);
+  arena.fail = true;
+  state.activate_prepared(18);
+  arena.fail = false;
+  assert(state.memory().active_state_capacity_bytes == 4096 &&
+         arena.live.size() == 2);
+  assert(state.memory().active_arena_bytes == arena.live_bytes());
+  assert(state.memory().peak_arena_bytes == arena.peak_bytes);
+}
+
+void elastic_failures_and_atomic_copies() {
+  Fixture f;
+  Arena arena;
+  Subscriptions transport;
+  Source source;
+  source.items = {{0, "sensor.shared", ""}, {1, "sensor.old", ""}};
+  PageEntityStateRuntime state(source, arena, transport, {4, 4, 128, 64, 8});
+  arena.remaining = 1;
+  assert(!state.prepare(f.store));
+  assert(arena.live.empty());
+  assert(state.memory().preparation_failures == 1 &&
+         state.memory().state_allocation_failures == 1);
+  arena.remaining = -1;
+  assert(state.prepare(f.store));
+  state.activate_prepared(17);
+  transport.send("sensor.shared", "", "one");
+  transport.send("sensor.old", "", "keep");
+  const std::string longer(20, 'z');
+  const auto shared = transport.entries[0];
+  arena.fail = true;
+  shared.deliver(shared.owner, shared.revision, shared.channel, longer);
+  arena.fail = false;
+  assert(state.dependency({17, 0}, 0).status == PageEntityStatus::EXHAUSTED);
+  assert(state.dependency({17, 1}, 0).value == "keep");
+  assert(state.memory().state_allocation_failures == 2 &&
+         state.memory().state_overflows == 0);
+  shared.deliver(shared.owner, shared.revision, shared.channel, longer);
+  assert(state.dependency({17, 0}, 0).value == longer);
+  source.items = {{2, "sensor.shared", ""}, {0, "sensor.new", ""}};
+  arena.remaining = 3; // Metadata, initial pool and edge-grouping scratch
+                       // succeed; copied-state growth fails.
+  assert(!state.prepare(f.store));
+  arena.remaining = -1;
+  assert(state.memory().state_allocation_failures == 3 &&
+         state.memory().preparation_failures == 2);
+  assert(state.memory().staged_arena_bytes == 0 && arena.live.size() == 2 &&
+         transport.entries.size() == 2);
+  assert(state.dependency({17, 0}, 0).value == longer &&
+         state.dependency({17, 1}, 0).value == "keep");
+  transport.remaining = 1;
+  assert(!state.prepare(f.store));
+  transport.remaining = -1;
+  assert(state.dependency({17, 0}, 0).value == longer &&
+         arena.live.size() == 2);
+  assert(state.prepare(f.store));
+  assert(state.memory().staged_state_capacity_bytes == 32);
+  const auto calls = arena.calls;
+  arena.fail = true;
+  state.activate_prepared(18);
+  arena.fail = false;
+  assert(arena.calls == calls && state.dependency({18, 2}, 0).value == longer);
+  assert(state.dependency({18, 0}, 0).status == PageEntityStatus::UNKNOWN);
+  shared.deliver(shared.owner, shared.revision, shared.channel, "stale");
+  assert(state.memory().stale_deliveries == 1 &&
+         state.dependency({18, 2}, 0).value == longer);
+  assert(state.memory().active_arena_bytes == arena.live_bytes());
+  assert(state.memory().peak_arena_bytes == arena.peak_bytes);
+  state.retire_active();
+  assert(arena.live.empty() && transport.entries.empty());
+}
+
+void elastic_zero_capacity_and_disjoint_replacements() {
+  Fixture f;
+  Arena arena;
+  Subscriptions transport;
+  Source source;
+  source.items = {{0, "sensor.empty", ""}};
+  {
+    PageEntityStateRuntime state(source, arena, transport, {1, 1, 64, 64, 0});
+    assert(state.prepare(f.store));
+    state.activate_prepared(1);
+    assert(arena.live.size() == 1 &&
+           state.memory().active_state_capacity_bytes == 0);
+    const auto e = transport.entries[0];
+    const auto calls = arena.calls;
+    e.deliver(e.owner, e.revision, e.channel, {});
+    assert(state.dependency({1, 0}, 0).status == PageEntityStatus::AVAILABLE &&
+           arena.calls == calls);
+    e.deliver(e.owner, e.revision, e.channel, "abcd");
+    assert(state.memory().active_state_capacity_bytes == 4 &&
+           state.dependency({1, 0}, 0).value == "abcd");
+  }
+  assert(arena.live.empty() && transport.entries.empty());
+  {
+    PageEntityStateRuntime state(source, arena, transport, {1, 1, 0, 0, 0});
+    assert(state.prepare(f.store));
+    state.activate_prepared(1);
+    const auto e = transport.entries[0];
+    e.deliver(e.owner, e.revision, e.channel, {});
+    assert(state.dependency({1, 0}, 0).status == PageEntityStatus::AVAILABLE);
+    e.deliver(e.owner, e.revision, e.channel, "x");
+    assert(state.dependency({1, 0}, 0).status == PageEntityStatus::EXHAUSTED);
+  }
+  assert(arena.live.empty() && transport.entries.empty());
+  {
+    PageEntityStateRuntime state(source, arena, transport, {1, 1, 64, 64, 4});
+    const std::string value(32, 'v');
+    Subscriptions::Item stale{};
+    for (uint32_t generation = 1; generation <= 1000; ++generation) {
+      source.items = {{0, "sensor.set_" + std::to_string(generation), ""}};
+      assert(state.prepare(f.store));
+      const auto calls = arena.calls;
+      arena.fail = true;
+      state.activate_prepared(generation);
+      arena.fail = false;
+      assert(arena.calls == calls &&
+             state.memory().active_state_capacity_bytes == 4);
+      assert(arena.live.size() == 2 && transport.entries.size() == 1);
+      if (generation > 1)
+        stale.deliver(stale.owner, stale.revision, stale.channel, "late");
+      assert(state.dependency({generation, 0}, 0).status ==
+             PageEntityStatus::UNKNOWN);
+      stale = transport.entries[0];
+      stale.deliver(stale.owner, stale.revision, stale.channel, value);
+      assert(state.dependency({generation, 0}, 0).value == value);
+      assert(state.memory().active_state_capacity_bytes == 32 &&
+             state.memory().active_arena_bytes < 256);
+    }
+    assert(state.memory().peak_arena_bytes < 1024 &&
+           state.memory().stale_deliveries == 999);
+  }
+  assert(arena.live.empty() && transport.entries.empty());
+}
+
+void borrowed_updates_and_elastic_reference() {
+  for (const size_t initial : {size_t{4}, SIZE_MAX}) {
+    Fixture f;
+    Arena arena;
+    Subscriptions transport;
+    Source source;
+    source.items = {
+        {0, "sensor.a", ""}, {1, "sensor.b", ""}, {2, "sensor.c", ""}};
+    PageEntityStateRuntime state(source, arena, transport,
+                                 {3, 3, 64, 64, initial});
+    assert(state.prepare(f.store));
+    state.activate_prepared(1);
+    transport.send("sensor.a", "", "abc");
+    transport.send("sensor.b", "", "DEFGH");
+    transport.send("sensor.c", "", "ij");
+    const auto a = transport.entries[0], b = transport.entries[1],
+               c = transport.entries[2];
+    // A borrowed view crossing the replaced value's old tail has two fragments
+    // after growth.
+    auto first = state.dependency({1, 0}, 0).value;
+    a.deliver(a.owner, a.revision, a.channel, {first.data(), 7});
+    assert(state.dependency({1, 0}, 0).value == "abcDEFG");
+    assert(state.dependency({1, 1}, 0).value == "DEFGH" &&
+           state.dependency({1, 2}, 0).value == "ij");
+    first = state.dependency({1, 0}, 0).value;
+    c.deliver(c.owner, c.revision, c.channel,
+              first); // Also crosses an elastic pool relocation.
+    assert(state.dependency({1, 2}, 0).value == "abcDEFG");
+    auto second = state.dependency({1, 1}, 0).value.substr(2, 2);
+    b.deliver(b.owner, b.revision, b.channel, second);
+    assert(state.dependency({1, 1}, 0).value == "FG" &&
+           state.dependency({1, 2}, 0).value == "abcDEFG");
+    std::array<std::string, 3> expected = {"abcDEFG", "FG", "abcDEFG"};
+    std::array<PageEntityStatus, 3> status;
+    status.fill(PageEntityStatus::AVAILABLE);
+    uint32_t random = 913;
+    for (size_t iteration = 0; iteration < 10000; ++iteration) {
+      random = random * 1664525u + 1013904223u;
+      const uint16_t target = random % 3, origin = (random >> 8) % 3;
+      auto incoming = state.dependency({1, origin}, 0).value;
+      if (iteration % 2 && incoming.size() > 1)
+        incoming = incoming.substr(1, incoming.size() - 1);
+      const std::string external((random >> 16) % 65,
+                                 static_cast<char>('a' + origin));
+      if (iteration % 3 == 0)
+        incoming = external;
+      const std::string copy(incoming);
+      size_t total = copy.size();
+      for (size_t i = 0; i < 3; ++i)
+        if (i != target)
+          total += expected[i].size();
+      const auto calls = arena.calls,
+                 capacity = state.memory().active_state_capacity_bytes;
+      const auto &e = transport.entries[target];
+      e.deliver(e.owner, e.revision, e.channel, incoming);
+      expected[target] = total <= 64 ? copy : "";
+      status[target] = total <= 64 ? PageEntityStatus::AVAILABLE
+                                   : PageEntityStatus::EXHAUSTED;
+      for (uint16_t i = 0; i < 3; ++i) {
+        assert(state.dependency({1, i}, 0).value == expected[i]);
+        assert(state.dependency({1, i}, 0).status == status[i]);
+      }
+      if (total <= capacity)
+        assert(arena.calls == calls);
+      if (iteration % 127 == 0) {
+        ++transport.connection;
+        (void)state.revision();
+        for (auto &text : expected)
+          text.clear();
+        status.fill(PageEntityStatus::UNKNOWN);
+      }
+    }
+    assert(state.memory().active_arena_bytes == arena.live_bytes());
+    assert(state.memory().peak_arena_bytes == arena.peak_bytes);
+  }
+}
+
 }  // namespace
 void observer_distinguishes_copied_state_from_transport_delivery() {
   Fixture fixture;Arena arena;Source source;source.items={{0,"sensor.shared",""}};
@@ -384,6 +654,10 @@ void shared_observers_see_borrowed_previous_values() {
 }
 
 int main() {
+  elastic_growth_preserves_full_ceilings();
+  elastic_failures_and_atomic_copies();
+  elastic_zero_capacity_and_disjoint_replacements();
+  borrowed_updates_and_elastic_reference();
   shared_observers_see_borrowed_previous_values();
   observer_distinguishes_copied_state_from_transport_delivery();
   lifetime_and_state_budget(); preparation_and_replacements();

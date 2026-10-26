@@ -305,7 +305,7 @@ struct Harness {
   using Scene=PageNativeScene<9,2>;
   alignas(Scene) std::array<uint8_t,sizeof(Scene)> memory{};
   Scene* scene{nullptr};
-  Harness() {
+  explicit Harness(bool elastic_state=false) {
     root=lv_obj_create(lv_screen_active()); lv_obj_set_size(root,480,480);
     lv_obj_set_grid_dsc_array(root,columns.data(),rows.data());
     std::array<BtnSlot,9> source{};
@@ -319,7 +319,7 @@ struct Harness {
     theme.sensor_font=theme.large_sensor_font=theme.media_title_font=theme.icon_font=theme.label_font=
       theme.media_control_title_font=theme.media_control_artist_font=theme.cover_title_font=theme.cover_artist_font=
       theme.option_select_font=&lv_font_montserrat_14;
-    scene=new(memory.data()) Scene(DEVICE_UI_PROFILES[8],arena,{{128,16384,{1024,512,65536},{128,128,8192}},65536},
+    scene=new(memory.data()) Scene(DEVICE_UI_PROFILES[8],arena,{{128,16384,{1024,512,65536,SIZE_MAX,elastic_state?size_t{1024}:SIZE_MAX},{128,128,8192}},65536},
       widgets,{9,3},theme,page_timezone_resolver(),{},nullptr,styles,platform,network);
     assert(!scene->ready() && !scene->initialize(images,2,&modal,false));
     assert(scene->initialize(images,2,&modal,true) && scene->initialize(images,2,&modal,true));
@@ -397,6 +397,45 @@ void live_temperature_policy() {
   assert(std::string_view(lv_label_get_text(h.widgets[2].unit)) == "°C");
   assert(h.scene->active().generation() == 17 && coordinator.entries.size() == registrations);
   assert(h.arena.calls == allocations && objects(h.root) == count);
+  h.arena.fail = false;
+}
+void elastic_state_scene_transactions() {
+  Document doc(DEVICE_UI_PROFILES[8]); Harness h(true); h.apply(doc);
+  assert(h.scene->memory().state.active_state_capacity_bytes == 1024);
+  h.media();
+  const std::string title(5000, 'T');
+  coordinator.report("media_player.room", "media_title", title);
+  coordinator.report("climate.child", "", "heat");
+  coordinator.report("climate.child", "supported_features", "1");
+  coordinator.report("climate.child", "temperature", "25");
+  h.scene->loop();
+  assert(h.scene->memory().state.active_state_bytes >= title.size());
+  assert(h.scene->memory().state.active_state_capacity_bytes == 8192);
+  click(h.widgets[1].button);h.scene->loop();
+  const auto &climate = h.widgets[2];
+  const std::array<std::string,4> before = {
+    lv_label_get_text(climate.icon),lv_label_get_text(climate.label),
+    lv_label_get_text(climate.value),lv_label_get_text(climate.unit)};
+  assert(before[3] == "°C");
+  assert(before[0].find("25") != std::string::npos || before[2].find("25") != std::string::npos);
+  click(h.widgets[0].button);h.scene->loop();
+  const auto registrations = coordinator.entries.size();
+  h.apply(doc, 18);
+  assert(h.scene->memory().state.active_state_bytes >= title.size());
+  assert(h.scene->memory().state.active_state_capacity_bytes == 8192);
+  const auto count = objects(h.root), calls = h.arena.calls;
+  h.arena.fail = true;
+  for (size_t cycle=0;cycle<1000;++cycle) {
+    click(h.widgets[1].button);h.scene->loop();
+    assert(h.scene->active_page() == 1);
+    assert(std::string_view(lv_label_get_text(climate.icon)) == before[0]);
+    assert(std::string_view(lv_label_get_text(climate.label)) == before[1]);
+    assert(std::string_view(lv_label_get_text(climate.value)) == before[2]);
+    assert(std::string_view(lv_label_get_text(climate.unit)) == before[3]);
+    click(h.widgets[0].button);h.scene->loop();
+    assert(h.scene->active_page() == 0);
+  }
+  assert(h.arena.calls == calls && coordinator.entries.size() == registrations && objects(h.root) == count);
   h.arena.fail = false;
 }
 void panels_and_retirement() {
@@ -710,7 +749,7 @@ int main() {
   lv_display_set_buffers(display,pixels.data(),nullptr,sizeof(pixels),LV_DISPLAY_RENDER_MODE_PARTIAL);
   lv_display_set_flush_cb(display,[](lv_display_t* d,const lv_area_t*,uint8_t*) { lv_display_flush_ready(d); });
   native_dispatch_safe=[] { return lv_is_initialized() && !page_lvgl_dispatching() && !modal_callback_dispatching(); };
-  navigation_and_state();live_temperature_policy();panels_and_retirement();mode_and_feedback();source_styles();slider_input();appearance_transactions();initial_appearance();appearance_wake_without_intermediate_maintenance();remote_navigation();
+  navigation_and_state();live_temperature_policy();elastic_state_scene_transactions();panels_and_retirement();mode_and_feedback();source_styles();slider_input();appearance_transactions();initial_appearance();appearance_wake_without_intermediate_maintenance();remote_navigation();
   assert(!application_scene_navigation());
   remote_selection_order();qr_images_and_transactions();
   native_dispatch_safe=nullptr;

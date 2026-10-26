@@ -27,7 +27,22 @@ borrow its strings. The ceiling scratch is released before those resources are
 reserved. Compaction allocation or resource failure leaves the active generation
 intact. Activation allocates nothing and retires arenas with their actual sizes.
 Memory accounting includes the transient ceiling, compact and active arenas;
-this does not yet remove the full-size staging peak or HA state-cache reserve.
+this does not yet remove the full-size definition staging peak.
+
+The production HA graph starts its packed value pool at 4 KiB and grows on
+actual network demand, preserving its total 128 KiB (constrained) / 512 KiB
+limits and 32 KiB per-value limit. Channel metadata and registrations do not
+move when this separate PSRAM pool grows. Updates within its current capacity,
+navigation and activation reserve nothing. The default fixed-reserve policy
+remains available, including for local producer state.
+
+Retained shared values must fit the prepared graph before commit: a failed
+copy reservation rejects the replacement and leaves the active scene intact.
+A later network growth failure marks that channel exhausted without corrupting
+other channels; a later report can recover. Allocation failures are counted
+separately from quota overflows. Owner counters include value capacity and the
+overlap of active/staged metadata and old/new value buffers. Replacing the
+configuration releases its retired pool rather than retaining past demand.
 
 Ordinary panels cover input while retaining the underlying full bindings and
 artwork. Retired panels continue covering input until safe collection. Full

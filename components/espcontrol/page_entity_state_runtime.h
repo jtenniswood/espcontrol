@@ -41,6 +41,10 @@ struct PageEntityBudget {
   size_t channels;
   size_t state_bytes;
   size_t channel_bytes{SIZE_MAX};
+  // Default keeps the complete allocation-free state reserve. A smaller
+  // initial capacity opts into a separately owned, demand-growing value pool;
+  // state_bytes and channel_bytes remain the same hard admission ceilings.
+  size_t initial_state_bytes{SIZE_MAX};
 };
 
 enum class PageEntityStatus : uint8_t { STALE, UNKNOWN, AVAILABLE, EXHAUSTED };
@@ -58,6 +62,10 @@ struct PageEntityMemory {
   size_t active_channels{0};
   size_t active_dependencies{0};
   size_t active_state_bytes{0};
+  size_t active_state_capacity_bytes{0};
+  size_t staged_state_capacity_bytes{0};
+  size_t state_reservations{0};
+  size_t state_allocation_failures{0};
   size_t preparation_failures{0};
   size_t state_overflows{0};
   size_t stale_deliveries{0};
@@ -82,10 +90,14 @@ class PageEntityObserver {
 };
 
 // Configuration-owned state, independent of view bindings. Names, dependency
-// edges and a packed state cache occupy one fallible arena per generation.
-// Queries return borrowed views until the next delivery/reconnect/replacement;
-// consumers pull state from the event loop rather than retaining these views.
-// The source, allocator and subscriptions must outlive this owner.
+// edges and a packed state cache occupy fallible generation-owned storage.
+// Fixed mode embeds values in the metadata arena; elastic mode reserves its
+// separate value pool during preparation and can grow on network delivery.
+// Activation, navigation and updates within the current capacity allocate
+// nothing. Queries return borrowed views until the next
+// delivery/reconnect/replacement; consumers pull state from the event loop
+// rather than retaining these views. The source, allocator and subscriptions
+// must outlive this owner.
 class PageEntityStateRuntime final : public PageRuntimeResources {
  public:
   PageEntityStateRuntime(const PageDependencySource &source, PageArenaAllocator &allocator,
@@ -144,13 +156,17 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
     uint32_t *card_offsets{nullptr};
     size_t card_count{0};
     char *names{nullptr}, *values{nullptr};
+    void *value_storage{nullptr};
+    size_t values_capacity{0};
     size_t channel_count{0}, edge_count{0}, names_used{0}, values_used{0};
     uint32_t revision{0}, generation{0};
   };
   class Counter;
   class Builder;
   static void deliver(void *owner, uint32_t revision, uint32_t channel, std::string_view value);
-  void receive(Slot &slot, uint32_t revision, uint32_t channel, std::string_view value,bool copied=false);
+  bool receive(Slot &slot, uint32_t revision, uint32_t channel,
+               std::string_view value, bool copied = false);
+  bool reserve_values(Slot &slot, size_t required);
   void release_slot(int index);
   void remove_value(Slot &slot, Channel &channel);
   bool index_dependencies(Slot &slot);

@@ -103,7 +103,11 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
   const size_t names_offset = bytes;
   if (!add_size(bytes, counter.names)) return fail();
   const size_t values_offset = bytes;
-  if (!add_size(bytes, channels == 0 ? 0 : budget_.state_bytes) || bytes > UINT32_MAX) return fail();
+  const bool elastic = budget_.initial_state_bytes < budget_.state_bytes;
+  const size_t embedded_values =
+      channels == 0 || elastic ? 0 : budget_.state_bytes;
+  if (!add_size(bytes, embedded_values) || bytes > UINT32_MAX)
+    return fail();
   bytes = std::max(bytes, size_t{1});
   void *arena = allocator_.allocate(bytes);
   if (arena == nullptr) return fail();
@@ -123,9 +127,13 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
   }
   slot.names = raw + names_offset;
   slot.values = raw + values_offset;
+  slot.values_capacity = embedded_values;
   const auto current = memory();
   memory_.peak_arena_bytes = std::max(memory_.peak_arena_bytes,
       current.active_arena_bytes + current.staged_arena_bytes);
+  if (elastic && channels != 0 &&
+      !reserve_values(slot, budget_.initial_state_bytes))
+    return fail();
   Builder builder(slot, store, counter.count, counter.names, channels);
   if (!source_.enumerate(store, builder) || !builder.valid || builder.count != counter.count ||
       !index_dependencies(slot)) return fail();
@@ -143,8 +151,10 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
                 std::string_view(old.names + previous.entity_offset, previous.entity_size) ||
             std::string_view(slot.names + entry.attribute_offset, entry.attribute_size) !=
                 std::string_view(old.names + previous.attribute_offset, previous.attribute_size)) continue;
-        receive(slot, slot.revision, static_cast<uint32_t>(i),
-            {old.values + previous.value_offset, previous.value_size},true);
+        if (!receive(slot, slot.revision, static_cast<uint32_t>(i),
+                     {old.values + previous.value_offset, previous.value_size},
+                     true))
+          return fail();
         break;
       }
     }
@@ -192,6 +202,8 @@ void PageEntityStateRuntime::release_slot(int index) {
   auto &slot = slots_[index];
   slot.revision = 0;  // Disable late delivery before releasing any storage.
   subscriptions_.release(&slot);
+  if (slot.value_storage != nullptr)
+    allocator_.release(slot.value_storage, slot.values_capacity);
   if (slot.arena != nullptr) allocator_.release(slot.arena, slot.arena_size);
   slot = {};
   slot.runtime = this;
@@ -229,11 +241,12 @@ void PageEntityStateRuntime::deliver(void *owner, uint32_t revision, uint32_t ch
   auto &slot = *static_cast<Slot *>(owner);
   slot.runtime->receive(slot, revision, channel, value);
 }
-void PageEntityStateRuntime::receive(Slot &slot, uint32_t revision, uint32_t channel,
-                                    std::string_view value,bool copied) {
+bool PageEntityStateRuntime::receive(Slot &slot, uint32_t revision,
+                                     uint32_t channel, std::string_view value,
+                                     bool copied) {
   if (revision == 0 || slot.revision != revision || slot.arena == nullptr || channel >= slot.channel_count) {
     ++memory_.stale_deliveries;
-    return;
+    return false;
   }
   synchronize_connection();
   auto &entry = slot.channels[channel];
@@ -245,27 +258,115 @@ void PageEntityStateRuntime::receive(Slot &slot, uint32_t revision, uint32_t cha
   if(attribute=="current_position"||attribute=="current_tilt_position") {
     uint8_t percent;if(parse_bounded_percent(value,percent)){entry.percent=percent;entry.percent_known=true;}
   }
-  if (entry.status == PageEntityStatus::AVAILABLE && entry.value_size == value.size() &&
-      std::string_view(slot.values + entry.value_offset, entry.value_size) == value) return;
+  if (entry.status == PageEntityStatus::AVAILABLE &&
+      entry.value_size == value.size() &&
+      std::string_view(slot.values + entry.value_offset, entry.value_size) ==
+          value)
+    return true;
   if (entry.status == PageEntityStatus::AVAILABLE && entry.value_size == value.size()) {
     ++revision_;++entry.revision;
     if (!value.empty()) std::memmove(slot.values + entry.value_offset, value.data(), value.size());
-    return; // Equal-width updates need not move any neighbouring packed state.
+    return true; // Equal-width updates need not move any neighbouring packed
+                 // state.
   }
   const size_t available = budget_.state_bytes - (slot.values_used - entry.value_size);
   ++revision_;
-  remove_value(slot, entry);
   ++entry.revision;
   if (value.size() > available || value.size() > budget_.channel_bytes) {
+    remove_value(slot, entry);
     entry.status = PageEntityStatus::EXHAUSTED;
     ++memory_.state_overflows;
-    return;
+    return false;
   }
-  entry.value_offset = static_cast<uint32_t>(slot.values_used);
+  // A borrowed value may come from this same packed pool. Remember its offset
+  // before growth or compaction, rather than retaining a pointer to retired
+  // RAM.
+  const uintptr_t input = reinterpret_cast<uintptr_t>(value.data());
+  const uintptr_t base = reinterpret_cast<uintptr_t>(slot.values);
+  const bool borrowed = !value.empty() && input >= base &&
+                        input - base < slot.values_used &&
+                        value.size() <= slot.values_used - (input - base);
+  const size_t input_offset = borrowed ? input - base : 0;
+  const size_t required = slot.values_used - entry.value_size + value.size();
+  if (!reserve_values(slot, required)) {
+    remove_value(slot, entry);
+    entry.status = PageEntityStatus::EXHAUSTED;
+    return false;
+  }
+  const size_t offset =
+      entry.value_size == 0 ? slot.values_used : entry.value_offset;
+  const size_t tail = offset + entry.value_size;
+  if (value.size() <= entry.value_size) {
+    // Copy before shrinking: moving the tail left could overwrite a borrowed
+    // input.
+    if (!value.empty())
+      std::memmove(slot.values + offset,
+                   borrowed ? slot.values + input_offset : value.data(),
+                   value.size());
+    std::memmove(slot.values + offset + value.size(), slot.values + tail,
+                 slot.values_used - tail);
+  } else {
+    const size_t growth = value.size() - entry.value_size;
+    std::memmove(slot.values + tail + growth, slot.values + tail,
+                 slot.values_used - tail);
+    if (borrowed) {
+      // Input crossing the old tail boundary now has two source fragments.
+      // The left destination ends before the right source, so this order also
+      // handles views spanning multiple packed values without scratch storage.
+      const size_t prefix =
+          input_offset < tail ? std::min(value.size(), tail - input_offset) : 0;
+      if (prefix != 0)
+        std::memmove(slot.values + offset, slot.values + input_offset, prefix);
+      if (prefix != value.size())
+        std::memmove(slot.values + offset + prefix,
+                     slot.values + input_offset + prefix + growth,
+                     value.size() - prefix);
+    } else if (!value.empty()) {
+      std::memmove(slot.values + offset, value.data(), value.size());
+    }
+  }
+  for (size_t i = 0; i < slot.channel_count; ++i) {
+    auto &other = slot.channels[i];
+    if (&other != &entry && other.value_size != 0 && other.value_offset >= tail)
+      other.value_offset = static_cast<uint32_t>(
+          other.value_offset - entry.value_size + value.size());
+  }
+  entry.value_offset = static_cast<uint32_t>(offset);
   entry.value_size = static_cast<uint32_t>(value.size());
-  if (!value.empty()) std::memcpy(slot.values + slot.values_used, value.data(), value.size());
-  slot.values_used += value.size();
+  slot.values_used = required;
   entry.status = PageEntityStatus::AVAILABLE;
+  return true;
+}
+
+bool PageEntityStateRuntime::reserve_values(Slot &slot, size_t required) {
+  if (required <= slot.values_capacity)
+    return true;
+  if (required > budget_.state_bytes ||
+      budget_.initial_state_bytes >= budget_.state_bytes)
+    return false;
+  size_t capacity = std::max(slot.values_capacity, size_t{1});
+  while (capacity < required) {
+    capacity =
+        capacity > budget_.state_bytes / 2 ? budget_.state_bytes : capacity * 2;
+  }
+  auto *replacement = static_cast<char *>(allocator_.allocate(capacity));
+  if (replacement == nullptr) {
+    ++memory_.state_allocation_failures;
+    return false;
+  }
+  const auto current = memory();
+  memory_.peak_arena_bytes = std::max(
+      memory_.peak_arena_bytes,
+      current.active_arena_bytes + current.staged_arena_bytes + capacity);
+  if (slot.values_used != 0)
+    std::memcpy(replacement, slot.values, slot.values_used);
+  if (slot.value_storage != nullptr)
+    allocator_.release(slot.value_storage, slot.values_capacity);
+  slot.value_storage = replacement;
+  slot.values = replacement;
+  slot.values_capacity = capacity;
+  ++memory_.state_reservations;
+  return true;
 }
 void PageEntityStateRuntime::invalidate_disconnected_state() {
   ++revision_;
@@ -315,12 +416,21 @@ PageEntityMemory PageEntityStateRuntime::memory() const {
   auto result = memory_;
   if (active_ >= 0) {
     const auto &slot = slots_[active_];
-    result.active_arena_bytes = slot.arena_size;
+    result.active_arena_bytes =
+        slot.arena_size +
+        (slot.value_storage != nullptr ? slot.values_capacity : 0);
     result.active_channels = slot.channel_count;
     result.active_dependencies = slot.edge_count;
     result.active_state_bytes = slot.values_used;
+    result.active_state_capacity_bytes = slot.values_capacity;
   }
-  if (staged_ >= 0) result.staged_arena_bytes = slots_[staged_].arena_size;
+  if (staged_ >= 0) {
+    const auto &slot = slots_[staged_];
+    result.staged_arena_bytes =
+        slot.arena_size +
+        (slot.value_storage != nullptr ? slot.values_capacity : 0);
+    result.staged_state_capacity_bytes = slot.values_capacity;
+  }
   return result;
 }
 }  // namespace espcontrol::pages
