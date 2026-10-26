@@ -78,7 +78,10 @@ bool prepare_basic_card(const PageStore &store,CardId id,BasicCardDefinition &ou
     if(type=="action"||local) {
       if(out.icon.empty()||out.icon=="Auto")out.icon=local?"Gesture Tap":"Flash";
       if(out.label.empty()) {
-        if(out.entity.empty())out.default_label=local?"Local Action":"Action";
+        if(out.entity.empty()) {
+          out.default_label=local?"Local Action":"Action";
+          if(local)out.default_label_key="label_local_action";
+        }
         else if(local) {if(!copy(sentence_cap_text(std::string(out.entity)),out.label))return false;}
         else out.label=out.entity;
       }
@@ -163,6 +166,11 @@ bool read_basic_indicator(ConfigurationHandle handle,std::string_view entity,Pag
   }
   return on(primary.value);
 }
+const char *basic_card_default_label(const BasicCardDefinition &card,PageCardTranslate translate) {
+  if(card.default_label_key)return espcontrol_i18n_key(card.default_label_key);
+  const auto *translated=card.default_label&&translate?translate(card.default_label):nullptr;
+  return translated?translated:card.default_label;
+}
 BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHandle handle,PageEntityStateRuntime &state,int duration_components,std::string_view temperature_unit,PageCardTranslate translate) {
   BasicCardState result;
   if(card.kind==BasicCardKind::CLIMATE) {
@@ -190,8 +198,7 @@ BasicCardState read_basic_card(const BasicCardDefinition &card,ConfigurationHand
     if(friendly.status==PageEntityStatus::AVAILABLE)result.label=friendly.value.substr(0,HA_FRIENDLY_NAME_MAX_LEN);
   }
   if(result.label.empty()&&card.default_label) {
-    const auto *translated=translate?translate(card.default_label):nullptr;
-    result.label=translated?translated:card.default_label;
+    result.label=basic_card_default_label(card,translate);
   }
   const auto text_value=[&](const PageEntityValue &value,bool mapping) {
     result.unit={};
