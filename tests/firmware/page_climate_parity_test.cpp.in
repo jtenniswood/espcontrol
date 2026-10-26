@@ -2,12 +2,14 @@
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
+#include <limits>
 #include <cstring>
 #include <string>
 #include <vector>
 
 #include "button_grid_subpage_parser.h"
 #include "climate_state_logic.h"
+#include "climate_modal_lifetime.h"
 #include "climate_target_logic.h"
 #include "page_card_dependencies.h"
 #include "page_climate_card.h"
@@ -29,6 +31,7 @@ const char *display_temperature_unit_symbol(){return active_unit;}
 // @production-function climate_unavailable_value
 // @production-function climate_clean_option_token
 // @production-function climate_hvac_service_value
+// @production-function climate_tenths_from_float
 // @production-function climate_parse_tenths
 // @production-function climate_format_tenths
 // @production-function climate_target_display_precision
