@@ -7,6 +7,8 @@ savings. [Slider dispatch](pooled-slider-commands.md) and
 [media grid actions](pooled-media-commands.md) share this queue. Access, cleaning
 and other control routes still need their final main-loop dispatch integration. [Timer actions](pooled-timer-commands.md) also share the
 FIFO, with cancellation history updated after an accepted send.
+The [shared policy router](pooled-command-routing.md) composes these families
+for mixed configurations behind one native adapter.
 
 An eight-entry fixed FIFO accepts validated grid bindings and the connection
 captured with input. Admission allocates nothing and retains no configuration
