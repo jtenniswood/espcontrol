@@ -11,6 +11,21 @@ target_compile_options(page_modal_admission_test PRIVATE -Wall -Wextra -Werror -
 target_include_directories(page_modal_admission_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_modal_admission_test COMMAND page_modal_admission_test)
 
+add_executable(page_native_scene_state_test page_native_scene_state_test.cpp
+  ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_forecast_runtime.cpp
+  ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp
+  ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_percent_slider_runtime.cpp
+  ../../components/espcontrol/page_number_slider_runtime.cpp ../../components/espcontrol/page_light_temperature_runtime.cpp
+  ../../components/espcontrol/page_timer_runtime.cpp ../../components/espcontrol/page_cover_toggle_runtime.cpp
+  ../../components/espcontrol/page_access_state_runtime.cpp ../../components/espcontrol/page_calendar_runtime.cpp
+  ../../components/espcontrol/page_timezone_runtime.cpp ../../components/espcontrol/page_alarm_state_runtime.cpp
+  ../../components/espcontrol/page_alarm_ack_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_native_scene_state_test PRIVATE cxx_std_17)
+target_compile_options(page_native_scene_state_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_native_scene_state_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_native_scene_state_test COMMAND page_native_scene_state_test)
+
 add_executable(page_confirmation_runtime_test page_confirmation_runtime_test.cpp
   ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_store.cpp
   ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp)
@@ -1505,6 +1520,52 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   # All optional LVGL executables share this library, including the modal test,
   # because the pinned label translation unit is routed through its wrappers.
   link_libraries(page_label_refresh_test_support)
+
+  set(NATIVE_SCENE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_native_scene_test.cpp)
+  set(NATIVE_SCENE_STYLE_INPUTS)
+  foreach(family light_cover fan_control option_select media_volume media_control weather
+      confirmation alarm expanded_image wifi_qr network_status)
+    list(APPEND NATIVE_SCENE_STYLE_INPUTS ../../components/espcontrol/page_${family}_modal.h)
+  endforeach()
+  add_custom_command(OUTPUT ${NATIVE_SCENE_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_native_scene_test.py
+      --output ${NATIVE_SCENE_SOURCE}
+    DEPENDS generate_native_scene_test.py page_native_scene_test.cpp.in
+      ../../components/espcontrol/page_native_scene.h
+      ../../components/espcontrol/page_native_device_styles.h
+      ../../components/espcontrol/button_grid_display.h
+      ../../components/espcontrol/button_grid_grid.h
+      ../../components/espcontrol/button_grid_layout.h
+      ../../components/espcontrol/button_grid_style.h
+      ../../components/espcontrol/button_grid_climate_control_driver.h
+      ../../components/espcontrol/icons.h
+      generate_media_lifecycle_integration.py ${NATIVE_SCENE_STYLE_INPUTS}
+    VERBATIM)
+  add_executable(page_native_scene_test ${NATIVE_SCENE_SOURCE}
+    ${ESPCONTROL_LVGL_SOURCE_DIR}/src/libs/qrcode/qrcodegen.c
+    ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_store_runtime.cpp
+    ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+    ../../components/espcontrol/page_entity_state_runtime.cpp
+    ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_renderer_layout.cpp
+    ../../components/espcontrol/page_climate_card.cpp
+    ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_forecast_runtime.cpp
+    ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp
+    ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_percent_slider_runtime.cpp
+    ../../components/espcontrol/page_number_slider_runtime.cpp ../../components/espcontrol/page_light_temperature_runtime.cpp
+    ../../components/espcontrol/page_timer_runtime.cpp ../../components/espcontrol/page_cover_toggle_runtime.cpp
+    ../../components/espcontrol/page_access_state_runtime.cpp ../../components/espcontrol/page_calendar_runtime.cpp
+    ../../components/espcontrol/page_timezone_runtime.cpp ../../components/espcontrol/page_alarm_state_runtime.cpp
+    ../../components/espcontrol/page_alarm_ack_runtime.cpp ../../components/espcontrol/page_alarm_commands.cpp
+    ../../components/espcontrol/page_alarm_presentation.cpp)
+  target_compile_features(page_native_scene_test PRIVATE cxx_std_17)
+  target_compile_options(page_native_scene_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG
+    $<$<COMPILE_LANGUAGE:C>:-Wno-unused-function>)
+  target_compile_definitions(page_native_scene_test PRIVATE USE_LVGL LV_USE_QRCODE=1 ESPCONTROL_REAL_LVGL_TEST)
+  target_include_directories(page_native_scene_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+    stubs/owned_artwork stubs ../../components/espcontrol ../../components/artwork_image)
+  target_link_libraries(page_native_scene_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_native_scene_test COMMAND page_native_scene_test)
+  set_tests_properties(page_native_scene_test PROPERTIES TIMEOUT 180)
 
   add_executable(page_native_card_commands_test page_native_card_commands_test.cpp)
   target_compile_features(page_native_card_commands_test PRIVATE cxx_std_17)

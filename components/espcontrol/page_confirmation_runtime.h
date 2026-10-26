@@ -136,6 +136,11 @@ class PageConfirmationRuntime final : public PageRuntimeResources {
     record_ = {};
     if (opening) port_.cancel_request(opening);
   }
+  // A temporary display/wake guard cancels unsent intent but keeps the demanded
+  // panel bound. A later fresh press can confirm without reopening that panel.
+  void cancel_queued() {
+    if (record_.queued) { record_.queued = false; ++cancelled_; }
+  }
   PageConfirmationResult loop() {
     if (dispatching_ || !port_.ready()) return PageConfirmationResult::NONE;
     if (pending_.modal.opening && !port_.pending_request(pending_.modal.opening) &&

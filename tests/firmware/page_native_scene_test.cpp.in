@@ -1,0 +1,532 @@
+#include "native_scene_test_support.h"
+#include <cmath>
+#include <tuple>
+#include "theme_palette.h"
+#include "button_grid_modal_layout.h"
+#include "lvgl.h"
+#include "application_scene_runtime.h"
+#include "page_alarm_commands.h"
+#include "page_alarm_presentation.h"
+#include "page_artwork_cover_view.h"
+#include "page_artwork_expanded_image_view.h"
+#include "page_artwork_image_tile_view.h"
+#include "page_card_control_router.h"
+#include "page_grid_input.h"
+#include "page_lvgl_qr_encoder.h"
+#include "page_pooled_qr_tile_view.h"
+#include "page_slider_command_policy.h"
+#include "page_timer_command_policy.h"
+#include "page_confirmation_runtime.h"
+
+extern "C" {
+void lv_mem_init() {}
+void lv_mem_deinit() {}
+lv_mem_pool_t lv_mem_add_pool(void*,size_t) { return nullptr; }
+void lv_mem_remove_pool(lv_mem_pool_t) {}
+void* lv_malloc_core(size_t n) { return std::malloc(n); }
+void lv_free_core(void* p) { std::free(p); }
+void* lv_realloc_core(void* p,size_t n) { return std::realloc(p,n); }
+void lv_mem_monitor_core(lv_mem_monitor_t* p) { *p={}; }
+lv_result_t lv_mem_test_core() { return LV_RESULT_OK; }
+}
+static bool locked=false, api=true;
+static size_t sends=0;
+static std::string sent_service,sent_entity;
+bool ha_api_available() { return api; }
+namespace espcontrol {
+struct Pin { bool locked() const { return ::locked; } };
+Pin& screensaver_pin() { static Pin pin; return pin; }
+}
+namespace esphome::api {
+struct HomeassistantActionRequest { std::string service; };
+}
+bool ha_send_entity_action(const std::string& entity,const char* service) {
+  ++sends; sent_entity=entity; sent_service=service; return online && api;
+}
+bool ha_send_entity_action(const std::string& entity,const char* service,const char*,const char*) {
+  return ha_send_entity_action(entity,service);
+}
+void send_toggle_action(const std::string& e) { ha_send_entity_action(e,"homeassistant.toggle"); }
+void send_turn_on_action(const std::string& e) { ha_send_entity_action(e,"homeassistant.turn_on"); }
+void send_turn_off_action(const std::string& e) { ha_send_entity_action(e,"homeassistant.turn_off"); }
+void send_action_card_action(const ParsedCfg& p) { ha_send_entity_action(p.entity,p.sensor.c_str()); }
+void send_local_action(const std::string&) { ++sends; }
+void send_internal_relay_action(const ParsedCfg&) { ++sends; }
+void send_webhook_action(const ParsedCfg&) { ++sends; }
+bool send_slider_action(const std::string& e,int,bool) { return ha_send_entity_action(e,"percent"); }
+bool send_numeric_slider_action(const std::string& e,double,const espcontrol::number_slider::Metadata&) { return ha_send_entity_action(e,"number"); }
+bool send_media_playback_action(const std::string& e,const std::string&) { return ha_send_entity_action(e,"media"); }
+bool send_media_playlist_action(const ParsedCfg& p) { return ha_send_entity_action(p.entity,"playlist"); }
+bool send_media_seek_action(const std::string& e,int,float) { return ha_send_entity_action(e,"seek"); }
+bool send_cover_command_action(const ParsedCfg& p,bool = false) { return ha_send_entity_action(p.entity,"cover"); }
+std::function<void()>& force_screensaver_action() { static std::function<void()> action; return action; }
+void screen_lock_activate(bool) { locked=true; }
+bool ha_action_begin(esphome::api::HomeassistantActionRequest& r,const char* name,bool,size_t) { r.service=name; return api; }
+void ha_action_add_data(esphome::api::HomeassistantActionRequest&,const char*,const char*) {}
+bool ha_action_send(esphome::api::HomeassistantActionRequest& r) { ++sends; sent_service=r.service; return api; }
+#include "page_native_card_commands.h"
+
+// Only modal UI and hardware/HA endpoints are doubled. The unmodified complete
+// scene below uses real state owners, configuration arenas, all control policies,
+// queue/native card adapter, renderer/widgets, artwork runtimes/views and QR.
+constexpr uint32_t DEFAULT_ACCENT_COLOR=0xFF8C00;
+const char* find_icon(const char*) { return "X"; }
+// @production-style-helpers
+// @production-style-types
+namespace espcontrol::pages {
+class PageNetworkStatusSource {};
+template<class Environment> struct TestStyle {
+  void* owner{nullptr};
+  bool(*resolve)(void*,PageModalToken,const ParsedCfg&,Environment&){nullptr};
+  void(*numeric_action_sent)(void*,PageModalToken,float){nullptr};
+  void(*state_confirmed)(void*,PageModalToken,bool){nullptr};
+  void(*covered)(void*,bool){nullptr};
+};
+struct PageNativeModalStyles {
+  TestStyle<espcontrol::cards::ClimateControlDriverEnvironment> climate;
+  TestStyle<PageControlModalEnvironment> light,cover;
+  TestStyle<PageFanControlModalEnvironment> fan,fan_preset;
+  TestStyle<PageOptionSelectModalEnvironment> options;
+  TestStyle<PageMediaVolumeModalEnvironment> volume;
+  TestStyle<PageMediaControlModalEnvironment> media;
+  PageWeatherModalStyle weather;
+  TestStyle<PageConfirmationModalEnvironment> confirmation;
+  TestStyle<PageAlarmModalEnvironment> alarm;
+  TestStyle<PageExpandedImageModalEnvironment> image;
+  TestStyle<PageWifiQrModalEnvironment> wifi;
+  struct { void* owner{nullptr}; bool(*resolve)(void*,PageLocalModalOrigin,PageModalToken,PageNetworkStatusEnvironment&){nullptr}; void(*settings)(void*,bool){nullptr}; } network;
+};
+struct PageNativeModalSources {
+  PageArenaAllocator& allocator; PageEntityStateRuntime& graph; PageForecastRuntime& forecasts;
+  PageAlarmStateRuntime& alarms; PageAlarmAckRuntime& acknowledgements; PageQrEncoder& qr;
+  PageExpandedImageView& images; PageNetworkStatusSource& network; uint32_t(*now)(); size_t slots;
+};
+struct PageNativeModalOrigins {
+  void* owner; bool(*grid)(void*,PageBindingToken); bool(*local)(void*,PageLocalModalOrigin);
+  bool(*interactive)(void*);
+};
+class PageNativeModalBank : public PageRuntimeResources {
+ public:
+  inline static PageNativeModalBank* instance=nullptr;
+  bool held_retirement{false};
+  struct Port : PageModalPort {
+    PageNativeModalBank& owner;
+    struct Context { ParsedCfg config; PageModalToken token; bool retired{false}; };
+    Context* context{nullptr};
+    PageLocalModalOrigin local;
+    explicit Port(PageNativeModalBank& owner):owner(owner) {}
+    bool valid_origin(PageBindingToken t) const override { return owner.origins.grid(owner.origins.owner,t); }
+    ControlModalKind kind(const PageStore& store,ConfigurationHandle card) const override {
+      const auto* row=store.card(card); if (!row) return ControlModalKind::NONE;
+      const auto type=store.field(*row,CardField::TYPE);
+      if (type=="climate" || type=="climate_control") return ControlModalKind::CLIMATE;
+      if (type=="image") return ControlModalKind::IMAGE_CARD;
+      if (type=="wifi_qr_card") return ControlModalKind::WIFI_QR;
+      if (type=="media") return ControlModalKind::MEDIA_CONTROL;
+      if (page_confirmation_policy(store,card).enabled()) return ControlModalKind::SWITCH_CONFIRMATION;
+      return ControlModalKind::NONE;
+    }
+    ControlModalKind local_kind(ControlModalKind t) const override { return t==ControlModalKind::NETWORK_STATUS?t:ControlModalKind::NONE; }
+    bool valid_local_origin(PageLocalModalOrigin t,ControlModalKind) const override { return owner.origins.local(owner.origins.owner,t); }
+    bool ready() const override { return page_native_command_ready() && !(context && context->retired && owner.held_retirement); }
+    bool connected() const override { return online; }
+    uint32_t connection_generation() const override { return connection; }
+    bool connected_for(ControlModalKind t) const override { return t==ControlModalKind::NETWORK_STATUS || online; }
+    uint32_t connection_generation_for(ControlModalKind t) const override { return t==ControlModalKind::NETWORK_STATUS?0:connection; }
+    void* create(const PageStore& store,ConfigurationHandle card,PageModalToken token) override {
+      assert(!context); context=new Context; context->token=token;
+      const auto& row=*store.card(card);
+      auto& c=context->config;
+      c.entity=store.field(row,CardField::ENTITY); c.type=store.field(row,CardField::TYPE);
+      c.sensor=store.field(row,CardField::SENSOR); c.options=store.field(row,CardField::OPTIONS);
+      c.unit=store.field(row,CardField::UNIT);
+      return context;
+    }
+    void* create_local(const PageStore&,PageLocalModalOrigin origin,PageModalToken token) override {
+      assert(!context); local=origin; context=new Context; context->token=token; return context;
+    }
+    bool initialize(void*,PageModalToken t) override {
+      const auto& c=context->config; const auto& s=owner.styles;
+      if (t.kind==ControlModalKind::CLIMATE) { espcontrol::cards::ClimateControlDriverEnvironment e; return s.climate.resolve(s.climate.owner,t,c,e); }
+      if (t.kind==ControlModalKind::MEDIA_CONTROL) { PageMediaControlModalEnvironment e; return s.media.resolve(s.media.owner,t,c,e) && e.media; }
+      if (t.kind==ControlModalKind::IMAGE_CARD) { PageExpandedImageModalEnvironment e; if (s.image.covered) s.image.covered(s.image.owner,true); return s.image.resolve(s.image.owner,t,c,e); }
+      if (t.kind==ControlModalKind::WIFI_QR) { PageWifiQrModalEnvironment e; return s.wifi.resolve(s.wifi.owner,t,c,e); }
+      if (t.kind==ControlModalKind::SWITCH_CONFIRMATION) { PageConfirmationModalEnvironment e; return s.confirmation.resolve(s.confirmation.owner,t,c,e) && owner.confirm.bind(t,c); }
+      if (t.kind==ControlModalKind::NETWORK_STATUS) { PageNetworkStatusEnvironment e; s.network.settings(s.network.owner,true); return s.network.resolve(s.network.owner,local,t,e); }
+      return false;
+    }
+    bool visible(void*) const override { return context && !context->retired; }
+    void update(void*,PageModalToken) override {}
+    ControlModalDismissPolicy dismiss_policy(void*) const override { return ControlModalDismissPolicy::DISMISS; }
+    void retire(void*,PageModalClose) override {
+      context->retired=true; owner.confirm.cancel(context->token);
+      if(context->token.kind==ControlModalKind::NETWORK_STATUS) owner.styles.network.settings(owner.styles.network.owner,false);
+      if(context->token.kind==ControlModalKind::IMAGE_CARD) owner.styles.image.covered(owner.styles.image.owner,false);
+    }
+    void destroy(void*) override { assert(context->retired); delete context; context=nullptr; }
+  } port;
+  struct ConfirmPort : PageConfirmationPort {
+    PageNativeModalBank& owner;
+    explicit ConfirmPort(PageNativeModalBank& owner):owner(owner) {}
+    bool valid(PageBindingToken t) const override { return owner.origins.grid(owner.origins.owner,t); }
+    bool valid(PageModalToken t) const override { return owner.runtime_.valid(t); }
+    bool connected() const override { return online; }
+    bool service_available() const override { return api; }
+    bool ready() const override { return page_native_command_ready(); }
+    uint64_t request(PageBindingToken t) override { return owner.runtime_.request(t)?owner.runtime_.pending_request():0; }
+    bool pending_request(uint64_t t) const override { return t && t==owner.runtime_.pending_request(); }
+    void cancel_request(uint64_t t) override { owner.runtime_.cancel_request(t); }
+    void close(PageModalToken t) override { owner.runtime_.notify_closed(t); }
+    bool send(PageConfirmationAction,const ParsedCfg& c) override { return ha_send_entity_action(c.entity,"confirmed"); }
+  } confirm_port;
+  struct AlarmCommandPort : PageAlarmCommandPort {
+    bool ready() const override { return true; } bool connected() const override { return online; }
+    bool service_available() const override { return api; } bool valid(PageBindingToken) const override { return true; }
+    bool valid(PageModalToken) const override { return true; } bool selected_pin(PageModalToken,alarm::Action) const override { return false; }
+    bool send(std::string_view e,const char* service,std::string_view) override { return ha_send_entity_action(std::string(e),service); }
+  } alarm_port;
+  PageConfirmationRuntime confirm;
+  PageAlarmCommands alarm;
+  PageNativeModalOrigins origins;
+  PageNativeModalStyles styles;
+  PageModalRuntime runtime_;
+  PageRuntimeResourcesGroup<3> resources;
+  bool initialized=false;
+  PageNativeModalBank(PageNativeModalSources source,PageNativeModalStyles style,PageNativeModalOrigins origin)
+      :port(*this),confirm_port(*this),confirm(source.graph,confirm_port),
+       alarm(source.graph,source.alarms,source.acknowledgements,alarm_port),origins(origin),styles(style),
+       runtime_(port,1,origin.owner,origin.interactive),resources({{&runtime_,&confirm,&alarm}}) { instance=this; }
+  ~PageNativeModalBank() override { instance=nullptr; }
+  bool initialize(bool retired) { initialized=retired; return initialized; }
+  bool maintenance_ready() const { return initialized && port.ready(); }
+  bool prepare(const PageStore& store) override { return resources.prepare(store); }
+  void discard_prepared() override { resources.discard_prepared(); }
+  void activate_prepared(const PageStore& store) override { resources.activate_prepared(store); }
+  void retire_active() override { resources.retire_active(); }
+  void loop() { if (!runtime_.input_allowed()) { confirm.cancel_queued(); alarm.cancel(); } confirm.loop(); alarm.loop(); runtime_.loop(); }
+  void stop() { runtime_.stop(); confirm.cancel(); alarm.cancel(); }
+  PageModalRuntime& runtime() { return runtime_; }
+  const PageModalRuntime& runtime() const { return runtime_; }
+  PageConfirmationRuntime& confirmations() { return confirm; }
+  PageAlarmCommands& alarm_commands() { return alarm; }
+};
+}
+// @production-scene
+// @production-device-styles
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+struct Arena : PageArenaAllocator {
+  size_t live{0}; bool fail{false};
+  void* allocate(size_t n) override { if(fail) return nullptr; ++live; return std::malloc(n); }
+  void release(void* p,size_t) override { assert(live); --live; std::free(p); }
+  ~Arena() { assert(!live); }
+};
+struct Styles : PageNativeSceneStyles {
+  mutable PageId page{NO_PAGE}; mutable CardId card{NO_CARD};
+  const char* icon(std::string_view,std::string_view) const override { return "X"; }
+#define TEST_STYLE(E) bool resolve(const PageStore&,PageId p,PageModalToken t,const ParsedCfg&,E&) const override { page=p; card=t.card; return true; }
+  TEST_STYLE(espcontrol::cards::ClimateControlDriverEnvironment)
+  TEST_STYLE(PageControlModalEnvironment)
+  TEST_STYLE(PageFanControlModalEnvironment)
+  TEST_STYLE(PageOptionSelectModalEnvironment)
+  TEST_STYLE(PageMediaVolumeModalEnvironment)
+  TEST_STYLE(PageMediaControlModalEnvironment)
+  TEST_STYLE(PageWeatherModalStyle)
+  TEST_STYLE(PageConfirmationModalEnvironment)
+  TEST_STYLE(PageAlarmModalEnvironment)
+  TEST_STYLE(PageExpandedImageModalEnvironment)
+  TEST_STYLE(PageWifiQrModalEnvironment)
+#undef TEST_STYLE
+  bool resolve(const PageStore&,PageLocalModalOrigin p,PageModalToken,const PageNetworkStatusEnvironment&) const { page=p.page; return true; }
+  bool resolve(const PageStore&,PageLocalModalOrigin p,PageModalToken,PageNetworkStatusEnvironment&) const override { page=p.page; return true; }
+};
+struct Platform : PageNativeScenePlatform {
+  bool shown{true},input{true},critical_active{false},settings{false}; size_t chrome_updates{0}; PageId page{NO_PAGE};
+  bool grid_active() const override { return shown; }
+  bool input_allowed() const override { return input; }
+  std::string_view base_url() const override { return "https://ha.example"; }
+  uint32_t endpoint_generation() const override { return 1; }
+  bool request_allowed(uint16_t,uint16_t,bool) const override { return true; }
+  uint16_t maximum_source_side(bool) const override { return 256; }
+  bool retain_cache(uint16_t,uint16_t) const override { return false; }
+  uint32_t cache_ttl_ms() const override { return 0; }
+  bool cache_skips_open_refresh() const override { return false; }
+  void critical(bool on) override { critical_active=on; }
+  void alarm_failure(PageAlarmFailure) override {}
+  void chrome(const PageStore&,PageId p,bool active) override { ++chrome_updates; page=p; settings=active; }
+};
+struct Document {
+  std::array<uint8_t,16384> bytes{}; size_t size{0};
+  explicit Document(const DeviceUiLimits& profile, const char* last="number.room;Level;Auto;Auto;;;slider;;") {
+    PanelConfigWriter writer(bytes.data(),bytes.size()); assert(writer.begin()==PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(profile.device_profile),std::strlen(profile.device_profile))==PanelConfigStatus::OK);
+    const std::string rows[]={
+      "switch.one;Toggle;Auto;Auto;;;;;",
+      ";Rooms;Auto;Auto;;;subpage;;",
+      "climate.root;Climate;Auto;Auto;;;climate;;",
+      "media_player.room;Speaker;Auto;Auto;control_modal;;media;;number_display=volume",
+      "image.front;Image;Auto;Auto;;;image;;image_label,image_icon",
+      ";QR 1;Auto;Auto;;;wifi_qr_card;;ssid64=R3Vlc3Q,security=open",
+      ";QR 2;Auto;Auto;;;wifi_qr_card;;ssid64=R3Vlc3Q,security=open",
+      ";QR 3;Auto;Auto;;;wifi_qr_card;;ssid64=R3Vlc3Q,security=open",
+      last};
+    for(size_t i=0;i<9;++i) assert(writer.append_button(i+1,reinterpret_cast<const uint8_t*>(rows[i].data()),rows[i].size())==PanelConfigStatus::OK);
+    const std::string child="~B,1,2,3|,switch.child,Child toggle,Auto,Auto,,,,|HC,climate.child,Child climate,Auto,Auto,,,,|S,local_value,Local,Auto,Auto,local,,1,";
+    assert(writer.append_subpage(2,reinterpret_cast<const uint8_t*>(child.data()),child.size())==PanelConfigStatus::OK);
+    const std::string order="1,2,3,4,5,6,7,8,9";
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>("button_order"),12,reinterpret_cast<const uint8_t*>(order.data()),order.size())==PanelConfigStatus::OK);
+    assert(writer.finish(&size)==PanelConfigStatus::OK);
+  }
+};
+void click(lv_obj_t* obj) {
+  lv_obj_send_event(obj,LV_EVENT_PRESSED,nullptr);
+  lv_obj_send_event(obj,LV_EVENT_RELEASED,nullptr);
+  lv_obj_send_event(obj,LV_EVENT_CLICKED,nullptr);
+}
+size_t objects(lv_obj_t* obj) { size_t n=1; for(uint32_t i=0;i<lv_obj_get_child_count(obj);++i)n+=objects(lv_obj_get_child(obj,i)); return n; }
+struct Harness {
+  Arena arena; Styles styles; Platform platform; PageNetworkStatusSource network;
+  lv_obj_t* root;
+  std::array<PageBasicWidgets,9> widgets{};
+  std::array<lv_coord_t,4> columns{LV_GRID_FR(1),LV_GRID_FR(1),LV_GRID_FR(1),LV_GRID_TEMPLATE_LAST};
+  std::array<lv_coord_t,4> rows=columns;
+  PageBasicTheme theme;
+  esphome::artwork_image::ArtworkImage a,b,modal;
+  esphome::artwork_image::ArtworkImage* images[2]{&a,&b};
+  using Scene=PageNativeScene<9,2>;
+  alignas(Scene) std::array<uint8_t,sizeof(Scene)> memory{};
+  Scene* scene{nullptr};
+  Harness() {
+    root=lv_obj_create(lv_screen_active()); lv_obj_set_size(root,480,480);
+    lv_obj_set_grid_dsc_array(root,columns.data(),rows.data());
+    for(auto& w:widgets) {
+      w.button=lv_button_create(root);w.icon=lv_label_create(w.button);w.label=lv_label_create(w.button);
+      w.sensor_container=lv_obj_create(w.button);w.value=lv_label_create(w.sensor_container);w.unit=lv_label_create(w.sensor_container);
+      w.fill=lv_obj_create(w.button);w.forecast=lv_obj_create(w.button);w.slider=lv_slider_create(w.button);
+    }
+    theme.sensor_font=theme.large_sensor_font=theme.media_title_font=theme.icon_font=theme.label_font=
+      theme.media_control_title_font=theme.media_control_artist_font=theme.cover_title_font=theme.cover_artist_font=
+      theme.option_select_font=&lv_font_montserrat_14;
+    scene=new(memory.data()) Scene(DEVICE_UI_PROFILES[8],arena,{{128,16384,{1024,512,65536},{128,128,8192}},65536},
+      widgets,{9,3},theme,page_timezone_resolver(),{},nullptr,styles,platform,network);
+    assert(!scene->ready() && !scene->initialize(images,2,&modal,false));
+    assert(scene->initialize(images,2,&modal,true) && scene->initialize(images,2,&modal,true));
+  }
+  ~Harness() { scene->~Scene(); lv_obj_delete(root); assert(coordinator.entries.empty()); }
+  void apply(const Document& doc,uint32_t gen=17) {
+    assert(scene->prepare(PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
+    assert(scene->activate_prepared(gen,PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
+    scene->loop(); scene->loop(); scene->loop();
+  }
+  void media() {
+    coordinator.report("media_player.room","","playing");
+    coordinator.report("media_player.room","volume_level","0.2");
+    coordinator.report("media_player.room","supported_features","4");
+  }
+};
+void navigation_and_state() {
+  Document doc(DEVICE_UI_PROFILES[8]); Harness h; h.apply(doc);
+  assert(h.scene->active_page()==0 && h.platform.page==0);
+  const auto count=objects(h.root);
+  assert(h.scene->valid(h.scene->binding(0)));
+  coordinator.report("switch.one","","off"); coordinator.report("switch.child","","on");
+  h.scene->loop(); const auto sent=sends;
+  click(h.widgets[0].button); assert(sends==sent && h.scene->memory().commands.pending==1);
+  h.scene->loop();
+  assert(sends==sent+1 && sent_entity=="switch.one");
+  for(int i=0;i<1000;++i) {
+    click(h.widgets[1].button); h.scene->loop();
+    assert(h.scene->active_page()==1 && objects(h.root)==count);
+    click(h.widgets[0].button); h.scene->loop();
+    assert(h.scene->active_page()==0 && objects(h.root)==count);
+  }
+  busy=true; const auto epoch=h.scene->chrome_origin(); click(h.widgets[1].button);
+  busy=false; h.scene->loop();
+  // Native producer dispatch does not process UI/configuration maintenance.
+  assert(h.scene->active_page()==0);
+  assert(h.scene->request_settings(epoch));
+  PageNativeModalBank::instance->runtime().dismiss(); h.scene->loop();
+}
+void panels_and_retirement() {
+  Document doc(DEVICE_UI_PROFILES[8]); Harness h; h.apply(doc);
+  const auto count=objects(h.root);
+  click(h.widgets[2].button); h.scene->loop();
+  auto& bank=*PageNativeModalBank::instance;
+  const auto token=bank.runtime().token();
+  assert(token.kind==ControlModalKind::CLIMATE && h.styles.page==0 && h.styles.card==2);
+  const auto sent=sends; click(h.widgets[0].button); h.scene->loop(); assert(sends==sent && h.scene->active_page()==0);
+  bank.held_retirement=true; bank.runtime().notify_closed(token);
+  assert(!bank.maintenance_ready() && h.scene->maintenance_ready());
+  coordinator.report("switch.child","","on"); h.scene->loop();
+  click(h.widgets[1].button); h.scene->loop(); assert(h.scene->active_page()==0);
+  bank.held_retirement=false; h.scene->loop();
+  click(h.widgets[1].button); h.scene->loop(); assert(h.scene->active_page()==1);
+  click(h.widgets[0].button); h.scene->loop(); assert(h.scene->active_page()==0);
+  const auto child=static_cast<CardId>(h.scene->active().page(1)->first_card+1);
+  assert(h.scene->request_card({17,child},ControlModalKind::CLIMATE));h.scene->loop();
+  assert(h.styles.page==1 && h.styles.card==child && h.scene->active_page()==0);
+  bank.runtime().dismiss(); h.scene->loop();
+  assert(objects(h.root)==count);
+}
+void mode_and_feedback() {
+  Document doc(DEVICE_UI_PROFILES[8]); Harness h; h.apply(doc); h.media();h.scene->loop();
+  const auto sent=sends;
+  click(h.widgets[0].button); h.platform.shown=false;h.scene->loop();
+  assert(sends==sent && !h.scene->valid({17,1,0,0,0,false}));
+  h.platform.shown=true;h.scene->loop();
+  click(h.widgets[3].button);h.scene->loop();
+  auto& bank=*PageNativeModalBank::instance;const auto token=bank.runtime().token();
+  assert(token.kind==ControlModalKind::MEDIA_CONTROL);
+  bank.styles.media.numeric_action_sent(bank.styles.media.owner,token,45);
+  h.scene->loop();
+  assert(std::string(lv_label_get_text(h.widgets[3].value))=="45");
+  h.platform.input=false;
+  assert(bank.runtime().valid(token) && !bank.runtime().interactive(token));
+  h.scene->loop();
+  h.platform.input=true;
+  assert(bank.runtime().interactive(token));
+  locked=true;h.scene->loop();assert(!bank.runtime().valid(token));
+  locked=false;h.scene->loop();
+  bank.styles.media.numeric_action_sent(bank.styles.media.owner,token,70);h.scene->loop();
+  assert(std::string(lv_label_get_text(h.widgets[3].value))!="70");
+}
+void source_styles() {
+  Document doc(DEVICE_UI_PROFILES[8]); Harness h; h.apply(doc);
+  const auto& store=h.scene->active();
+  lv_font_t root_font=lv_font_montserrat_14,child_font=lv_font_montserrat_14;
+  PageNativeDeviceStyleProfile profile;
+  profile.root={&root_font,&root_font,&root_font};
+  profile.child={&child_font,&child_font,&child_font};
+  profile.display.fonts.icon=profile.display.fonts.sensor=&lv_font_montserrat_14;
+  profile.display.color.red_percent=50;
+  profile.display.width.main_percent=110;profile.display.width.volume_percent=120;
+  profile.grid=h.root;profile.slots=9;profile.columns=3;profile.radius=18;profile.primary_color="884422";
+  PageNativeDeviceStyles styles(profile);
+  const auto child=static_cast<CardId>(store.page(1)->first_card+1);
+  PageModalToken token{17,1,child,ControlModalKind::CLIMATE};
+  ParsedCfg config;
+  espcontrol::cards::ClimateControlDriverEnvironment climate;
+  assert(styles.resolve(store,1,token,config,climate));
+  assert(climate.label_font==&child_font && climate.unit_font==&child_font &&
+    climate.option_title_font==&child_font && climate.width_compensation_percent==120 &&
+    climate.accent_color==0x444422);
+  // Rebinding the visible bank cannot change a hidden source's font fallbacks.
+  lv_obj_set_style_text_font(h.widgets[0].label,LV_FONT_DEFAULT,LV_PART_MAIN);
+  assert(styles.resolve(store,1,token,config,climate) && climate.label_font==&child_font);
+  assert(!styles.resolve(store,0,token,config,climate));
+  auto stale=token;--stale.configuration;
+  assert(!styles.resolve(store,1,stale,config,climate));
+  config.options="card_off_color=224466,card_active_color=custom,card_on_color=884422";
+  PageOptionSelectModalEnvironment options;
+  assert(styles.resolve(store,1,token,config,options));
+  assert(options.secondary_color==0x114466 && options.accent_color==0x444422 &&
+    options.label_font==&child_font && options.width_compensation_percent==110);
+  PageConfirmationModalEnvironment confirmation;
+  assert(styles.resolve(store,1,token,config,confirmation) && confirmation.caption=="Child climate");
+  config.label="temporary";
+  assert(confirmation.caption=="Child climate");
+  PageNetworkStatusEnvironment network;
+  assert(styles.resolve(store,{17,1,1},{17,2,NO_CARD,ControlModalKind::NETWORK_STATUS},network));
+  assert(network.label_font==&child_font && network.columns==3 && network.rows==3 && network.radius==18);
+  // All other family resolvers use the same immutable source identity.
+  PageControlModalEnvironment control; PageFanControlModalEnvironment fan;
+  PageMediaVolumeModalEnvironment volume; PageMediaControlModalEnvironment media;
+  PageWeatherModalStyle weather; PageAlarmModalEnvironment alarm;
+  PageExpandedImageModalEnvironment image; PageWifiQrModalEnvironment wifi;
+  assert(styles.resolve(store,1,token,config,control) && styles.resolve(store,1,token,config,fan) &&
+    styles.resolve(store,1,token,config,volume) && styles.resolve(store,1,token,config,media) &&
+    styles.resolve(store,1,token,config,weather) && styles.resolve(store,1,token,config,alarm) &&
+    styles.resolve(store,1,token,config,image) && styles.resolve(store,1,token,config,wifi));
+  assert(control.label_font==&child_font && fan.label_font==&child_font && volume.label_font==&child_font &&
+    media.label_font==&child_font && weather.font==&child_font && alarm.label_font==&child_font &&
+    image.label_font==&child_font && wifi.label_font==&child_font);
+}
+void slider_input() {
+  Document doc(DEVICE_UI_PROFILES[8],"fan.room;Fan;Auto;Auto;;;fan_speed;;");
+  Harness h;h.apply(doc);
+  coordinator.report("fan.room","","on");
+  coordinator.report("fan.room","percentage","35");h.scene->loop();
+  const auto sent=sends;
+  click(h.widgets[8].button);
+  assert(sends==sent && h.scene->memory().commands.pending==1);
+  h.scene->loop();assert(sends==sent+1 && sent_service=="homeassistant.toggle");
+  auto* slider=h.widgets[8].slider;
+  lv_obj_send_event(slider,LV_EVENT_PRESSED,nullptr);
+  lv_slider_set_value(slider,60,LV_ANIM_OFF);
+  lv_obj_send_event(slider,LV_EVENT_VALUE_CHANGED,nullptr);
+  lv_obj_send_event(slider,LV_EVENT_RELEASED,nullptr);
+  lv_obj_send_event(slider,LV_EVENT_CLICKED,nullptr);
+  h.scene->loop();assert(sends==sent+2 && sent_service=="percent");
+  lv_obj_send_event(h.widgets[8].button,LV_EVENT_PRESSED,nullptr);
+  h.platform.input=false;h.scene->loop();h.platform.input=true;h.scene->loop();
+  lv_obj_send_event(h.widgets[8].button,LV_EVENT_RELEASED,nullptr);
+  lv_obj_send_event(h.widgets[8].button,LV_EVENT_CLICKED,nullptr);
+  h.scene->loop();assert(sends==sent+2);
+}
+void appearance_transactions() {
+  Document doc(DEVICE_UI_PROFILES[8]);Harness h;h.apply(doc);
+  coordinator.report("switch.child","","on");h.scene->loop();
+  click(h.widgets[1].button);h.scene->loop();
+  assert(h.scene->active_page()==1);
+  const auto old=h.scene->binding(1);
+  const auto registrations=coordinator.entries.size(),count=objects(h.root);
+  PageBasicTheme theme=h.theme;theme.surface=0xEEEEEE;++theme.revision;
+  h.arena.fail=true;
+  assert(!h.scene->reconfigure({6,2},theme));h.arena.fail=false;
+  assert(h.scene->valid(old) && h.scene->active_page()==1);
+  assert(h.scene->reconfigure({6,2},theme));h.scene->loop();
+  assert(!h.scene->valid(old) && h.scene->active_page()==1 && objects(h.root)==count &&
+    coordinator.entries.size()==registrations);
+  // No new HA report is needed after rebuilding just the view.
+  assert(lv_obj_has_state(h.widgets[1].button,LV_STATE_CHECKED));
+  assert(h.scene->prepare(PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
+  assert(!h.scene->reconfigure({9,3},h.theme)); // A queued save owns the prepared bank.
+  h.scene->discard_prepared();
+  h.platform.shown=false;h.scene->loop();
+  assert(h.scene->reconfigure({9,3},h.theme));h.scene->loop();
+  assert(!h.scene->valid(h.scene->binding(1)));
+  h.platform.shown=true;h.scene->loop();assert(h.scene->active_page()==1);
+}
+void qr_images_and_transactions() {
+  Document doc(DEVICE_UI_PROFILES[8]);Harness h;h.apply(doc);
+  // Three QR tiles coexist with a two-slot image pool. QR owns visible-slot leases.
+  const auto count=objects(h.root);
+  coordinator.report("image.front","","now");
+  coordinator.report("image.front","entity_picture","/api/image/picture");
+  tick+=5000;h.scene->loop();h.scene->loop();
+  assert(h.scene->memory().image_leases==1);
+  for(size_t i=5;i<8;++i) {
+    const auto qr=h.scene->qr_snapshot(h.scene->binding(i));
+    assert(qr.ready && !qr.failed && qr.asset);
+  }
+  assert(h.a.request || h.b.request);
+  auto& image=h.a.request?h.a:h.b;
+  image.ready=true;image.reply();h.scene->loop();
+  lv_refr_now(lv_display_get_default());
+  const auto registrations=coordinator.entries.size();
+  h.arena.fail=true;
+  assert(!h.scene->prepare(PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
+  h.arena.fail=false;
+  assert(h.scene->active().generation()==17 && h.scene->active_page()==0 && coordinator.entries.size()==registrations);
+  h.apply(doc,18);
+  assert(h.scene->active().generation()==18 && coordinator.entries.size()==registrations && objects(h.root)==count);
+  const auto origin=h.scene->chrome_origin();
+  assert(h.scene->request_settings(origin));h.scene->loop();assert(h.platform.settings);
+  PageNativeModalBank::instance->runtime().dismiss();h.scene->loop();assert(!h.platform.settings);
+  click(h.widgets[2].button);h.scene->loop();
+  const auto token=PageNativeModalBank::instance->runtime().token();
+  { ModalCallbackDispatchScope callback; h.scene->stop(); assert(!h.scene->ready() && !PageNativeModalBank::instance->runtime().valid(token)); }
+  assert(!h.scene->prepare(PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
+}
+int main() {
+  lv_init();auto* display=lv_display_create(480,480);assert(display);
+  lv_timer_pause(lv_display_get_refr_timer(display));
+  static std::array<uint16_t,480*32> pixels{};
+  lv_display_set_buffers(display,pixels.data(),nullptr,sizeof(pixels),LV_DISPLAY_RENDER_MODE_PARTIAL);
+  lv_display_set_flush_cb(display,[](lv_display_t* d,const lv_area_t*,uint8_t*) { lv_display_flush_ready(d); });
+  native_dispatch_safe=[] { return lv_is_initialized() && !page_lvgl_dispatching() && !modal_callback_dispatching(); };
+  navigation_and_state();panels_and_retirement();mode_and_feedback();source_styles();slider_input();appearance_transactions();qr_images_and_transactions();
+  native_dispatch_safe=nullptr;
+  lv_display_delete(display);lv_deinit();
+}

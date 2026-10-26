@@ -55,6 +55,7 @@ struct PageNativeModalOrigins {
   void* owner{nullptr};
   bool (*grid)(void*, PageBindingToken){nullptr};
   bool (*local)(void*, PageLocalModalOrigin){nullptr};
+  bool (*interactive)(void*){nullptr};
 };
 
 // Borrowed sources/styles/validators belong to the application scene. No card
@@ -107,7 +108,7 @@ class PageNativeModalBank final : public PageRuntimeResources {
                   {ControlModalKind::WIFI_QR, &wifi_},
                   {ControlModalKind::NETWORK_STATUS, &network_}}},
                 origins.owner, origins.grid),
-        runtime_(router_) {}
+        runtime_(router_, 1, origins.owner, origins.interactive) {}
   PageNativeModalBank(const PageNativeModalBank&) = delete;
   PageNativeModalBank& operator=(const PageNativeModalBank&) = delete;
 
@@ -132,7 +133,7 @@ class PageNativeModalBank final : public PageRuntimeResources {
   }
   bool prepare(const PageStore& store) override {
     discard_prepared();
-    if (!maintenance_ready() || !runtime_.prepare(store) || !confirmation_.prepare(store) ||
+    if (!ready() || running_ || !page_native_command_ready() || !runtime_.prepare(store) || !confirmation_.prepare(store) ||
         !alarm_commands_.prepare(store)) {
       discard_prepared();
       return false;
@@ -164,6 +165,11 @@ class PageNativeModalBank final : public PageRuntimeResources {
   void loop() {
     if (!initialized_ || running_ || !page_native_command_ready() || !router_.ready()) return;
     running_ = true;
+    if (!runtime_.input_allowed()) {
+      confirmation_.cancel_queued();
+      alarm_commands_.cancel();
+      guest_.cancel_queued();
+    }
     // Commands run before modal collection. Accepted effects can use the source
     // binding retained under an overlay; a closed/replaced token cancels first.
     if (!stopped_) confirmation_.loop();
@@ -180,6 +186,7 @@ class PageNativeModalBank final : public PageRuntimeResources {
     guest_.retire();
   }
   PageModalRuntime& runtime() { return runtime_; }
+  const PageModalRuntime& runtime() const { return runtime_; }
   PageConfirmationRuntime& confirmations() { return confirmation_; }
   PageAlarmCommands& alarm_commands() { return alarm_commands_; }
 

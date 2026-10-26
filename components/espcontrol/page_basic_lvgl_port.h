@@ -100,6 +100,7 @@ struct PageBasicActions {
   void (*screen_lock)(void*, PageBindingToken, bool screensaver_on_lock){nullptr};
   // Optional pooled device route. Admission only; never send from this callback.
   void (*device)(void*, PageBindingToken, uint32_t pressed_connection){nullptr};
+  void (*slider_toggle)(void*, PageBindingToken, uint32_t pressed_connection){nullptr};
 };
 inline const lv_style_transition_dsc_t *page_basic_push_transition() {
   static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
@@ -175,6 +176,12 @@ class PageBasicLvglPort final:public PageRendererPort {
   PageBasicLvglPort(const PageBasicLvglPort &)=delete;
   PageBasicLvglPort &operator=(const PageBasicLvglPort &)=delete;
   PageViewGeometry geometry(const PageStore &)const override{return geometry_;}
+  // Scene-owned, safe preparation only. The active renderer keeps its compiled
+  // layout until activation; callers restore this value if preparation fails.
+  void geometry(PageViewGeometry value) { geometry_ = value; }
+  // One main-loop layout pass after a complete bank bind. Image/QR target
+  // sizes must be available before the first frame polls its source owners.
+  void settle_layout() { lv_obj_update_layout(widgets_[0].button); }
   // Call once on the LVGL/main loop before the first configuration transaction.
   // Preinstall every style/event property used by this port, including both
   // state selectors; subsequent page switches update existing properties.
@@ -2725,6 +2732,10 @@ class PageBasicLvglPort final:public PageRendererPort {
     }
     if (timer_card(*shell)) {
       port->timer_click(*shell, origin);
+      return;
+    }
+    if ((percent_card(*shell) || temperature_card(*shell)) && port->actions_.slider_toggle) {
+      port->actions_.slider_toggle(port->actions_.owner, origin, shell->button_press_connection);
       return;
     }
     if(definition.kind==BasicCardKind::FOLDER) {

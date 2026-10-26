@@ -624,7 +624,20 @@ void bounded_cycles_failures_and_exhaustion() {
   exhausted.dismiss();exhausted.loop();assert(!exhausted.request_card({17,0}));
 }
 }
+void temporary_input_guard() {
+  Fixture fixture; Port port; bool allowed=true;
+  PageModalRuntime runtime(port,1,&allowed,[](void* p) { return *static_cast<bool*>(p); });
+  port.runtime=&runtime;activate(runtime,fixture.store);
+  assert(runtime.request(origin()));runtime.loop();const auto token=runtime.token();
+  assert(runtime.valid(token) && runtime.interactive(token));
+  allowed=false;
+  assert(runtime.valid(token) && !runtime.interactive(token));
+  runtime.loop();assert(runtime.valid(token));
+  allowed=true;assert(runtime.interactive(token));
+  runtime.stop();assert(!runtime.input_allowed() && !runtime.valid(token));runtime.loop();
+}
 int main() {
+  temporary_input_guard();
   terminal_stop_lifetime();
   deferred_close_edit_guard();
   local_settings_origin();
