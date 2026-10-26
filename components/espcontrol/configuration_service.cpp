@@ -331,6 +331,47 @@ ServiceLoadResult ConfigurationService::refresh_legacy_shadow_unlocked(
           legacy.document_size};
 }
 
+ServiceLoadResult
+ConfigurationService::synchronize_legacy_runtime(uint8_t *output,
+                                                 size_t output_capacity) {
+  std::lock_guard<std::mutex> lock(operation_mutex_);
+  const auto loaded = load_unlocked(output, output_capacity);
+  if (!loaded.ok())
+    return loaded;
+  // The ordinary scratch slot is available after load has copied the durable
+  // document into the caller's boot buffer. No extra document allocation on
+  // the device, and no borrowing the HTTP task's request buffer.
+  std::vector<uint8_t> fallback;
+  const auto capacity = store_.maximum_payload_size();
+  auto *merged = encoded_buffer(capacity, &fallback);
+  if (!merged)
+    return {ServiceStatus::STORE_FAILED, StoreStatus::WRITE_FAILED};
+  const auto output_begin = reinterpret_cast<uintptr_t>(output);
+  const auto merged_begin = reinterpret_cast<uintptr_t>(merged);
+  if (output_capacity &&
+      ((output_begin <= merged_begin &&
+        merged_begin - output_begin < output_capacity) ||
+       (merged_begin < output_begin && output_begin - merged_begin < capacity)))
+    return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT};
+  bool changed = false;
+  const auto legacy =
+      legacy_.merge(loaded.document_version, output, loaded.document_size,
+                    merged, capacity, &changed);
+  if (legacy.status != LegacyStatus::OK || legacy.document_size > capacity)
+    return {ServiceStatus::LEGACY_READ_FAILED, loaded.store_status,
+            loaded.document_version, loaded.generation, loaded.document_size};
+  if (!changed)
+    return loaded;
+  if (legacy.document_size > output_capacity)
+    return {ServiceStatus::BUFFER_TOO_SMALL, loaded.store_status,
+            legacy.document_version, loaded.generation, legacy.document_size};
+  std::memcpy(output, merged, legacy.document_size);
+  const auto saved =
+      save_unlocked(legacy.document_version, output, legacy.document_size);
+  return {saved.status, saved.store_status, saved.document_version,
+          saved.generation, saved.document_size};
+}
+
 ServiceSaveResult ConfigurationService::save(uint16_t document_version,
                                              const uint8_t *document,
                                              size_t document_size) {

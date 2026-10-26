@@ -42,6 +42,14 @@ class LegacyConfigurationAdapter {
   virtual ~LegacyConfigurationAdapter() = default;
 
   virtual LegacyLoadResult load(uint8_t *output, size_t output_capacity) = 0;
+  // Optional compatibility edit projection. A false changed result means that
+  // an appearance refresh need not rebuild the native scene or write storage.
+  virtual LegacyLoadResult merge(uint16_t, const uint8_t *, size_t, uint8_t *,
+                                 size_t, bool *changed) {
+    if (changed)
+      *changed = false;
+    return {LegacyStatus::READ_FAILED};
+  }
   virtual bool mirror(uint16_t document_version, const uint8_t *document,
                       size_t document_size) = 0;
 };
@@ -149,11 +157,15 @@ class ConfigurationService {
   // and its corresponding live apply.
   ServiceLoadResult load_and_apply_runtime(uint8_t *output,
                                            size_t output_capacity);
-  // During compatibility releases the text entities remain authoritative.
-  // Refresh the native shadow on boot so editor changes made through the
-  // legacy API survive a later native-only firmware upgrade.
+  // Legacy-only shadow utility. Selected native scenes restore the durable
+  // document at boot; live compatibility edits use the prepared path below.
   ServiceLoadResult refresh_legacy_shadow(uint8_t *output,
                                           size_t output_capacity);
+  // Merge debounced compatibility edits into the latest durable document.
+  // output must be separate from the service scratch buffer. Unchanged
+  // projections do not rebuild the scene or create a new storage generation.
+  ServiceLoadResult synchronize_legacy_runtime(uint8_t *output,
+                                               size_t output_capacity);
   ServiceSaveResult save(uint16_t document_version, const uint8_t *document,
                          size_t document_size);
   ServiceSaveResult save_if_generation(uint32_t expected_generation,

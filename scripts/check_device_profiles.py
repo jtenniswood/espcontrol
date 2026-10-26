@@ -326,10 +326,6 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
             assert f"cfg.num_slots = portrait ? {portrait_slots} : {profile['slots']};" in sensors, (
                 f"{slug}: sensors.yaml missing portrait slot capacity"
             )
-            for slot in range(portrait_slots, profile["slots"]):
-                assert f"lv_obj_add_flag(slots[{slot}].btn, LV_OBJ_FLAG_HIDDEN);" in sensors, (
-                    f"{slug}: sensors.yaml must hide portrait-only unavailable slot {slot + 1}"
-                )
         test_native_panel_config_bindings(slug, profile, device)
         label_lines = profile["web"]["btn"]["labelLines"]
         label_lines_tall = profile["web"]["btn"]["labelLinesDouble"]
@@ -518,20 +514,14 @@ def test_square_s3_reapplies_clock_bar_after_screen_changes() -> None:
     slug = "guition-esp32-s3-4848s040"
     sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
     device = (ROOT / "devices" / slug / "device" / "device.yaml").read_text(encoding="utf-8")
-    assert (
-        "grid_rebuild_all(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, nullptr, nullptr, nullptr, nullptr,\n"
-        "            id(button_order).state,\n"
-        "            id(button_on_color).state,\n"
-        "            id(main_page)->obj);\n"
-        "      - script.execute: clock_bar_apply"
-    ) in sensors, "S3 grid refresh must rebuild safely and reapply the fixed clock bar"
-    assert (
-        "grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,\n"
-        "              id(button_order).state,\n"
-        "              id(button_on_color).state,\n"
-        "              id(main_page)->obj);\n"
-        "        - script.execute: clock_bar_apply"
-    ) in sensors, "S3 boot setup must reapply the fixed clock bar after subpages are created"
+    scripts, boot = sensors.split("\nesphome:", 1)
+    refresh = scripts.split("  - id: apply_button_grid", 1)[1].split("  - id: refresh_subpage_grid", 1)[0]
+    assert refresh.index("native->refresh(") < refresh.index("script.execute: clock_bar_apply"), (
+        "S3 view refresh must reapply the fixed clock bar"
+    )
+    assert boot.index("page_native_device_start(") < boot.index("script.execute: clock_bar_apply"), (
+        "S3 startup must reapply the fixed clock bar after native scene creation"
+    )
     assert (
         "- script.execute: apply_screen_rotation\n"
         "        - script.execute: clock_bar_apply"
@@ -542,23 +532,20 @@ def test_square_s3_reapplies_clock_bar_after_screen_changes() -> None:
     ) in device, "S3 rotation changes must reapply the fixed clock bar"
 
 
-def test_rotation_refresh_rebuilds_subpages() -> None:
-    slugs = (
-        "guition-esp32-p4-jc1060p470",
-        "guition-esp32-p4-jc1060p470-v2",
-        "guition-esp32-p4-jc4880p443",
-        "guition-esp32-p4-jc8012p4a1",
-        "guition-esp32-p4-jc8012p4a1-v2",
-        "esp32-p4-86",
-        "guition-esp32-s3-4848s040",
-    )
-    for slug in slugs:
+def test_rotation_refresh_preserves_native_scene() -> None:
+    for device in generate_device_slots.slot_devices():
+        slug = device["slug"]
         sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
-        refresh_script = sensors.split("  - id: refresh_button_grid", 1)[1].split(
+        refresh_script = sensors.split("  - id: apply_button_grid", 1)[1].split(
             "  - id: refresh_subpage_grid", 1)[0]
-        assert "grid_rebuild_all(slots, cfg," in refresh_script, (
-            f"{slug}: rotation refresh must rebuild secondary cards safely"
+        assert "native->refresh(cfg, id(button_on_color).state)" in refresh_script, (
+            f"{slug}: rotation must refresh the native view without rebuilding subscriptions"
         )
+        for eager_call in ("grid_phase1(", "grid_phase2(", "grid_rebuild_all(", "grid_refresh_layout("):
+            assert eager_call not in sensors, f"{slug}: startup/refresh must not enter the legacy renderer"
+        boot = sensors.split("\nesphome:", 1)[1]
+        assert boot.count("page_native_device_start(") == 1, f"{slug}: exactly one native owner"
+        assert "lv_obj_add_flag(slots[" not in sensors, f"{slug}: geometry changes must be transactional"
 
 
 def test_restored_display_sensors_bind_without_reboot() -> None:
@@ -641,8 +628,8 @@ def test_subpage_config_changes_schedule_live_refresh() -> None:
             f"{sensors_path}: missing secondary-page refresh script"
         )
         refresh_script = sensors.split("  - id: refresh_subpage_grid", 1)[1].split("\nesphome:", 1)[0]
-        assert "grid_rebuild_all(slots, cfg," in refresh_script, (
-            f"{sensors_path}: secondary-page refresh must rebuild card subscriptions"
+        assert "script.execute: apply_button_grid" in refresh_script, (
+            f"{sensors_path}: secondary-page refresh must use the shared native refresh path"
         )
 
     grid_runtime = (ROOT / "components/espcontrol/button_grid_grid.h").read_text(encoding="utf-8")
@@ -1057,7 +1044,7 @@ def main() -> int:
     test_upgrades_do_not_reset_saved_panel_config()
     test_p4_crash_restart_preserves_safe_mode_counter()
     test_square_s3_reapplies_clock_bar_after_screen_changes()
-    test_rotation_refresh_rebuilds_subpages()
+    test_rotation_refresh_preserves_native_scene()
     test_restored_display_sensors_bind_without_reboot()
     test_seven_inch_width_compensation_rotates_with_screen()
     test_subpage_config_changes_schedule_live_refresh()

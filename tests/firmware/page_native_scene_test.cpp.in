@@ -1,10 +1,12 @@
 #include "native_scene_test_support.h"
 #include <cmath>
 #include <tuple>
+#include <optional>
 #include "theme_palette.h"
 #include "button_grid_modal_layout.h"
 #include "lvgl.h"
 #include "application_scene_runtime.h"
+#include "page_scene_selection.h"
 #include "page_alarm_commands.h"
 #include "page_alarm_presentation.h"
 #include "page_artwork_cover_view.h"
@@ -213,6 +215,10 @@ class PageNativeModalBank : public PageRuntimeResources {
 }
 // @production-scene
 // @production-device-styles
+struct BtnSlot {
+  lv_obj_t *btn,*icon_lbl,*text_lbl,*sensor_container,*sensor_lbl,*unit_lbl;
+};
+// @production-widget-bank
 using namespace espcontrol;
 using namespace espcontrol::pages;
 using namespace espcontrol::configuration;
@@ -258,7 +264,8 @@ struct Platform : PageNativeScenePlatform {
 };
 struct Document {
   std::array<uint8_t,16384> bytes{}; size_t size{0};
-  explicit Document(const DeviceUiLimits& profile, const char* last="number.room;Level;Auto;Auto;;;slider;;") {
+  explicit Document(const DeviceUiLimits& profile, const char* last="number.room;Level;Auto;Auto;;;slider;;",
+                    const char* root_order="1,2,3,4,5,6,7,8,9") {
     PanelConfigWriter writer(bytes.data(),bytes.size()); assert(writer.begin()==PanelConfigStatus::OK);
     assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(profile.device_profile),std::strlen(profile.device_profile))==PanelConfigStatus::OK);
     const std::string rows[]={
@@ -274,7 +281,7 @@ struct Document {
     for(size_t i=0;i<9;++i) assert(writer.append_button(i+1,reinterpret_cast<const uint8_t*>(rows[i].data()),rows[i].size())==PanelConfigStatus::OK);
     const std::string child="~B,1,2,3|,switch.child,Child toggle,Auto,Auto,,,,|HC,climate.child,Child climate,Auto,Auto,,,,|S,local_value,Local,Auto,Auto,local,,1,";
     assert(writer.append_subpage(2,reinterpret_cast<const uint8_t*>(child.data()),child.size())==PanelConfigStatus::OK);
-    const std::string order="1,2,3,4,5,6,7,8,9";
+    const std::string order=root_order;
     assert(writer.append_setting(reinterpret_cast<const uint8_t*>("button_order"),12,reinterpret_cast<const uint8_t*>(order.data()),order.size())==PanelConfigStatus::OK);
     assert(writer.finish(&size)==PanelConfigStatus::OK);
   }
@@ -289,6 +296,7 @@ struct Harness {
   Arena arena; Styles styles; Platform platform; PageNetworkStatusSource network;
   lv_obj_t* root;
   std::array<PageBasicWidgets,9> widgets{};
+  std::optional<PageNativeWidgetBank<9>> bank;
   std::array<lv_coord_t,4> columns{LV_GRID_FR(1),LV_GRID_FR(1),LV_GRID_FR(1),LV_GRID_TEMPLATE_LAST};
   std::array<lv_coord_t,4> rows=columns;
   PageBasicTheme theme;
@@ -300,11 +308,14 @@ struct Harness {
   Harness() {
     root=lv_obj_create(lv_screen_active()); lv_obj_set_size(root,480,480);
     lv_obj_set_grid_dsc_array(root,columns.data(),rows.data());
-    for(auto& w:widgets) {
+    std::array<BtnSlot,9> source{};
+    for(size_t i=0;i<widgets.size();++i) {
+      auto& w=widgets[i];
       w.button=lv_button_create(root);w.icon=lv_label_create(w.button);w.label=lv_label_create(w.button);
       w.sensor_container=lv_obj_create(w.button);w.value=lv_label_create(w.sensor_container);w.unit=lv_label_create(w.sensor_container);
-      w.fill=lv_obj_create(w.button);w.forecast=lv_obj_create(w.button);w.slider=lv_slider_create(w.button);
+      source[i]={w.button,w.icon,w.label,w.sensor_container,w.value,w.unit};
     }
+    bank.emplace(source);widgets=bank->widgets;
     theme.sensor_font=theme.large_sensor_font=theme.media_title_font=theme.icon_font=theme.label_font=
       theme.media_control_title_font=theme.media_control_artist_font=theme.cover_title_font=theme.cover_artist_font=
       theme.option_select_font=&lv_font_montserrat_14;
@@ -313,7 +324,7 @@ struct Harness {
     assert(!scene->ready() && !scene->initialize(images,2,&modal,false));
     assert(scene->initialize(images,2,&modal,true) && scene->initialize(images,2,&modal,true));
   }
-  ~Harness() { scene->~Scene(); lv_obj_delete(root); assert(coordinator.entries.empty()); }
+  ~Harness() { scene->~Scene(); bank.reset(); lv_obj_delete(root); assert(coordinator.entries.empty()); }
   void apply(const Document& doc,uint32_t gen=17) {
     assert(scene->prepare(PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
     assert(scene->activate_prepared(gen,PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
@@ -473,8 +484,15 @@ void slider_input() {
   lv_obj_send_event(h.widgets[8].button,LV_EVENT_RELEASED,nullptr);
   lv_obj_send_event(h.widgets[8].button,LV_EVENT_CLICKED,nullptr);
   h.scene->loop();assert(sends==sent+2);
+  h.platform.input=false;
+  lv_obj_send_event(h.widgets[8].button,LV_EVENT_PRESSED,nullptr);
+  h.platform.input=true;
+  lv_obj_send_event(h.widgets[8].button,LV_EVENT_RELEASED,nullptr);
+  lv_obj_send_event(h.widgets[8].button,LV_EVENT_CLICKED,nullptr);
+  h.scene->loop();assert(sends==sent+2);
 }
 void appearance_transactions() {
+  lv_font_t child_font=lv_font_montserrat_14;
   Document doc(DEVICE_UI_PROFILES[8]);Harness h;h.apply(doc);
   coordinator.report("switch.child","","on");h.scene->loop();
   click(h.widgets[1].button);h.scene->loop();
@@ -482,6 +500,10 @@ void appearance_transactions() {
   const auto old=h.scene->binding(1);
   const auto registrations=coordinator.entries.size(),count=objects(h.root);
   PageBasicTheme theme=h.theme;theme.surface=0xEEEEEE;++theme.revision;
+  theme.device_width_profile=true;theme.icon_scale_x=256;theme.icon_scale_y=280;
+  theme.label_scale_x=256;theme.label_scale_y=290;
+  theme.label_lines=2;theme.label_lines_tall=3;
+  theme.child_label_font=theme.child_unit_font=&child_font;
   h.arena.fail=true;
   assert(!h.scene->reconfigure({6,2},theme));h.arena.fail=false;
   assert(h.scene->valid(old) && h.scene->active_page()==1);
@@ -490,6 +512,9 @@ void appearance_transactions() {
     coordinator.entries.size()==registrations);
   // No new HA report is needed after rebuilding just the view.
   assert(lv_obj_has_state(h.widgets[1].button,LV_STATE_CHECKED));
+  assert(lv_obj_get_style_transform_scale_y(h.widgets[1].icon,LV_PART_MAIN)==280 &&
+      lv_obj_get_style_transform_scale_y(h.widgets[1].sensor_container,LV_PART_MAIN)==290 &&
+      lv_obj_get_style_text_font(h.widgets[1].label,LV_PART_MAIN)==&child_font);
   assert(h.scene->prepare(PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
   assert(!h.scene->reconfigure({9,3},h.theme)); // A queued save owns the prepared bank.
   h.scene->discard_prepared();
@@ -497,6 +522,84 @@ void appearance_transactions() {
   assert(h.scene->reconfigure({9,3},h.theme));h.scene->loop();
   assert(!h.scene->valid(h.scene->binding(1)));
   h.platform.shown=true;h.scene->loop();assert(h.scene->active_page()==1);
+}
+void initial_appearance() {
+  Document doc(DEVICE_UI_PROFILES[8]);Harness h;
+  assert(!h.scene->reconfigure({0,0},h.theme));
+  assert(h.scene->reconfigure({6,2},h.theme));
+  h.platform.shown=false;h.scene->loop();h.apply(doc);
+  for(size_t i=0;i<9;++i) assert(!h.scene->valid(h.scene->binding(i)));
+  assert(h.scene->navigation_ready() && h.scene->grid_configured());
+  h.platform.shown=true;h.scene->loop();
+  for(size_t i=0;i<9;++i) assert(h.scene->valid(h.scene->binding(i))==(i<6));
+}
+void remote_navigation() {
+  Document doc(DEVICE_UI_PROFILES[8]);Harness h;
+  auto& navigation=static_cast<ApplicationSceneNavigation&>(*h.scene);
+  application_scene_navigation()=&navigation;
+  assert(!navigation.navigation_ready() && !navigation.home());
+  h.apply(doc);
+  const auto count=objects(h.root);
+  assert(navigation.navigation_ready() && navigation.subpage_slot()==0);
+  assert(navigation.can_open_subpage(" rOoMs ") && !navigation.can_open_subpage("missing"));
+  assert(navigation.can_open_modal("climate.child") && !navigation.can_open_modal("switch.one"));
+  auto& modal=PageNativeModalBank::instance->runtime();
+  assert(!modal.memory().active_contexts && objects(h.root)==count);
+  assert(navigation.open_modal(" climate.child "));h.scene->loop();
+  assert(h.styles.page==1 && h.scene->active_page()==0);
+  const auto opening=modal.token();
+  navigation.close_modal();assert(modal.valid(opening) && !modal.interactive(opening));
+  h.scene->loop();assert(!modal.memory().active_contexts);
+  assert(navigation.open_subpage("Rooms"));h.scene->loop();
+  assert(h.scene->active_page()==1 && navigation.subpage_slot()==2 && navigation.subpage_label()=="Rooms");
+  assert(navigation.open_settings());h.scene->loop();assert(h.platform.settings);
+  navigation.close_settings();h.scene->loop();assert(!h.platform.settings && h.scene->active_page()==1);
+  h.platform.shown=false;h.scene->loop();
+  assert(navigation.home());h.scene->loop();assert(h.scene->active_page()==1);
+  h.platform.shown=true;h.scene->loop();assert(h.scene->active_page()==0);
+  coordinator.report("switch.one","","off");h.scene->loop();
+  const auto sent=sends;
+  assert(navigation.navigate("Toggle"));assert(sends==sent);
+  h.scene->loop();assert(sends==sent);
+  h.scene->loop();assert(sends==sent+1 && sent_entity=="switch.one");
+  assert(navigation.navigate("slot:2"));h.scene->loop();assert(h.scene->active_page()==1);
+  assert(navigation.close_subpage());h.scene->loop();assert(h.scene->active_page()==0);
+  assert(navigation.open_subpage("Rooms") && navigation.close_subpage());
+  h.scene->loop();assert(h.scene->active_page()==0);
+  assert(!navigation.navigate("slot:0") && !navigation.navigate("slot:999999999999") &&
+      !navigation.navigate("missing"));
+  locked=true;
+  assert(!navigation.can_open_modal("climate.child") && !navigation.can_open_subpage("Rooms") &&
+      !navigation.navigate("Toggle"));
+  locked=false;
+  assert(navigation.open_settings());navigation.close_settings();h.scene->loop();
+  assert(!h.platform.settings && !modal.memory().active_contexts);
+  assert(navigation.open_modal("climate.child"));h.scene->loop();
+  navigation.close_settings();h.scene->loop();assert(modal.token().kind==ControlModalKind::CLIMATE);
+  navigation.close_modal();h.scene->loop();
+  assert(navigation.navigate("Toggle"));h.apply(doc,18);h.scene->loop();
+  assert(sends==sent+1 && objects(h.root)==count);
+}
+void remote_selection_order() {
+  {
+    Document doc(DEVICE_UI_PROFILES[8],"climate.child;Root duplicate;Auto;Auto;;;climate;;");
+    Harness h;h.apply(doc);
+    assert(h.scene->open_modal("climate.child"));h.scene->loop();
+    assert(h.styles.page==0 && h.styles.card==8);
+  }
+  {
+    Document doc(DEVICE_UI_PROFILES[8],"number.room;Level;Auto;Auto;;;slider;;","1,3,4,5,6,7,8,9");
+    Harness h;h.apply(doc);
+    assert(!h.scene->can_open_subpage("Rooms") && !h.scene->can_open_modal("climate.child"));
+  }
+  {
+    Document doc(DEVICE_UI_PROFILES[8],"switch.nine;Toggle;Auto;Auto;;;;;","9,2,3,4,5,6,7,8,1");
+    Harness h;h.apply(doc);
+    coordinator.report("switch.one","","off");coordinator.report("switch.nine","","off");h.scene->loop();
+    const auto sent=sends;
+    assert(h.scene->navigate("toggle"));h.scene->loop();h.scene->loop();
+    assert(sends==sent+1 && sent_entity=="switch.nine");
+  }
 }
 void qr_images_and_transactions() {
   Document doc(DEVICE_UI_PROFILES[8]);Harness h;h.apply(doc);
@@ -514,6 +617,9 @@ void qr_images_and_transactions() {
   auto& image=h.a.request?h.a:h.b;
   image.ready=true;image.reply();h.scene->loop();
   lv_refr_now(lv_display_get_default());
+  h.platform.shown=false;h.scene->loop();
+  assert(h.scene->memory().image_leases==0);
+  h.platform.shown=true;h.scene->loop();h.scene->loop();
   const auto registrations=coordinator.entries.size();
   h.arena.fail=true;
   assert(!h.scene->prepare(PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
@@ -536,7 +642,9 @@ int main() {
   lv_display_set_buffers(display,pixels.data(),nullptr,sizeof(pixels),LV_DISPLAY_RENDER_MODE_PARTIAL);
   lv_display_set_flush_cb(display,[](lv_display_t* d,const lv_area_t*,uint8_t*) { lv_display_flush_ready(d); });
   native_dispatch_safe=[] { return lv_is_initialized() && !page_lvgl_dispatching() && !modal_callback_dispatching(); };
-  navigation_and_state();panels_and_retirement();mode_and_feedback();source_styles();slider_input();appearance_transactions();qr_images_and_transactions();
+  navigation_and_state();panels_and_retirement();mode_and_feedback();source_styles();slider_input();appearance_transactions();initial_appearance();remote_navigation();
+  assert(!application_scene_navigation());
+  remote_selection_order();qr_images_and_transactions();
   native_dispatch_safe=nullptr;
   lv_display_delete(display);lv_deinit();
 }

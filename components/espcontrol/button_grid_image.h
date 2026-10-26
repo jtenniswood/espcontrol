@@ -1,5 +1,7 @@
 #pragma once
 
+#include "page_scene_selection.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 #ifdef ESP_PLATFORM
@@ -3142,6 +3144,11 @@ inline void image_card_refresh_due(std::function<bool()> page_visible = nullptr)
 
 // The ESP32-S3 releases dashboard image memory while its camera screensaver owns the display.
 inline void image_card_suspend_pipeline() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto *scene = espcontrol::application_scene_navigation())
+      scene->display_takeover();
+    return;
+  }
   if (!image_card_constrained_memory_profile()) return;
   if (image_card_pipeline_suspended()) return;
   image_card_pipeline_suspended_state() = true;
@@ -3192,6 +3199,8 @@ inline void image_card_suspend_pipeline() {
 }
 
 inline void image_card_resume_pipeline() {
+  if (espcontrol::pooled_application_selected())
+    return;
   if (!image_card_pipeline_suspended()) return;
   image_card_pipeline_suspended_state() = false;
   ImageCardCtx *contexts = image_card_contexts();

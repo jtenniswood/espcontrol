@@ -41,6 +41,11 @@ class PanelConfigTextBindings {
   bool configured() const;
   bool write_document(uint8_t *output, size_t output_capacity,
                       size_t *document_size) const;
+  // Replace only fields represented by these text entities. Preserve settings
+  // and records that this compatibility projection does not own.
+  bool merge_document(const uint8_t *native, size_t native_size,
+                      uint8_t *output, size_t output_capacity,
+                      size_t *document_size) const;
   bool persist_document(const uint8_t *document, size_t document_size);
   bool publish_document(const uint8_t *document, size_t document_size);
 
@@ -50,6 +55,10 @@ class PanelConfigTextBindings {
     std::array<PanelConfigTextValue *, MAX_SUBPAGE_CHUNKS> subpage_chunks{};
   };
 
+  bool owns_record(const PanelConfigRecord &record) const;
+  bool write_document(const uint8_t *native, size_t native_size,
+                      uint8_t *output, size_t output_capacity,
+                      size_t *document_size) const;
   bool apply_document(const uint8_t *document, size_t document_size,
                       bool persist);
   bool write_value(PanelConfigTextValue *target, const char *value,

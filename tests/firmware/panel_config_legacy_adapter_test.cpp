@@ -360,10 +360,96 @@ bool legacy_unicode_capacity_is_checked_before_writing() {
   return true;
 }
 
+bool compatibility_merge_preserves_native_only_fields_and_order_independence() {
+  FakeText order("1"), button("native button"), child("old child");
+  PanelConfigTextBindings bindings;
+  bindings.set_device_profile("profile");
+  bindings.set_button_order(&order);
+  std::array<PanelConfigTextValue *,
+             PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS>
+      chunks{};
+  chunks[0] = &child;
+  bindings.set_button(1, &button, chunks);
+  PanelConfigLegacyAdapter adapter(bindings);
+  std::array<uint8_t, 4096> native{}, output{};
+  PanelConfigWriter writer(native.data(), native.size());
+  const auto bytes = [](const char *value) {
+    return reinterpret_cast<const uint8_t *>(value);
+  };
+  if (writer.begin() != PanelConfigStatus::OK ||
+      writer.append_setting(bytes("unknown_setting"), 15, bytes("keep me"),
+                            7) != PanelConfigStatus::OK ||
+      writer.append_button(2, bytes("unbound card"), 12) !=
+          PanelConfigStatus::OK ||
+      writer.append_subpage(2, bytes("unbound child"), 13) !=
+          PanelConfigStatus::OK ||
+      writer.append_setting(bytes("button_order"), 12, bytes("1"), 1) !=
+          PanelConfigStatus::OK ||
+      writer.append_device_profile(bytes("profile"), 7) !=
+          PanelConfigStatus::OK ||
+      writer.append_subpage(1, bytes("old child"), 9) !=
+          PanelConfigStatus::OK ||
+      writer.append_button(1, bytes("native button"), 13) !=
+          PanelConfigStatus::OK)
+    return false;
+  size_t size = 0;
+  if (writer.finish(&size) != PanelConfigStatus::OK)
+    return false;
+  bool changed = true;
+  auto merged = adapter.merge(1, native.data(), size, output.data(),
+                              output.size(), &changed);
+  if (merged.status != LegacyStatus::OK || changed)
+    return false;
+  // Edit a real compatibility field while retaining every unowned record.
+  child.publish_value("new child", 9);
+  merged = adapter.merge(1, native.data(), size, output.data(), output.size(),
+                         &changed);
+  if (merged.status != LegacyStatus::OK || !changed)
+    return false;
+  PanelConfigReader reader(output.data(), merged.document_size);
+  reader.begin();
+  PanelConfigRecord record;
+  int preserved = 0, edited = 0;
+  while (reader.next(&record) == PanelConfigStatus::OK) {
+    const std::string value(reinterpret_cast<const char *>(record.value),
+                            record.value_size);
+    if (value == "keep me" || value == "unbound card" ||
+        value == "unbound child")
+      ++preserved;
+    if (record.type == PanelConfigRecordType::SUBPAGE && record.slot == 1 &&
+        value == "new child")
+      ++edited;
+  }
+  if (preserved != 3 || edited != 1)
+    return false;
+  std::copy(output.begin(), output.begin() + merged.document_size,
+            native.begin());
+  size = merged.document_size;
+  button.publish_value("", 0);
+  child.publish_value("", 0);
+  order.publish_value("", 0);
+  merged = adapter.merge(1, native.data(), size, output.data(), output.size(),
+                         &changed);
+  if (merged.status != LegacyStatus::OK || !changed)
+    return false;
+  reader = PanelConfigReader(output.data(), merged.document_size);
+  reader.begin();
+  while (reader.next(&record) == PanelConfigStatus::OK)
+    if ((record.type == PanelConfigRecordType::BUTTON ||
+         record.type == PanelConfigRecordType::SUBPAGE) &&
+        record.slot == 1)
+      return false;
+  return adapter
+             .merge(2, native.data(), size, output.data(), output.size(),
+                    &changed)
+             .status == LegacyStatus::READ_FAILED;
+}
+
 }  // namespace
 
 int main() {
-  return imports_legacy_button_subpage_and_order() &&
+  return compatibility_merge_preserves_native_only_fields_and_order_independence() &&
+                 imports_legacy_button_subpage_and_order() &&
                  native_document_mirrors_back_to_legacy_entities_for_downgrade() &&
                  native_document_updates_live_grid_without_writing_legacy_preferences() &&
                  twenty_slot_document_reaches_order_and_subpage_settings() &&

@@ -57,6 +57,12 @@ bool PageModalRuntime::valid_request(const Request& request, bool verify_kind) c
           (request.origin.binding != 0 && !request.origin.back && port_.valid_origin(request.origin)));
 }
 bool PageModalRuntime::request(PageBindingToken origin) { return request(origin, ControlModalKind::NONE); }
+ControlModalKind PageModalRuntime::card_kind(ConfigurationHandle card) const {
+  if (stopped_ || changing_ || !next_opening_ || !active_store_.card(card))
+    return ControlModalKind::NONE;
+  const auto kind = port_.kind(active_store_, card);
+  return valid_card(card, kind, false) ? kind : ControlModalKind::NONE;
+}
 bool PageModalRuntime::request(PageBindingToken origin, ControlModalKind requested) {
   if (stopped_ || !next_opening_) return false;
   const ConfigurationHandle card{origin.configuration, origin.card};

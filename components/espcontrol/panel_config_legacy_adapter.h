@@ -14,6 +14,9 @@ class PanelConfigLegacyAdapter final : public LegacyConfigurationAdapter {
 
   bool configured() const { return bindings_.configured(); }
   LegacyLoadResult load(uint8_t *output, size_t output_capacity) override;
+  LegacyLoadResult merge(uint16_t version, const uint8_t *native,
+                         size_t native_size, uint8_t *output,
+                         size_t output_capacity, bool *changed) override;
   bool mirror(uint16_t document_version, const uint8_t *document,
               size_t document_size) override;
 

@@ -56,8 +56,11 @@ helpers += definition((headers / 'button_grid_grid.h').read_text(), 'card_palett
 helpers += definition((headers / 'icons.h').read_text(), 'domain_default_icon')[1] + '\n'
 
 styles = (headers / 'page_native_device_styles.h').read_text()
+device = (headers / 'page_native_device.h').read_text()
+bank = device[device.index('namespace espcontrol::pages {'):device.index('inline PageNativeDeviceStyleProfile')]
 template = template.replace('// @production-style-helpers', helpers)
 template = template.replace('// @production-style-types', environments)
 template = template.replace('// @production-device-styles', styles[styles.index('namespace espcontrol::pages {'):])
+template = template.replace('// @production-widget-bank', bank + '\n}\n')
 args.output.write_text('// Generated from the complete production native scene.\n' +
                        template.replace('// @production-scene', source[source.index('namespace espcontrol::pages {'):]))

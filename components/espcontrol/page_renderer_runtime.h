@@ -173,6 +173,14 @@ class PageRendererRuntime final : public PageRuntimeResources {
     port_.finish_update();
   }
   PageBindingToken binding(size_t shell)const{return shell<Slots?bindings_[shell]:PageBindingToken{};}
+  // Copy a compiled cell without exposing an arena pointer or requiring the
+  // page to be visible. Remote resolution uses the same orientation/layout.
+  PageCellLayout cell(PageId page, size_t shell) const {
+    return active_arena_ && page < active_store_.page_count() &&
+                   shell < Slots && layouts()[page].navigable
+               ? layouts()[page].cells[shell]
+               : PageCellLayout{};
+  }
   // Read-only ownership remains usable while the bank binds/paints. Input and
   // navigation callbacks must use valid(), which also rejects reentrant work.
   bool bound(PageBindingToken token) const {

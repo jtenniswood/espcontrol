@@ -1,6 +1,7 @@
 #pragma once
 
 #include "alarm_modal_lifetime.h"
+#include "page_scene_selection.h"
 #include "pin_keypad.h"
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
@@ -490,6 +491,10 @@ inline bool alarm_arming_takeover_active() {
 }
 
 inline bool alarm_display_takeover_active() {
+  if (espcontrol::pooled_application_selected()) {
+    auto *scene = espcontrol::application_scene_navigation();
+    return scene && scene->critical_active();
+  }
   return alarm_display_takeover_active(alarm_arming_takeover_ctx());
 }
 

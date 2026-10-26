@@ -61,6 +61,19 @@ class FakeLegacy final : public LegacyConfigurationAdapter {
     return {LegacyStatus::OK, version, value.size()};
   }
 
+  LegacyLoadResult merge(uint16_t document_version, const uint8_t *native,
+                         size_t size, uint8_t *output, size_t capacity,
+                         bool *changed) override {
+    if (read_failed || version != document_version)
+      return {LegacyStatus::READ_FAILED, version, 0};
+    if (value.size() > capacity)
+      return {LegacyStatus::BUFFER_TOO_SMALL, version, value.size()};
+    *changed = value.size() != size ||
+               (size && std::memcmp(value.data(), native, size) != 0);
+    std::copy(value.begin(), value.end(), output);
+    return {LegacyStatus::OK, version, value.size()};
+  }
+
   bool mirror(uint16_t document_version, const uint8_t *document,
               size_t document_size) override {
     ++mirror_calls;
@@ -506,10 +519,71 @@ bool activation_failure_remains_durable() {
       runtime.applied_generation == saved.generation && runtime.applied == replacement;
 }
 
+bool compatibility_edits_use_prepared_runtime_transaction() {
+  MemoryBackend backend(512);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  FakeRuntime runtime;
+  std::array<uint8_t, 512> scratch{}, output{};
+  ConfigurationService service(store, legacy, nullptr, scratch.data(),
+                               scratch.size());
+  service.set_runtime_adapter(&runtime);
+  legacy.value = bytes("original");
+  auto loaded = service.load_and_apply_runtime(output.data(), output.size());
+  if (!loaded.ok() || runtime.apply_calls != 1)
+    return false;
+  const auto original_generation = loaded.generation;
+  // Repeated theme/orientation refreshes are no-ops, including storage writes.
+  loaded = service.synchronize_legacy_runtime(output.data(), output.size());
+  if (!loaded.ok() || loaded.generation != original_generation ||
+      runtime.prepare_calls != 1)
+    return false;
+  legacy.value = bytes("edited");
+  runtime.prepare_failed = true;
+  loaded = service.synchronize_legacy_runtime(output.data(), output.size());
+  if (loaded.status != ServiceStatus::RUNTIME_PREPARE_FAILED ||
+      runtime.applied != bytes("original") || runtime.has_prepared ||
+      legacy.mirror_calls)
+    return false;
+  const auto unchanged = service.load(output.data(), output.size());
+  if (!unchanged.ok() || unchanged.generation != original_generation ||
+      output[0] != 'o')
+    return false;
+  runtime.prepare_failed = false;
+  backend.fail_writes(true);
+  loaded = service.synchronize_legacy_runtime(output.data(), output.size());
+  if (loaded.status != ServiceStatus::STORE_FAILED ||
+      runtime.applied != bytes("original") || legacy.mirror_calls)
+    return false;
+  backend.fail_writes(false);
+  loaded = service.synchronize_legacy_runtime(output.data(), output.size());
+  if (!loaded.ok() || loaded.generation != original_generation + 1 ||
+      runtime.applied != legacy.value || legacy.mirror_calls != 1 ||
+      runtime.apply_calls != 2)
+    return false;
+  // A subsequent native save wins before the next queued edit refresh.
+  const auto browser = bytes("new browser save");
+  if (!service.save_current(browser.data(), browser.size()).ok())
+    return false;
+  legacy.value = browser; // Production publication updates text before mirror.
+  const auto prepared = runtime.prepare_calls;
+  loaded = service.synchronize_legacy_runtime(output.data(), output.size());
+  if (!loaded.ok() || runtime.prepare_calls != prepared ||
+      runtime.applied != browser)
+    return false;
+  legacy.read_failed = true;
+  if (service.synchronize_legacy_runtime(output.data(), output.size()).status !=
+      ServiceStatus::LEGACY_READ_FAILED)
+    return false;
+  return service.synchronize_legacy_runtime(scratch.data(), scratch.size())
+             .status == ServiceStatus::INVALID_ARGUMENT;
+}
+
 }  // namespace
 
 int main() {
   const bool passed =
+      compatibility_edits_use_prepared_runtime_transaction() &&
       legacy_is_imported_once() &&
       partial_migration_refreshes_the_native_shadow() &&
       failed_legacy_mirror_keeps_the_native_save_durable() &&

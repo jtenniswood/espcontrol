@@ -29,6 +29,7 @@ source = r'''
 #include <cstdint>
 #include <functional>
 #include <string>
+#include "page_scene_selection.h"
 #include "camera_refresh_policy.h"
 #include "image_pipeline_policy.h"
 uint32_t now_ms = 0;

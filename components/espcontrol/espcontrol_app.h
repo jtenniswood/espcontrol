@@ -47,6 +47,15 @@ class EspControlApp : public esphome::Component {
   // The scene belongs to the firmware application's UI owner and outlives this
   // component. Installation cannot switch a running legacy grid underneath it.
   bool install_application_scene(ApplicationSceneRuntime& scene);
+  // Selected device startup calls this before reserving native UI resources.
+  // A failed allocation then refuses writes instead of silently using legacy
+  // UI.
+  bool require_application_scene();
+  // Existing text-entity automations debounce edits before requesting this.
+  // The application loop performs all model/storage work at a safe boundary.
+  void request_configuration_text_refresh() {
+    configuration_text_refresh_pending_ = true;
+  }
   void set_panel_config_device_profile(const char *device_profile);
   void set_panel_config_button_order(esphome::text::Text *button_order);
   void set_panel_config_button_on_color(esphome::text::Text *button_on_color);
@@ -73,6 +82,7 @@ class EspControlApp : public esphome::Component {
   void register_panel_config_endpoints();
   void initialize_native_configuration();
   void apply_boot_configuration();
+  void apply_configuration_text_refresh();
   bool native_configuration_requested() const;
   bool create_native_configuration_runtime();
 
@@ -93,6 +103,8 @@ class EspControlApp : public esphome::Component {
   EspControlAppCore core_{};
   HomeAssistantEndpointResolver home_assistant_endpoint_{};
   ApplicationSceneRuntime* application_scene_{nullptr};
+  bool application_scene_required_{false};
+  bool configuration_text_refresh_pending_{false};
   bool shutting_down_{false};
   bool native_configuration_initialized_{false};
   bool panel_config_http_context_bound_{false};

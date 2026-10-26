@@ -41,6 +41,46 @@ bool PanelConfigTextBindings::configured() const {
 bool PanelConfigTextBindings::write_document(uint8_t *output,
                                              size_t output_capacity,
                                              size_t *document_size) const {
+  return write_document(nullptr, 0, output, output_capacity, document_size);
+}
+
+bool PanelConfigTextBindings::owns_record(
+    const PanelConfigRecord &record) const {
+  if (record.type == PanelConfigRecordType::DEVICE_PROFILE)
+    return true;
+  if (record.type == PanelConfigRecordType::BUTTON)
+    return buttons_[record.slot - 1].button != nullptr;
+  if (record.type == PanelConfigRecordType::SUBPAGE) {
+    const auto &chunks = buttons_[record.slot - 1].subpage_chunks;
+    return std::any_of(chunks.begin(), chunks.end(),
+                       [](auto *chunk) { return chunk != nullptr; });
+  }
+  if (record.type != PanelConfigRecordType::SETTING)
+    return false;
+  return (record.key_size == sizeof(BUTTON_ORDER_KEY) - 1 && button_order_ &&
+          std::memcmp(record.key, BUTTON_ORDER_KEY, record.key_size) == 0) ||
+         (record.key_size == sizeof(BUTTON_ON_COLOR_KEY) - 1 &&
+          button_on_color_ &&
+          std::memcmp(record.key, BUTTON_ON_COLOR_KEY, record.key_size) == 0);
+}
+
+bool PanelConfigTextBindings::merge_document(const uint8_t *native,
+                                             size_t native_size,
+                                             uint8_t *output,
+                                             size_t output_capacity,
+                                             size_t *document_size) const {
+  PanelConfigReader reader(native, native_size);
+  if (reader.validate() != PanelConfigStatus::OK)
+    return false;
+  return write_document(native, native_size, output, output_capacity,
+                        document_size);
+}
+
+bool PanelConfigTextBindings::write_document(const uint8_t *native,
+                                             size_t native_size,
+                                             uint8_t *output,
+                                             size_t output_capacity,
+                                             size_t *document_size) const {
   if (document_size != nullptr) *document_size = 0;
   PanelConfigWriter writer(output, output_capacity);
   if (writer.begin() != PanelConfigStatus::OK ||
@@ -90,6 +130,31 @@ bool PanelConfigTextBindings::write_document(uint8_t *output,
           reinterpret_cast<const uint8_t *>(button_on_color_->value().data()),
           button_on_color_->value().size()) != PanelConfigStatus::OK) {
     return false;
+  }
+  if (native) {
+    PanelConfigReader reader(native, native_size);
+    if (reader.begin() != PanelConfigStatus::OK)
+      return false;
+    PanelConfigRecord record;
+    PanelConfigStatus status;
+    while ((status = reader.next(&record)) == PanelConfigStatus::OK) {
+      if (owns_record(record))
+        continue;
+      PanelConfigStatus appended = PanelConfigStatus::INVALID_DOCUMENT;
+      if (record.type == PanelConfigRecordType::BUTTON)
+        appended =
+            writer.append_button(record.slot, record.value, record.value_size);
+      else if (record.type == PanelConfigRecordType::SUBPAGE)
+        appended =
+            writer.append_subpage(record.slot, record.value, record.value_size);
+      else if (record.type == PanelConfigRecordType::SETTING)
+        appended = writer.append_setting(record.key, record.key_size,
+                                         record.value, record.value_size);
+      if (appended != PanelConfigStatus::OK)
+        return false;
+    }
+    if (status != PanelConfigStatus::END)
+      return false;
   }
   return writer.finish(document_size) == PanelConfigStatus::OK;
 }

@@ -67,6 +67,7 @@ struct Transactions {
 };
 struct NativeRuntime {
   LegacyRuntime runtime_config;
+  ApplicationConfigurationRuntime selected_runtime{runtime_config};
   Transactions transactions;
   std::array<uint8_t, 512> bytes{};
   uint8_t* boot_buffer{bytes.data()};
@@ -82,16 +83,22 @@ class EspControlApp {
   Endpoint home_assistant_endpoint_;
   std::unique_ptr<NativeRuntime> native_configuration_runtime_;
   ApplicationSceneRuntime* application_scene_{nullptr};
+  bool application_scene_required_{false};
+  bool configuration_text_refresh_pending_{false};
   bool shutting_down_{false}, native_configuration_initialized_{false};
   bool install_application_scene(ApplicationSceneRuntime&);
+  bool require_application_scene();
   ConfigurationRuntimeAdapter* selected_configuration_runtime();
   void apply_boot_configuration();
+  void apply_configuration_text_refresh();
   void loop();
   void on_shutdown();
   void register_panel_config_endpoints() { trace += 'R'; }
 };
 // @production-app-method install_application_scene
+// @production-app-method require_application_scene
 // @production-app-method selected_configuration_runtime
+// @production-app-method apply_configuration_text_refresh
 // @production-app-method apply_boot_configuration
 // @production-app-method loop
 // @production-app-method on_shutdown
@@ -137,6 +144,15 @@ class FakeLegacy final : public LegacyConfigurationAdapter {
     }
     std::copy(value.begin(), value.end(), output);
     return {LegacyStatus::OK, version, value.size()};
+  }
+
+  LegacyLoadResult merge(uint16_t document_version, const uint8_t* native, size_t size,
+      uint8_t* output, size_t capacity, bool* changed) override {
+    if(read_failed || version!=document_version) return {LegacyStatus::READ_FAILED,version,0};
+    if(value.size()>capacity) return {LegacyStatus::BUFFER_TOO_SMALL,version,value.size()};
+    *changed=value.size()!=size || (size && std::memcmp(value.data(),native,size)!=0);
+    std::copy(value.begin(),value.end(),output);
+    return {LegacyStatus::OK,version,value.size()};
   }
 
   bool mirror(uint16_t document_version, const uint8_t* document, size_t document_size) override {
@@ -222,7 +238,7 @@ void registration() {
   h.other.initialized = true;
   assert(h.app.selected_configuration_runtime() == &h.app.native_configuration_runtime_->runtime_config);
   h.configure();
-  assert(h.app.selected_configuration_runtime() == &h.scene && h.app.install_application_scene(h.scene));
+  assert(h.app.selected_configuration_runtime() == &h.app.native_configuration_runtime_->selected_runtime && h.app.install_application_scene(h.scene));
   assert(!h.app.install_application_scene(h.other));
   EspControlApp late;
   late.native_configuration_initialized_ = true;
@@ -230,6 +246,28 @@ void registration() {
   late.native_configuration_initialized_ = false;
   late.core_.service = &h.service;
   assert(!late.install_application_scene(h.other));
+}
+void required_scene_failure() {
+  Harness h;
+  assert(h.app.require_application_scene() && h.app.require_application_scene());
+  auto* unavailable=h.app.selected_configuration_runtime();
+  assert(unavailable && unavailable!=&h.app.native_configuration_runtime_->runtime_config);
+  h.service.set_runtime_adapter(unavailable);
+  const std::array<uint8_t,3> next={4,5,6};
+  const auto saved=h.service.save_if_generation(h.initial_generation,CURRENT_CONFIGURATION_DOCUMENT_VERSION,
+      next.data(),next.size());
+  assert(saved.status==ServiceStatus::RUNTIME_PREPARE_FAILED &&
+      h.app.native_configuration_runtime_->runtime_config.applies==0);
+  std::array<uint8_t,512> loaded{};
+  const auto before=h.service.load(loaded.data(),loaded.size());
+  assert(before.ok() && before.generation==h.initial_generation && before.document_size==3 &&
+      loaded[0]==1 && loaded[1]==2 && loaded[2]==3);
+  // Successful startup can still install before the configuration service is
+  // configured; declaring the native requirement does not consume that slot.
+  h.configure();assert(h.app.selected_configuration_runtime()==&h.app.native_configuration_runtime_->selected_runtime);
+  assert(!h.app.require_application_scene());
+  EspControlApp stopped;stopped.shutting_down_=true;
+  assert(!stopped.require_application_scene());
 }
 void boot_and_transactions() {
   Harness h;
@@ -292,6 +330,29 @@ void legacy_path() {
   h.app.loop();
   assert(native.runtime_config.applies == 1 && h.scene.activates == 0);
 }
+void compatibility_refresh_and_publication() {
+  Harness h;h.configure();
+  auto& native=*h.app.native_configuration_runtime_;
+  h.app.configuration_text_refresh_pending_=true;
+  // A busy scene or startup restore must defer compatibility edits.
+  h.scene.busy=true;h.app.apply_configuration_text_refresh();
+  assert(h.app.configuration_text_refresh_pending_ && !native.runtime_config.applies);
+  h.scene.busy=false;h.app.apply_configuration_text_refresh();
+  assert(h.app.configuration_text_refresh_pending_);
+  h.app.apply_boot_configuration();
+  assert(native.runtime_config.applies==1 && h.scene.activates==1);
+  h.app.apply_configuration_text_refresh();
+  assert(!h.app.configuration_text_refresh_pending_ && native.runtime_config.applies==1 && h.scene.activates==1);
+  h.legacy.value={4,5,6};h.legacy.mirror_failed=true;
+  h.app.configuration_text_refresh_pending_=true;
+  h.app.apply_configuration_text_refresh();
+  assert(h.scene.current==h.legacy.value && h.scene.activates==2 && native.runtime_config.applies==2);
+  // Failed runtime preparation never publishes candidate text or durable data.
+  h.scene.prepare_ok=false;h.legacy.value={7,8,9};
+  h.app.configuration_text_refresh_pending_=true;h.app.apply_configuration_text_refresh();
+  assert(h.scene.current[0]==4 && native.runtime_config.applies==2);
+}
+
 void shutdown() {
   Harness h;
   h.configure();
@@ -313,6 +374,8 @@ void shutdown() {
   assert(trace.empty() && h.scene.stops == 1 && !h.app.install_application_scene(h.other));
 }
 int main() {
+  required_scene_failure();
+  compatibility_refresh_and_publication();
   registration();
   legacy_path();
   boot_and_transactions();

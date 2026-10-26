@@ -74,6 +74,7 @@ class EspControlApp::NativeConfigurationRuntime {
   configuration::PanelConfigTextBindings text_bindings{};
   configuration::PanelConfigLegacyAdapter legacy_config;
   configuration::PanelConfigRuntimeAdapter runtime_config;
+  ApplicationConfigurationRuntime selected_runtime{runtime_config};
   configuration::PanelConfigDocumentValidator validator{};
   configuration::EspIdfPanelConfigBlobStorage blobs{};
   configuration::BufferedBlobStorageBackend<PANEL_CONFIG_STORAGE_SLOT_CAPACITY>
@@ -104,8 +105,30 @@ bool EspControlApp::install_application_scene(ApplicationSceneRuntime& scene) {
   return true;
 }
 
+bool EspControlApp::require_application_scene() {
+  if (shutting_down_ || native_configuration_initialized_ ||
+      core_.configuration_service())
+    return false;
+  application_scene_required_ = true;
+  return true;
+}
+
 configuration::ConfigurationRuntimeAdapter* EspControlApp::selected_configuration_runtime() {
-  if (application_scene_) return application_scene_;
+  if (application_scene_ && native_configuration_runtime_) {
+    auto &selected = native_configuration_runtime_->selected_runtime;
+    selected.bind(*application_scene_);
+    return &selected;
+  }
+  if (application_scene_required_) {
+    class Unavailable final
+        : public configuration::ConfigurationRuntimeAdapter {
+    public:
+      bool prepare(uint16_t, const uint8_t *, size_t) override { return false; }
+      bool apply(uint16_t, const uint8_t *, size_t) override { return false; }
+    };
+    static Unavailable unavailable;
+    return &unavailable;
+  }
   return native_configuration_runtime_ ? &native_configuration_runtime_->runtime_config : nullptr;
 }
 
@@ -246,6 +269,24 @@ void EspControlApp::apply_boot_configuration() {
              static_cast<unsigned>(loaded.status));
     return;
   }
+}
+
+void EspControlApp::apply_configuration_text_refresh() {
+  if (!configuration_text_refresh_pending_ || !application_scene_ ||
+      shutting_down_)
+    return;
+  auto *runtime = native_configuration_runtime_.get();
+  auto *service = core_.configuration_service();
+  if (!runtime || !runtime->boot_buffer || !service ||
+      runtime->boot_configuration_pending ||
+      !application_scene_->maintenance_ready())
+    return;
+  configuration_text_refresh_pending_ = false;
+  const auto synchronized = service->synchronize_legacy_runtime(
+      runtime->boot_buffer, runtime->slot_capacity);
+  if (!synchronized.ok())
+    ESP_LOGE(TAG, "Configuration text edits could not be applied (%u)",
+             static_cast<unsigned>(synchronized.status));
 }
 
 void EspControlApp::setup() {
@@ -401,6 +442,7 @@ void EspControlApp::loop() {
   if (scene_ready && native_configuration_runtime_ != nullptr && core_.configuration_service() != nullptr) {
     native_configuration_runtime_->transactions.process(*core_.configuration_service());
     if (native_configuration_runtime_->boot_configuration_due) apply_boot_configuration();
+    apply_configuration_text_refresh();
   }
   if (shutting_down_) return;
   home_assistant_endpoint_.loop();

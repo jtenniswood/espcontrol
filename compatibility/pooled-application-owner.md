@@ -1,9 +1,10 @@
 # Concrete pooled application owner
 
 This #1825 stage connects the existing pooled card, state, command, artwork, QR
-and modal owners in `PageNativeScene<Slots, ImageSlots>`. Device YAML still
-selects the legacy renderer. This stage neither enables nested pages nor
-establishes physical memory savings.
+and modal owners in `PageNativeScene<Slots, ImageSlots>`. Device startup now
+selects this scene through a PSRAM-backed `PageNativeDevice` and one fixed widget
+bank. This stage neither enables nested pages nor establishes physical memory
+savings; selected firmware builds and physical qualification remain gates.
 
 One application-lifetime scene owns the immutable page store, shared HA graph,
 semantic models, a single card command queue, the fifteen-kind modal bank and
@@ -28,7 +29,7 @@ callback dispatch or while a wake guard covers gestures. Recursive scene/configu
 maintenance and new panel/grid commands remain blocked during that callback.
 
 `PageNativeDeviceStyles` resolves colours and fonts from the original owning
-page, including authenticated hidden-card openings. Device wiring must capture
+page, including authenticated hidden-card openings. Device startup captures
 root/child source font roles before rebinding the bank. Resolvers reject wrong
 generations and owning pages. Confirmation captions borrow immutable store text,
 not temporary parsed strings. Fonts and theme caption/unit views must outlive
@@ -39,7 +40,7 @@ card identity.
 changes. It preserves subscriptions and cached semantic state, invalidates old
 bindings, closes old panels and rolls back on allocation/preflight failure. It
 refuses to overwrite the prepared resources owned by an outstanding save.
-Device wiring must commit its grid descriptors and source style profile at the
+The device owner commits its grid descriptors and source style profile at the
 same safe boundary. The scene performs a layout pass after bank binding before
 starting size-dependent image/QR work.
 
@@ -55,9 +56,37 @@ The state-owner test independently repeats 1,000 configuration cycles. An S3
 SDK syntax probe instantiates the actual scene and native style adapter; that
 is separate from a complete selected firmware build or physical testing.
 
-Remaining gates are the concrete device platform/startup and widget reservation,
-retirement of raw YAML/legacy input and eager contexts, remote-opening wiring,
-selected factory builds, matched S3 and working 20-slot P4 heap/PSRAM tests,
-streaming configuration storage and backup/downgrade qualification. Depth-two
-nesting follows the runtime overhaul. Do not access the P4-86 reserved for USB
-diagnosis as part of these hardware tests.
+Production boot and refresh no longer enter the eager legacy renderer. A failed
+native reservation blocks configuration writes rather than selecting a mixed
+renderer. The existing YAML wake actions remain, while native bindings own card
+commands. Initial configuration can activate while loading/setup pages own the
+display; the bank stays suspended until the main page is shown.
+
+Remote modal/page/navigation APIs and network settings delegate to one native
+navigation owner. Selection uses immutable definitions and compiled visible
+layouts, with root/display-order priority and rejection of unreachable folders.
+Home requests can wait while the display sleeps; root-card activation shares the
+physical typed press/click path. Requests revalidate configuration and connection
+before dispatch. Full display takeover retires native image leases through the
+same draw-safe lifecycle, including the S3 camera screensaver path.
+
+Successful scene activation publishes the complete native document to live
+compatibility text entities before downgrade mirroring. Debounced direct text
+edits merge only fields owned by the compatibility projection, retaining
+native-only settings. They use normal runtime preparation and durable commit;
+failed preparation/storage leaves the previous scene and document intact.
+Equivalent records in a different order and appearance-only refreshes do not
+rebuild the scene or write storage. Boot continues to prefer the durable native
+document over possibly stale persisted legacy text.
+
+The concrete startup argument types and the generated selected S3 main source
+pass SDK syntax checks. These are separate from a complete firmware link and
+physical testing. Profile/generator checks, boot migration, native navigation,
+settings/image takeover, legacy publication/merge and transaction failure
+regressions pass locally. Full CI and selected factory build results belong to
+the immutable commit recorded in the PR validation notes.
+
+Remaining gates are selected factory builds, matched S3 and working 20-slot P4
+heap/PSRAM tests, streaming configuration storage and backup/downgrade
+qualification. Depth-two nesting follows the runtime overhaul. Do not access the
+P4-86 reserved for USB diagnosis as part of these hardware tests.

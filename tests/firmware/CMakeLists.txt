@@ -1533,6 +1533,7 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
     DEPENDS generate_native_scene_test.py page_native_scene_test.cpp.in
       ../../components/espcontrol/page_native_scene.h
       ../../components/espcontrol/page_native_device_styles.h
+      ../../components/espcontrol/page_native_device.h
       ../../components/espcontrol/button_grid_display.h
       ../../components/espcontrol/button_grid_grid.h
       ../../components/espcontrol/button_grid_layout.h

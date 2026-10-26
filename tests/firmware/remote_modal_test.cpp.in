@@ -200,6 +200,27 @@ bool navigation_activate_home_target(NavigationHomeTargetEntry *target, lv_obj_t
 // PRODUCTION_HOOKS
 #include "button_grid_remote_modal.h"
 
+struct NativeNavigation final : espcontrol::ApplicationSceneNavigation {
+  int queries=0, opens=0, closes=0, pages=0;
+  bool navigation_ready() const override { return true; }
+  bool grid_configured() const override { return true; }
+  int subpage_slot() const override { return 1; }
+  std::string_view subpage_label() const override { return "Rooms"; }
+  bool critical_active() const override { return false; }
+  bool can_open_modal(std::string_view value) const override { return value=="native.entity"; }
+  bool open_modal(std::string_view value) override { ++opens; return can_open_modal(value); }
+  bool can_open_subpage(std::string_view value) const override { return value=="Rooms"; }
+  bool open_subpage(std::string_view value) override { ++pages; return can_open_subpage(value); }
+  bool close_subpage() override { ++closes; return true; }
+  bool navigate(std::string_view) override { return true; }
+  bool home() override { return true; }
+  void close_modal() override { ++closes; }
+  bool open_settings() override { return true; }
+  void close_settings() override {}
+  void display_takeover() override {}
+  void refresh_chrome() override {}
+};
+
 int main() {
   struct Case { const char *type; const char *mode; const char *entity; ControlModalKind kind; };
   const Case cases[] = {
@@ -385,5 +406,33 @@ int main() {
   allocations.push_back({&one, &first, [](void *) { assert(!modal.overlay); }});
   grid_release_runtime_allocations(&one);
   assert(!modal.overlay && allocations.empty() && current_page == &other_page);
+  // Boot selection must never fall back to the old cards if owner creation
+  // failed. Existing entry points delegate only when a native owner exists.
+  espcontrol::select_pooled_application();
+  const int legacy_opens=opens, legacy_closes=closes;
+  assert(!espcontrol_can_open_modal("light.renamed",true));
+  assert(!espcontrol_open_modal("light.renamed",true));
+  assert(!espcontrol_can_open_subpage("Rooms",true));
+  assert(!espcontrol_open_subpage("Rooms",true,&home));
+  assert(!espcontrol_close_subpage(&home));
+  assert(!espcontrol::application_grid_configured(true));
+  espcontrol_close_modal();
+  NativeNavigation native;
+  espcontrol::application_scene_navigation()=&native;
+  assert(espcontrol::application_grid_configured(false));
+  assert(espcontrol_can_open_modal("native.entity",true));
+  assert(!espcontrol_can_open_modal("native.entity",false));
+  assert(!espcontrol_open_modal("native.entity",false) && native.opens==0);
+  assert(espcontrol_open_modal("native.entity",true) && native.opens==1);
+  assert(!espcontrol_can_open_modal("light.renamed",true));
+  assert(espcontrol_can_open_subpage("Rooms",true));
+  assert(!espcontrol_open_subpage("Rooms",true,nullptr) && native.pages==0);
+  assert(!espcontrol_open_subpage("Rooms",false,&home) && native.pages==0);
+  assert(espcontrol_open_subpage("Rooms",true,&home) && native.pages==1);
+  assert(!espcontrol_close_subpage(nullptr));
+  assert(espcontrol_close_subpage(&home) && native.closes==1);
+  espcontrol_close_modal();
+  assert(native.closes==2 && opens==legacy_opens && closes==legacy_closes);
+  espcontrol::application_scene_navigation()=nullptr;
   return 0;
 }

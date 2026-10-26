@@ -16,6 +16,7 @@
 #include "page_native_modal_bank.h"
 #include "page_native_scene_state.h"
 #include "page_pooled_qr_tile_view.h"
+#include "page_scene_selection.h"
 #include "page_slider_command_policy.h"
 #include "page_timer_command_policy.h"
 
@@ -84,6 +85,7 @@ struct PageNativeSceneMemory {
 
 template <size_t Slots, size_t ImageSlots>
 class PageNativeScene final : public ApplicationSceneRuntime,
+                              public ApplicationSceneNavigation,
                               public PageImageOrigin,
                               public PageQrOrigin {
   class ModalOrigin final : public PageModalImageOrigin {
@@ -274,6 +276,8 @@ public:
         state_.observers.add(expanded_);
   }
   ~PageNativeScene() override {
+    if (application_scene_navigation() == this)
+      application_scene_navigation() = nullptr;
     assert(!running_ && !changing_ && page_native_command_ready());
     destroying_ = true;
     stop();
@@ -332,9 +336,16 @@ public:
     const bool activated =
         store_.activate_prepared(generation, version, data, size);
     if (activated) {
+      ui_request_ = {};
+      close_requested_ = takeover_requested_ = false;
       origin_ = {};
       advance_chrome();
       chrome_dirty_ = layout_dirty_ = true;
+      // First activation can occur while a loading/screensaver page owns the
+      // display. Reconcile the newly bound renderer, not its previous empty
+      // one.
+      suspended_ = false;
+      reconcile_display();
     }
     return activated;
   }
@@ -343,14 +354,19 @@ public:
   // graph, subscriptions and semantic state keep their ownership and values.
   // The supplied text/font views must have application lifetime, like boot's.
   bool reconfigure(PageViewGeometry geometry, const PageBasicTheme &theme) {
-    if (!maintenance_ready() || !store_.active().page_count() ||
-        store_.memory().staged_reserved_bytes)
+    if (!maintenance_ready() || store_.memory().staged_reserved_bytes ||
+        !geometry.visible_slots || geometry.visible_slots > Slots ||
+        !geometry.columns || geometry.columns > geometry.visible_slots)
       return false;
     Flag guard(changing_);
     const auto previous_geometry = view_.geometry(store_.active());
     const auto previous_theme = theme_;
     theme_ = theme;
     view_.geometry(geometry);
+    // Restored appearance/orientation scripts may run before the delayed boot
+    // document. No active resources exist yet; the first prepare uses these.
+    if (!store_.active().page_count())
+      return true;
     if (!renderer_.prepare(store_.active()) ||
         !modals_.prepare(store_.active())) {
       renderer_.discard_prepared();
@@ -365,6 +381,8 @@ public:
     modals_.activate_prepared(store_.active());
     image_resources_.retire_active();
     renderer_.activate_prepared(store_.active());
+    if (ui_request_.kind == UiKind::ACTIVATE)
+      ui_request_ = {};
     suspended_ = false;
     origin_ = {};
     advance_chrome();
@@ -373,6 +391,8 @@ public:
   }
   void stop() override {
     stopped_ = true;
+    ui_request_ = {};
+    close_requested_ = takeover_requested_ = false;
     input_.cover(true);
     modals_.stop();
     state_.stop();
@@ -391,6 +411,14 @@ public:
     if (stopped_)
       return;
     reconcile_display();
+    if (takeover_requested_) {
+      takeover_requested_ = false;
+      close_requested_ = false;
+      modals_.runtime().display_takeover(true);
+    } else if (close_requested_) {
+      close_requested_ = false;
+      modals_.runtime().dismiss(PageModalClose::USER);
+    }
     const auto memory = modals_.runtime().memory();
     if (memory.pending_requests || memory.active_contexts ||
         memory.retired_contexts)
@@ -406,6 +434,7 @@ public:
     reconcile_display();
     reconcile_cover();
     input_.settle();
+    process_ui_request();
     if (layout_dirty_ && !suspended_) {
       layout_dirty_ = false;
       view_.settle_layout();
@@ -469,8 +498,14 @@ public:
             renderer_.active_page()};
   }
   bool request_settings(PageLocalModalOrigin origin) {
-    return ready() && modals_.runtime().request_local(
-                          origin, ControlModalKind::NETWORK_STATUS);
+    const bool accepted =
+        ready() && modals_.runtime().request_local(
+                       origin, ControlModalKind::NETWORK_STATUS);
+    if (accepted) {
+      ui_request_ = {};
+      close_requested_ = false;
+    }
+    return accepted;
   }
   bool request_card(ConfigurationHandle card,
                     ControlModalKind kind = ControlModalKind::NONE) {
@@ -478,10 +513,310 @@ public:
         espcontrol::screensaver_pin().locked())
       return false;
     origin_ = {};
-    return modals_.runtime().request_card(card, kind);
+    const bool accepted = modals_.runtime().request_card(card, kind);
+    if (accepted) {
+      close_requested_ = false;
+      ui_request_ = {};
+    }
+    return accepted;
   }
 
+  bool navigation_ready() const override {
+    return ready() && !changing_ && active().page_count() &&
+           active().page(0)->navigable;
+  }
+  bool grid_configured() const override {
+    if (!navigation_ready())
+      return false;
+    for (size_t shell = 0; shell < Slots; ++shell)
+      if (renderer_.cell(0, shell).visible)
+        return true;
+    return false;
+  }
+  int subpage_slot() const override {
+    const auto *page = active().page(active_page());
+    const auto *owner =
+        page && active_page() != 0 ? active().card(page->owner) : nullptr;
+    return owner ? owner->slot : 0;
+  }
+  std::string_view subpage_label() const override {
+    const auto *page = active().page(active_page());
+    const auto *owner =
+        page && active_page() != 0 ? active().card(page->owner) : nullptr;
+    return owner ? active().field(*owner, CardField::LABEL)
+                 : std::string_view{};
+  }
+  bool critical_active() const override {
+    return !stopped_ && alarm_.memory().critical;
+  }
+  bool can_open_modal(std::string_view entity) const override {
+    return remote_allowed() && modal_target(entity).index != NO_CARD;
+  }
+  bool open_modal(std::string_view entity) override {
+    const auto target =
+        remote_allowed() ? modal_target(entity) : ConfigurationHandle{};
+    return target.index != NO_CARD && request_card(target);
+  }
+  bool can_open_subpage(std::string_view label) const override {
+    return remote_allowed() && folder_target(label) != NO_PAGE;
+  }
+  bool open_subpage(std::string_view label) override {
+    if (!remote_allowed())
+      return false;
+    return request_page(folder_target(label));
+  }
+  bool close_subpage() override {
+    if (!navigation_ready() || critical_active())
+      return false;
+    const auto *pending = ui_request_.kind == UiKind::ACTIVATE
+                              ? active().card(ui_request_.card)
+                              : nullptr;
+    if (!subpage_slot() &&
+        !(ui_request_.kind == UiKind::PAGE && ui_request_.page != 0) &&
+        !(pending && pending->target != NO_PAGE))
+      return false;
+    return home();
+  }
+  bool navigate(std::string_view text) override {
+    if (!remote_allowed())
+      return false;
+    const auto target = trim(text);
+    if (equal(target, "home") || equal(target, "main"))
+      return home();
+    CardId card = NO_CARD;
+    for (size_t shell = 0; shell < Slots; ++shell) {
+      const auto cell = renderer_.cell(0, shell);
+      const auto *definition =
+          cell.visible && !cell.back ? active().card(cell.card) : nullptr;
+      if (definition &&
+          !active().field(*definition, CardField::LABEL).empty() &&
+          equal(trim(active().field(*definition, CardField::LABEL)), target)) {
+        card = cell.card;
+        break;
+      }
+    }
+    if (card == NO_CARD && target.size() > 5 &&
+        equal(target.substr(0, 5), "slot:")) {
+      const auto number = trim(target.substr(5));
+      size_t slot = 0;
+      if (number.empty())
+        return false;
+      for (char c : number) {
+        if (c < '0' || c > '9' || slot > Slots / 10)
+          return false;
+        slot = slot * 10 + static_cast<unsigned>(c - '0');
+        if (slot > Slots)
+          return false;
+      }
+      for (size_t shell = 0; shell < Slots; ++shell) {
+        const auto cell = renderer_.cell(0, shell);
+        const auto *definition =
+            cell.visible && !cell.back ? active().card(cell.card) : nullptr;
+        if (definition && definition->slot == slot) {
+          card = cell.card;
+          break;
+        }
+      }
+    }
+    if (card == NO_CARD)
+      return false;
+    ui_request_ = {UiKind::ACTIVATE, active().generation(), 0, card,
+                   connection_generation()};
+    close_requested_ = true;
+    cover_for_request();
+    return true;
+  }
+  bool home() override {
+    return navigation_ready() && !critical_active() && request_page(0);
+  }
+  void close_modal() override {
+    if (!ready())
+      return;
+    ui_request_ = {};
+    close_requested_ = true;
+    cover_for_request();
+  }
+  bool open_settings() override {
+    if (!remote_allowed() || !platform_.grid_active() ||
+        !platform_.input_allowed())
+      return false;
+    const bool accepted = request_settings(chrome_origin());
+    if (accepted) {
+      ui_request_ = {};
+      close_requested_ = false;
+    }
+    return accepted;
+  }
+  void close_settings() override {
+    const auto &modal = modals_.runtime();
+    if (modal.token().kind == ControlModalKind::NETWORK_STATUS ||
+        modal.pending_kind() == ControlModalKind::NETWORK_STATUS)
+      close_modal();
+  }
+  void display_takeover() override {
+    if (!ready())
+      return;
+    takeover_requested_ = true;
+    if (ui_request_.kind == UiKind::ACTIVATE)
+      ui_request_ = {};
+    cover_for_request();
+  }
+  void refresh_chrome() override { chrome_dirty_ = true; }
+
 private:
+  enum class UiKind : uint8_t { NONE, PAGE, ACTIVATE };
+  struct UiRequest {
+    UiKind kind{UiKind::NONE};
+    uint32_t configuration{0};
+    PageId page{NO_PAGE};
+    CardId card{NO_CARD};
+    uint32_t connection{0};
+  } ui_request_;
+  bool close_requested_{false}, takeover_requested_{false};
+  static std::string_view trim(std::string_view text) {
+    const auto space = [](char c) {
+      return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' ||
+             c == '\v';
+    };
+    while (!text.empty() && space(text.front()))
+      text.remove_prefix(1);
+    while (!text.empty() && space(text.back()))
+      text.remove_suffix(1);
+    return text;
+  }
+  static bool equal(std::string_view a, std::string_view b) {
+    if (a.size() != b.size())
+      return false;
+    const auto lower = [](char c) {
+      return c >= 'A' && c <= 'Z' ? static_cast<char>(c + 'a' - 'A') : c;
+    };
+    for (size_t i = 0; i < a.size(); ++i)
+      if (lower(a[i]) != lower(b[i]))
+        return false;
+    return true;
+  }
+  bool remote_allowed() const {
+    return navigation_ready() && !espcontrol::screensaver_pin().locked() &&
+           !critical_active();
+  }
+  PageId folder_target(std::string_view label) const {
+    label = trim(label);
+    if (label.empty())
+      return NO_PAGE;
+    for (size_t shell = 0; shell < Slots; ++shell) {
+      const auto cell = renderer_.cell(0, shell);
+      const auto *card =
+          cell.visible && !cell.back ? active().card(cell.card) : nullptr;
+      const auto *page = card ? active().page(card->target) : nullptr;
+      if (page && page->navigable &&
+          equal(trim(active().field(*card, CardField::LABEL)), label))
+        return card->target;
+    }
+    return NO_PAGE;
+  }
+  ConfigurationHandle modal_target(std::string_view entity) const {
+    entity = trim(entity);
+    if (entity.empty())
+      return {};
+    const auto match = [this,
+                        entity](PageCellLayout cell) -> ConfigurationHandle {
+      const auto *card =
+          cell.visible && !cell.back ? active().card(cell.card) : nullptr;
+      if (!card)
+        return {};
+      const auto type = active().field(*card, CardField::TYPE);
+      const auto configured =
+          type == "alarm" || type == "alarm_action"
+              ? PageAlarmStateRuntime::effective_entity(active(), cell.card)
+              : active().field(*card, CardField::ENTITY);
+      const ConfigurationHandle handle{active().generation(), cell.card};
+      if (configured != entity)
+        return {};
+      const auto kind = modals_.runtime().card_kind(handle);
+      return kind != ControlModalKind::NONE &&
+                     kind != ControlModalKind::SWITCH_CONFIRMATION
+                 ? handle
+                 : ConfigurationHandle{};
+    };
+    // Root controls win, then visible parent order and child display order.
+    // Hidden/unreachable parent folders cannot contribute remote controls.
+    for (size_t shell = 0; shell < Slots; ++shell) {
+      const auto result = match(renderer_.cell(0, shell));
+      if (result.index != NO_CARD)
+        return result;
+    }
+    for (size_t parent = 0; parent < Slots; ++parent) {
+      const auto root = renderer_.cell(0, parent);
+      const auto *card =
+          root.visible && !root.back ? active().card(root.card) : nullptr;
+      const auto *page = card ? active().page(card->target) : nullptr;
+      if (!page || !page->navigable)
+        continue;
+      for (size_t shell = 0; shell < Slots; ++shell) {
+        const auto result = match(renderer_.cell(card->target, shell));
+        if (result.index != NO_CARD)
+          return result;
+      }
+    }
+    return {};
+  }
+  void cover_for_request() {
+    covered_ = true;
+    input_.cover(true);
+  }
+  bool request_page(PageId page) {
+    const auto *definition = active().page(page);
+    if (!navigation_ready() || !definition || !definition->navigable)
+      return false;
+    ui_request_ = {UiKind::PAGE, active().generation(), page, NO_CARD, 0};
+    close_requested_ = true;
+    cover_for_request();
+    return true;
+  }
+  void process_ui_request() {
+    if (ui_request_.kind == UiKind::NONE)
+      return;
+    if (ui_request_.configuration != active().generation()) {
+      ui_request_ = {};
+      return;
+    }
+    const auto memory = modals_.runtime().memory();
+    if (suspended_ || memory.pending_requests || memory.active_contexts ||
+        memory.retired_contexts)
+      return;
+    const auto request = ui_request_;
+    ui_request_ = {};
+    if (critical_active() ||
+        (request.kind == UiKind::ACTIVATE &&
+         (request.connection != connection_generation() || !remote_allowed() ||
+          !platform_.input_allowed())))
+      return;
+    if (request.page != 0) {
+      bool reachable = false;
+      for (size_t shell = 0; shell < Slots; ++shell) {
+        const auto cell = renderer_.cell(0, shell);
+        const auto *owner =
+            cell.visible && !cell.back ? active().card(cell.card) : nullptr;
+        reachable |= owner && owner->target == request.page;
+      }
+      if (!reachable)
+        return;
+    }
+    if (!renderer_.open_page(request.page))
+      return;
+    advance_chrome();
+    origin_ = {};
+    chrome_dirty_ = layout_dirty_ = true;
+    if (request.kind != UiKind::ACTIVATE)
+      return;
+    for (size_t shell = 0; shell < Slots; ++shell) {
+      const auto token = renderer_.binding(shell);
+      if (token.binding && !token.back && token.card == request.card) {
+        view_.activate(token);
+        return;
+      }
+    }
+  }
   static PageNativeScene &self(void *owner) {
     return *static_cast<PageNativeScene *>(owner);
   }
@@ -490,7 +825,9 @@ private:
     // validate ownership/connection independently of temporary input guards.
     const auto &scene = self(owner);
     return scene.ready() && scene.platform_.grid_active() &&
-           scene.platform_.input_allowed() &&
+           scene.platform_.input_allowed() && !scene.close_requested_ &&
+           !scene.takeover_requested_ &&
+           !scene.modals_.runtime().pending_request() &&
            !espcontrol::screensaver_pin().locked() &&
            !ha_read_coordinator().dispatching() &&
            !modal_callback_dispatching();
@@ -527,6 +864,9 @@ private:
       input_.cover(true);
       modals_.runtime().display_takeover(true);
       renderer_.suspend();
+      // Full display ownership must release dashboard surfaces, including a
+      // parked expanded-image cache, before screensaver pipeline replacements.
+      image_resources_.retire_active();
     } else
       renderer_.resume();
     suspended_ = takeover;

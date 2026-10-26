@@ -101,6 +101,10 @@ class PageModalRuntime final:public PageRuntimeResources {
   // including a hidden page. They must resolve against this generation.
   bool request_card(ConfigurationHandle);
   bool request_card(ConfigurationHandle, ControlModalKind);
+  ControlModalKind card_kind(ConfigurationHandle card) const;
+  ControlModalKind pending_kind() const {
+    return pending_.pending ? pending_.kind : ControlModalKind::NONE;
+  }
   uint64_t pending_request() const {
     return pending_.pending ? pending_.opening : 0;
   }
