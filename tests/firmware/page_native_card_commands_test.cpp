@@ -24,6 +24,10 @@ using namespace espcontrol::pages;
 static bool online = true, api = true, busy = false, locked = false;
 static std::string called, entity;
 static bool screensaver = false;
+static bool accepted = true, tilt = false;
+static int percentage = 0;
+static double numeric = 0;
+static espcontrol::number_slider::Metadata numeric_metadata;
 static size_t calls = 0;
 namespace esphome::api {
 struct HomeassistantActionRequest {
@@ -57,7 +61,30 @@ void record(const char* command, const std::string& target) {
   ++calls;
 }
 void send_toggle_action(const std::string& target) { record("toggle", target); }
-void ha_send_entity_action(const std::string& target, const char* command) { record(command, target); }
+bool ha_send_entity_action(const std::string& target, const char* command) {
+  record(command, target);
+  return accepted;
+}
+bool ha_send_entity_action(const std::string& target, const char* command, const char* key,
+                           const char* value) {
+  record(command, target);
+  event.service = command;
+  event.data = {{key, value}};
+  return accepted;
+}
+bool send_slider_action(const std::string& target, int value, bool cover_tilt) {
+  record("percent", target);
+  percentage = value;
+  tilt = cover_tilt;
+  return accepted;
+}
+bool send_numeric_slider_action(const std::string& target, double value,
+                                const espcontrol::number_slider::Metadata& metadata) {
+  record("number", target);
+  numeric = value;
+  numeric_metadata = metadata;
+  return accepted;
+}
 void send_turn_on_action(const std::string& target) { record("on", target); }
 void send_turn_off_action(const std::string& target) { record("off", target); }
 void send_action_card_action(const ParsedCfg& p) { record("action", p.entity); }
@@ -175,6 +202,26 @@ int main() {
   }
   force_screensaver_action() = {};
   set_espcontrol_language("en");
+  snapshot.kind = PageCardCommandKind::PERCENT;
+  snapshot.config.entity = "cover.shade";
+  snapshot.config.type = "cover";
+  snapshot.config.sensor = "tilt";
+  snapshot.value.integer = 61;
+  assert(port.dispatch_control(snapshot) && percentage == 61 && tilt && entity == "cover.shade");
+  snapshot.config.type = "slider";
+  assert(port.dispatch_control(snapshot) && !tilt);
+  snapshot.kind = PageCardCommandKind::NUMBER;
+  snapshot.value.number = 10.5;
+  snapshot.value.metadata = {0, 20, 0.5};
+  assert(port.dispatch_control(snapshot) && numeric == 10.5 && numeric_metadata.step == 0.5);
+  snapshot.kind = PageCardCommandKind::TEMPERATURE;
+  snapshot.value.integer = 4700;
+  assert(port.dispatch_control(snapshot) && event.service == "light.turn_on" &&
+         event.data[0].first == "color_temp_kelvin" && event.data[0].second == "4700");
+  snapshot.kind = PageCardCommandKind::SLIDER_TOGGLE;
+  assert(port.dispatch_control(snapshot) && called == "homeassistant.toggle");
+  accepted = false;
+  assert(!port.dispatch_control(snapshot));
   lv_display_delete(display);
   lv_deinit();
 }

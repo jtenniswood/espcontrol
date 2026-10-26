@@ -12,6 +12,8 @@
 #include "page_card_dependencies.h"
 #include "page_entity_observer_set.h"
 #include "page_label_refresh.h"
+#include "page_lvgl_dispatch.h"
+#include "page_slider_command_policy.h"
 #include "page_modal_gestures.h"
 #include "page_pooled_qr_tile_view.h"
 #include "page_runtime_resources_group.h"
@@ -59,6 +61,8 @@ struct Fixture {
                                         std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
     assert(writer.append_button(1, reinterpret_cast<const uint8_t*>(card.data()), card.size()) ==
            PanelConfigStatus::OK);
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>("button_order"), 12,
+                                 reinterpret_cast<const uint8_t*>("1"), 1) == PanelConfigStatus::OK);
     assert(writer.finish(&size) == PanelConfigStatus::OK);
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
@@ -779,6 +783,8 @@ struct Fixture {
   std::array<uint8_t,8192>document{};size_t size{0};alignas(std::max_align_t)std::array<uint8_t,65536>arena{};PageStore store;
 };
 template<size_t Slots>struct Actions {
+  PageCardCommands* deferred{nullptr};
+  PageEntityStateRuntime* command_state{nullptr};
   PageRendererRuntime<Slots> *renderer{nullptr};size_t toggles{0},climates{0},commands{0},icon_resolves{0},seeks{0};uint8_t seek_percent{0};float seek_duration{0};PageId seek_page{NO_PAGE};PageBindingToken last;char entity[64]{};
   static const char* icon(void* owner, std::string_view name, std::string_view) {
     ++static_cast<Actions*>(owner)->icon_resolves;
@@ -3882,6 +3888,187 @@ void light_temperature_profile(const DeviceUiLimits& limits) {
   lv_indev_delete(device);
   lv_obj_delete(page);
 }
+// Exercise actual pointer callbacks through the shared deferred command owner.
+template <size_t Slots>
+struct DeferredGridPort final : PageCardCommandPort {
+  PageSliderCommandPolicy& policy;
+  PageRendererRuntime<Slots>* renderer{nullptr};
+  bool accepted{true};
+  size_t sends{0};
+  PageCardCommandKind last{PageCardCommandKind::NONE};
+  explicit DeferredGridPort(PageSliderCommandPolicy& p) : policy(p) {}
+  bool ready() const override { return !page_lvgl_dispatching(); }
+  bool valid(PageBindingToken t) const override { return renderer && renderer->valid(t); }
+  bool connected() const override { return true; }
+  bool service_available() const override { return true; }
+  void dispatch(const PageCardCommandSnapshot&) override { assert(false); }
+  bool admit_control(const PageStore& s, PageBindingToken t, PageCardCommandKind k,
+                     PageCardCommandValue& v) override {
+    return policy.admit(s, t, k, v);
+  }
+  bool valid_control(const PageStore& s, PageBindingToken t, PageCardCommandKind k,
+                     const PageCardCommandValue& v) override {
+    return policy.valid(s, t, k, v);
+  }
+  void discard_control(PageBindingToken t, PageCardCommandKind k, const PageCardCommandValue& v) override {
+    policy.discard(t, k, v);
+  }
+  bool dispatch_control(const PageCardCommandSnapshot& s) override {
+    assert(ready());
+    ++sends;
+    last = s.kind;
+    return accepted;
+  }
+};
+template <size_t Slots>
+void deferred_slider_profile(const DeviceUiLimits& limits) {
+  const char* cards[] = {"fan.speed;Speed;Auto;Auto;;;slider;;",
+                         "input_number.level;Level;Auto;Auto;;;slider;;",
+                         "light.temp;Temperature;Auto;Auto;;2000-6500;light_temperature;;"};
+  for (size_t kind = 0; kind < 3; ++kind) {
+    Fixture fixture(limits, std::string_view(cards[kind]));
+    Arena arena;
+    Subscriptions subscriptions;
+    PageCardDependencies dependencies;
+    PagePercentSliderRuntime percentages(arena, subscriptions);
+    PageNumberSliderRuntime numbers(arena, subscriptions);
+    PageLightTemperatureRuntime temperature(arena, subscriptions);
+    PageEntityObserverSet<3> observers;
+    assert(observers.add(percentages) && observers.add(numbers) && observers.add(temperature));
+    PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192}, &observers);
+    PageSliderCommandPolicy policy(state, percentages, numbers, temperature);
+    DeferredGridPort<Slots> sender(policy);
+    PageCardCommands commands(state, sender);
+    auto* page = lv_obj_create(lv_screen_active());
+    std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+    const auto row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+    for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+    columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+    for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+    rows[row_count] = LV_GRID_TEMPLATE_LAST;
+    lv_obj_set_size(page, 480, 480);
+    lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+    std::array<PageBasicWidgets, Slots> widgets{};
+    for (auto& w : widgets) {
+      w.button = lv_button_create(page);
+      w.icon = lv_label_create(w.button);
+      w.label = lv_label_create(w.button);
+      w.sensor_container = lv_obj_create(w.button);
+      w.value = lv_label_create(w.sensor_container);
+      w.unit = lv_label_create(w.sensor_container);
+      w.fill = lv_obj_create(w.button);
+      w.slider = lv_slider_create(w.button);
+    }
+    PointerInput input;
+    auto* device = lv_indev_create();
+    lv_indev_set_type(device, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_display(device, lv_display_get_default());
+    lv_indev_set_user_data(device, &input);
+    lv_indev_set_read_cb(device, PointerInput::read);
+    {
+      PageBasicTheme theme;
+      Actions<Slots> actions;
+      actions.deferred = &commands;
+      actions.command_state = &state;
+      auto callbacks = actions.callbacks();
+      callbacks.toggle = [](void* owner, PageBindingToken t, std::string_view) {
+        auto& a = *static_cast<Actions<Slots>*>(owner);
+        const auto before = cpp_allocations;
+        assert(a.deferred->request_slider_toggle(t, a.command_state->connection_generation()));
+        assert(cpp_allocations == before && a.deferred->loop() == PageCardCommandResult::NONE);
+      };
+      callbacks.percent_slider = [](void* owner, PageBindingToken t, int value) {
+        auto& a = *static_cast<Actions<Slots>*>(owner);
+        const auto before = cpp_allocations;
+        assert(a.deferred->request_percent(t, a.command_state->connection_generation(), value));
+        assert(cpp_allocations == before && a.deferred->loop() == PageCardCommandResult::NONE);
+      };
+      callbacks.number_slider = [](void* owner, PageBindingToken t, double value,
+                                   const number_slider::Metadata& m) {
+        auto& a = *static_cast<Actions<Slots>*>(owner);
+        const auto before = cpp_allocations;
+        assert(a.deferred->request_number(t, a.command_state->connection_generation(), value, m));
+        assert(cpp_allocations == before && a.deferred->loop() == PageCardCommandResult::NONE);
+      };
+      callbacks.light_temperature = [](void* owner, PageBindingToken t, int value) {
+        auto& a = *static_cast<Actions<Slots>*>(owner);
+        const auto before = cpp_allocations;
+        assert(a.deferred->request_temperature(t, a.command_state->connection_generation(), value));
+        assert(cpp_allocations == before && a.deferred->loop() == PageCardCommandResult::NONE);
+      };
+      PageLabelRefresh cache(arena);
+      PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme,
+                                    callbacks, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                    &percentages, &numbers, &temperature);
+      assert(port.initialize());
+      std::array<lv_obj_t*, Slots * 4> labels{};
+      size_t used = 0;
+      for (const auto& w : widgets)
+        for (auto* label : {w.icon, w.label, w.value, w.unit}) labels[used++] = label;
+      assert(cache.initialize(labels.data(), labels.size()));
+      PageRendererRuntime<Slots> renderer(limits, arena, port);
+      actions.renderer = &renderer;
+      sender.renderer = &renderer;
+      PageRuntimeResourcesGroup<6> resources(
+          {&renderer, &commands, &percentages, &numbers, &temperature, &state});
+      assert(resources.prepare(fixture.store));
+      resources.activate_prepared(fixture.store);
+      subscriptions.send("fan.speed", "", "on");
+      subscriptions.send("fan.speed", "percentage", "42");
+      subscriptions.send("input_number.level", "", "12");
+      subscriptions.send("input_number.level", "min", "0");
+      subscriptions.send("input_number.level", "max", "20");
+      subscriptions.send("input_number.level", "step", "0.5");
+      subscriptions.send("light.temp", "", "on");
+      subscriptions.send("light.temp", "color_temp_kelvin", "3200");
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      const auto allocations = arena.allocations, registrations = subscriptions.bindings.size();
+      const auto expected = kind == 0   ? PageCardCommandKind::PERCENT
+                            : kind == 1 ? PageCardCommandKind::NUMBER
+                                        : PageCardCommandKind::TEMPERATURE;
+      auto release = [&]() {
+        vertical_pointer(device, input, widgets[0].slider, 50, true);
+        vertical_pointer(device, input, widgets[0].slider, 65, false);
+        assert(commands.memory().pending == 1);
+      };
+      for (size_t cycle = 0; cycle < 1000; ++cycle) {
+        release();
+        assert(sender.sends == cycle);
+        assert(commands.loop() == PageCardCommandResult::DISPATCHED && sender.last == expected);
+        renderer.update_visible();
+        lv_obj_update_layout(page);
+        assert(commands.memory().pending == 0 && subscriptions.bindings.size() == registrations);
+        assert(arena.allocations == allocations);
+      }
+      sender.accepted = false;
+      release();
+      if (kind == 2) subscriptions.send("light.temp", "", "on");
+      assert(commands.loop() == PageCardCommandResult::FAILED);
+      renderer.update_visible();
+      const ConfigurationHandle handle{fixture.store.generation(), 0};
+      const int restored = kind == 0   ? percentages.read(handle).percent
+                           : kind == 1 ? numbers.read(handle).position
+                                       : temperature.read(handle).percent;
+      assert(lv_slider_get_value(widgets[0].slider) == restored);
+      assert(kind != 0 || restored == 42);
+      assert(kind != 1 || restored == 24);
+      assert(kind != 2 || temperature.read(handle).display_kelvin == 3200);
+      release();
+      assert(renderer.suspend());
+      assert(commands.loop() == PageCardCommandResult::CANCELLED);
+      assert(renderer.resume());
+      renderer.update_visible();
+      assert(commands.memory().pending == 0 && sender.sends == 1001);
+      resources.retire_active();
+    }
+    lv_indev_delete(device);
+    lv_obj_delete(page);
+    assert(arena.live == 0);
+  }
+  std::printf("%s: deferred grid sliders, 1000 real pointer releases per kind, failure/cover rollback\n",
+              limits.device_profile);
+}
 template <size_t Slots>
 void number_slider_profile(const DeviceUiLimits& limits) {
   Fixture fixture(limits, Fixture::NumberSliders{});
@@ -6662,6 +6849,16 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (!family || std::strcmp(family, "slider_commands") == 0) {
+      switch(limits.slot_count) {
+        case 6: deferred_slider_profile<6>(limits); break;
+        case 9: deferred_slider_profile<9>(limits); break;
+        case 15: deferred_slider_profile<15>(limits); break;
+        case 20: deferred_slider_profile<20>(limits); break;
+        default: assert(false);
+      }
+      if(family) continue;
+    }
     if (family && std::strcmp(family, "screen_lock") == 0) {
       switch (limits.slot_count) {
         case 6:
