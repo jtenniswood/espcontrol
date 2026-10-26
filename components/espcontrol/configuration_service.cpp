@@ -162,7 +162,9 @@ ServiceLoadResult ConfigurationService::load_and_apply_runtime(
     failed.status = ServiceStatus::RUNTIME_APPLY_FAILED;
     return failed;
   }
-  if (!legacy_.publish(loaded.document_version, output, loaded.document_size)) {
+  compatibility_publication_current_ =
+      legacy_.publish(loaded.document_version, output, loaded.document_size);
+  if (!compatibility_publication_current_) {
     ServiceLoadResult failed = loaded;
     failed.status = ServiceStatus::LEGACY_MIRROR_FAILED;
     return failed;
@@ -343,6 +345,11 @@ ConfigurationService::synchronize_legacy_runtime(uint8_t *output,
   const auto loaded = load_unlocked(output, output_capacity);
   if (!loaded.ok())
     return loaded;
+  if (!compatibility_publication_current_) {
+    auto failed = loaded;
+    failed.status = ServiceStatus::LEGACY_MIRROR_FAILED;
+    return failed;
+  }
   // The ordinary scratch slot is available after load has copied the durable
   // document into the caller's boot buffer. No extra document allocation on
   // the device, and no borrowing the HTTP task's request buffer.
@@ -418,6 +425,7 @@ ServiceSaveResult ConfigurationService::save_unlocked(
   const bool applied = prepared.activate(committed.generation);
   const bool published =
       legacy_.publish(document_version, document, document_size);
+  compatibility_publication_current_ = published;
   const bool mirrored = !legacy_writes_enabled() ||
                         legacy_.mirror(document_version, document, document_size);
   if (!applied) {
@@ -479,6 +487,7 @@ ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
   const bool applied = prepared.activate(committed.generation);
   const bool published =
       legacy_.publish(document_version, document, document_size);
+  compatibility_publication_current_ = published;
   const bool mirrored = !legacy_writes_enabled() ||
                         legacy_.mirror(document_version, document, document_size);
   if (!applied) {

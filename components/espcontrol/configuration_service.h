@@ -224,6 +224,10 @@ class ConfigurationService {
   size_t scratch_capacity_{0};
   ConfigurationRuntimeAdapter *runtime_{nullptr};
   LegacyConfigurationMode legacy_mode_{LegacyConfigurationMode::DUAL_WRITE};
+  // A partially published compatibility view must not be re-imported as an
+  // edit of the authoritative native document. A later successful publication
+  // (boot restore or native save) reopens compatibility editing.
+  bool compatibility_publication_current_{true};
   // The service scratch buffer is shared by load and commit paths. Keep the
   // complete operations mutually exclusive across ESPHome and HTTP tasks.
   std::mutex operation_mutex_{};

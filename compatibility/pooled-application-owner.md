@@ -76,7 +76,9 @@ After the prepared scene activates, the configuration service publishes the
 complete native document to live compatibility text entities before downgrade
 mirroring. Publication is separate from the allocation-free scene generation
 swap. A publication failure is reported as a compatibility failure; the newly
-committed scene/document remain authoritative, including during boot restore. Debounced direct text
+committed scene/document remain authoritative, including during boot restore.
+A partially published compatibility view cannot be re-imported by a later text
+refresh. A successful publication of the durable document reopens that edit path. Debounced direct text
 edits merge only fields owned by the compatibility projection, retaining
 native-only settings. They use normal runtime preparation and durable commit;
 failed preparation/storage leaves the previous scene and document intact.

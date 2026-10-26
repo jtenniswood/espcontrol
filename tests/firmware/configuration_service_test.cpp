@@ -608,6 +608,7 @@ bool compatibility_publication_is_separate_from_runtime_activation() {
         runtime.apply_calls == 1 && runtime.applied == document;
   };
   legacy.publish_failed = true;
+  legacy.mirror_failed = true;
   const auto saved =
       service.save_if_generation(0, 1, document.data(), document.size());
   if (saved.status != ServiceStatus::LEGACY_MIRROR_FAILED || !saved.durable() ||
@@ -623,7 +624,13 @@ bool compatibility_publication_is_separate_from_runtime_activation() {
     return false;
   // Startup publication failure is a compatibility failure, after the same
   // durable generation has been activated. Reboot must not import old text.
-  legacy.value = bytes("stale legacy value");
+  legacy.value = bytes("partially published/stale compatibility value");
+  const auto blocked =
+      service.synchronize_legacy_runtime(output.data(), output.size());
+  if (blocked.status != ServiceStatus::LEGACY_MIRROR_FAILED ||
+      blocked.generation != saved.generation || runtime.apply_calls != 1 ||
+      runtime.applied != document || legacy.publish_calls != 1)
+    return false;
   loaded = service.load_and_apply_runtime(output.data(), output.size());
   if (loaded.status != ServiceStatus::LEGACY_MIRROR_FAILED ||
       loaded.generation != saved.generation || runtime.apply_calls != 2 ||

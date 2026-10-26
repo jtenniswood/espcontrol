@@ -359,11 +359,16 @@ void compatibility_refresh_and_publication() {
   h.app.apply_boot_configuration();
   assert(!native.boot_configuration_pending && h.scene.activates==3 &&
       native.runtime_config.applies==0 && h.legacy.publish_calls==3);
-  h.legacy.publish_failed=false;
+  h.app.configuration_text_refresh_pending_=true;h.legacy.value={7,8,9};
+  h.app.apply_configuration_text_refresh();
+  assert(h.scene.current[0]==4 && h.scene.activates==3 && h.legacy.publish_calls==3);
+  h.legacy.publish_failed=false;native.boot_configuration_pending=true;
+  h.app.apply_boot_configuration();
+  assert(h.scene.current[0]==4 && h.legacy.publish_calls==4);
   // Failed runtime preparation never publishes candidate text or durable data.
   h.scene.prepare_ok=false;h.legacy.value={7,8,9};
   h.app.configuration_text_refresh_pending_=true;h.app.apply_configuration_text_refresh();
-  assert(h.scene.current[0]==4 && native.runtime_config.applies==0 && h.legacy.publish_calls==3);
+  assert(h.scene.current[0]==4 && native.runtime_config.applies==0 && h.legacy.publish_calls==4);
 }
 
 void shutdown() {
