@@ -14,6 +14,7 @@
 #include "media_playlist_match.h"
 #include "page_fan_mode.h"
 #include "page_media_group.h"
+#include "page_toggle_state.h"
 #include "timer_state_policy.h"
 #include "weather_condition.h"
 #include "wifi_qr_codec.h"
@@ -32,9 +33,7 @@ bool equal_state(std::string_view text,std::string_view expected) {
   return true;
 }
 bool on(std::string_view text) {
-  for(const auto state:{"on","true","1","home","playing","open","opened","opening","closing","unlocked","unlocking","jammed"})
-    if(equal_state(text,state))return true;
-  return false;
+  return page_toggle_on(text);
 }
 bool available(const PageEntityValue &value) {
   return value.status==PageEntityStatus::AVAILABLE && !equal_state(value.value,"unknown") &&
