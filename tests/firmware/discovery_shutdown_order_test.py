@@ -46,6 +46,9 @@ struct EspControlApp : Component {
   NativeConfigurationRuntime *native_configuration_runtime_=&runtime_;
   Resolver home_assistant_endpoint_;
   Core core_;
+  bool shutting_down_=false;
+  struct Scene { void stop() {} };
+  Scene *application_scene_=nullptr;
 '''
 for name in ('on_safe_shutdown', 'on_shutdown'):
     if any('EspControlApp::' + name + '(' in f for f in functions):

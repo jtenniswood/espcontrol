@@ -102,7 +102,7 @@ struct PageForecastFrame {
                temperature_height = lv_font_get_line_height(style.temperature_font),
                icon_height = lv_font_get_line_height(style.icon_font);
     const size_t available = view == PageForecastView::DAILY ? forecast.count : 1;
-    int minimum_width = std::max<int>(icon_height, measured("-188°", style.font)), list_width = 0;
+    int minimum_width = std::max<int>(icon_height, measured("-188°", style.font));
     for (const auto* key : {"Today", "Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"})
       minimum_width = std::max(minimum_width, measured(translated(style, key), style.font));
     minimum_width += 24;
@@ -111,19 +111,16 @@ struct PageForecastFrame {
       range(text, sizeof(text), forecast.days[i], forecast.temperature_unit, style);
       const auto size = measured(text, style.temperature_font);
       minimum_width = std::max(minimum_width, size + 24);
-      list_width = std::max(list_width, size);
     }
     const auto arrangement =
         weather::card_frame_layout(width, height, font_height, temperature_height, icon_height, minimum_width,
-                                   list_width, available, snapshot.stale);
-    if (snapshot.stale) copy_display_text(caption, sizeof(caption), translated(style, "Last forecast"));
+                                   available);
     for (size_t i = 0; i < arrangement.layout.count; ++i) {
       const auto& day = forecast.days[first + i];
       const auto& boxes = arrangement.days[i];
       const char* date = view == PageForecastView::TOMORROW           ? translated(style, "Tomorrow")
                          : std::strcmp(day.date, forecast.today) == 0 ? translated(style, "Today")
                                                                       : weekday(day, style);
-      if (arrangement.layout.list && measured(date, style.font) > boxes.day.width) date = weekday(day, style);
       add(boxes.icon, style.icon_font, glyphs[weather::condition_index(day.condition)], true);
       add(boxes.day, style.font, date);
       char text[40];

@@ -13,20 +13,17 @@ struct CardFrameLayout {
 };
 // Shared by the existing widget renderer and the fixed forecast drawing view.
 inline CardFrameLayout card_frame_layout(int width, int height, int font_height, int temperature_height,
-                                         int icon_height, int minimum_day_width, int list_text_width,
-                                         size_t available_days, bool stale) {
+                                         int icon_height, int minimum_day_width, size_t available_days) {
   CardFrameLayout result;
-  const int caption_height = stale ? font_height + 2 : 0,
-            content_height = std::max(1, height - caption_height);
-  const int day_gap = std::max(8, font_height), row_gap = std::max(8, font_height / 2),
-            list_gap = std::max(8, font_height / 3);
+  // Stale status is shown in the details modal, never in card geometry.
+  const int content_height = height;
+  const int day_gap = std::max(8, font_height), row_gap = std::max(8, font_height / 2);
   const int minimum_height = icon_height + font_height + temperature_height + 4;
   auto& layout = result.layout;
-  layout = card_layout(
-      width, content_height, minimum_day_width, minimum_height, icon_height + list_gap + list_text_width,
-      std::max(icon_height, font_height + temperature_height + 2), day_gap, row_gap, available_days);
+  layout =
+      card_layout(width, content_height, minimum_day_width, minimum_height, day_gap, row_gap, available_days);
   if (layout.count == 0) return result;
-  const bool grid = !layout.list && layout.rows > 1;
+  const bool grid = layout.rows > 1;
   const int icon_gap = grid ? std::min(std::max(6, font_height / 3),
                                        (content_height - row_gap * static_cast<int>(layout.rows - 1)) /
                                                static_cast<int>(layout.rows) -
@@ -49,15 +46,12 @@ inline CardFrameLayout card_frame_layout(int width, int height, int font_height,
               cell_height = base_height + (row < remainder_height ? 1 : 0);
     const int x = column * (base_width + day_gap) + std::min(column, remainder_width),
               y = row * (base_height + grid_row_gap) + std::min(row, remainder_height);
-    const int icon_y = y + (layout.list ? (cell_height - icon_height) / 2
-                            : grid      ? (cell_height - group_height) / 2
-                                        : 0);
-    const int text_x = x + (layout.list ? icon_height + list_gap : 0), text_width = cell_width - (text_x - x);
+    const int icon_y = y + (grid ? (cell_height - group_height) / 2 : 0);
+    const int text_x = x, text_width = cell_width;
     const int text_top =
-        layout.list ? y + (cell_height - font_height - temperature_height - 2) / 2
-        : grid      ? icon_y + icon_height + icon_gap
-                    : y + std::max(icon_height + 2, cell_height - temperature_height - font_height - 2);
-    result.days[i] = {{x, icon_y, layout.list ? icon_height : cell_width, icon_height},
+        grid ? icon_y + icon_height + icon_gap
+             : y + std::max(icon_height + 2, cell_height - temperature_height - font_height - 2);
+    result.days[i] = {{x, icon_y, cell_width, icon_height},
                       {text_x, text_top, text_width, font_height},
                       {text_x, text_top + font_height + 2, text_width, temperature_height}};
   }

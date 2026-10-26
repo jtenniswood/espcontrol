@@ -939,6 +939,20 @@ target_compile_options(configuration_service_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(configuration_service_test PRIVATE ../../components/espcontrol)
 add_test(NAME configuration_service_test COMMAND configuration_service_test)
 
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/application_scene_runtime_test.cpp
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_application_scene_runtime_test.py
+    --output ${CMAKE_CURRENT_BINARY_DIR}/application_scene_runtime_test.cpp
+  DEPENDS generate_application_scene_runtime_test.py application_scene_runtime_test.cpp.in
+    ../../components/espcontrol/espcontrol_app.cpp VERBATIM)
+add_executable(application_scene_runtime_test ${CMAKE_CURRENT_BINARY_DIR}/application_scene_runtime_test.cpp
+  ../../components/espcontrol/configuration_main_loop.cpp
+  ../../components/espcontrol/configuration_service.cpp ../../components/espcontrol/configuration_store.cpp)
+target_compile_features(application_scene_runtime_test PRIVATE cxx_std_17)
+target_compile_options(application_scene_runtime_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(application_scene_runtime_test PRIVATE ../../components/espcontrol)
+target_link_libraries(application_scene_runtime_test PRIVATE Threads::Threads)
+add_test(NAME application_scene_runtime_test COMMAND application_scene_runtime_test)
+
 add_executable(configuration_main_loop_test configuration_main_loop_test.cpp
   ../../components/espcontrol/configuration_main_loop.cpp
   ../../components/espcontrol/configuration_service.cpp

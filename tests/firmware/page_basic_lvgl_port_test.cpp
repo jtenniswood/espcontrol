@@ -6631,7 +6631,7 @@ template<size_t Slots>void forecast_profile(const DeviceUiLimits &limits) {
     const auto before_cached_open = actions.commands;
     lv_obj_send_event(widgets[1].button, LV_EVENT_CLICKED, nullptr);
     assert(actions.commands == before_cached_open + 1);
-    assert(std::strcmp(lv_label_get_text(widgets[1].label), "Last forecast") == 0);
+    assert(std::strcmp(lv_label_get_text(widgets[1].label), "") == 0);
     lv_obj_set_size(page, 600, 320);
     lv_obj_update_layout(page);
     lv_refr_now(lv_display_get_default());

@@ -29,12 +29,20 @@ encode length-delimited borrowed views synchronously, avoiding a conversion
 back to default-allocator strings. Older host transport policies can continue
 to accept `std::string` arguments.
 
-ESPHome 2026.9.1 has no public unsubscribe operation. A small version-pinned
+ESPHome 2026.10.0 has no public unsubscribe operation. A small version-pinned
 bridge mutates its public subscription-record view from the main loop. It
 identifies EspControl entries by their exact owned name-buffer addresses,
 preserving foreign registrations even when their entity/attribute text matches.
 It restarts authenticated clients' positional subscription enumeration after
 changes. Audit this bridge when changing the pinned ESPHome version.
+
+The 2026.10.0 audit compared the actual SDK sources with 2026.9.1: subscription
+records and state-response dispatch are unchanged. Enumeration still uses a
+positional cursor. The new wizard-input path remembers state subscriptions and
+skips unconfigured empty IDs; invoking the public enumeration request sets
+that flag as the SDK expects and restarts its cursor. The native-style fixture now retains dynamic
+foreign name storage across compaction and checks this enumeration flag. The
+version guard remains exact so a later SDK change requires another audit.
 
 The native protocol has no remote-unsubscribe message. Home Assistant may keep
 announcing retired entities until its next reconnect; those replies are ignored.

@@ -106,22 +106,20 @@ inline bool parse(const std::string &payload, Forecast &out) {
 }
 struct CardLayout {
   size_t count = 0, columns = 0, rows = 0;
-  bool list = false;
 };
 // Maximise visible days first, then balance the grid's cell proportions.
 // Tall single-column cards use the same icon-above-text tiles as wider grids.
 inline CardLayout card_layout(int width, int height, int minimum_width, int minimum_height,
-    int list_width, int list_height, int column_gap, int row_gap, size_t available) {
+    int column_gap, int row_gap, size_t available) {
   available = std::min(available, MAX_DAYS);
   if (!available || width <= 0 || height <= 0) return {};
   auto fit = [](int space, int minimum, int gap) {
     return std::max(1, (space + gap) / (std::max(1, minimum) + gap));
   };
-  const bool compact = height < minimum_height && width >= list_width;
-  const int max_columns = std::min(static_cast<int>(available), fit(width, compact ? list_width : minimum_width, column_gap));
-  const int max_rows = std::min(static_cast<int>(available), fit(height, compact ? list_height : minimum_height, row_gap));
+  const int max_columns = std::min(static_cast<int>(available), fit(width, minimum_width, column_gap));
+  const int max_rows = std::min(static_cast<int>(available), fit(height, minimum_height, row_gap));
   const size_t count = std::min(available, static_cast<size_t>(max_columns * max_rows));
-  CardLayout best{count, count, 1, compact};
+  CardLayout best{count, count, 1};
   double best_score = std::numeric_limits<double>::infinity();
   for (int rows = 1; rows <= std::min(max_rows, static_cast<int>(count)); ++rows) {
     const int columns = (static_cast<int>(count) + rows - 1) / rows;
@@ -132,7 +130,7 @@ inline CardLayout card_layout(int width, int height, int minimum_width, int mini
       std::max(1, std::max(cell_width, cell_height)) + (columns * rows - count) * 0.15;
     if (score < best_score) {
       best_score = score;
-      best = {count, static_cast<size_t>(columns), static_cast<size_t>(rows), compact};
+      best = {count, static_cast<size_t>(columns), static_cast<size_t>(rows)};
     }
   }
   return best;
