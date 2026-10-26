@@ -20,6 +20,8 @@ void *operator new(size_t bytes) {
 void *operator new[](size_t bytes) { return ::operator new(bytes); }
 void operator delete(void *p) noexcept { std::free(p); }
 void operator delete[](void *p) noexcept { std::free(p); }
+void operator delete(void *p, size_t) noexcept { std::free(p); }
+void operator delete[](void *p, size_t) noexcept { std::free(p); }
 
 using namespace espcontrol;
 using namespace espcontrol::pages;
@@ -234,7 +236,8 @@ void packed_state_matches_reference_without_allocations() {
     if (iteration % 127 == 0) {
       ++transport.connection;
       assert(state.dependency({1,0},0).status==PageEntityStatus::UNKNOWN);
-      for (auto &value:values) value.clear(); statuses.fill(PageEntityStatus::UNKNOWN);
+      for (auto &value:values) value.clear();
+      statuses.fill(PageEntityStatus::UNKNOWN);
     }
   }
 }

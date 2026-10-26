@@ -16,6 +16,8 @@ void *operator new(size_t bytes){++allocations;if(void *p=std::malloc(bytes?byte
 void *operator new[](size_t bytes){return ::operator new(bytes);}
 void operator delete(void *p)noexcept{std::free(p);}
 void operator delete[](void *p)noexcept{std::free(p);}
+void operator delete(void *p,size_t)noexcept{std::free(p);}
+void operator delete[](void *p,size_t)noexcept{std::free(p);}
 namespace {
 struct Arena:PageArenaAllocator {
   void *allocate(size_t bytes)override{return std::malloc(bytes);}
@@ -28,6 +30,10 @@ struct Subscriptions:PageEntitySubscriptions {
   uint32_t connection_generation()const override{return generation;}
   void send(const char *entity,const char *attribute,std::string_view value){for(auto &b:bindings)if(std::strcmp(b.entity,entity)==0&&std::strcmp(b.attribute,attribute)==0)b.deliver(b.owner,b.revision,b.channel,value);}
   uint32_t generation{1};
+};
+struct TextPool:BasicCardTextSink {
+  bool copy(std::string_view value,std::string_view &stored)override{if(value.size()>text.size()-used)return false;std::memcpy(text.data()+used,value.data(),value.size());stored={text.data()+used,value.size()};used+=value.size();return true;}
+  std::array<char,8192>text{};size_t used{0};
 };
 struct Fixture {
   Fixture(const DeviceUiLimits &limits,const std::string &text) {
@@ -69,13 +75,49 @@ void profile(const DeviceUiLimits &limits) {
   subs.send("sensor.temp","",std::string(257,'1'));assert(!read_basic_card(definition,{17,0},state).numeric);
   for(const auto text:{"-21.45","0.05","1.25","2.75"}){subs.send("sensor.temp","",text);value=read_basic_card(definition,{17,0},state);assert(value.numeric);}
   ++subs.generation;assert(!read_basic_card(definition,{17,0},state).numeric);
-  for(const auto &text:{std::string("light.test;;;;;;;;confirm_off"),std::string(";;;;sensor.temp;;sensor;text;"),std::string(";;;;sensor.temp;;sensor;time;"),std::string("media_player.test;;;;control;;media;;"),std::string(";;;;indicator;;subpage;;")}) {
+  for(const auto &text:{std::string("light.test;;;;;;;;confirm_off"),std::string("media_player.test;;;;control;;media;;"),std::string(";;;;indicator;;subpage;;")}) {
     Fixture unsupported(limits,text);assert(!prepare_basic_card(unsupported.store,0,definition));
   }
   Fixture toggle(limits,"light.test;;Lightbulb;Lightbulb;sensor.temp;%;;2;");assert(prepare_basic_card(toggle.store,0,definition));assert(definition.kind==BasicCardKind::TOGGLE);
   assert(state.prepare(toggle.store));state.activate_prepared(toggle.store);subs.send("light.test",""," ON ");subs.send("sensor.temp","","45.25");
   value=read_basic_card(definition,{17,0},state);assert(value.on&&value.numeric&&std::strcmp(value.number,"45.25")==0);
   assert(!read_basic_card(definition,{18,0},state).numeric);
+  Fixture text(limits,";;;;sensor.temp;;sensor;text;state_labels,state_input=high,state_output=Already%20High,state_input_2=low,state_output_2=all%20LOW");
+  assert(!prepare_basic_card(text.store,0,definition)); // Mapping storage must be reserved.
+  TextPool strings;assert(prepare_basic_card(text.store,0,definition,&strings));assert(definition.kind==BasicCardKind::TEXT&&definition.text_input=="high");
+  assert(state.prepare(text.store));state.activate_prepared(text.store);
+  subs.send("sensor.temp",""," HIGH ");value=read_basic_card(definition,{17,0},state);assert(value.label=="Already High"&&!value.formatted_label);
+  subs.send("sensor.temp","","low");assert(read_basic_card(definition,{17,0},state).label=="all LOW");
+  subs.send("sensor.temp","",u8"ÜBERMORGEN");value=read_basic_card(definition,{17,0},state);assert(value.formatted_label&&std::strcmp(value.text,u8"Übermorgen")==0);
+  subs.send("sensor.temp","","unavailable");value=read_basic_card(definition,{17,0},state);assert(!value.on&&std::strcmp(value.text,"Unavailable")==0);
+  const auto text_allocations=allocations;for(size_t i=0;i<1000;++i)assert(read_basic_card(definition,{17,0},state).formatted_label);assert(allocations==text_allocations);
+  ++subs.generation;value=read_basic_card(definition,{17,0},state);assert(!value.formatted_label&&value.label=="--");
+  Fixture overlay(limits,"light.test;Standby;Auto;Auto;sensor.temp;;;text;");assert(prepare_basic_card(overlay.store,0,definition));assert(definition.text_overlay);
+  assert(state.prepare(overlay.store));state.activate_prepared(overlay.store);subs.send("light.test","","on");subs.send("sensor.temp","","pre_wash");
+  value=read_basic_card(definition,{17,0},state);assert(value.formatted_label&&std::strcmp(value.text,"Pre Wash")==0);
+  subs.send("light.test","","off");value=read_basic_card(definition,{17,0},state);assert(!value.formatted_label&&value.label=="Standby");
+  for(const auto type:{"","light_switch"})for(const auto label:{"Standby",""}) {
+    Fixture no_overlay(limits,std::string("light.test;")+label+";Auto;Auto;;;"+type+";text;");
+    assert(prepare_basic_card(no_overlay.store,0,definition)&&!definition.text_overlay);
+    assert(state.prepare(no_overlay.store));state.activate_prepared(no_overlay.store);
+    subs.send("light.test","friendly_name","Room light");
+    for(const auto state_text:{"on","off"}) {
+      subs.send("light.test","",state_text);value=read_basic_card(definition,{17,0},state);
+      assert(!value.formatted_label&&!value.numeric&&value.label==(label[0]?label:"Room light"));
+    }
+  }
+  Fixture duration(limits,";;;;sensor.temp;;sensor;time;");assert(prepare_basic_card(duration.store,0,definition));assert(definition.kind==BasicCardKind::DURATION);
+  assert(state.prepare(duration.store));state.activate_prepared(duration.store);subs.send("sensor.temp","","90");assert(!read_basic_card(definition,{17,0},state).numeric);
+  subs.send("sensor.temp","unit_of_measurement","seconds");value=read_basic_card(definition,{17,0},state,2);assert(value.numeric&&std::strcmp(value.number,"1m 30s")==0&&value.unit.empty());
+  assert(std::strcmp(read_basic_card(definition,{17,0},state,1).number,"1m")==0);
+  subs.send("sensor.temp","unit_of_measurement","hours");subs.send("sensor.temp","","28");assert(std::strcmp(read_basic_card(definition,{17,0},state,2).number,"1d 4h")==0);
+  for(const auto bad:{"nan","inf","-1","1x","","   "}){subs.send("sensor.temp","",bad);assert(!read_basic_card(definition,{17,0},state).numeric);}
+  const char embedded[]={'9','0','\0','x'};subs.send("sensor.temp","",{embedded,4});assert(!read_basic_card(definition,{17,0},state).numeric);
+  Fixture manual(limits,";;;;sensor.temp;;sensor;time;time_unit=hours");TextPool units;assert(prepare_basic_card(manual.store,0,definition,&units));assert(definition.time_unit=="hours");
+  assert(state.prepare(manual.store));state.activate_prepared(manual.store);assert(state.memory().active_channels==2);
+  subs.send("sensor.temp","","28");value=read_basic_card(definition,{17,0},state,2);assert(value.numeric&&std::strcmp(value.number,"1d 4h")==0);
+  const auto duration_allocations=allocations;for(size_t i=0;i<1000;++i)assert(read_basic_card(definition,{17,0},state).numeric);assert(allocations==duration_allocations);
+
 }
 }
 int main(){display_text();for(const auto &limits:DEVICE_UI_PROFILES)profile(limits);}

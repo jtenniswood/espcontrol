@@ -4,23 +4,32 @@
 #include "page_renderer_runtime.h"
 
 namespace espcontrol::pages {
-enum class BasicCardKind:uint8_t { EMPTY, TOGGLE, NUMBER, ICON, FOLDER };
+enum class BasicCardKind:uint8_t { EMPTY, TOGGLE, NUMBER, ICON, FOLDER, TEXT, DURATION };
 struct BasicCardDefinition {
   BasicCardKind kind{BasicCardKind::EMPTY};
   std::string_view entity,sensor,label,unit,icon,icon_on;
+  std::string_view text_input,text_output,text_input_2,text_output_2,time_unit;
+  bool text_overlay{false};
   uint32_t off_color{0},on_color{0};
   uint8_t precision{0};
   bool custom_off{false},custom_on{false},theme_active{false},active_color{false},large_numbers{false};
 };
+// Decoded mapping labels/time units are copied once into preparation storage.
+class BasicCardTextSink {
+ public:
+  virtual ~BasicCardTextSink()=default;
+  virtual bool copy(std::string_view value,std::string_view &stored)=0;
+};
 // Preparation only: reject not-yet-ported variants instead of showing a partial
-// interpretation. Borrowed strings refer to the immutable PageStore arena.
-bool prepare_basic_card(const PageStore &,CardId,BasicCardDefinition &);
+// interpretation. Fields borrow PageStore; decoded mapping/unit strings borrow
+// the supplied sink and must remain alive until this generation retires.
+bool prepare_basic_card(const PageStore &,CardId,BasicCardDefinition &,BasicCardTextSink *text=nullptr);
 struct BasicCardState {
-  bool on{false},numeric{false};
+  bool on{false},numeric{false},formatted_label{false};
   std::string_view label,unit;
-  char number[48]{};
+  char number[48]{},text[257]{};
 };
 // Pull only from the configuration-owned cache. It neither registers a callback
 // nor owns a copy of HA state. The result's views last until the next delivery.
-BasicCardState read_basic_card(const BasicCardDefinition &,ConfigurationHandle,PageEntityStateRuntime &);
+BasicCardState read_basic_card(const BasicCardDefinition &,ConfigurationHandle,PageEntityStateRuntime &,int duration_components=2);
 }  // namespace espcontrol::pages

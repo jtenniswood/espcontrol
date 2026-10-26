@@ -67,6 +67,12 @@ target_compile_options(page_renderer_runtime_test PRIVATE -Wall -Wextra -Werror 
 target_include_directories(page_renderer_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_renderer_runtime_test COMMAND page_renderer_runtime_test)
 
+add_executable(bounded_sensor_text_test bounded_sensor_text_test.cpp)
+target_compile_features(bounded_sensor_text_test PRIVATE cxx_std_17)
+target_compile_options(bounded_sensor_text_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(bounded_sensor_text_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME bounded_sensor_text_test COMMAND bounded_sensor_text_test)
+
 add_executable(page_basic_card_test page_basic_card_test.cpp
   ../../components/espcontrol/page_basic_card.cpp
   ../../components/espcontrol/page_card_dependencies.cpp
