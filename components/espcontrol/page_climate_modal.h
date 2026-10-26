@@ -108,6 +108,8 @@ class PageClimateModalPort final:public PageModalPort {
   }
   void destroy(void *pointer)override {
     auto *record=static_cast<Record *>(pointer);assert(record==record_&&record->retired);
+    if(climate_control_modal_ui().active==record->context&&control_modal_active().kind==ControlModalKind::NONE)
+      set_clock_bar_modal_label("");
     delete_climate_control_context(record->context);assert(record->gestures.live()==0);record_=nullptr;
     record->~Record();allocator_.release(record,sizeof(Record));
   }

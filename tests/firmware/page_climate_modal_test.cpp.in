@@ -32,6 +32,8 @@ void *operator new(size_t size){++cpp_allocation_calls;if(void *p=std::malloc(si
 void *operator new[](size_t size){return ::operator new(size);}
 void operator delete(void *p)noexcept{std::free(p);}
 void operator delete[](void *p)noexcept{std::free(p);}
+void operator delete(void *p,size_t)noexcept{std::free(p);}
+void operator delete[](void *p,size_t)noexcept{std::free(p);}
 struct alignas(std::max_align_t) Allocation{size_t bytes;};
 extern "C" {
 void lv_mem_init(){}void lv_mem_deinit(){}
@@ -229,13 +231,14 @@ void test_adapter() {
       runtime.loop();assert(ctx->entity_id=="climate.room"&&runtime.memory().retired_contexts==1&&!runtime.valid(token));
     },64,&foreign,false,false));
     coordinator.transport().send("sensor.replace","","go");coordinator.release_owner(&foreign);
-    assert(ctx->entity_id=="climate.room"&&commands.size()==before);runtime.loop();assert(!ui.active&&commands.size()==before);
+    assert(ctx->entity_id=="climate.room"&&commands.size()==before&&clock_label=="Den");
+    runtime.loop();assert(!ui.active&&commands.size()==before&&clock_label.empty());
     // The modal model has advanced, but its entity graph has not. Old graph
     // values must not seed a modal belonging to the replacement generation.
     assert(runtime.request_card({18,0}));runtime.loop();assert(!ui.active);
     assert(state.prepare(next.store));state.activate_prepared(next.store);values();
     assert(runtime.request_card({18,0}));runtime.loop();assert(ui.active&&runtime.valid(runtime.token()));
-    runtime.retire_active();runtime.loop();state.retire_active();
+    runtime.retire_active();assert(clock_label=="Den");runtime.loop();assert(clock_label.empty());state.retire_active();
   }
   coordinator.reclaim_unused_channels();assert(arena.live.empty()&&coordinator.transport().bindings.empty());
 }
