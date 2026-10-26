@@ -10,10 +10,11 @@ def definition(name):
     matches=re.findall(r"^inline [^\n]*\b"+name+r"\([^;{]*\)\s*\{.*?^}",text,re.M|re.S)
     assert len(matches)==1,name
     return matches[0]+"\n"
-source='#include <cassert>\n#include <string>\n#include <vector>\n#include <algorithm>\n#include <cctype>\n#include <utility>\nstruct OptionSelectCtx{std::string entity_id,current_option;bool available=true;};\nbool connected=true,accept=true;int sends=0;\nbool ha_api_state_connected(){return connected;}\nbool ha_send_entity_action(const std::string&,const char*,const char*,const char*){++sends;return accept;}\n'
+source='#include <cassert>\n#include <string>\n#include <vector>\n#include <algorithm>\n#include <cctype>\n#include <utility>\nstruct OptionSelectCtx{std::string entity_id,current_option;bool available=true;std::vector<std::string> options;};\nbool connected=true,accept=true;int sends=0;\nbool ha_api_state_connected(){return connected;}\nbool ha_send_entity_action(const std::string&,const char*,const char*,const char*){++sends;return accept;}\n'
+source+='\n#include "option_select_modal_lifetime.h"\n'
 for name in ['option_select_entity_supported', 'option_select_service_for_entity', 'send_option_select_action', 'option_select_can_open_modal']:source+=definition(name)
 source += r'''int main(){
- OptionSelectCtx ctx{"input_select.mode","Home",true};
+ OptionSelectCtx ctx{"input_select.mode","Home",true,{}};
  assert(option_select_can_open_modal(&ctx));
  accept=false;assert(!send_option_select_action(&ctx,"Away"));assert(ctx.current_option=="Home"&&sends==1);
  connected=false;assert(!option_select_can_open_modal(&ctx));assert(!send_option_select_action(&ctx,"Away"));assert(sends==1&&ctx.current_option=="Home");
@@ -26,6 +27,6 @@ source += r'''int main(){
 }'''
 with tempfile.TemporaryDirectory() as temp:
     cpp=Path(temp)/"test.cpp";exe=Path(temp)/"test";cpp.write_text(source)
-    subprocess.run([os.environ.get("CXX","c++"),"-std=c++17","-Wall","-Wextra","-Werror",str(cpp),"-o",str(exe)],check=True)
+    subprocess.run([os.environ.get("CXX","c++"),"-std=c++17","-I"+str(ROOT/"components/espcontrol"),"-Wall","-Wextra","-Werror",str(cpp),"-o",str(exe)],check=True)
     subprocess.run([str(exe)],check=True)
 print("option_select_dispatch regression passed.")

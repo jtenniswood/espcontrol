@@ -1,0 +1,417 @@
+#include <array>
+#include <cassert>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <functional>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "button_grid_subpage_parser.h"
+#include "button_grid_weather_daily_data.h"
+#include "lvgl.h"
+#include "modal_draw_retirement_probe.h"
+#include "modal_test_router.h"
+#include "page_forecast_runtime.h"
+#include "page_modal_runtime.h"
+#include "panel_config_document.h"
+#include "theme_palette.h"
+#include "weather_card_layout.h"
+#include "weather_card_view.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+static size_t lv_live_bytes = 0, lv_allocation_calls = 0, cpp_allocation_calls = 0;
+void* operator new(size_t size) {
+  ++cpp_allocation_calls;
+  if (void* p = std::malloc(size ? size : 1)) return p;
+  std::abort();
+}
+void* operator new[](size_t size) {
+  return ::operator new(size);
+}
+void operator delete(void* p) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p) noexcept {
+  std::free(p);
+}
+void operator delete(void *p, std::size_t) noexcept { std::free(p); }
+void operator delete[](void *p, std::size_t) noexcept { std::free(p); }
+struct alignas(std::max_align_t) Allocation {
+  size_t bytes;
+};
+extern "C" {
+void lv_mem_init() {}
+void lv_mem_deinit() {}
+lv_mem_pool_t lv_mem_add_pool(void*, size_t) {
+  return nullptr;
+}
+void lv_mem_remove_pool(lv_mem_pool_t) {}
+void* lv_malloc_core(size_t size) {
+  ++lv_allocation_calls;
+  auto* p = static_cast<Allocation*>(std::malloc(size + sizeof(Allocation)));
+  assert(p);
+  p->bytes = size;
+  lv_live_bytes += size;
+  return p + 1;
+}
+void lv_free_core(void* ptr) {
+  if (!ptr) return;
+  auto* p = static_cast<Allocation*>(ptr) - 1;
+  lv_live_bytes -= p->bytes;
+  std::free(p);
+}
+void* lv_realloc_core(void* ptr, size_t size) {
+  void* p = lv_malloc_core(size);
+  if (ptr) {
+    std::memcpy(p, ptr, std::min(size, (static_cast<Allocation*>(ptr) - 1)->bytes));
+    lv_free_core(ptr);
+  }
+  return p;
+}
+void lv_mem_monitor_core(lv_mem_monitor_t* out) {
+  *out = {};
+}
+lv_result_t lv_mem_test_core() {
+  return LV_RESULT_OK;
+}
+}
+
+// @production-context
+struct Coordinator {
+  bool inside = false;
+  bool dispatching() const {
+    return inside;
+  }
+} coordinator;
+auto& ha_read_coordinator() {
+  return coordinator;
+}
+bool enough_heap = true;
+bool ha_internal_heap_available(const char*, size_t = 0, size_t = 0) {
+  return enough_heap;
+}
+void apply_text_width_compensation(lv_obj_t*) {}
+void theme_set_content_foreground(lv_obj_t*) {}
+const char* find_icon(const char*) {
+  return "I";
+}
+const char* weather_icon_for_state(const std::string&) {
+  return "I";
+}
+float convert_temperature_value_for_display_float(float value, const char*) {
+  return value;
+}
+void lv_label_set_display_text(lv_obj_t* label, const char* text) {
+  lv_label_set_text(label, text);
+}
+// @production-function weather_daily_cards
+// @production-function weather_daily_temperature
+// @production-function weather_daily_temperature_range
+// @production-function weather_daily_weekday_label
+// @production-function weather_daily_date_label
+// @production-function weather_daily_selected_day
+// @production-function weather_daily_label
+// @production-function weather_daily_day_gap
+// @production-function weather_daily_modal
+ControlModalStateService<lv_obj_t> modal_service;
+auto& control_modal_active() {
+  return modal_service.active();
+}
+auto& control_modal_service() {
+  return modal_service;
+}
+std::string clock_label;
+void set_clock_bar_modal_label(const std::string& label) {
+  clock_label = label;
+}
+void control_modal_delete_overlay(ControlModalKind kind, lv_obj_t* overlay) {
+  if (overlay) lv_obj_delete(overlay);
+  modal_service.clear_active(kind);
+}
+// @production-function weather_daily_hide_modal
+struct ShellLayout {
+  int back_size = 32, inset = 12, panel_h = 480;
+};
+struct Shell {
+  lv_obj_t *overlay, *panel;
+  ShellLayout layout;
+  int content_w = 432;
+};
+lv_obj_t* close_button = nullptr;
+std::function<void(WeatherDailySource*)> after_close;
+Shell control_modal_open_shell(ControlModalKind kind, lv_obj_t* owner, int, const lv_font_t*,
+                               void (*close)()) {
+  assert(owner && lv_obj_has_flag(owner, LV_OBJ_FLAG_HIDDEN));
+  assert(lv_obj_get_style_radius(owner, LV_PART_MAIN) == 12);
+  auto* overlay = lv_obj_create(lv_layer_top());
+  auto* panel = lv_obj_create(overlay);
+  close_button = lv_button_create(panel);
+  lv_obj_add_event_cb(
+      close_button,
+      [](lv_event_t* event) {
+        auto* source = weather_daily_modal().source;
+
+        auto callback = reinterpret_cast<void (*)()>(lv_event_get_user_data(event));
+        callback();
+        if (after_close) after_close(source);
+      },
+      LV_EVENT_CLICKED, reinterpret_cast<void*>(close));
+  modal_service.set_active(kind, overlay, close, ControlModalDismissPolicy::DISMISS);
+  return {overlay, panel, {}, 432};
+}
+// @production-function weather_daily_modal_container
+// @production-function weather_daily_modal_number
+// @production-function weather_daily_modal_conditions
+// @production-function weather_daily_modal_refresh_status
+// @production-function weather_daily_modal_reserve_columns
+// @production-function weather_daily_refresh_modal
+// @production-function weather_daily_open_modal
+#include "page_weather_modal.h"
+
+// Request admission runs inside the input callback; panel allocation belongs to loop().
+static bool request_without_allocation(PageModalRuntime& runtime, ConfigurationHandle token) {
+  const auto cpp = cpp_allocation_calls, lv = lv_allocation_calls;
+  const bool accepted = runtime.request_card(token);
+  assert(cpp_allocation_calls == cpp && lv_allocation_calls == lv);
+  return accepted;
+}
+
+struct Arena : PageArenaAllocator {
+  std::unordered_map<void*, size_t> live;
+  int remaining = -1;
+  void* allocate(size_t size) override {
+    if (remaining == 0) return nullptr;
+    if (remaining > 0) --remaining;
+    auto* p = std::malloc(size);
+    assert(p);
+    live[p] = size;
+    return p;
+  }
+  void release(void* p, size_t size) override {
+    assert(live.at(p) == size);
+    live.erase(p);
+    std::free(p);
+  }
+};
+struct Requests : PageForecastRequests {
+  void* owner = nullptr;
+  PageForecastToken token;
+  Receive receive = nullptr;
+  bool online = true;
+  uint32_t connection = 1, now = 100;
+  size_t starts = 0;
+  bool connected() const override {
+    return online;
+  }
+  uint32_t connection_generation() const override {
+    return connection;
+  }
+  uint32_t now_ms() const override {
+    return now;
+  }
+  bool start(void* o, PageForecastToken t, std::string_view, Receive r) override {
+    owner = o;
+    token = t;
+    receive = r;
+    ++starts;
+    return true;
+  }
+  void cancel(void*, PageForecastToken) override {
+    receive = nullptr;
+  }
+  void reply(size_t days) {
+    std::string text = "WF1|2026-10-17|2026-10-18|°C|mm|km/h\n";
+    for (size_t i = 0; i < days; ++i) text += "2026-10-" + std::to_string(17 + i) + "|sunny|20|10|5|1|2|50\n";
+    auto callback = receive;
+    receive = nullptr;
+    assert(callback);
+    callback(owner, token, text, true);
+  }
+};
+struct Fixture {
+  explicit Fixture(uint32_t generation = 17, const char* precision = "daily") {
+    const auto& limits = DEVICE_UI_PROFILES[8];
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    for (uint8_t slot = 1; slot <= 2; ++slot) {
+      const std::string text =
+          std::string("weather.home;;;;;;weather;") + (slot == 1 ? std::string(precision) + ";" : "today;");
+      assert(writer.append_button(slot, reinterpret_cast<const uint8_t*>(text.data()), text.size()) ==
+             PanelConfigStatus::OK);
+    }
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, generation, storage.data(), storage.size(),
+                               &store) == PageStoreStatus::OK);
+  }
+  std::array<uint8_t, 8192> document{};
+  size_t size = 0;
+  alignas(std::max_align_t) std::array<uint8_t, 32768> storage{};
+  PageStore store;
+};
+void click(lv_obj_t* button) {
+  lv_obj_send_event(button, LV_EVENT_PRESSED, nullptr);
+  lv_obj_send_event(button, LV_EVENT_RELEASED, nullptr);
+  lv_obj_send_event(button, LV_EVENT_CLICKED, nullptr);
+}
+void test_weather_modal() {
+  Fixture first, next(18), invalid(19, "invalid_forecast_precision_beyond_small_string_capacity");
+  Arena arena;
+  Requests requests;
+  PageForecastRuntime forecasts(arena, requests);
+  assert(forecasts.prepare(first.store));
+  forecasts.activate_prepared(first.store);
+  {
+    struct Settings {
+      bool allowed = true;
+      PageModalToken styled{};
+      size_t gestures = 128;
+    } settings;
+    PageWeatherModalStyle style;
+    style.owner = &settings;
+    style.resolve = [](void* owner, PageModalToken token, const ParsedCfg&, PageWeatherModalStyle& out) {
+      auto& settings = *static_cast<Settings*>(owner);
+      settings.styled = token;
+      out.font = out.icon_font = out.temperature_font = &lv_font_montserrat_14;
+      out.gesture_capacity = settings.gestures;
+      return settings.allowed;
+    };
+    PageWeatherModalPort port(arena, forecasts, style, nullptr, [](void*, PageBindingToken) { return true; });
+    auto router = modal_test_router<ControlModalKind::WEATHER_FORECAST>(port);
+    PageModalRuntime modal(router);
+    auto* legacy = weather_daily_acquire_source("weather.legacy");
+    assert(!port.install(modal));
+    weather_daily_release_source(legacy);
+    assert(port.install(modal));
+    assert(modal.prepare(invalid.store));
+    modal.activate_prepared(invalid.store);
+    assert(!request_without_allocation(modal, {19, 0}));
+    assert(!settings.styled.opening);
+    assert(modal.prepare(first.store));
+    modal.activate_prepared(first.store);
+    const auto baseline = arena.live.size(), lv_baseline = lv_live_bytes;
+    assert(!request_without_allocation(modal, {17, 1}));
+    assert(request_without_allocation(modal, {17, 0}));
+    modal.loop();
+    assert(weather_daily_modal().overlay && weather_daily_modal().columns.size() == 6 &&
+           clock_label == "Weather");
+    assert(std::strcmp(lv_label_get_text(weather_daily_modal().message), "Loading") == 0);
+    lv_obj_send_event(close_button, LV_EVENT_CLICKED, nullptr);
+    assert(weather_daily_modal().overlay);
+    click(close_button);
+    modal.loop();
+    assert(!weather_daily_modal().overlay && arena.live.size() == baseline && lv_live_bytes == lv_baseline);
+    requests.now += PageForecastRuntime::READY_DELAY_MS;
+    forecasts.loop();
+    requests.reply(8);
+    for (int i = 0; i < 1000; ++i) {
+      assert(request_without_allocation(modal, {17, 0}));
+      modal.loop();
+      auto* source = weather_daily_modal().source;
+      assert(source && source->forecast.count == 8 && source->users == 1 &&
+             weather_daily_modal().columns.size() == 6);
+      assert(weather_daily_cards().empty() && weather_daily_sources().empty());
+      const auto token = modal.token();
+      assert(settings.styled.configuration == 17 && settings.styled.card == 0 &&
+             settings.styled.opening == token.opening &&
+             settings.styled.kind == ControlModalKind::WEATHER_FORECAST);
+
+      click(close_button);
+      assert(!modal.valid(token) && modal.memory().retired_contexts == 1 &&
+             source->entity_id == "weather.home");
+      modal.loop();
+      assert(arena.live.size() == baseline && lv_live_bytes == lv_baseline && requests.starts == 1);
+    }
+    assert(request_without_allocation(modal, {17, 1}));
+    modal.loop();
+    const auto* first_panel = weather_daily_modal().columns[0].button;
+    forecasts.refresh();
+    forecasts.loop();
+    requests.reply(2);
+    modal.loop();
+    assert(weather_daily_modal().columns.size() == 6 &&
+           weather_daily_modal().columns[0].button == first_panel &&
+           lv_obj_has_flag(weather_daily_modal().columns[2].button, LV_OBJ_FLAG_HIDDEN));
+    requests.online = false;
+    ++requests.connection;
+    forecasts.loop();
+    modal.loop();
+    assert(weather_daily_modal().overlay && weather_daily_modal().source->stale &&
+           !lv_obj_has_flag(weather_daily_modal().status, LV_OBJ_FLAG_HIDDEN));
+    click(close_button);
+    modal.loop();
+    assert(request_without_allocation(modal, {17, 0}));
+    modal.loop();
+    after_close = [&](WeatherDailySource* source) {
+      modal.loop();
+      assert(source->entity_id == "weather.home" && modal.memory().retired_contexts == 1);
+    };
+    click(close_button);
+    after_close = {};
+    modal.loop();
+    arena.remaining = 0;
+    assert(request_without_allocation(modal, {17, 0}));
+    modal.loop();
+    arena.remaining = -1;
+    assert(!weather_daily_modal().overlay && arena.live.size() == baseline);
+    arena.remaining = 1;
+    assert(request_without_allocation(modal, {17, 0}));
+    modal.loop();
+    arena.remaining = -1;
+    assert(!weather_daily_modal().overlay && arena.live.size() == baseline);
+    settings.allowed = false;
+    assert(request_without_allocation(modal, {17, 0}));
+    modal.loop();
+    settings.allowed = true;
+    assert(!weather_daily_modal().overlay);
+    settings.gestures = 1;
+    assert(request_without_allocation(modal, {17, 0}));
+    modal.loop();
+    settings.gestures = 128;
+    assert(!weather_daily_modal().overlay && arena.live.size() == baseline);
+    enough_heap = false;
+    assert(request_without_allocation(modal, {17, 0}));
+    modal.loop();
+    enough_heap = true;
+    assert(!weather_daily_modal().overlay);
+    assert(request_without_allocation(modal, {17, 0}));
+    modal.loop();
+    assert_panel_draw_retirement(modal, weather_daily_modal().overlay);
+    assert(request_without_allocation(modal, {17, 0}));
+    modal.loop();
+    auto* source = weather_daily_modal().source;
+    assert(modal.prepare(next.store) && forecasts.prepare(next.store));
+    coordinator.inside = true;
+    const auto allocations = cpp_allocation_calls;
+    modal.activate_prepared(next.store);
+    forecasts.activate_prepared(next.store);
+    assert(cpp_allocation_calls == allocations &&
+           lv_obj_has_flag(weather_daily_modal().overlay, LV_OBJ_FLAG_HIDDEN));
+    std::memset(first.storage.data(), 0xA5, first.storage.size());
+    modal.loop();
+    assert(source->entity_id == "weather.home" && modal.memory().retired_contexts == 1);
+    coordinator.inside = false;
+    modal.loop();
+    assert(!weather_daily_modal().overlay);
+    modal.retire_active();
+    modal.loop();
+    forecasts.retire_active();
+    forecasts.loop();
+  }
+  assert(arena.live.empty() && weather_daily_cards().empty() && weather_daily_sources().empty());
+}
+int main() {
+  lv_init();
+  auto* display = lv_display_create(480, 480);
+  assert(display);
+  lv_timer_pause(lv_display_get_refr_timer(display));
+  test_weather_modal();
+  lv_display_delete(display);
+  lv_deinit();
+  assert(lv_live_bytes == 0);
+}

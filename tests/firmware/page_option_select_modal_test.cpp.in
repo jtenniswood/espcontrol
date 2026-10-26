@@ -1,0 +1,569 @@
+#include <array>
+#include <cassert>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <functional>
+#include <limits>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "lvgl.h"
+#include "modal_draw_retirement_probe.h"
+#include "modal_test_router.h"
+#define ESPCONTROL_HA_GENERATION_HELPERS_DEFINED
+uint32_t& ha_subscription_generation();
+#include "button_grid_subpage_parser.h"
+#include "climate_state_logic.h"
+#include "climate_subscription_policy.h"
+#include "climate_target_logic.h"
+#include "ha_read_coordinator.h"
+#include "option_select_modal_lifetime.h"
+#include "page_card_dependencies.h"
+#include "page_entity_coordinator_adapter.h"
+#include "page_modal_runtime.h"
+#include "panel_config_document.h"
+#include "theme_palette.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+using ClimateTargetKind = climate::TargetKind;
+constexpr uint32_t DEFAULT_ACCENT_COLOR = 0xFF8C00;
+static size_t lv_live_bytes = 0, lv_allocation_calls = 0, cpp_allocation_calls = 0, cpp_live_bytes = 0;
+struct alignas(16) CppAllocation {
+  size_t bytes;
+};
+void* operator new(size_t bytes) {
+  ++cpp_allocation_calls;
+  auto* header = static_cast<CppAllocation*>(std::malloc(sizeof(CppAllocation) + (bytes ? bytes : 1)));
+  assert(header);
+  header->bytes = bytes;
+  cpp_live_bytes += bytes;
+  return header + 1;
+}
+void* operator new[](size_t bytes) {
+  return ::operator new(bytes);
+}
+void operator delete(void* pointer) noexcept {
+  if (pointer) {
+    auto* header = static_cast<CppAllocation*>(pointer) - 1;
+    cpp_live_bytes -= header->bytes;
+    std::free(header);
+  }
+}
+void operator delete[](void* pointer) noexcept {
+  ::operator delete(pointer);
+}
+void operator delete(void* pointer, std::size_t) noexcept {
+  ::operator delete(pointer);
+}
+void operator delete[](void* pointer, std::size_t) noexcept {
+  ::operator delete(pointer);
+}
+struct alignas(16) Allocation {
+  size_t bytes;
+};
+extern "C" {
+void lv_mem_init() {}
+void lv_mem_deinit() {}
+lv_mem_pool_t lv_mem_add_pool(void*, size_t) {
+  return nullptr;
+}
+void lv_mem_remove_pool(lv_mem_pool_t) {}
+void* lv_malloc_core(size_t size) {
+  ++lv_allocation_calls;
+  auto* p = static_cast<Allocation*>(std::malloc(size + sizeof(Allocation)));
+  assert(p);
+  p->bytes = size;
+  lv_live_bytes += size;
+  return p + 1;
+}
+void lv_free_core(void* ptr) {
+  if (!ptr) return;
+  auto* p = static_cast<Allocation*>(ptr) - 1;
+  lv_live_bytes -= p->bytes;
+  std::free(p);
+}
+void* lv_realloc_core(void* ptr, size_t size) {
+  void* p = lv_malloc_core(size);
+  if (ptr) {
+    std::memcpy(p, ptr, std::min(size, (static_cast<Allocation*>(ptr) - 1)->bytes));
+    lv_free_core(ptr);
+  }
+  return p;
+}
+void lv_mem_monitor_core(lv_mem_monitor_t* out) {
+  *out = {};
+}
+lv_result_t lv_mem_test_core() {
+  return LV_RESULT_OK;
+}
+}
+
+void lv_label_set_display_text(lv_obj_t* label, const char* text) {
+  lv_label_set_text(label, text);
+}
+
+// @contexts
+// @production-function option_select_modal_ui
+// @production-function option_select_entity_supported
+// @production-function option_select_service_for_entity
+// @production-function option_select_label
+// @production-function option_select_display_value
+// @production-function option_select_apply_card_text
+// @production-function option_select_trim
+// @production-function option_select_add_option
+// @production-function option_select_parse_delimited_options
+// @production-function option_select_parse_list_options
+// @production-function option_select_parse_options
+struct BtnSlot {
+  lv_obj_t* btn{nullptr};
+  lv_obj_t* icon_lbl{nullptr};
+  lv_obj_t* sensor_lbl{nullptr};
+  lv_obj_t* unit_lbl{nullptr};
+  lv_obj_t* text_lbl{nullptr};
+};
+// @production-function create_option_select_context
+struct Transport {
+  using State = esphome::StringRef;
+  using Callback = std::function<void(State)>;
+  static constexpr bool RECLAIMABLE_SUBSCRIPTIONS = true;
+  struct Binding {
+    uint32_t token;
+    std::string entity, attribute;
+    Callback callback;
+  };
+  std::vector<Binding> bindings;
+  bool connected{true};
+  uint32_t next{1};
+  size_t requests{0};
+  bool available() const {
+    return true;
+  }
+  bool state_connected() const {
+    return connected;
+  }
+  uint32_t subscribe(const std::string& entity, const std::string& attribute, Callback callback) {
+    const auto token = next++;
+    bindings.push_back({token, entity, attribute, std::move(callback)});
+    return token;
+  }
+  void unsubscribe(uint32_t token) {
+    bindings.erase(
+        std::remove_if(bindings.begin(), bindings.end(), [token](const auto& b) { return b.token == token; }),
+        bindings.end());
+  }
+  bool request(std::string_view, std::string_view) {
+    ++requests;
+    return connected;
+  }
+  void send(const char* entity, const char* attribute, const std::string& value) {
+    for (const auto& b : bindings)
+      if (b.entity == entity && b.attribute == attribute) {
+        const auto callback = b.callback;
+        callback(State(value.c_str(), value.size()));
+        return;
+      }
+  }
+};
+struct Heap {
+  bool available(const char*, size_t, size_t) const {
+    return true;
+  }
+};
+using Coordinator = HaReadCoordinator<Transport, Heap>;
+Coordinator coordinator;
+Coordinator& ha_read_coordinator() {
+  return coordinator;
+}
+uint32_t& ha_subscription_generation() {
+  return coordinator.generation_ref();
+}
+bool ha_api_state_connected() {
+  return coordinator.transport().connected;
+}
+bool enough_heap = true;
+bool ha_internal_heap_available(const char*) {
+  return enough_heap;
+}
+void* callback_owner = nullptr;
+struct HaCallbackOwnerScope {
+  void* previous;
+  explicit HaCallbackOwnerScope(void* owner) : previous(callback_owner) {
+    callback_owner = owner;
+  }
+  ~HaCallbackOwnerScope() {
+    callback_owner = previous;
+  }
+};
+bool ha_subscribe_state(const std::string& entity, Transport::Callback callback) {
+  return coordinator.subscribe(entity, "", std::move(callback), 32, callback_owner);
+}
+bool ha_subscribe_attribute(const std::string& entity, const std::string& attribute,
+                            Transport::Callback callback) {
+  return coordinator.subscribe(entity, attribute, std::move(callback), 32, callback_owner);
+}
+void ha_release_callbacks_for_owner(void* owner) {
+  coordinator.release_owner(owner);
+}
+size_t reannouncements = 0;
+void ha_reannounce_state_subscriptions() {
+  ++reannouncements;
+}
+
+ControlModalStateService<lv_obj_t> modal_service;
+auto& control_modal_active() {
+  return modal_service.active();
+}
+auto& control_modal_service() {
+  return modal_service;
+}
+std::string clock_label;
+void set_clock_bar_modal_label(const std::string& label) {
+  clock_label = label;
+}
+
+bool accept = true;
+size_t sends = 0;
+std::string last_entity, last_service, last_value;
+std::function<void()> during_send, during_row;
+bool ha_send_entity_action(const std::string& entity, const char* service, const char*, const char* value) {
+  ++sends;
+  last_entity = entity;
+  last_service = service;
+  last_value = value;
+  if (during_send) during_send();
+  return accept;
+}
+void control_modal_delete_overlay(ControlModalKind kind, lv_obj_t* overlay) {
+  if (overlay) lv_obj_delete(overlay);
+  modal_service.clear_active(kind);
+}
+uint32_t readable_text_color_for_bg(uint32_t value) {
+  return display_text_color_for_bg(value);
+}
+void theme_set_content_background(lv_obj_t*, bool) {}
+void apply_card_descendant_text_color(lv_obj_t*, lv_color_t) {}
+lv_obj_t* control_modal_create_list_row(lv_obj_t* parent, const std::string& label, bool selected, int, int,
+                                        uint32_t on, uint32_t off, const lv_font_t*, int) {
+  auto* row = lv_button_create(parent);
+  auto* text = lv_label_create(row);
+  lv_label_set_text(text, label.c_str());
+  lv_obj_set_style_bg_color(row, lv_color_hex(selected ? on : off), LV_PART_MAIN);
+  if (during_row) during_row();
+  return row;
+}
+// @production-function send_option_select_action
+// @production-function option_select_hide_modal
+// @production-function option_select_refresh_modal_rows
+// @production-function option_select_can_open_modal
+// @production-function option_select_attach_row
+// @production-function option_select_build_modal_rows
+void option_select_open_modal(OptionSelectCtx* ctx) {
+  if (!option_select_can_open_modal(ctx)) return;
+  auto& ui = option_select_modal_ui();
+  ui.active = ctx;
+  ui.overlay = lv_obj_create(lv_layer_top());
+  ui.panel = ui.overlay;
+  ui.list = lv_obj_create(ui.panel);
+  modal_service.set_active(ControlModalKind::OPTION_SELECT, ui.overlay, option_select_hide_modal,
+                           ControlModalDismissPolicy::DISMISS);
+  option_select_build_modal_rows(ctx, 48, 16);
+}
+#include "page_option_select_modal.h"
+
+// Request admission runs inside the input callback; panel allocation belongs to loop().
+static bool request_without_allocation(PageModalRuntime& runtime, ConfigurationHandle token) {
+  const auto cpp = cpp_allocation_calls, lv = lv_allocation_calls;
+  const bool accepted = runtime.request_card(token);
+  assert(cpp_allocation_calls == cpp && lv_allocation_calls == lv);
+  return accepted;
+}
+
+struct Arena : PageArenaAllocator {
+  std::unordered_map<void*, size_t> live;
+  int remaining{-1};
+  Arena() {
+    live.reserve(8);
+  }
+  void* allocate(size_t size) override {
+    if (remaining == 0) return nullptr;
+    if (remaining > 0) --remaining;
+    auto* p = std::malloc(size);
+    assert(p);
+    live[p] = size;
+    return p;
+  }
+  void release(void* p, size_t size) override {
+    assert(live.at(p) == size);
+    live.erase(p);
+    std::free(p);
+  }
+};
+
+struct Fixture {
+  explicit Fixture(uint32_t generation = 17, const char* card = "select.room;;Auto;Auto;;;option_select;;") {
+    const auto& limits = DEVICE_UI_PROFILES[8];
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    assert(writer.append_button(1, reinterpret_cast<const uint8_t*>(card), std::strlen(card)) ==
+           PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, generation, storage.data(), storage.size(),
+                               &store) == PageStoreStatus::OK);
+  }
+  std::array<uint8_t, 8192> document{};
+  size_t size{0};
+  alignas(std::max_align_t) std::array<uint8_t, 32768> storage{};
+  PageStore store;
+};
+void values(const char* entity = "select.room") {
+  auto& t = coordinator.transport();
+  t.send(entity, "", "ECO");
+  t.send(entity, "friendly_name", "Room Mode");
+  t.send(entity, "options", R"(["ECO", "eco", "  Guest  ", "Kid's"])");
+}
+void press(lv_obj_t* row) {
+  lv_obj_send_event(row, LV_EVENT_PRESSED, nullptr);
+  lv_obj_send_event(row, LV_EVENT_RELEASED, nullptr);
+  lv_obj_send_event(row, LV_EVENT_CLICKED, nullptr);
+}
+void test_panel(const char* wire, const char* entity) {
+  Fixture fixture(17, wire), next(18, wire);
+  Arena arena;
+  PageCardDependencies source;
+  CoordinatorPageEntitySubscriptions subscriptions(coordinator, 32);
+  {
+    PageEntityStateRuntime graph(source, arena, subscriptions, {64, 64, 12000});
+    assert(graph.prepare(fixture.store));
+    graph.activate_prepared(fixture.store);
+    values(entity);
+    PageOptionSelectModalStyle style;
+    style.resolve = [](void*, PageModalToken, const ParsedCfg&, PageOptionSelectModalEnvironment&) {
+      return true;
+    };
+    PageOptionSelectModalPort port(arena, graph, style, nullptr,
+                                   [](void*, PageBindingToken) { return true; });
+    auto router = modal_test_router<ControlModalKind::OPTION_SELECT>(port);
+    PageModalRuntime runtime(router);
+    assert(!port.install(runtime, false) && port.install(runtime, true));
+    assert(runtime.prepare(fixture.store));
+    runtime.activate_prepared(fixture.store);
+    auto& ui = option_select_modal_ui();
+    const auto live = arena.live.size(), refs = coordinator.subscription_count(),
+               native = coordinator.transport().bindings.size(), cpp = cpp_live_bytes, lv = lv_live_bytes;
+    for (int i = 0; i < 1000; ++i) {
+      assert(request_without_allocation(runtime, {17, 0}));
+      runtime.loop();
+      assert(ui.active && ui.active->options.size() == 4 && clock_label == "Room Mode");
+      auto* row = lv_obj_get_child(ui.list, 2);
+      const auto sent = sends;
+      lv_obj_send_event(row, LV_EVENT_CLICKED, nullptr);
+      assert(sends == sent);
+      accept = false;
+      press(row);
+      assert(sends == sent + 1 && ui.active && ui.active->current_option == "ECO");
+      accept = true;
+      press(row);
+      assert(sends == sent + 2 && last_entity == entity && last_value == "  Guest  " && !ui.active);
+      assert(last_service == (std::string(entity).find("input_select.") == 0 ? "input_select.select_option"
+                                                                             : "select.select_option"));
+      runtime.loop();
+      coordinator.reclaim_unused_channels();
+      assert(arena.live.size() == live && cpp_live_bytes == cpp && lv_live_bytes == lv &&
+             coordinator.subscription_count() == refs && coordinator.transport().bindings.size() == native);
+    }
+    assert(request_without_allocation(runtime, {17, 0}));
+    runtime.loop();
+    assert(ui.active);
+    const auto cpp_calls = cpp_allocation_calls, lv_calls = lv_allocation_calls;
+    for (int i = 0; i < 1000; ++i) runtime.loop();
+    assert(cpp_allocation_calls == cpp_calls && lv_allocation_calls == lv_calls);
+    auto& t = coordinator.transport();
+    t.send(entity, "", "eco");
+    runtime.loop();
+    assert(ui.active->current_option == "eco");
+    assert(lv_color_to_u32(lv_obj_get_style_bg_color(lv_obj_get_child(ui.list, 1), LV_PART_MAIN)) ==
+           lv_color_to_u32(lv_color_hex(style.environment.accent_color)));
+    auto* old_row = lv_obj_get_child(ui.list, 0);
+    lv_obj_send_event(old_row, LV_EVENT_PRESSED, nullptr);
+    const auto stale_sends = sends;
+    t.send(entity, "options", "['New']");
+    lv_obj_send_event(old_row, LV_EVENT_RELEASED, nullptr);
+    lv_obj_send_event(old_row, LV_EVENT_CLICKED, nullptr);
+    assert(sends == stale_sends);
+    runtime.loop();
+    assert(!ui.active);
+    t.send(entity, "options", "[]");
+    assert(request_without_allocation(runtime, {17, 0}));
+    runtime.loop();
+    assert(ui.active && ui.empty_lbl && ui.active->options.empty());
+    values(entity);
+    runtime.loop();
+    assert(!ui.active);
+    std::string many = "[";
+    for (int i = 0; i < 70; ++i) {
+      if (i) many += ",";
+      many += "'Mode" + std::to_string(i) + "'";
+    }
+    many += "]";
+    t.send(entity, "options", many);
+    assert(request_without_allocation(runtime, {17, 0}));
+    runtime.loop();
+    assert(ui.active && ui.active->options.size() == OPTION_SELECT_MAX_OPTIONS &&
+           lv_obj_get_child_count(ui.list) == OPTION_SELECT_MAX_OPTIONS);
+    option_select_hide_modal();
+    runtime.loop();
+    // Identical decoded choices keep the current opening, even with new syntax.
+    values(entity);
+    assert(request_without_allocation(runtime, {17, 0}));
+    runtime.loop();
+    assert(ui.active);
+    t.send(entity, "options", R"(('ECO','eco','  Guest  ',"Kid's"))");
+    runtime.loop();
+    assert(ui.active);
+    t.send(entity, "", "unknown");
+    runtime.loop();
+    assert(ui.active && ui.active->available && ui.active->current_option.empty());
+    t.send(entity, "", "unavailable");
+    runtime.loop();
+    assert(!ui.active);
+    values(entity);
+    assert(request_without_allocation(runtime, {17, 0}));
+    runtime.loop();
+    assert(ui.active);
+    t.send(entity, "options", std::string(OPTION_SELECT_OPTIONS_TEXT_MAX_LEN + 1, 'x'));
+    runtime.loop();
+    assert(!ui.active);
+    values(entity);
+    assert(request_without_allocation(runtime, {17, 0}));
+    runtime.loop();
+    assert(ui.active);
+    t.connected = false;
+    coordinator.invalidate_retained_state();
+    const auto disconnected_sends = sends;
+    press(lv_obj_get_child(ui.list, 0));
+    assert(sends == disconnected_sends);
+    runtime.loop();
+    assert(!ui.active);
+    t.connected = true;
+    values(entity);
+    assert(request_without_allocation(runtime, {17, 0}));
+    runtime.loop();
+    assert(ui.active);
+    bool replaced = false;
+    during_send = [&]() {
+      if (replaced) return;
+      replaced = true;
+      assert(runtime.prepare(next.store));
+      runtime.activate_prepared(next.store);
+      std::memset(fixture.storage.data(), 0xa5, fixture.storage.size());
+      runtime.loop();
+      assert(runtime.memory().retired_contexts == 1 && ui.active && ui.active->entity_id == entity);
+    };
+    press(lv_obj_get_child(ui.list, 3));
+    during_send = {};
+    assert(replaced && last_value == "Kid's");
+    runtime.loop();
+    assert(!ui.active);
+    assert(graph.prepare(next.store));
+    graph.activate_prepared(next.store);
+    values(entity);
+    assert(request_without_allocation(runtime, {18, 0}));
+    runtime.loop();
+    assert(ui.active);
+    assert_panel_draw_retirement(runtime, ui.overlay);
+    runtime.retire_active();
+    runtime.loop();
+    graph.retire_active();
+  }
+  coordinator.reclaim_unused_channels();
+  assert(arena.live.empty() && coordinator.transport().bindings.empty());
+}
+void test_failures() {
+  Fixture fixture;
+  Arena arena;
+  PageCardDependencies source;
+  CoordinatorPageEntitySubscriptions subscriptions(coordinator, 32);
+  {
+    PageEntityStateRuntime graph(source, arena, subscriptions, {64, 64, 12000});
+    assert(graph.prepare(fixture.store));
+    graph.activate_prepared(fixture.store);
+    values();
+    for (size_t capacity : {size_t(1), size_t(256)}) {
+      bool styles = true;
+      PageOptionSelectModalStyle style;
+      style.gesture_capacity = capacity;
+      style.owner = &styles;
+      style.resolve = [](void* p, PageModalToken, const ParsedCfg&, PageOptionSelectModalEnvironment&) {
+        return *static_cast<bool*>(p);
+      };
+      PageOptionSelectModalPort port(arena, graph, style, nullptr,
+                                     [](void*, PageBindingToken) { return true; });
+      auto router = modal_test_router<ControlModalKind::OPTION_SELECT>(port);
+      PageModalRuntime runtime(router);
+      assert(port.install(runtime, true) && runtime.prepare(fixture.store));
+      runtime.activate_prepared(fixture.store);
+      const auto live = arena.live.size(), lv = lv_live_bytes;
+      for (int fail : {0, 1}) {
+        arena.remaining = fail;
+        assert(request_without_allocation(runtime, {17, 0}));
+        runtime.loop();
+        arena.remaining = -1;
+        assert(!option_select_modal_ui().active && arena.live.size() == live && lv_live_bytes == lv);
+      }
+      if (capacity == 1) {
+        assert(request_without_allocation(runtime, {17, 0}));
+        runtime.loop();
+        assert(!option_select_modal_ui().active && arena.live.size() == live && lv_live_bytes == lv);
+      }
+      styles = false;
+      assert(request_without_allocation(runtime, {17, 0}));
+      runtime.loop();
+      assert(!option_select_modal_ui().active);
+      styles = true;
+      enough_heap = false;
+      assert(request_without_allocation(runtime, {17, 0}));
+      runtime.loop();
+      assert(!option_select_modal_ui().active);
+      enough_heap = true;
+      if (capacity == 256) {
+        bool replaced = false;
+        during_row = [&]() {
+          if (replaced) return;
+          replaced = true;
+          runtime.display_takeover(false);
+          runtime.loop();
+          assert(runtime.memory().retired_contexts == 1);
+        };
+        assert(request_without_allocation(runtime, {17, 0}));
+        runtime.loop();
+        during_row = {};
+        assert(replaced && !option_select_modal_ui().active && arena.live.size() == live &&
+               lv_live_bytes == lv);
+      }
+      runtime.retire_active();
+      runtime.loop();
+    }
+    graph.retire_active();
+  }
+  coordinator.reclaim_unused_channels();
+  assert(arena.live.empty() && coordinator.transport().bindings.empty());
+}
+int main() {
+  // Output capture strings are fixed test instrumentation, warmed before baselines.
+  last_entity.reserve(128);last_service.reserve(64);last_value.reserve(128);clock_label.reserve(64);
+  lv_init();
+  auto* display = lv_display_create(480, 480);
+  lv_timer_pause(lv_display_get_refr_timer(display));
+  test_panel("select.room;;Auto;Auto;;;option_select;;", "select.room");
+  test_panel("input_select.room;;Auto;Auto;input_select.select_option;;action;;", "input_select.room");
+  test_failures();
+  lv_display_delete(display);
+  lv_deinit();
+  assert(lv_live_bytes == 0);
+}

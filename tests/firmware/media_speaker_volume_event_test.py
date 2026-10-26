@@ -13,6 +13,8 @@ group = (root / "components/espcontrol/button_grid_media_group.h").read_text()
 source = r'''
 #include <algorithm>
 #include <cassert>
+#include "media_control_modal_lifetime.h"
+#include "media_control_tabs.h"
 #include <cstdint>
 #include <cmath>
 #include <cstring>
@@ -20,6 +22,7 @@ source = r'''
 #include <memory>
 #include <string>
 #include <vector>
+#include "media_group_discovery.h"
 
 namespace espcontrol::media { enum class VolumeControlMode { ABSOLUTE, RELATIVE }; }
 using lv_coord_t = int;
@@ -128,11 +131,13 @@ struct MediaControlCtx {
 struct MediaControlModalUi {
   MediaControlCtx *active = nullptr;
   std::vector<MediaSpeakerRowState *> speaker_rows;
-  lv_obj_t *speakers_box = nullptr, *speakers_status_lbl = nullptr, *volume_pct_lbl = nullptr;
+  lv_obj_t *overlay = nullptr, *speakers_box = nullptr, *speakers_status_lbl = nullptr, *volume_pct_lbl = nullptr;
   bool speaker_status_error = false;
 };
 MediaControlModalUi ui;
 MediaControlModalUi &media_control_modal_ui() { return ui; }
+void media_control_hide_modal() { ui.active = nullptr; }
+espcontrol::media::ControlTabs media_control_visible_tabs(MediaControlCtx*) {return espcontrol::media::parse_control_tabs("speakers");}
 int media_control_volume_max_pct(MediaControlCtx *ctx) { return ctx->max_pct; }
 struct Command { std::string entity; int volume; };
 std::vector<Command> commands;
@@ -155,7 +160,6 @@ int media_control_clamp_volume(MediaControlCtx *ctx, int pct) {
 }
 '''
 for text, name in (
-    (group, "media_group_trim"),
     (group, "media_group_valid_entity_id"),
     (group, "media_group_append_unique"),
     (group, "media_group_merge_candidates"),
@@ -173,6 +177,7 @@ for text, name in (
     (media, "media_control_set_speaker_status"),
     (media, "media_control_current_group_volumes"),
     (media, "media_control_refresh_group_member_volumes"),
+    (media, "media_control_copy_current_speaker_state"),
     (media, "media_control_refresh_speakers"),
     (media, "media_control_apply_group_volume_percent"),
     (media, "media_control_speaker_action_timer_cb"),
@@ -416,6 +421,7 @@ with tempfile.TemporaryDirectory(prefix="media-speaker-volume-") as directory:
     (path / "test.cpp").write_text(source)
     subprocess.run([
         os.environ.get("CXX", "c++"), "-std=c++17", "-Wall", "-Wextra", "-Werror",
+        "-I" + str(root / "components/espcontrol"),
         str(path / "test.cpp"), "-o", str(path / "test"),
     ], check=True)
     subprocess.run([str(path / "test")], check=True)

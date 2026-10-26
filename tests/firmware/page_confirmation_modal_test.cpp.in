@@ -1,0 +1,717 @@
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <functional>
+#include <string>
+#include <vector>
+
+#include "button_grid_subpage_parser.h"
+#include "lvgl.h"
+#include "modal_test_router.h"
+#include "page_card_dependencies.h"
+#include "page_entity_observer_set.h"
+#include "panel_config_document.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+static size_t lv_live_bytes = 0, lv_allocation_calls = 0, cpp_allocation_calls = 0, cpp_live_bytes = 0;
+struct alignas(16) CppAllocation {
+  size_t bytes;
+};
+void* operator new(size_t bytes) {
+  ++cpp_allocation_calls;
+  auto* header = static_cast<CppAllocation*>(std::malloc(sizeof(CppAllocation) + (bytes ? bytes : 1)));
+  assert(header);
+  header->bytes = bytes;
+  cpp_live_bytes += bytes;
+  return header + 1;
+}
+void* operator new[](size_t bytes) {
+  return ::operator new(bytes);
+}
+void operator delete(void* pointer) noexcept {
+  if (pointer) {
+    auto* header = static_cast<CppAllocation*>(pointer) - 1;
+    cpp_live_bytes -= header->bytes;
+    std::free(header);
+  }
+}
+void operator delete[](void* pointer) noexcept {
+  ::operator delete(pointer);
+}
+void operator delete(void* pointer, std::size_t) noexcept {
+  ::operator delete(pointer);
+}
+void operator delete[](void* pointer, std::size_t) noexcept {
+  ::operator delete(pointer);
+}
+struct alignas(16) Allocation {
+  size_t bytes;
+};
+extern "C" {
+void lv_mem_init() {}
+void lv_mem_deinit() {}
+lv_mem_pool_t lv_mem_add_pool(void*, size_t) {
+  return nullptr;
+}
+void lv_mem_remove_pool(lv_mem_pool_t) {}
+void* lv_malloc_core(size_t size) {
+  ++lv_allocation_calls;
+  auto* p = static_cast<Allocation*>(std::malloc(size + sizeof(Allocation)));
+  assert(p);
+  p->bytes = size;
+  lv_live_bytes += size;
+  return p + 1;
+}
+void lv_free_core(void* ptr) {
+  if (!ptr) return;
+  auto* p = static_cast<Allocation*>(ptr) - 1;
+  lv_live_bytes -= p->bytes;
+  std::free(p);
+}
+void* lv_realloc_core(void* ptr, size_t size) {
+  void* p = lv_malloc_core(size);
+  if (ptr) {
+    std::memcpy(p, ptr, std::min(size, (static_cast<Allocation*>(ptr) - 1)->bytes));
+    lv_free_core(ptr);
+  }
+  return p;
+}
+void lv_mem_monitor_core(lv_mem_monitor_t* out) {
+  *out = {};
+}
+lv_result_t lv_mem_test_core() {
+  return LV_RESULT_OK;
+}
+}
+
+void lv_label_set_display_text(lv_obj_t* label, const char* text) {
+  lv_label_set_text(label, text);
+}
+
+#include "button_grid_modal_layout.h"
+#include "page_confirmation_runtime.h"
+using lv_coord_t = int32_t;
+#include "page_modal_runtime.h"
+using DisplayModalProfile = espcontrol::modal::DeviceProfile;
+constexpr int CONTROL_MODAL_INSET_REF_PX = 18, CONTROL_MODAL_BACK_BUTTON_REF_PX = 46,
+              CONTROL_MODAL_BUTTON_REF_PX = 80, CONTROL_MODAL_ARC_STROKE_REF_PX = 17,
+              CONTROL_MODAL_CONTROLS_GAP_REF_PX = 24, CONTROL_MODAL_TITLE_GAP_REF_PX = 10;
+DisplayModalProfile active_profile;
+DisplayModalProfile display_active_modal_profile() {
+  return active_profile;
+}
+struct TestTheme {
+  uint32_t surface_primary{0x212121}, surface_secondary{0x101010}, overlay{0x101010}, border{0x424242},
+      text_primary{0xFFFFFF}, text_muted{0x808080};
+} theme;
+const auto& current_theme() {
+  return theme;
+}
+uint32_t theme_display_color(uint32_t c) {
+  return c;
+}
+std::string clock_label;
+void set_clock_bar_modal_label(const std::string& s) {
+  clock_label = s;
+}
+struct Coordinator {
+  bool busy{false};
+  bool dispatching() const {
+    return busy;
+  }
+} coordinator;
+auto& ha_read_coordinator() {
+  return coordinator;
+}
+bool online = true, enough_heap = true, style_ok = true, shell_ok = true;
+bool ha_api_state_connected() {
+  return online;
+}
+bool ha_internal_heap_available(const char*) {
+  return enough_heap;
+}
+uint32_t readable_text_color_for_bg(uint32_t c) {
+  return c > 0x808080 ? 0x000000 : 0xFFFFFF;
+}
+void apply_icon_width_compensation(lv_obj_t*) {}
+void apply_width_compensation(lv_obj_t*, int) {}
+bool width_compensation_vertical_axis() {
+  return false;
+}
+int compensated_width(int width, int percent) {
+  return width * percent / 100;
+}
+void light_control_center_icon_label(lv_obj_t* label) {
+  if (label) lv_obj_center(label);
+}
+const char* find_icon(const char* name) {
+  return !std::strcmp(name, "Wifi QR Tab")         ? "Q"
+         : !std::strcmp(name, "Wifi Password Tab") ? "D"
+         : !std::strcmp(name, "Wifi")              ? "W"
+                                                   : "O";
+}
+ControlModalStateService<lv_obj_t> service;
+auto& control_modal_active() {
+  return service.active();
+}
+auto& control_modal_service() {
+  return service;
+}
+// @common-structs
+struct ControlModalGridMetrics {
+  lv_obj_t *page{nullptr}, *first_card{nullptr};
+  int cols{3}, rows{3};
+} metrics;
+auto& control_modal_grid_metrics() {
+  return metrics;
+}
+void control_modal_apply_pressed_fill(lv_obj_t*) {}
+// @common-geometry
+// @text-button-layout
+// @text-button-factory
+int control_modal_card_radius(lv_obj_t*) {
+  return 12;
+}
+int control_modal_scaled_px(int px, int side) {
+  return px * side / 480;
+}
+void control_modal_style_translucent_chrome_button(lv_obj_t* button) {
+  lv_obj_set_style_bg_opa(button, LV_OPA_70, LV_PART_MAIN);
+}
+void control_modal_block_close_for(uint32_t ms) {
+  service.block_close_for(lv_tick_get(), ms);
+}
+ControlModalShell control_modal_open_shell(ControlModalKind kind, lv_obj_t*, int compensation,
+                                           const lv_font_t* font, void (*close)()) {
+  ControlModalShell shell;
+  if (!shell_ok) return shell;
+  shell.layout = control_modal_calc_layout(compensation);
+  shell.content_w = shell.layout.panel_w - 2 * shell.layout.inset;
+  if (shell.content_w < 120) shell.content_w = shell.layout.panel_w;
+  shell.overlay = lv_obj_create(lv_layer_top());
+  lv_obj_set_size(shell.overlay, lv_pct(100), lv_pct(100));
+  lv_obj_set_style_pad_all(shell.overlay, 0, LV_PART_MAIN);
+  lv_obj_set_style_border_width(shell.overlay, 0, LV_PART_MAIN);
+  shell.panel = lv_obj_create(shell.overlay);
+  lv_obj_set_style_pad_all(shell.panel, 0, LV_PART_MAIN);
+  lv_obj_set_style_border_width(shell.panel, 0, LV_PART_MAIN);
+  control_modal_apply_panel_layout(shell.overlay, shell.panel, shell.layout, 12);
+  shell.close_btn = lv_button_create(shell.panel);
+  control_modal_apply_back_button_layout(shell.close_btn, shell.layout);
+  auto* back_icon = lv_label_create(shell.close_btn);
+  lv_label_set_text(back_icon, "<");
+  lv_obj_set_style_text_font(back_icon, font, LV_PART_MAIN);
+  lv_obj_add_event_cb(
+      shell.close_btn,
+      [](lv_event_t*) {
+        ControlModalKind closing;
+        ControlModalCloseCallback callback = nullptr;
+        if (service.begin_active_close(lv_tick_get(), true, &closing, &callback) && callback) callback();
+      },
+      LV_EVENT_CLICKED, nullptr);
+  service.set_active(kind, shell.overlay, close, ControlModalDismissPolicy::DISMISS);
+  return shell;
+}
+
+// @reference-arrange
+#include "page_confirmation_modal.h"
+struct Arena : PageArenaAllocator {
+  size_t live{0}, bytes{0}, calls{0}, fail_at{0};
+  void* allocate(size_t n) override {
+    if (++calls == fail_at) return nullptr;
+    void* p = std::malloc(n);
+    assert(p);
+    ++live;
+    bytes += n;
+    return p;
+  }
+  void release(void* p, size_t n) override {
+    assert(live && bytes >= n);
+    --live;
+    bytes -= n;
+    std::free(p);
+  }
+};
+struct Transport : PageEntitySubscriptions {
+  struct Entry {
+    const char* entity;
+    const char* attr;
+    void* owner;
+    uint32_t revision, channel;
+    Deliver deliver;
+  };
+  std::vector<Entry> entries;
+  uint32_t connection{1};
+  bool subscribe(const char* e, const char* a, void* o, uint32_t r, uint32_t c, Deliver d) override {
+    entries.push_back({e, a, o, r, c, d});
+    return true;
+  }
+  void release(void* owner) override {
+    entries.erase(std::remove_if(entries.begin(), entries.end(), [&](auto x) { return x.owner == owner; }),
+                  entries.end());
+  }
+  uint32_t connection_generation() const override {
+    return connection;
+  }
+  void report(std::string_view value, std::string_view entity = "switch.test") {
+    const auto calls = cpp_allocation_calls;
+    for (auto e : entries)
+      if (entity == e.entity && !e.attr[0]) e.deliver(e.owner, e.revision, e.channel, value);
+    assert(calls == cpp_allocation_calls);
+  }
+};
+struct Document {
+  std::array<uint8_t, 8192> bytes{};
+  alignas(std::max_align_t) std::array<uint8_t, 32768> memory{};
+  PageStore store;
+  size_t size{0};
+  Document(const DeviceUiLimits& limits, std::string options = "confirm_on,confirm_off",
+           uint32_t generation = 17) {
+    PanelConfigWriter w(bytes.data(), bytes.size());
+    assert(w.begin() == PanelConfigStatus::OK);
+    assert(w.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                   std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string rows[] = {
+        "switch.test;Kitchen;Auto;Auto;;;;;" + options,
+        "cover.door;Garage;Auto;Auto;;;garage;;confirm_on,confirm_off",
+        "script.test;Script;Auto;Auto;script.turn_on;;action;;confirm_on,script_fields=message%3D" +
+            std::string(130, 's'),
+        ";Rooms;;;indicator;;subpage;;"};
+    for (size_t i = 0; i < 4; ++i)
+      assert(w.append_button(i + 1, reinterpret_cast<const uint8_t*>(rows[i].data()), rows[i].size()) ==
+             PanelConfigStatus::OK);
+    const std::string child = "~B,1|,switch.test,Child,Auto,Auto,,,,confirm_on%2Cconfirm_off";
+    assert(w.append_subpage(4, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    assert(w.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(bytes.data(), size, limits, generation, memory.data(), memory.size(),
+                               &store) == PageStoreStatus::OK);
+  }
+};
+struct Harness {
+  Document doc;
+  Arena arena;
+  Transport transport;
+  PageCardDependencies deps;
+  PageEntityStateRuntime graph{deps, arena, transport, {256, 128, 32768}};
+  uint32_t binding{1};
+  PageId page{0};
+  size_t base_arena{0};
+  std::function<void()> on_style, on_send;
+  PageModalToken styled_token{};
+  const lv_font_t *button_font{LV_FONT_DEFAULT}, *message_font{LV_FONT_DEFAULT}, *icon_font{LV_FONT_DEFAULT};
+  const lv_font_t* child_font{nullptr};
+  uint32_t accent{0x0077CC};
+  bool service_available{true}, accepted{true};
+  size_t sends{0};
+  PageConfirmationAction sent{PageConfirmationAction::NONE};
+  std::string sent_options;
+  PageConfirmationModalPort ui;
+  PageModalRouter<1> router{modal_test_router<ControlModalKind::SWITCH_CONFIRMATION>(ui)};
+  PageModalRuntime modal;
+  struct CommandPort : PageConfirmationPort {
+    Harness& h;
+    explicit CommandPort(Harness& h) : h(h) {}
+    bool valid(PageBindingToken t) const override {
+      return h.valid(t);
+    }
+    bool valid(PageModalToken t) const override {
+      return h.modal.valid(t);
+    }
+    bool connected() const override {
+      return online;
+    }
+    bool service_available() const override {
+      return h.service_available;
+    }
+    bool ready() const override {
+      return h.ui.ready();
+    }
+    uint64_t request(PageBindingToken t) override {
+      return h.modal.request(t) ? h.modal.pending_request() : 0;
+    }
+    bool pending_request(uint64_t id) const override {
+      return id && h.modal.pending_request() == id;
+    }
+    void cancel_request(uint64_t id) override {
+      h.modal.cancel_request(id);
+    }
+    void close(PageModalToken t) override {
+      h.modal.notify_closed(t);
+    }
+    bool send(PageConfirmationAction action, const ParsedCfg& config) override {
+      ++h.sends;
+      h.sent = action;
+      h.sent_options = config.options;
+      const auto options = config.options;
+      if (h.on_send) h.on_send();
+      assert(options == config.options);
+      return h.accepted;
+    }
+  } command_port{*this};
+  PageConfirmationRuntime commands{graph, command_port};
+  Harness(const DeviceUiLimits& limits, std::string options = "confirm_on,confirm_off", uint64_t opening = 1)
+      : doc(limits, options),
+        ui(arena, graph, style(this), this,
+           [](void* owner, PageBindingToken t) { return static_cast<Harness*>(owner)->valid(t); }),
+        modal(router, opening) {
+    assert(ui.install(modal, commands, true));
+    assert(graph.prepare(doc.store) && commands.prepare(doc.store) && modal.prepare(doc.store));
+    graph.activate_prepared(doc.store);
+    commands.activate_prepared(doc.store);
+    modal.activate_prepared(doc.store);
+    transport.report("off");
+    transport.report("closed", "cover.door");
+    base_arena = arena.live;
+  }
+  ~Harness() {
+    modal.retire_active();
+    modal.loop();
+    commands.retire_active();
+    graph.retire_active();
+    assert(!arena.live);
+  }
+  bool valid(PageBindingToken t) const {
+    return t.binding == binding && !t.back && t.page == page && t.configuration == doc.store.generation();
+  }
+  static PageConfirmationModalStyle style(Harness* h) {
+    return {h, [](void* owner, PageModalToken t, const ParsedCfg& p, PageConfirmationModalEnvironment& e) {
+              auto& h = *static_cast<Harness*>(owner);
+              h.styled_token = t;
+              e.button_font =
+                  t.card >= h.doc.store.page(0)->card_count && h.child_font ? h.child_font : h.button_font;
+              e.message_font = h.message_font;
+              e.icon_font = h.icon_font;
+              e.accent = h.accent;
+              e.caption = p.label.empty() ? p.entity : p.label;
+              if (h.on_style) h.on_style();
+              return style_ok;
+            }};
+  }
+  bool request(CardId card = 0, bool current = false) {
+    const auto cpp = cpp_allocation_calls, lv = lv_allocation_calls, meta = arena.calls;
+    const bool accepted = commands.request({doc.store.generation(), binding, page, card, 0, false},
+                                           transport.connection, current);
+    assert(cpp == cpp_allocation_calls && lv == lv_allocation_calls && meta == arena.calls);
+    return accepted;
+  }
+  PageModalToken open(CardId card = 0, bool current = false) {
+    assert(request(card, current));
+    modal.loop();
+    const auto t = modal.token();
+    assert(t.opening && modal.interactive(t));
+    return t;
+  }
+  void pump() {
+    commands.loop();
+    modal.loop();
+  }
+  void close() {
+    modal.dismiss();
+    pump();
+    assert(arena.live == base_arena && !commands.memory().contexts && !commands.memory().pending_requests);
+  }
+  lv_obj_t* panel() {
+    return lv_obj_get_child(service.active().overlay, 0);
+  }
+  lv_obj_t* back() {
+    return lv_obj_get_child(panel(), 0);
+  }
+  lv_obj_t* message() {
+    return lv_obj_get_child(panel(), 1);
+  }
+  lv_obj_t* no() {
+    return lv_obj_get_child(panel(), 2);
+  }
+  lv_obj_t* yes() {
+    return lv_obj_get_child(panel(), 3);
+  }
+};
+void click(lv_obj_t* object) {
+  lv_obj_send_event(object, LV_EVENT_PRESSED, nullptr);
+  lv_obj_send_event(object, LV_EVENT_CLICKED, nullptr);
+}
+void basic(const DeviceUiLimits& limits) {
+  Harness h(limits);
+  auto token = h.open();
+  assert(clock_label == "Kitchen" && h.styled_token.opening == token.opening);
+  assert(!std::strcmp(lv_label_get_text(h.message()), espcontrol_i18n("Toggle this device?")));
+  assert(!std::strcmp(lv_label_get_text(lv_obj_get_child(h.no(), 0)), espcontrol_i18n("No")));
+  assert(!std::strcmp(lv_label_get_text(lv_obj_get_child(h.yes(), 0)), espcontrol_i18n("Yes")));
+  auto* yes = h.yes();
+  lv_obj_send_event(yes, LV_EVENT_CLICKED, nullptr);
+  h.pump();
+  assert(h.sends == 0 && h.modal.valid(token));
+  lv_obj_send_event(yes, LV_EVENT_PRESSED, nullptr);
+  lv_obj_send_event(yes, LV_EVENT_PRESS_LOST, nullptr);
+  lv_obj_send_event(yes, LV_EVENT_CLICKED, nullptr);
+  h.pump();
+  assert(h.sends == 0);
+  const auto cpp = cpp_allocation_calls, lv = lv_allocation_calls, meta = h.arena.calls;
+  click(yes);
+  assert(h.sends == 0 && cpp == cpp_allocation_calls && lv == lv_allocation_calls && meta == h.arena.calls);
+  h.transport.report("on");
+  h.pump();
+  assert(h.sends == 1 && h.sent == PageConfirmationAction::TURN_ON && h.arena.live == h.base_arena);
+  h.transport.report("off");
+  token = h.open(1);
+  assert(!std::strcmp(lv_label_get_text(h.message()), espcontrol_i18n("Open or close the garage door?")));
+  click(h.yes());
+  h.pump();
+  assert(h.sent == PageConfirmationAction::OPEN);
+  token = h.open(1, true);
+  click(h.yes());
+  h.pump();
+  assert(h.sent == PageConfirmationAction::CLOSE);
+  const auto before_cancel = h.sends;
+  h.open();
+  click(h.yes());
+  click(h.no());
+  h.pump();
+  assert(h.sends == before_cancel && h.arena.live == h.base_arena);
+  h.open();
+  click(h.yes());
+  click(h.back());
+  h.pump();
+  assert(h.sends == before_cancel && h.arena.live == h.base_arena);
+  const auto retained_cpp = cpp_live_bytes, retained_lv = lv_live_bytes,
+             registrations = h.transport.entries.size();
+  const auto* setting = std::getenv("ESPCONTROL_TEST_CYCLES");
+  const int cycles = setting ? std::atoi(setting) : 1000;
+  for (int i = 0; i < cycles; ++i) {
+    h.open();
+    click(h.yes());
+    h.pump();
+    h.open();
+    click(h.no());
+    h.pump();
+    h.open();
+    click(h.back());
+    h.pump();
+    assert(h.arena.live == h.base_arena && cpp_live_bytes == retained_cpp && lv_live_bytes == retained_lv &&
+           h.transport.entries.size() == registrations);
+  }
+  std::printf("Confirmation %s: %d Yes/No/Back cycles, stable C++/LVGL/arena/registrations\n",
+              limits.device_profile, cycles);
+}
+void idle_style_layout(const DeviceUiLimits& limits, lv_display_t* display) {
+  Harness h(
+      limits,
+      "confirm_on,confirm_off,confirm_message=Really%20continue%3F,confirm_yes=Proceed,confirm_no=Cancel");
+  h.open();
+  assert(!std::strcmp(lv_label_get_text(h.message()), "Really continue?"));
+  assert(!std::strcmp(lv_label_get_text(lv_obj_get_child(h.yes(), 0)), "Proceed"));
+  assert(!std::strcmp(lv_label_get_text(lv_obj_get_child(h.no(), 0)), "Cancel"));
+  lv_refr_now(display);
+  size_t draws = 0;
+  lv_obj_add_event_cb(
+      h.panel(), [](lv_event_t* e) { ++*static_cast<size_t*>(lv_event_get_user_data(e)); },
+      LV_EVENT_DRAW_MAIN, &draws);
+  lv_refr_now(display);
+  const auto before = draws, cpp = cpp_allocation_calls, lv = lv_allocation_calls;
+  for (int i = 0; i < 1000; ++i) {
+    h.pump();
+    lv_refr_now(display);
+  }
+  assert(draws == before && cpp == cpp_allocation_calls && lv == lv_allocation_calls);
+  lv_font_t alternate = *LV_FONT_DEFAULT;
+  h.message_font = &alternate;
+  h.button_font = &alternate;
+  h.accent = 0xEEEEEE;
+  theme.surface_secondary = 0x121212;
+  theme.text_primary = 0xABCDEF;
+  h.pump();
+  assert(lv_obj_get_style_text_font(h.message(), LV_PART_MAIN) == &alternate &&
+         lv_obj_get_style_text_font(lv_obj_get_child(h.yes(), 0), LV_PART_MAIN) == &alternate);
+  assert(lv_color_eq(lv_obj_get_style_text_color(lv_obj_get_child(h.yes(), 0), LV_PART_MAIN),
+                     lv_color_hex(readable_text_color_for_bg(h.accent))));
+  for (const auto& dimensions : std::array<std::pair<int, int>, 9>{{{320, 480},
+                                                                    {480, 480},
+                                                                    {720, 720},
+                                                                    {480, 800},
+                                                                    {800, 480},
+                                                                    {1024, 600},
+                                                                    {600, 1024},
+                                                                    {1280, 800},
+                                                                    {800, 1280}}}) {
+    lv_display_set_resolution(display, dimensions.first, dimensions.second);
+    active_profile.layout_family =
+        dimensions.first < dimensions.second ? espcontrol::modal::LayoutFamily::COMPACT_PORTRAIT
+        : dimensions.first == dimensions.second
+            ? (dimensions.first >= 720 ? espcontrol::modal::LayoutFamily::LARGE_SQUARE
+                                       : espcontrol::modal::LayoutFamily::COMPACT_SQUARE)
+        : dimensions.first >= 1280 ? espcontrol::modal::LayoutFamily::LARGE_LANDSCAPE
+                                   : espcontrol::modal::LayoutFamily::WIDE_LANDSCAPE;
+
+    h.pump();
+    lv_obj_update_layout(h.panel());
+    lv_area_t message{}, back{}, no{}, yes{};
+    lv_obj_get_coords(h.message(), &message);
+    lv_obj_get_coords(h.back(), &back);
+    lv_obj_get_coords(h.no(), &no);
+    lv_obj_get_coords(h.yes(), &yes);
+    assert(message.y1 > back.y2 && no.y1 > message.y2 && yes.y1 > message.y2 && no.x2 < yes.x1);
+    lv_area_t panel{};
+    lv_obj_get_coords(h.panel(), &panel);
+    assert(no.y2 < panel.y2 && yes.x2 < panel.x2 && no.x1 > panel.x1);
+    auto layout = control_modal_calc_layout(100);
+    arrange_reference(h.panel(), h.message(), h.no(), h.yes(), layout,
+                      std::max(8, control_modal_scaled_px(12, layout.short_side)),
+                      std::max(18, control_modal_scaled_px(28, layout.short_side)));
+    lv_obj_update_layout(h.panel());
+    lv_area_t reference{};
+    lv_obj_get_coords(h.message(), &reference);
+    assert(!std::memcmp(&reference, &message, sizeof(reference)));
+    lv_obj_get_coords(h.no(), &reference);
+    assert(!std::memcmp(&reference, &no, sizeof(reference)));
+    lv_obj_get_coords(h.yes(), &reference);
+    assert(!std::memcmp(&reference, &yes, sizeof(reference)));
+  }
+  h.close();
+  lv_display_set_resolution(display, 480, 480);
+  active_profile = {};
+  h.page = 1;
+  h.child_font = &alternate;
+  const auto* child = h.doc.store.page(1);
+  assert(child);
+  auto token = h.open(child->first_card);
+  assert(h.styled_token.card == child->first_card && h.styled_token.opening == token.opening &&
+         clock_label == "Child");
+  assert(lv_obj_get_style_text_font(lv_obj_get_child(h.yes(), 0), LV_PART_MAIN) == &alternate);
+  h.close();
+}
+void failures_and_reentry(const DeviceUiLimits& limits, lv_display_t* display) {
+  Harness h(limits);
+  assert(h.modal.request_card({17, 0}));
+  h.modal.loop();
+  assert(h.arena.live == h.base_arena && !h.modal.token().opening);  // no captured plan
+  for (size_t offset = 1; offset <= 2; ++offset) {
+    h.arena.fail_at = h.arena.calls + offset;
+    assert(h.request());
+    h.pump();
+    assert(h.arena.live == h.base_arena && !h.commands.memory().contexts &&
+           !h.commands.memory().pending_requests);
+    h.arena.fail_at = 0;
+  }
+  enough_heap = false;
+  assert(h.request());
+  h.pump();
+  assert(h.arena.live == h.base_arena);
+  enough_heap = true;
+  style_ok = false;
+  assert(h.request());
+  h.pump();
+  assert(h.arena.live == h.base_arena);
+  style_ok = true;
+  shell_ok = false;
+  assert(h.request());
+  h.pump();
+  assert(h.arena.live == h.base_arena && !h.commands.memory().contexts);
+  shell_ok = true;
+  h.on_style = [&] { h.modal.display_takeover(false); };
+  assert(h.request());
+  h.pump();
+  assert(h.arena.live == h.base_arena);
+  h.on_style = {};
+  auto token = h.open();
+  auto* retired = h.yes();
+  lv_obj_send_event(retired, LV_EVENT_PRESSED, nullptr);
+  ++h.transport.connection;
+  h.graph.invalidate_disconnected_state();
+  lv_obj_send_event(retired, LV_EVENT_CLICKED, nullptr);
+  h.pump();
+  assert(h.sends == 0 && h.arena.live == h.base_arena);
+  h.transport.report("off");
+  token = h.open();
+  click(h.yes());
+  h.modal.display_takeover(false);
+  h.pump();
+  assert(h.sends == 0 && h.arena.live == h.base_arena);
+  token = h.open();
+  h.on_send = [&] {
+    h.modal.dismiss();
+    h.modal.loop();
+    assert(!h.modal.memory().active_contexts);
+  };
+  click(h.yes());
+  h.pump();
+  h.on_send = {};
+  assert(h.sends == 1 && h.arena.live == h.base_arena);
+  token = h.open();
+  auto* panel = h.panel();
+  lv_obj_add_event_cb(
+      panel,
+      [](lv_event_t* e) {
+        auto& h = *static_cast<Harness*>(lv_event_get_user_data(e));
+        h.modal.dismiss();
+        h.modal.loop();
+        assert(h.modal.memory().retired_contexts == 1);
+      },
+      LV_EVENT_DRAW_MAIN, &h);
+  lv_obj_invalidate(panel);
+  lv_refr_now(display);
+  assert(!h.modal.valid(token));
+  h.pump();
+  assert(h.arena.live == h.base_arena);
+  token = h.open(2);
+  click(h.yes());
+  h.pump();
+  assert(h.sent == PageConfirmationAction::SCRIPT &&
+         h.sent_options.find(std::string(130, 's')) != std::string::npos);
+  token = h.open();
+  retired = h.yes();
+  lv_obj_send_event(retired, LV_EVENT_PRESSED, nullptr);
+  click(retired);
+  Document staged(limits, "confirm_on,confirm_off", UINT32_MAX);
+  alignas(std::max_align_t) std::array<uint8_t, 32768> committed_memory{};
+  PageStore committed;
+  assert(PageStore::stage_v1(staged.bytes.data(), staged.size, limits, 0, committed_memory.data(),
+                             committed_memory.size(), &committed) == PageStoreStatus::OK);
+  assert(h.commands.prepare(staged.store));
+  h.commands.discard_prepared();
+  assert(h.commands.pending(token));
+  assert(h.graph.prepare(staged.store) && h.commands.prepare(staged.store) && h.modal.prepare(staged.store));
+  coordinator.busy = true;
+  h.commands.activate_prepared(committed);
+  h.modal.activate_prepared(committed);
+  h.graph.activate_prepared(committed);
+  h.doc.memory.fill(0xDA);
+  staged.memory.fill(0xDE);
+  h.doc.store = committed;
+  const auto sends = h.sends;
+  lv_obj_send_event(retired, LV_EVENT_CLICKED, nullptr);
+  coordinator.busy = false;
+  h.pump();
+  assert(h.sends == sends && h.arena.live == h.base_arena);
+  h.transport.report("off");
+  token = h.open();
+  assert(token.configuration == 0);
+  h.close();
+}
+int main() {
+  std::setvbuf(stdout, nullptr, _IOLBF, 0);
+  lv_init();
+  auto* display = lv_display_create(480, 480);
+  lv_timer_pause(lv_display_get_refr_timer(display));
+  static std::array<uint16_t, 480 * 32> buffer{};
+  lv_display_set_buffers(display, buffer.data(), nullptr, sizeof(buffer), LV_DISPLAY_RENDER_MODE_PARTIAL);
+  lv_display_set_flush_cb(display,
+                          [](lv_display_t* d, const lv_area_t*, uint8_t*) { lv_display_flush_ready(d); });
+  for (const auto& profile : DEVICE_UI_PROFILES) basic(profile);
+  idle_style_layout(DEVICE_UI_PROFILES[8], display);
+  failures_and_reentry(DEVICE_UI_PROFILES[8], display);
+  {
+    Harness h(DEVICE_UI_PROFILES[8], "confirm_on,confirm_off", UINT64_MAX);
+    assert(h.open().opening == UINT64_MAX);
+    h.close();
+    assert(!h.request());
+  }
+  lv_display_delete(display);
+  lv_deinit();
+  assert(lv_live_bytes == 0);
+  std::puts("Confirmation modal native PASS");
+}

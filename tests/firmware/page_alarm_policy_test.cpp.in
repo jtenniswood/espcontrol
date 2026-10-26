@@ -1,0 +1,169 @@
+#include <cassert>
+#include <climits>
+#include <clocale>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+
+#include "bounded_status_text.h"
+#include "button_grid_subpage_parser.h"
+#include "page_alarm_policy.h"
+using namespace espcontrol::pages;
+static size_t allocations = 0;
+void* operator new(size_t n) {
+  ++allocations;
+  if (auto* p = std::malloc(n ? n : 1)) return p;
+  std::abort();
+}
+void* operator new[](size_t n) {
+  return ::operator new(n);
+}
+void operator delete(void* p) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p) noexcept {
+  std::free(p);
+}
+void operator delete(void* p, size_t) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p, size_t) noexcept {
+  std::free(p);
+}
+namespace legacy {
+struct AlarmCardCtx {
+  int arm_delay_seconds{-1}, arm_delay_total_seconds{-1};
+  uint32_t arm_delay_started_ms{0};
+};
+uint32_t tick = 0;
+uint32_t lv_tick_get() {
+  return tick;
+}
+const char* find_icon(const char* name) {
+  return name;
+}
+bool alarm_modal_managed(const AlarmCardCtx*) {
+  return false;
+}
+int alarm_modal_remaining(const AlarmCardCtx*) {
+  return -1;
+}
+int alarm_modal_progress(const AlarmCardCtx*) {
+  return -1;
+}
+// @legacy-alarm-policy
+}  // namespace legacy
+int main() {
+  size_t cases = 0;
+  const std::string states[] = {"",
+                                "disarmed",
+                                "armed_away",
+                                "armed_home",
+                                "armed_night",
+                                "armed_vacation",
+                                "armed_custom_bypass",
+                                "arming",
+                                "pending",
+                                "triggered",
+                                "unknown",
+                                "unavailable",
+                                "armed_extra",
+                                "ARMED_HOME",
+                                " unknown ",
+                                "some_odd-state",
+                                "déjà_vu",
+                                "İSTANBUL",
+                                "x"};
+  const std::string modes[] = {"",
+                               "away",
+                               "home",
+                               "night",
+                               "vacation",
+                               "disarm",
+                               "armed_away",
+                               "armed_home",
+                               "armed_night",
+                               "armed_vacation",
+                               "armed_custom_bypass",
+                               "ARMED_HOME",
+                               "invalid"};
+  for (const auto* locale : {"en", "de", "fr", "ru", "pt-br", "he", "tr", "uk", "cs"}) {
+    setlocale(LC_CTYPE, "C");
+    set_espcontrol_language(locale);
+    for (const auto& state : states) {
+      char caption[97];
+      const auto before = allocations;
+      const auto* key = alarm::state_label(state);
+      if (!key) format_status_text(caption, sizeof(caption), state);
+      assert(allocations == before);
+      assert(legacy::alarm_state_label(state) ==
+             (key ? espcontrol_i18n(std::string(key)) : std::string(caption)));
+      for (const auto& mode : modes) {
+        const auto action = alarm::action(mode);
+        const auto before_policy = allocations;
+        const bool armed = alarm::armed(state), active = alarm::active(state), delay = alarm::delay(state),
+                   available = alarm::available(state), releases = alarm::releases_label(state),
+                   matches = alarm::matches(action, state, mode),
+                   progressed = alarm::progressed(action, state, mode);
+        const auto normalized = alarm::normalized_arm_mode(mode), effective = alarm::effective(state, mode);
+        const char* icon = alarm::state_icon(state, mode);
+        assert(allocations == before_policy);
+        assert(armed == legacy::alarm_state_is_armed(state) &&
+               active == legacy::alarm_state_is_active(state) &&
+               delay == legacy::alarm_state_is_delay(state));
+        assert(available == (!state.empty() && state != "unknown" && state != "unavailable"));
+        assert(releases == legacy::alarm_state_releases_label(state));
+        assert(normalized == legacy::alarm_normalized_arm_mode(mode) &&
+               effective == legacy::alarm_effective_state(state, mode));
+        assert(matches == legacy::alarm_action_state_matches(mode, state, mode) &&
+               progressed == legacy::alarm_action_state_progressed(mode, state, mode));
+        assert(std::strcmp(icon, legacy::alarm_state_icon(state, mode)) == 0);
+        ++cases;
+      }
+    }
+  }
+  const std::string delays[] = {"",
+                                "unknown",
+                                "UNAVAILABLE",
+                                "None",
+                                "NULL",
+                                "-1",
+                                "90000000000000000000000000000000",
+                                " 00:42 ",
+                                "1:02:03",
+                                "1:2x:3",
+                                ":15",
+                                "1::2",
+                                "a1:2",
+                                "10s",
+                                "unknown5",
+                                "abc",
+                                "0"};
+  auto parse = [&](const std::string& value) {
+    const size_t before = allocations;
+    const int actual = alarm::parse_delay(value);
+    assert(allocations == before);
+    assert(actual == legacy::alarm_parse_delay_seconds(value.substr(0, 32)));
+    ++cases;
+  };
+  for (const auto& value : delays) parse(value);
+  uint32_t random = 1234567;
+  for (size_t i = 0; i < 100000; ++i) {
+    random = random * 1664525u + 1013904223u;
+    const int a = random % 1000, b = (random >> 10) % 1000, c = (random >> 20) % 1000;
+    parse(std::to_string(a) + ":" + std::to_string(b) + ":" + std::to_string(c));
+    legacy::AlarmCardCtx old;
+    old.arm_delay_seconds = (i % 4) ? a : -1;
+    old.arm_delay_total_seconds = b;
+    old.arm_delay_started_ms = random;
+    legacy::tick = random + static_cast<uint32_t>((i % 2000) * 1000);
+    const int left = alarm::remaining(old.arm_delay_seconds, old.arm_delay_started_ms, legacy::tick);
+    assert(left == legacy::alarm_remaining_delay_seconds(&old));
+    assert(alarm::progress(left, old.arm_delay_total_seconds, old.arm_delay_seconds) ==
+           legacy::alarm_delay_progress_percent(&old, left));
+  }
+  assert(alarm::parse_delay("999999999999999:1") == -1 && alarm::parse_delay("999999:999999:999999") == -1);
+  assert(alarm::remaining(-10, 0, 0) == -1 && alarm::progress(INT_MAX, INT_MAX, 0) == 100);
+  std::printf("alarm policy and delay parity: %zu cases\n", cases);
+}

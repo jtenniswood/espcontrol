@@ -18,10 +18,12 @@ struct WeatherDailyModal {
 inline WeatherDailyModal &weather_daily_modal() { static WeatherDailyModal ui; return ui; }
 inline void weather_daily_hide_modal() {
   auto &ui = weather_daily_modal();
-  auto *source = ui.source;
-  control_modal_delete_overlay(ControlModalKind::WEATHER_FORECAST, ui.overlay);
+  auto *source = ui.source;auto *overlay = ui.overlay;
   ui = WeatherDailyModal{};
-  weather_daily_release_source(source);
+  control_modal_delete_overlay(ControlModalKind::WEATHER_FORECAST, overlay);
+  if (weather_modal_managed(source)) { if (source && source->users) --source->users; }
+  else weather_daily_release_source(source);
+  weather_modal_notify_closed(source);
 }
 inline lv_obj_t *weather_daily_modal_container(lv_obj_t *parent, int width, int height) {
   auto *container = lv_obj_create(parent);
@@ -84,9 +86,50 @@ inline void weather_daily_modal_refresh_status(WeatherDailyModal &ui) {
     lv_obj_clear_flag(ui.status, LV_OBJ_FLAG_HIDDEN);
   } else lv_obj_add_flag(ui.status, LV_OBJ_FLAG_HIDDEN);
 }
+inline void weather_daily_modal_reserve_columns(WeatherDailyModal &ui, size_t count) {
+  if (ui.columns.size() == count) return;
+  const int available = ui.row_width - ui.day_gap * 2;
+  const int width = available / 3, remainder = available % 3;
+  lv_obj_clean(ui.days);
+  ui.columns.clear();
+  const int icon_height = lv_font_get_line_height(ui.icon_font);
+  const int text_height = lv_font_get_line_height(ui.font);
+  const int small_height = lv_font_get_line_height(ui.temperature_font);
+  const int icon_y = ui.day_vertical_padding;
+  const int day_y = ui.side_header ? icon_y : icon_y + icon_height + ui.text_gap;
+  const int temperature_y = day_y + text_height + ui.text_gap;
+  const int info_y = ui.side_header
+                         ? std::max(icon_y + icon_height, temperature_y + small_height) + ui.text_gap
+                         : temperature_y + small_height + ui.text_gap;
+  for (size_t i = 0; i < count; ++i) {
+    const int column = static_cast<int>(i % 3), row = static_cast<int>(i / 3);
+    const int column_width = width + (column < remainder ? 1 : 0);
+    auto* button = weather_daily_modal_container(ui.days, column_width, ui.row_height);
+    lv_obj_set_pos(button, column * (width + ui.day_gap) + std::min(column, remainder),
+                   row * (ui.row_height + ui.gap));
+    auto make = [&](const lv_font_t* font, int y, int x) {
+      auto* label = weather_daily_label(button, font);
+      lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+      lv_obj_set_width(label, column_width - ui.day_padding - x);
+      lv_obj_set_pos(label, x, y);
+      return label;
+    };
+    const int header_x = ui.day_padding + (ui.side_header ? icon_height + 4 : 0);
+    WeatherDailyModalColumn col{button, make(ui.font, day_y, header_x),
+                                make(ui.icon_font, icon_y, ui.day_padding),
+                                make(ui.temperature_font, temperature_y, header_x),
+                                make(ui.temperature_font, info_y, ui.day_padding)};
+    lv_obj_set_width(col.icon, icon_height);
+    lv_obj_set_style_text_line_space(col.conditions, ui.text_gap, LV_PART_MAIN);
+    lv_obj_set_height(col.conditions, small_height * 2 + ui.text_gap);
+    theme_set_content_foreground(col.day);
+    theme_set_content_foreground(col.icon);
+    ui.columns.push_back(col);
+  }
+}
 inline void weather_daily_refresh_modal() {
   auto &ui = weather_daily_modal();
-  if (!ui.overlay || !ui.source) return;
+  if (!ui.overlay || !weather_modal_context_current(ui.source)) return;
   lv_obj_set_style_text_color(ui.placeholder_icon, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
   lv_obj_set_style_text_color(ui.message, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
   const auto &forecast = ui.source->forecast;
@@ -97,7 +140,7 @@ inline void weather_daily_refresh_modal() {
       ? find_icon("Weather Cloudy Clock") : weather_icon_for_state("unavailable"));
     lv_obj_clear_flag(ui.message, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ui.placeholder_icon, LV_OBJ_FLAG_HIDDEN);
-    if (!ui.columns.empty()) { lv_obj_clean(ui.days); ui.columns.clear(); }
+    if (!weather_modal_managed(ui.source) && !ui.columns.empty()) { lv_obj_clean(ui.days); ui.columns.clear(); }
     lv_obj_add_flag(ui.days, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui.status, LV_OBJ_FLAG_HIDDEN);
     return;
@@ -108,37 +151,10 @@ inline void weather_daily_refresh_modal() {
   lv_obj_clear_flag(ui.days, LV_OBJ_FLAG_HIDDEN);
   const int available = ui.row_width - ui.day_gap * 2;
   const int width = available / 3, remainder = available % 3;
-  if (ui.columns.size() != count) {
-    lv_obj_clean(ui.days); ui.columns.clear();
-    const int icon_height = lv_font_get_line_height(ui.icon_font);
-    const int text_height = lv_font_get_line_height(ui.font);
-    const int small_height = lv_font_get_line_height(ui.temperature_font);
-    const int icon_y = ui.day_vertical_padding;
-    const int day_y = ui.side_header ? icon_y : icon_y + icon_height + ui.text_gap;
-    const int temperature_y = day_y + text_height + ui.text_gap;
-    const int info_y = ui.side_header ? std::max(icon_y + icon_height, temperature_y + small_height) + ui.text_gap
-      : temperature_y + small_height + ui.text_gap;
-    for (size_t i = 0; i < count; ++i) {
-      const int column = static_cast<int>(i % 3), row = static_cast<int>(i / 3);
-      const int column_width = width + (column < remainder ? 1 : 0);
-      auto *button = weather_daily_modal_container(ui.days, column_width, ui.row_height);
-      lv_obj_set_pos(button, column * (width + ui.day_gap) + std::min(column, remainder), row * (ui.row_height + ui.gap));
-      auto make = [&](const lv_font_t *font, int y, int x) {
-        auto *label = weather_daily_label(button, font);
-        lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
-        lv_obj_set_width(label, column_width - ui.day_padding - x);
-        lv_obj_set_pos(label, x, y); return label;
-      };
-      const int header_x = ui.day_padding + (ui.side_header ? icon_height + 4 : 0);
-      WeatherDailyModalColumn col{button, make(ui.font, day_y, header_x), make(ui.icon_font, icon_y, ui.day_padding),
-        make(ui.temperature_font, temperature_y, header_x), make(ui.temperature_font, info_y, ui.day_padding)};
-      lv_obj_set_width(col.icon, icon_height);
-      lv_obj_set_style_text_line_space(col.conditions, ui.text_gap, LV_PART_MAIN);
-      lv_obj_set_height(col.conditions, small_height * 2 + ui.text_gap);
-      theme_set_content_foreground(col.day);
-      theme_set_content_foreground(col.icon);
-      ui.columns.push_back(col);
-    }
+  weather_daily_modal_reserve_columns(ui, weather_modal_managed(ui.source) ? ui.day_limit : count);
+  for (size_t i = 0; i < ui.columns.size(); ++i) {
+    if (i < count) lv_obj_clear_flag(ui.columns[i].button, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ui.columns[i].button, LV_OBJ_FLAG_HIDDEN);
   }
   for (size_t i = 0; i < count; ++i) {
     const auto &day = forecast.days[i];
@@ -163,6 +179,7 @@ inline void weather_daily_refresh_modal() {
   }
   lv_obj_set_style_text_color(ui.status, lv_color_hex(current_theme().text_muted), LV_PART_MAIN);
   weather_daily_modal_refresh_status(ui);
+  if (!weather_modal_widgets_ready(ui.overlay)) weather_daily_hide_modal();
 }
 inline void weather_daily_open_modal(WeatherDailyCard *card) {
   if (!card || !card->source || !card->owner) return;
@@ -217,5 +234,7 @@ inline void weather_daily_open_modal(WeatherDailyCard *card) {
   lv_obj_set_size(ui.message, ui.row_width, text_height);
   lv_obj_set_pos(ui.message, 0, icon_height + ui.gap);
   lv_obj_set_style_text_align(ui.message, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+  if (weather_modal_managed(ui.source)) weather_daily_modal_reserve_columns(ui, ui.day_limit);
   weather_daily_refresh_modal();
+  if (ui.overlay && !weather_modal_widgets_ready(ui.overlay)) weather_daily_hide_modal();
 }

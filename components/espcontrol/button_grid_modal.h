@@ -1180,6 +1180,33 @@ inline lv_obj_t *control_modal_create_list_row(lv_obj_t *parent,
   return btn;
 }
 
+inline void control_modal_layout_text_button(lv_obj_t* btn, lv_obj_t* label, lv_coord_t max_width,
+                                             lv_coord_t min_width, lv_coord_t min_height) {
+  lv_obj_set_size(btn, min_width, min_height);
+  lv_obj_set_width(label, LV_SIZE_CONTENT);
+  lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
+  lv_obj_update_layout(label);
+  lv_coord_t pad_x = min_height / 2;
+  if (pad_x < 14) pad_x = 14;
+  lv_coord_t pad_y = min_height / 5;
+  if (pad_y < 8) pad_y = 8;
+
+  lv_coord_t natural_width = lv_obj_get_width(label) + pad_x * 2;
+  if (natural_width < min_width) natural_width = min_width;
+  if (natural_width > max_width) natural_width = max_width;
+
+  lv_coord_t label_width = natural_width - pad_x * 2;
+  if (label_width < 24) label_width = 24;
+  lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+  lv_obj_set_width(label, label_width);
+  lv_obj_update_layout(label);
+
+  lv_coord_t button_height = lv_obj_get_height(label) + pad_y * 2;
+  if (button_height < min_height) button_height = min_height;
+  lv_obj_set_size(btn, natural_width, button_height);
+  lv_obj_center(label);
+}
+
 inline lv_obj_t *control_modal_create_text_button(
     lv_obj_t *parent,
     const std::string &text,
@@ -1206,25 +1233,6 @@ inline lv_obj_t *control_modal_create_text_button(
   lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
 
-  lv_obj_update_layout(label);
-  lv_coord_t pad_x = min_height / 2;
-  if (pad_x < 14) pad_x = 14;
-  lv_coord_t pad_y = min_height / 5;
-  if (pad_y < 8) pad_y = 8;
-
-  lv_coord_t natural_width = lv_obj_get_width(label) + pad_x * 2;
-  if (natural_width < min_width) natural_width = min_width;
-  if (natural_width > max_width) natural_width = max_width;
-
-  lv_coord_t label_width = natural_width - pad_x * 2;
-  if (label_width < 24) label_width = 24;
-  lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-  lv_obj_set_width(label, label_width);
-  lv_obj_update_layout(label);
-
-  lv_coord_t button_height = lv_obj_get_height(label) + pad_y * 2;
-  if (button_height < min_height) button_height = min_height;
-  lv_obj_set_size(btn, natural_width, button_height);
-  lv_obj_center(label);
+  control_modal_layout_text_button(btn, label, max_width, min_width, min_height);
   return btn;
 }

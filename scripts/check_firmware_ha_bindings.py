@@ -146,7 +146,8 @@ ATTRIBUTE_HELPER_PATTERN = re.compile(
 )
 SUBSCRIPTION_TRACKING_PATTERN = re.compile(
     r"subscriptions_\.push_back\(\s*\{\s*callback_ref\s*,\s*scope(?:\s*,\s*owner)?"
-    r"(?:\s*,\s*channel)?(?:\s*,\s*retain_latest)?\s*\}\s*\)"
+    r"(?:\s*,\s*channel)?(?:\s*,\s*retain_latest)?"
+    r"(?:\s*,\s*false\s*,\s*retain_replay)?\s*\}\s*\)"
 )
 DEFERRED_CALLBACK_FANOUT_PATTERN = re.compile(
     r"for\s*\(\s*const\s+auto\s*&\s*callback(?:_ref)?\s*:\s*\*callback_refs\s*\)"
@@ -160,7 +161,7 @@ MEDIA_CONTROL_STATE_PATTERN = re.compile(
     re.DOTALL,
 )
 COVER_COMMAND_REQUEST_PATTERN = re.compile(
-    r"inline\s+void\s+send_cover_command_action\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+    r"inline\s+(?:void|bool)\s+send_cover_command_action\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
     re.DOTALL,
 )
 YAML_SCRIPT_PATTERN_TEMPLATE = r"(?ms)^  - id: {script_id}\n(?P<body>.*?)(?=^  - id: |\Z)"
@@ -253,7 +254,11 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         or 'heap_probe_.available("Home Assistant state request"' not in coordinator_text
     ):
         errors.append(f"{rel}: guard retained Home Assistant reads under low internal heap")
-    if "transport_.request(" not in coordinator_text or "request_fresh(" not in coordinator_text:
+    if (
+        "request_transport(transport_, entity_id, attribute, 0)" not in coordinator_text
+        or "return transport.request(entity, attribute);" not in coordinator_text
+        or "request_fresh(" not in coordinator_text
+    ):
         errors.append(f"{rel}: route fresh Home Assistant reads through the bounded coordinator helper")
     if accumulating_ha_read_call(read_boundary_text):
         errors.append(f"{rel}: fresh metadata reads must reuse subscriptions, not append native callbacks or borrow temporary strings")
@@ -5059,6 +5064,15 @@ def test_camera_refresh_package_mcu_errors() -> None:
 
 def run_self_test() -> int:
     test_camera_refresh_package_mcu_errors()
+    assert SUBSCRIPTION_TRACKING_PATTERN.search(
+        "subscriptions_.push_back({callback_ref, scope, owner, channel, retain_latest});"
+    )
+    assert SUBSCRIPTION_TRACKING_PATTERN.search(
+        "subscriptions_.push_back({callback_ref, scope, owner, channel, retain_latest, false, retain_replay});"
+    )
+    assert not SUBSCRIPTION_TRACKING_PATTERN.search(
+        "subscriptions_.push_back({scope, owner, channel, retain_latest, false, retain_replay});"
+    )
     for call in (
         "api->get_home_assistant_state(entity, callback);",
         "api.get_home_assistant_state(entity, callback);",
@@ -6015,6 +6029,30 @@ def run_self_test() -> int:
         "}\n",
         "api:\n  on_client_connected:\n    - lambda: refresh_weather_forecast_cards();\n",
         ("cancel pending cover stop callbacks when the HA API disconnects",),
+    )
+    expect_cover_request_errors(
+        "acceptance-returning cover helper keeps cleanup coverage",
+        "inline void cover_stop_track_pending() {}\n"
+        "inline void cover_stop_clear_pending() {}\n"
+        "inline void cover_stop_cancel_pending_request() {}\n"
+        "inline bool send_cover_command_action() {\n"
+        "  bool cover_stop_tracked = true;\n"
+        "  ha_cancel_action_response_callback(req.call_id, \"send failed\");\n"
+        "  return sent;\n"
+        "}\n",
+        "api:\n  on_client_disconnected:\n    - lambda: cover_stop_cancel_pending_request();\n",
+        (),
+    )
+    expect_cover_request_errors(
+        "acceptance-returning cover helper still requires send-failure cleanup",
+        "inline void cover_stop_track_pending() {}\n"
+        "inline void cover_stop_clear_pending() {}\n"
+        "inline void cover_stop_cancel_pending_request() {}\n"
+        "inline bool send_cover_command_action() {\n"
+        "  return ha_action_send(req);\n"
+        "}\n",
+        "api:\n  on_client_disconnected:\n    - lambda: cover_stop_cancel_pending_request();\n",
+        ("cancel cover stop callbacks when sends fail",),
     )
     expect_cover_art_external_input_errors(
         "missing cover art source handling",

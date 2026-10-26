@@ -1,0 +1,459 @@
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <vector>
+
+#include "bounded_status_text.h"
+#include "button_grid_subpage_parser.h"
+#include "page_alarm_state_runtime.h"
+#include "page_card_dependencies.h"
+#include "page_runtime_resources_group.h"
+#include "panel_config_document.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+static size_t allocations = 0;
+void* operator new(size_t n) {
+  ++allocations;
+  if (auto* p = std::malloc(n ? n : 1)) return p;
+  std::abort();
+}
+void* operator new[](size_t n) {
+  return ::operator new(n);
+}
+void operator delete(void* p) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p) noexcept {
+  std::free(p);
+}
+void operator delete(void* p, size_t) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p, size_t) noexcept {
+  std::free(p);
+}
+uint32_t tick = 100;
+uint32_t now() {
+  return tick;
+}
+namespace legacy {
+struct lv_obj_t {
+  bool checked{false};
+  std::string text;
+};
+struct lv_timer_t {
+  void* user{nullptr};
+  uint32_t reset_ms{0};
+  bool paused{true};
+};
+uint32_t lv_tick_get() {
+  return tick;
+}
+void lv_label_set_display_text(lv_obj_t* label, const char* text) {
+  label->text = text;
+}
+void lv_timer_pause(lv_timer_t* timer) {
+  timer->paused = true;
+}
+void lv_timer_resume(lv_timer_t* timer) {
+  timer->paused = false;
+}
+void lv_timer_reset(lv_timer_t* timer) {
+  timer->reset_ms = tick;
+}
+void* lv_timer_get_user_data(lv_timer_t* timer) {
+  return timer->user;
+}
+struct TransientStatusLabel;
+struct AlarmCardCtx {
+  std::string state, arm_mode;
+  lv_obj_t* btn{nullptr};
+  TransientStatusLabel* status_label{nullptr};
+  bool available{false}, show_status_label{false}, icon_reported{false};
+  uint32_t arm_delay_started_ms{0}, on_color{0};
+  int arm_delay_seconds{-1}, arm_delay_total_seconds{-1};
+};
+constexpr uint32_t ALARM_TRIGGERED_COLOR = 0xC62828;
+void alarm_set_card_state_colors(AlarmCardCtx*, uint32_t) {}
+void set_card_checked_state(lv_obj_t* btn, bool checked) {
+  btn->checked = checked;
+}
+void alarm_apply_card_status_icon(AlarmCardCtx* ctx) {
+  ctx->icon_reported = true;
+}
+void alarm_clear_pending_action_if_progressed(AlarmCardCtx*) {}
+void alarm_control_update_modal(AlarmCardCtx*) {}
+void alarm_arm_delay_refresh_timer(AlarmCardCtx*) {}
+void alarm_refresh_arming_takeover(AlarmCardCtx*) {}
+bool alarm_modal_managed(const AlarmCardCtx*) {
+  return false;
+}
+int alarm_modal_remaining(const AlarmCardCtx*) {
+  return -1;
+}
+int alarm_modal_progress(const AlarmCardCtx*) {
+  return -1;
+}
+// @legacy-alarm-state
+void expire(lv_timer_t& timer) {
+  if (!timer.paused && static_cast<uint32_t>(tick - timer.reset_ms) >= 3000)
+    transient_status_label_revert_cb(&timer);
+}
+}  // namespace legacy
+namespace {
+struct Arena : PageArenaAllocator {
+  size_t live{0}, calls{0};
+  bool fail{false};
+  void* allocate(size_t n) override {
+    ++calls;
+    if (fail) return nullptr;
+    ++live;
+    return std::malloc(n);
+  }
+  void release(void* p, size_t) override {
+    assert(live);
+    --live;
+    std::free(p);
+  }
+};
+struct Transport : PageEntitySubscriptions {
+  struct Binding {
+    const char* entity;
+    const char* attribute;
+    void* owner;
+    uint32_t revision, channel;
+    Deliver deliver;
+  };
+  std::vector<Binding> bindings;
+  uint32_t connection{1};
+  uint32_t connection_generation() const override {
+    return connection;
+  }
+  bool subscribe(const char* entity, const char* attribute, void* owner, uint32_t revision, uint32_t channel,
+                 Deliver deliver) override {
+    bindings.push_back({entity, attribute, owner, revision, channel, deliver});
+    return true;
+  }
+  void release(void* owner) override {
+    bindings.erase(
+        std::remove_if(bindings.begin(), bindings.end(), [&](const auto& b) { return b.owner == owner; }),
+        bindings.end());
+  }
+  void send(const char* entity, const char* attribute, const char* value) {
+    for (const auto& b : bindings)
+      if (std::strcmp(entity, b.entity) == 0 && std::strcmp(attribute, b.attribute) == 0)
+        b.deliver(b.owner, b.revision, b.channel, value);
+  }
+};
+struct Fixture {
+  std::array<uint8_t, 16384> document{};
+  alignas(std::max_align_t) std::array<uint8_t, 32768> storage{};
+  size_t size{0};
+  PageStore store;
+  Fixture(uint32_t generation, const char* key = "alarm_control_panel.home",
+          const DeviceUiLimits& limits = DEVICE_UI_PROFILES[8], bool empty = false) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {
+        std::string(key) + ";;Auto;Auto;;;alarm;;label_display=name",
+        std::string(key) + ";;Auto;Auto;;;alarm;;", std::string(key) + ";;Auto;Auto;away;;alarm_action;;",
+        "alarm_control_panel.other;;Auto;Auto;;;alarm;;",
+        std::string(key) + ";Alarms;Auto;Auto;indicator;;subpage;;subpage_kind=alarm,pin_arm=0"};
+    for (size_t i = 0; i < 5; ++i) {
+      const auto card = empty ? std::string(";;;;sensor.empty;;sensor;1;") : cards[i];
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(card.data()), card.size()) ==
+             PanelConfigStatus::OK);
+    }
+    const std::string children = empty ? "~B,1|S,,Value,Auto,Auto,sensor.empty,,1,"
+                                       : "~B,1,2|Y,,,Auto,Auto,,,,|AA,,,Auto,Auto,home,,,";
+    assert(writer.append_subpage(5, reinterpret_cast<const uint8_t*>(children.data()), children.size()) ==
+           PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, generation, storage.data(), storage.size(),
+                               &store) == PageStoreStatus::OK);
+  }
+};
+void parity() {
+  const std::string states[] = {"disarmed",      "armed_away",
+                                "armed_home",    "armed_custom_bypass",
+                                "arming",        "pending",
+                                "triggered",     "unknown",
+                                "unavailable",   "",
+                                "armed_strange", "UNKNOWN",
+                                " unknown ",     "strange_state",
+                                "état_fermé",    std::string("arming\0suffix", 13)};
+  const std::string modes[] = {
+      "away", "home", "armed_night", "armed_custom_bypass", "invalid", "", std::string("away\0suffix", 11)};
+  const std::string delays[] = {
+      "45",      "00:30",       "1:02:03", "0",       "-1",
+      "unknown", "unavailable", "none",    "invalid", "90000000000000000000000000000000"};
+  for (const auto* language : {"en", "de", "fr", "ru", "pt-br", "he", "tr", "uk", "cs"}) {
+    set_espcontrol_language(language);
+    tick = 100;
+    Fixture fixture(17);
+    Arena arena;
+    Transport transport;
+    PageAlarmStateRuntime runtime(arena, transport, now, 64, 4096, espcontrol_i18n);
+    assert(runtime.prepare(fixture.store));
+    runtime.activate_prepared(fixture.store);
+    legacy::lv_obj_t transient_label, persistent_label, action_label;
+    legacy::lv_timer_t transient_timer, persistent_timer;
+    legacy::TransientStatusLabel transient, persistent;
+    transient.steady_text = "Alarm";
+    persistent.steady_text = "--";
+    transient.label = &transient_label;
+    persistent.label = &persistent_label;
+    transient.revert_timer = &transient_timer;
+    persistent.revert_timer = &persistent_timer;
+    transient_timer.user = &transient;
+    persistent_timer.user = &persistent;
+    legacy::AlarmCardCtx home, sticky, action;
+    home.btn = &transient_label;
+    home.status_label = &transient;
+    sticky.btn = &persistent_label;
+    sticky.status_label = &persistent;
+    sticky.show_status_label = true;
+    action.btn = &action_label;
+    action.available = true;
+    assert(!runtime.read({17, 0}).command_available && runtime.read({17, 2}).command_available);
+    uint32_t random = 1234567;
+    for (size_t i = 0; i < 20000; ++i) {
+      random = random * 1664525u + 1013904223u;
+      tick += random % 1200;
+      legacy::expire(transient_timer);
+      legacy::expire(persistent_timer);
+      const int kind = (random >> 16) % 4;
+      std::string attribute, value;
+      if (kind == 0) {
+        value = states[random % std::size(states)];
+        legacy::alarm_apply_home_state(&home, value);
+        legacy::alarm_apply_home_state(&sticky, value);
+        legacy::alarm_apply_action_state(&action, "away", value);
+      }
+      if (kind == 1) {
+        attribute = "arm_mode";
+        value = modes[random % std::size(modes)];
+        legacy::alarm_apply_home_arm_mode(&home, value);
+        legacy::alarm_apply_home_arm_mode(&sticky, value);
+        legacy::alarm_apply_action_arm_mode(&action, "away", value);
+      }
+      if (kind == 2) {
+        attribute = "delay";
+        value = delays[random % std::size(delays)];
+        for (auto* ctx : {&home, &sticky, &action}) legacy::alarm_apply_home_arm_delay(ctx, value);
+      }
+      if (kind == 3) set_espcontrol_language(i % 2 ? language : "en");
+      const size_t before = allocations;
+      if (kind < 3) runtime.observed(17, "alarm_control_panel.home", attribute, value, false);
+      runtime.loop();
+      const auto control = runtime.read({17, 0}), command = runtime.read({17, 2});
+      assert(allocations == before);
+      assert(control.valid && control.state == home.state && control.arm_mode == home.arm_mode &&
+             control.available == home.available && control.active == transient_label.checked);
+      assert(control.icon_reported == home.icon_reported);
+      assert(command.state == action.state && command.arm_mode == action.arm_mode &&
+             command.available == action.available);
+      if (!(control.status_known == transient.has_status &&
+            control.status_showing == transient.showing_status &&
+            control.status == transient.last_status_text))
+        std::fprintf(stderr,
+                     "caption parity: lang=%s i=%zu kind=%d raw=[%s] bytes=%zu old=[%s] new=[%.*s] "
+                     "oldknown/show=%d/%d newknown/show=%d/%d\n",
+                     language, i, kind, home.state.c_str(), home.state.size(),
+                     transient.last_status_text.c_str(), static_cast<int>(control.status.size()),
+                     control.status.data(), transient.has_status, transient.showing_status,
+                     control.status_known, control.status_showing);
+      assert(control.status_known == transient.has_status &&
+             control.status_showing == transient.showing_status &&
+             control.status == transient.last_status_text);
+      assert(control.status_known == persistent.has_status && control.status == persistent.last_status_text);
+      const auto check_time = [](const PageAlarmSnapshot& actual, legacy::AlarmCardCtx& expected) {
+        const int left = legacy::alarm_remaining_delay_seconds(&expected);
+        assert(actual.remaining == left &&
+               actual.progress == legacy::alarm_delay_progress_percent(&expected, left));
+      };
+      check_time(control, home);
+      check_time(command, action);
+      assert(action_label.checked ==
+             (!command.available ? false
+                                 : alarm::matches(alarm::Action::AWAY, command.state, command.arm_mode)));
+    }
+  }
+}
+
+void lifecycle() {
+  for (const auto& limits : DEVICE_UI_PROFILES) {
+    Fixture first(17, "alarm_control_panel.home", limits), second(18, "alarm_control_panel.new", limits),
+        empty(19, "", limits, true);
+    tick = 100;
+    Arena arena;
+    Transport transport;
+    {
+      PageAlarmStateRuntime runtime(arena, transport, now, 64, 4096, espcontrol_i18n);
+      assert(runtime.prepare(first.store));
+      runtime.activate_prepared(first.store);
+      assert(runtime.memory().active_sources == 3 && runtime.memory().staged_bytes == 0);
+      assert(!runtime.read({17, NO_CARD}).valid);
+      const auto child = first.store.page(1)->first_card;
+      assert(PageAlarmStateRuntime::effective_entity(first.store, child) == "alarm_control_panel.home");
+      assert(PageAlarmStateRuntime::effective_options(first.store, child) ==
+             first.store.field(*first.store.card(4), CardField::OPTIONS));
+      runtime.observed(17, "alarm_control_panel.home", "", "triggered", false);
+      assert(runtime.takeover().valid && runtime.takeover().origin.index == child + 1 &&
+             runtime.takeover().origin.generation == 17);
+      runtime.observed(17, "alarm_control_panel.other", "", "triggered", false);
+      assert(runtime.takeover().entity == "alarm_control_panel.other");
+      runtime.observed(17, "alarm_control_panel.home", "arm_mode", "away", false);
+      assert(runtime.takeover().entity == "alarm_control_panel.home");  // ACTION arm_mode refreshes takeover.
+      runtime.observed(17, "alarm_control_panel.other", "arm_mode", "away", false);
+      assert(runtime.takeover().entity == "alarm_control_panel.home");  // CONTROL arm_mode does not steal it.
+      runtime.observed(17, "alarm_control_panel.other", "delay", "2", false);
+      runtime.observed(17, "alarm_control_panel.other", "", "arming", false);
+      assert(runtime.takeover().entity == "alarm_control_panel.other" && runtime.takeover().remaining == 2);
+      const auto revision = runtime.revision();
+      tick += 1000;
+      runtime.loop();
+      assert(runtime.takeover().remaining == 1 && runtime.revision() > revision);
+      tick += 1000;
+      runtime.loop();
+      assert(!runtime.takeover().valid);
+      assert(runtime.read({17, 0}).triggered);  // Expiry does not fall back to an older alarm.
+      runtime.observed(17, "alarm_control_panel.home", "", "triggered", false);
+      ++transport.connection;
+      runtime.loop();
+      assert(runtime.takeover().valid && runtime.read({17, 0}).triggered &&
+             !runtime.read({17, 0}).command_available);
+      runtime.observed(17, "alarm_control_panel.home", "arm_mode", "home", false);
+      assert(!runtime.read({17, 2}).command_available);
+      runtime.observed(17, "alarm_control_panel.home", "", "unknown", false);
+      assert(!runtime.takeover().valid && !runtime.read({17, 0}).available);
+      runtime.observed(17, "alarm_control_panel.home", "delay", "10", false);
+      runtime.observed(17, "alarm_control_panel.home", "", "arming", false);
+      tick += 4000;
+      runtime.loop();
+      assert(runtime.takeover().remaining == 6);
+      assert(runtime.prepare(second.store));
+      runtime.observed(18, "alarm_control_panel.new", "", "triggered", true);
+      assert(runtime.takeover().entity == "alarm_control_panel.home");
+      runtime.discard_prepared();
+      assert(runtime.takeover().entity == "alarm_control_panel.home");
+      arena.fail = true;
+      assert(!runtime.prepare(second.store));
+      arena.fail = false;
+      assert(runtime.read({17, 0}).valid && !runtime.read({18, 0}).valid);
+      assert(!runtime.prepare(PageStore{}));
+      assert(runtime.memory().preparation_failures == 2);
+      const auto before = allocations, calls = arena.calls;
+      for (size_t i = 0; i < 1000; ++i) {
+        assert(runtime.prepare(second.store));
+        runtime.activate_prepared(second.store);
+        runtime.observed(18, "alarm_control_panel.new", "", "triggered", false);
+        assert(runtime.takeover().valid && runtime.takeover().origin.generation == 18 &&
+               !runtime.read({17, 0}).valid);
+        assert(runtime.prepare(first.store));
+        runtime.activate_prepared(first.store);
+        runtime.observed(17, "alarm_control_panel.home", "", "disarmed", false);
+        assert(!runtime.read({18, 0}).valid && !runtime.takeover().valid);
+        assert(runtime.prepare(second.store));
+        runtime.discard_prepared();
+      }
+      assert(allocations == before && arena.calls == calls + 3000 && arena.live == 1);
+      assert(runtime.prepare(empty.store));
+      runtime.activate_prepared(empty.store);
+      assert(runtime.memory().active_sources == 0 && runtime.memory().active_bytes == 0 &&
+             !runtime.read({19, 0}).valid && !runtime.takeover().valid);
+      runtime.retire_active();
+      assert(arena.live == 0);
+    }
+    assert(arena.live == 0);
+  }
+  Fixture fixture(17);
+  Arena arena;
+  Transport transport;
+  PageAlarmStateRuntime limited(arena, transport, now, 2);
+  assert(!limited.prepare(fixture.store) && limited.memory().preparation_failures == 1);
+  const size_t names =
+      std::strlen("alarm_control_panel.home") * 2 + std::strlen("alarm_control_panel.other") + 3;
+  PageAlarmStateRuntime exact(arena, transport, now, 3, names),
+      short_keys(arena, transport, now, 3, names - 1), missing_clock(arena, transport, nullptr);
+  assert(exact.prepare(fixture.store));
+  exact.discard_prepared();
+  assert(!short_keys.prepare(fixture.store) && !missing_clock.prepare(fixture.store));
+  assert(arena.live == 0);
+}
+void publication() {
+  tick = 100;
+  Arena arena;
+  Transport transport;
+  PageCardDependencies dependencies;
+  Fixture first(17), changed(18, "alarm_control_panel.new"), empty(19, "", DEVICE_UI_PROFILES[8], true);
+  PageAlarmStateRuntime alarm_state(arena, transport, now, 64, 4096, espcontrol_i18n);
+  {
+    PageEntityStateRuntime graph(dependencies, arena, transport, {128, 128, 8192}, &alarm_state);
+    PageRuntimeResourcesGroup<2> resources({&alarm_state, &graph});
+    PageStoreRuntime publication(DEVICE_UI_PROFILES[8], arena, 32768, &resources);
+    auto prepare = [&](const Fixture& cfg) {
+      return publication.prepare(PANEL_CONFIG_DOCUMENT_VERSION, cfg.document.data(), cfg.size);
+    };
+    auto activate = [&](const Fixture& cfg, uint32_t gen) {
+      return publication.activate_prepared(gen, PANEL_CONFIG_DOCUMENT_VERSION, cfg.document.data(), cfg.size);
+    };
+    assert(prepare(first));
+    transport.send("alarm_control_panel.home", "delay", "30");
+    transport.send("alarm_control_panel.home", "", "arming");
+    assert(!alarm_state.takeover().valid);
+    assert(activate(first, 0));
+    assert(alarm_state.takeover().valid && alarm_state.takeover().origin.generation == 0 &&
+           alarm_state.takeover().remaining == 30);
+    assert(transport.bindings.size() ==
+           7);  // HOME name-mode friendly name plus two state/arm_mode/delay sources.
+    tick += 5000;
+    alarm_state.loop();
+    assert(alarm_state.takeover().remaining == 25);
+    assert(prepare(first));
+    assert(alarm_state.takeover().remaining == 25);  // Candidate copy cannot extend the active clock.
+    assert(activate(first, 2));
+    assert(alarm_state.takeover().remaining == 25);  // Equal copied delay preserves its anchor.
+    assert(!alarm_state.read({0, 0}).valid && alarm_state.read({2, 0}).valid);
+    assert(prepare(changed));
+    transport.send("alarm_control_panel.new", "", "triggered");
+    assert(alarm_state.takeover().entity == "alarm_control_panel.home");
+    transport.send("alarm_control_panel.home", "", "disarmed");
+    assert(!alarm_state.takeover().valid);
+    publication.discard_prepared();
+    assert(!alarm_state.takeover().valid);
+    assert(prepare(changed));
+    transport.send("alarm_control_panel.new", "", "triggered");
+    assert(activate(changed, 4));
+    assert(alarm_state.takeover().entity == "alarm_control_panel.new");
+    ++transport.connection;
+    (void)graph.revision();
+    alarm_state.loop();
+    assert(alarm_state.takeover().valid && !alarm_state.read({4, 0}).command_available);
+    transport.send("alarm_control_panel.new", "arm_mode", "away");
+    assert(!alarm_state.read({4, 2}).command_available);
+    transport.send("alarm_control_panel.new", "", "unavailable");
+    assert(!alarm_state.takeover().valid);
+    assert(prepare(empty));
+    assert(activate(empty, 6));
+    assert(alarm_state.memory().active_sources == 0 && !alarm_state.read({6, 0}).valid);
+  }
+  assert(arena.live == 0 && transport.bindings.empty());
+  std::puts(
+      "alarm state: 180000 reference sequences, hidden takeovers, staged/copy/reconnect and lifecycle checks "
+      "passed");
+}
+
+}  // namespace
+int main() {
+  parity();
+  lifecycle();
+  publication();
+}

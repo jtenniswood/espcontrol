@@ -14,6 +14,7 @@ source = r'''
 #include <string>
 #include <vector>
 #include "media_power_capability.h"
+#include "media_control_modal_lifetime.h"
 struct MediaControlCtx {
   std::string speaker_group_entity;
   std::string entity_id, power_entity, state_text = "unknown", power_state_text = "unknown";

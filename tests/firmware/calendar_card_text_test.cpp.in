@@ -1,0 +1,63 @@
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+
+#include "calendar_card_text.h"
+#include "i18n_generated.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+static size_t allocations = 0;
+void* operator new(size_t size) {
+  ++allocations;
+  if (auto* p = std::malloc(size ? size : 1)) return p;
+  std::abort();
+}
+void* operator new[](size_t size) {
+  return ::operator new(size);
+}
+void operator delete(void* p) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p) noexcept {
+  std::free(p);
+}
+void operator delete(void* p, size_t) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p, size_t) noexcept {
+  std::free(p);
+}
+struct lv_obj_t {
+  std::string text;
+};
+void lv_label_set_display_text(lv_obj_t* label, const char* text) {
+  label->text = text;
+}
+namespace legacy_calendar_text {
+// @legacy-calendar-text
+}
+int main() {
+  for (const auto* language : {"en", "de", "fr", "ru", "pt-br", "he", "tr", "uk", "cs"}) {
+    set_espcontrol_language(language);
+    uint32_t random = 12345678;
+    for (int n = 0; n < 10000; ++n) {
+      random = random * 1664525u + 1013904223u;
+      PageCalendarState state{bool(random & 1), int((random >> 24) % 35), int((random >> 16) % 15),
+                              bool(random & 2), int((random >> 8) % 27),  int((random >> 3) % 65),
+                              bool(random & 4)};
+      for (bool time : {false, true}) {
+        lv_obj_t value, unit, label;
+        legacy_calendar_text::CalendarCardRef ref{&value, &unit, &label, time};
+        legacy_calendar_text::CalendarDateState old{state.date_valid, state.day,  state.month,
+                                                    state.time_valid, state.hour, state.minute,
+                                                    state.use_12h};
+        legacy_calendar_text::apply_calendar_card_text(ref, old);
+        const auto before = allocations;
+        const auto result = format_calendar_card(state, time, espcontrol_i18n);
+        assert(allocations == before && value.text == result.value && unit.text.empty());
+        assert(label.text == (result.static_label ? result.static_label : result.label));
+      }
+    }
+  }
+}

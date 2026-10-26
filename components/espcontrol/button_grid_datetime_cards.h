@@ -1,5 +1,8 @@
 #pragma once
 
+#include "calendar_state_events.h"
+#include "timezone_state_events.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 struct CalendarCardRef {
@@ -143,6 +146,8 @@ inline void update_calendar_cards(bool valid, int day, int month) {
     state.use_12h = false;
   }
 
+  const auto events = espcontrol::calendar_state_events();
+  if (events.date) events.date(events.owner, valid, day, month);
   refresh_calendar_cards();
 }
 
@@ -163,6 +168,8 @@ inline void update_calendar_cards_time(bool valid, int day, int month,
     state.month = month;
   }
 
+  const auto events = espcontrol::calendar_state_events();
+  if (events.time) events.time(events.owner, valid, day, month, hour, minute, use_12h);
   refresh_calendar_cards();
 }
 
@@ -372,6 +379,8 @@ inline void update_timezone_cards(bool valid,
   state.epoch = epoch;
   state.active_timezone = active_timezone;
   state.use_12h = use_12h;
+  const auto& events = espcontrol::timezone_state_events();
+  if (events.update) events.update(events.owner, valid, epoch, active_timezone, use_12h);
   compact_timezone_card_refs();
   TimezoneCardRef *refs = timezone_card_refs();
   int count = timezone_card_count();

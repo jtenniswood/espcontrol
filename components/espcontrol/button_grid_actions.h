@@ -1,9 +1,11 @@
 #pragma once
-#include "screensaver_pin.h"
-
+#include "cover_command_policy.h"
+#include "light_temperature_color.h"
+#include "media_playback_clock.h"
 #include "media_playback_modes.h"
 #include "media_volume_capability.h"
 #include "number_slider_policy.h"
+#include "screensaver_pin.h"
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
@@ -326,6 +328,15 @@ constexpr int COVER_SUPPORT_CLOSE_TILT = 32;
 constexpr int COVER_SUPPORT_STOP_TILT = 64;
 constexpr int COVER_SUPPORT_SET_TILT_POSITION = 128;
 
+static_assert(espcontrol::cover_command::normal_feature("open") == COVER_SUPPORT_OPEN &&
+              espcontrol::cover_command::normal_feature("close") == COVER_SUPPORT_CLOSE &&
+              espcontrol::cover_command::normal_feature("stop") == COVER_SUPPORT_STOP &&
+              espcontrol::cover_command::normal_feature("set_position") == COVER_SUPPORT_SET_POSITION &&
+              espcontrol::cover_command::tilt_feature("open") == COVER_SUPPORT_OPEN_TILT &&
+              espcontrol::cover_command::tilt_feature("close") == COVER_SUPPORT_CLOSE_TILT &&
+              espcontrol::cover_command::tilt_feature("stop") == COVER_SUPPORT_STOP_TILT &&
+              espcontrol::cover_command::tilt_feature("set_position") == COVER_SUPPORT_SET_TILT_POSITION);
+
 inline bool cover_parse_supported_features(esphome::StringRef val, int &features) {
   std::string value = normalized_state_text(val);
   if (value.empty() || value == "none" || value == "null" ||
@@ -348,19 +359,11 @@ inline const char *cover_tilt_command_service(const std::string &sensor) {
 }
 
 inline int cover_command_normal_feature(const std::string &sensor) {
-  if (sensor == "open") return COVER_SUPPORT_OPEN;
-  if (sensor == "close") return COVER_SUPPORT_CLOSE;
-  if (sensor == "stop") return COVER_SUPPORT_STOP;
-  if (sensor == "set_position") return COVER_SUPPORT_SET_POSITION;
-  return 0;
+  return espcontrol::cover_command::normal_feature(sensor);
 }
 
 inline int cover_command_tilt_feature(const std::string &sensor) {
-  if (sensor == "open") return COVER_SUPPORT_OPEN_TILT;
-  if (sensor == "close") return COVER_SUPPORT_CLOSE_TILT;
-  if (sensor == "stop") return COVER_SUPPORT_STOP_TILT;
-  if (sensor == "set_position") return COVER_SUPPORT_SET_TILT_POSITION;
-  return 0;
+  return espcontrol::cover_command::tilt_feature(sensor);
 }
 
 struct CoverCommandCtx {
@@ -372,22 +375,13 @@ struct CoverCommandCtx {
 inline bool cover_command_use_tilt(const std::string &sensor,
                                    bool supported_features_known,
                                    int supported_features) {
-  if (!supported_features_known) return false;
-  int normal_feature = cover_command_normal_feature(sensor);
-  int tilt_feature = cover_command_tilt_feature(sensor);
-  return normal_feature != 0 && tilt_feature != 0 &&
-         (supported_features & normal_feature) == 0 &&
-         (supported_features & tilt_feature) != 0;
+  return espcontrol::cover_command::use_tilt(sensor, supported_features_known, supported_features);
 }
 
 inline bool cover_command_supported(const std::string &sensor,
                                     bool supported_features_known,
                                     int supported_features) {
-  if (!supported_features_known) return true;
-  int normal_feature = cover_command_normal_feature(sensor);
-  int tilt_feature = cover_command_tilt_feature(sensor);
-  return (normal_feature != 0 && (supported_features & normal_feature) != 0) ||
-         (tilt_feature != 0 && (supported_features & tilt_feature) != 0);
+  return espcontrol::cover_command::supported(sensor, supported_features_known, supported_features);
 }
 
 inline void cover_command_apply_supported_features(CoverCommandCtx *ctx, int features) {
@@ -455,17 +449,17 @@ inline void cover_stop_cancel_pending_request() {
   ha_cancel_action_response_callback(call_id, "api disconnected");
 }
 
-inline void send_cover_command_action(const ParsedCfg &p, bool tilt_command = false) {
+inline bool send_cover_command_action(const ParsedCfg &p, bool tilt_command = false) {
   const char *service = tilt_command
     ? cover_tilt_command_service(p.sensor)
     : cover_command_service(p.sensor);
-  if (p.entity.empty() || service == nullptr) return;
+  if (p.entity.empty() || service == nullptr) return false;
 
   bool has_position = p.sensor == "set_position";
   bool wants_stop_response = p.sensor == "stop" && !tilt_command;
   esphome::api::HomeassistantActionRequest req;
   uint32_t call_id = wants_stop_response ? next_cover_stop_call_id() : 0;
-  if (!ha_action_begin(req, service, false, has_position ? 2 : 1, call_id)) return;
+  if (!ha_action_begin(req, service, false, has_position ? 2 : 1, call_id)) return false;
   if (wants_stop_response) {
     req.call_id = call_id;
   }
@@ -495,10 +489,12 @@ inline void send_cover_command_action(const ParsedCfg &p, bool tilt_command = fa
       }
     }
   }
-  if (!ha_action_send(req) && cover_stop_tracked) {
+  const bool sent = ha_action_send(req);
+  if (!sent && cover_stop_tracked) {
     cover_stop_clear_pending(req.call_id);
     ha_cancel_action_response_callback(req.call_id, "send failed");
   }
+  return sent;
 }
 
 inline void send_cover_command_action(const std::string &entity_id,
@@ -610,17 +606,7 @@ inline void parse_kelvin_range(const std::string &unit, int &min_k, int &max_k) 
 // shift between two cool-white shades — instead of stretching the full
 // amber-to-blue gradient across two values that should both look cool.
 inline lv_color_t kelvin_to_fill_color(int k, int /*min_k*/, int /*max_k*/) {
-  constexpr int KELVIN_REF_MIN = 2000;
-  constexpr int KELVIN_REF_MAX = 6500;
-  float t = (float)(k - KELVIN_REF_MIN) /
-            (float)(KELVIN_REF_MAX - KELVIN_REF_MIN);
-  if (t < 0.0f) t = 0.0f;
-  if (t > 1.0f) t = 1.0f;
-  // warm = 0xFF8012, cool = 0xB8CCFF
-  uint8_t r = (uint8_t)(0xFF + t * (float)(0xB8 - 0xFF) + 0.5f);
-  uint8_t g = (uint8_t)(0x80 + t * (float)(0xCC - 0x80) + 0.5f);
-  uint8_t b = (uint8_t)(0x12 + t * (float)(0xFF - 0x12) + 0.5f);
-  return lv_color_make(r, g, b);
+  return lv_color_hex(espcontrol::light_temperature::fill_color(k));
 }
 
 // Send light.turn_on with color_temp_kelvin mapped from 0-100 pct over [min_k, max_k].
@@ -683,18 +669,16 @@ inline const char *media_service_for_mode(const std::string &mode) {
   return card_runtime_media_playback_service(mode);
 }
 
-inline void send_media_player_action(const std::string &entity_id,
-                                     const char *service,
-                                     const char *value_key = nullptr,
-                                     const char *value = nullptr) {
-  if (entity_id.empty() || service == nullptr || service[0] == '\0') return;
+inline bool send_media_player_action(const std::string& entity_id, const char* service,
+                                     const char* value_key = nullptr, const char* value = nullptr) {
+  if (entity_id.empty() || service == nullptr || service[0] == '\0') return false;
   esphome::api::HomeassistantActionRequest req;
-  if (!ha_action_begin(req, service, false, value_key && value ? 2 : 1)) return;
+  if (!ha_action_begin(req, service, false, value_key && value ? 2 : 1)) return false;
   ha_action_add_entity(req, entity_id);
   if (value_key && value) {
     ha_action_add_data(req, value_key, value);
   }
-  ha_action_send(req);
+  return ha_action_send(req);
 }
 
 inline void send_media_shuffle_action(const std::string &entity_id,
@@ -734,14 +718,15 @@ inline void send_media_volume_command(
   }
 }
 
-inline void send_media_seek_action(const std::string &entity_id, int value, float duration) {
-  if (duration <= 0.0f) return;
+inline bool send_media_seek_action(const std::string& entity_id, int value, float duration) {
+  if (duration <= 0.0f) return false;
   if (value < 0) value = 0;
   if (value > 100) value = 100;
-  int seconds = (int)((duration * value / 100.0f) + 0.5f);
+  int seconds;
+  if (!espcontrol::media::seek_seconds(duration, static_cast<uint8_t>(value), seconds)) return false;
   char buf[16];
   snprintf(buf, sizeof(buf), "%d", seconds);
-  send_media_player_action(entity_id, "media_player.media_seek", "seek_position", buf);
+  return send_media_player_action(entity_id, "media_player.media_seek", "seek_position", buf);
 }
 
 inline void send_media_source_action(const std::string &entity_id,
@@ -750,10 +735,9 @@ inline void send_media_source_action(const std::string &entity_id,
   send_media_player_action(entity_id, "media_player.select_source", "source", source.c_str());
 }
 
-inline void send_media_playback_action(const std::string &entity_id,
-                                       const std::string &mode) {
-  if (entity_id.empty()) return;
-  send_media_player_action(entity_id, media_service_for_mode(mode));
+inline bool send_media_playback_action(const std::string& entity_id, const std::string& mode) {
+  if (entity_id.empty()) return false;
+  return send_media_player_action(entity_id, media_service_for_mode(mode));
 }
 
 inline uint32_t next_media_playlist_call_id() {
@@ -761,13 +745,13 @@ inline uint32_t next_media_playlist_call_id() {
   return call_id++;
 }
 
-inline void send_media_playlist_action(const ParsedCfg &p) {
-  if (p.entity.empty()) return;
+inline bool send_media_playlist_action(const ParsedCfg& p) {
+  if (p.entity.empty()) return false;
   const auto config = espcontrol::media::decode_config_v1(p);
   const std::string &content_id = config.playlist_content_id;
   if (content_id.empty()) {
     ESP_LOGW("media", "Playlist button for %s has no media content ID", p.entity.c_str());
-    return;
+    return false;
   }
   const std::string &content_type = config.playlist_content_type;
   const std::string &player_source = config.playlist_player_source;
@@ -800,7 +784,7 @@ inline void send_media_playlist_action(const ParsedCfg &p) {
   }
   esphome::api::HomeassistantActionRequest req;
   uint32_t play_call_id = next_media_playlist_call_id();
-  if (!ha_action_begin(req, "media_player.play_media", false, 3, play_call_id)) return;
+  if (!ha_action_begin(req, "media_player.play_media", false, 3, play_call_id)) return false;
   ha_action_add_entity(req, p.entity);
   ha_action_add_data(req, "media_content_id", content_id.c_str());
   ha_action_add_data(req, "media_content_type", content_type.c_str());
@@ -819,7 +803,9 @@ inline void send_media_playlist_action(const ParsedCfg &p) {
     });
   if (!ha_action_send(req)) {
     ha_cancel_action_response_callback(req.call_id, "send failed");
+    return false;
   }
+  return true;
 }
 
 inline bool media_fast_press_mode(const std::string &mode) {
