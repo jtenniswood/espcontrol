@@ -32,6 +32,8 @@ void *operator new(size_t size){++cpp_allocation_calls;if(void *p=std::malloc(si
 void *operator new[](size_t size){return ::operator new(size);}
 void operator delete(void *p)noexcept{std::free(p);}
 void operator delete[](void *p)noexcept{std::free(p);}
+void operator delete(void *p,size_t)noexcept{std::free(p);}
+void operator delete[](void *p,size_t)noexcept{std::free(p);}
 struct alignas(std::max_align_t) Allocation{size_t bytes;};
 extern "C" {
 void lv_mem_init(){}void lv_mem_deinit(){}
@@ -189,4 +191,27 @@ void test_gesture_budget(){Fixture fixture;Arena arena;PageCardDependencies sour
  PageLightModalStyle style;style.gesture_capacity=1;style.resolve=[](void *,const ParsedCfg &,PageControlModalEnvironment &){return true;};PageLightModalPort port(arena,state,style,nullptr,[](void *,PageBindingToken){return true;});PageModalRuntime runtime(port);assert(port.install(runtime,true));assert(runtime.prepare(fixture.store));runtime.activate_prepared(fixture.store);assert(runtime.request_card({17,0}));runtime.loop();assert(!light_ui.active&&runtime.memory().failures==1&&arena.live.size()==baseline&&lv_live_bytes==lv_bytes&&coordinator.subscription_count()==refs);state.retire_active();}
  coordinator.reclaim_unused_channels();assert(arena.live.empty()&&coordinator.transport().bindings.empty());
 }
-int main(){lv_init();auto *display=lv_display_create(480,480);assert(display);lv_timer_pause(lv_display_get_refr_timer(display));test_controls();test_gesture_budget();lv_display_delete(display);lv_deinit();assert(lv_live_bytes==0);}
+void test_deferred_titles(){
+ Fixture fixture,next(18);Arena arena;PageCardDependencies source;CoordinatorPageEntitySubscriptions subscriptions(coordinator,16);
+ {
+  PageEntityStateRuntime state(source,arena,subscriptions,{64,64,8192});
+  PageLightModalStyle style;style.resolve=[](void *,const ParsedCfg &,PageControlModalEnvironment &){return true;};
+  PageCoverModalStyle cover_style;cover_style.resolve=style.resolve;
+  PageLightModalPort light(arena,state,style,nullptr,[](void *,PageBindingToken){return true;});
+  PageCoverModalPort cover(arena,state,cover_style,nullptr,[](void *,PageBindingToken){return true;});
+  Composite port(light,cover);PageModalRuntime runtime(port);
+  assert(light.install(runtime,true)&&cover.install(runtime,true));
+  for(uint16_t card=0;card<2;++card)for(bool replace:{false,true}){
+   assert(state.prepare(fixture.store));state.activate_prepared(fixture.store);values();
+   assert(runtime.prepare(fixture.store));runtime.activate_prepared(fixture.store);
+   assert(runtime.request_card({17,card}));runtime.loop();assert(clock_label==(card?"Blind":"Lamp"));
+   if(replace){assert(runtime.prepare(next.store));runtime.activate_prepared(next.store);}
+   else runtime.retire_active();
+   assert(clock_label==(card?"Blind":"Lamp"));
+   runtime.loop();assert(clock_label.empty()&&!light_ui.active&&!cover_ui.active);
+  }
+  runtime.retire_active();state.retire_active();
+ }
+ coordinator.reclaim_unused_channels();assert(arena.live.empty()&&coordinator.transport().bindings.empty());
+}
+int main(){lv_init();auto *display=lv_display_create(480,480);assert(display);lv_timer_pause(lv_display_get_refr_timer(display));test_controls();test_gesture_budget();test_deferred_titles();lv_display_delete(display);lv_deinit();assert(lv_live_bytes==0);}

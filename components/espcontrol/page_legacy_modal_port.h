@@ -106,7 +106,10 @@ template<typename Family> class PageLegacyModalPort final:public PageModalPort {
   }
   void destroy(void *pointer)override {
     auto *record=static_cast<Record *>(pointer);assert(record==record_&&record->retired);
-    if(Family::active()==&record->context)Family::hide();
+    if(Family::active()==&record->context) {
+      if(control_modal_active().kind==ControlModalKind::NONE)set_clock_bar_modal_label("");
+      Family::hide();
+    }
     assert(record->gestures.live()==0);record_=nullptr;release_record(record);
   }
  private:
