@@ -13,6 +13,8 @@ void *operator new(size_t bytes){++allocations;if(void *p=std::malloc(bytes?byte
 void *operator new[](size_t bytes){return ::operator new(bytes);}
 void operator delete(void *p)noexcept{std::free(p);}
 void operator delete[](void *p)noexcept{std::free(p);}
+void operator delete(void *p, size_t) noexcept { std::free(p); }
+void operator delete[](void *p, size_t) noexcept { std::free(p); }
 int main() {
   std::vector<std::string>values={"", "pre-wash", "pre_wash", " \r\nfirst__line\n\nsecond-line \r\n", "a  b", "__a--b", "Unknown", "unavailable", "—test",u8"Übermorgen: Müll",u8"ätest ötest ütest ætest",u8"öätest",u8"ÜBERMORGEN",u8"čESKÝ",u8"ßtest ÿtest",u8"Приветtest",u8"Σtest 日本語test",u8"Ṣade ṣ",u8"\U000F0493 button",std::string(300,'a')};
   const std::array<std::string,12>fragments={"a","B","_","-"," ","\r","\n",u8"ä",u8"—",u8"日",u8"Пр",u8"Σ"};
