@@ -570,6 +570,69 @@ void slider_input() {
   lv_obj_send_event(h.widgets[8].button,LV_EVENT_CLICKED,nullptr);
   h.scene->loop();assert(sends==sent+2);
 }
+void slider_background_hit_testing() {
+  const char* configurations[]={
+    "light.room;Dimmer;Auto;Auto;;;slider;;",
+    "fan.room;Fan;Auto;Auto;;;fan_speed;;",
+    "cover.room;Shade;Auto;Auto;;;cover;;",
+    "cover.room;Tilt;Auto;Auto;tilt;;cover;;",
+    "light.room;Temperature;Auto;Auto;;;light_temperature;;",
+    "input_number.room;Number;Auto;Auto;;;slider;;"};
+  for(size_t kind=0;kind<6;++kind) {
+    Document doc(DEVICE_UI_PROFILES[8],configurations[kind],"9w,2,3,4,5,6,7,8,1");
+    Harness h;h.apply(doc);
+    const char* entity=kind==1?"fan.room":kind==2||kind==3?"cover.room":kind==5?"input_number.room":"light.room";
+    const bool background_toggle=kind<4;
+    coordinator.report(entity,"",kind==5?"5":kind==2||kind==3?"open":"on");
+    coordinator.report(entity,"current_position","50");
+    coordinator.report(entity,"current_tilt_position","45");
+    coordinator.report(entity,"min","0");
+    coordinator.report(entity,"max","100");
+    coordinator.report(entity,"step","1");
+    coordinator.report(entity,"brightness","128");
+    coordinator.report(entity,"percentage","35");
+    coordinator.report(entity,"color_temp_kelvin","4000");
+    coordinator.report(entity,"min_color_temp_kelvin","2700");
+    coordinator.report(entity,"max_color_temp_kelvin","6500");
+    coordinator.report(entity,"supported_color_modes","['color_temp']");
+    coordinator.report(entity,"color_mode","color_temp");
+    h.scene->loop();
+    const auto &w=h.widgets[0];lv_obj_update_layout(h.root);
+    lv_area_t button,slider;lv_obj_get_coords(w.button,&button);lv_obj_get_coords(w.slider,&slider);
+    struct Touch {lv_point_t point{};lv_indev_state_t state{LV_INDEV_STATE_RELEASED};} touch;
+    auto* pointer=lv_indev_create();assert(pointer);lv_indev_set_type(pointer,LV_INDEV_TYPE_POINTER);
+    lv_indev_set_display(pointer,lv_display_get_default());lv_indev_set_user_data(pointer,&touch);
+    lv_indev_set_mode(pointer,LV_INDEV_MODE_EVENT);
+    lv_indev_set_read_cb(pointer,[](lv_indev_t* device,lv_indev_data_t* data){
+      const auto &current=*static_cast<Touch*>(lv_indev_get_user_data(device));
+      data->point=current.point;data->state=current.state;
+    });
+    auto read=[&](int x,int y,lv_indev_state_t state){
+      touch.point={x,y};touch.state=state;lv_tick_inc(30);lv_indev_read(pointer);
+    };
+    const auto x=button.x1+std::max<int32_t>(6,(slider.x1-button.x1)/2);
+    const auto y=(button.y1+button.y2)/2;
+    assert(x<slider.x1&&x>button.x1&&y>button.y1&&y<button.y2);
+    const auto sent=sends;
+    read(x,y,LV_INDEV_STATE_PRESSED);read(x,y,LV_INDEV_STATE_RELEASED);
+    // Real pointer hit testing must reach the background; direct send_event
+    // would dispatch even when the parent had incorrectly lost CLICKABLE.
+    assert(h.scene->memory().commands.pending==(background_toggle?1u:0u)&&sends==sent);
+    h.scene->loop();assert(sends==sent+(background_toggle?1u:0u));
+    if(background_toggle)assert(sent_service=="homeassistant.toggle");
+    const auto center=(slider.x1+slider.x2)/2;
+    read(center,(slider.y1+slider.y2)/2,LV_INDEV_STATE_PRESSED);
+    read(center,slider.y1+(slider.y2-slider.y1)/3,LV_INDEV_STATE_PRESSED);
+    read(center,slider.y1+(slider.y2-slider.y1)/3,LV_INDEV_STATE_RELEASED);
+    h.scene->loop();
+    const auto expected_sends=sent+(background_toggle?2u:1u);
+    assert(sends==expected_sends&&sent_service==(kind==4?"light.turn_on":kind==5?"number":"percent"));
+    coordinator.report(entity,"","unavailable");h.scene->loop();
+    read(x,y,LV_INDEV_STATE_PRESSED);read(x,y,LV_INDEV_STATE_RELEASED);h.scene->loop();
+    assert(sends==expected_sends&&h.scene->memory().commands.pending==0);
+    lv_indev_delete(pointer);
+  }
+}
 void appearance_transactions() {
   lv_font_t child_font=lv_font_montserrat_14;
   Document doc(DEVICE_UI_PROFILES[8]);Harness h;h.apply(doc);
@@ -749,7 +812,7 @@ int main() {
   lv_display_set_buffers(display,pixels.data(),nullptr,sizeof(pixels),LV_DISPLAY_RENDER_MODE_PARTIAL);
   lv_display_set_flush_cb(display,[](lv_display_t* d,const lv_area_t*,uint8_t*) { lv_display_flush_ready(d); });
   native_dispatch_safe=[] { return lv_is_initialized() && !page_lvgl_dispatching() && !modal_callback_dispatching(); };
-  navigation_and_state();live_temperature_policy();elastic_state_scene_transactions();panels_and_retirement();mode_and_feedback();source_styles();slider_input();appearance_transactions();initial_appearance();appearance_wake_without_intermediate_maintenance();remote_navigation();
+  navigation_and_state();live_temperature_policy();elastic_state_scene_transactions();panels_and_retirement();mode_and_feedback();source_styles();slider_input();slider_background_hit_testing();appearance_transactions();initial_appearance();appearance_wake_without_intermediate_maintenance();remote_navigation();
   assert(!application_scene_navigation());
   remote_selection_order();qr_images_and_transactions();
   native_dispatch_safe=nullptr;

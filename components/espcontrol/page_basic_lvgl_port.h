@@ -979,33 +979,36 @@ class PageBasicLvglPort final:public PageRendererPort {
     lv_obj_set_grid_cell(w.button,LV_GRID_ALIGN_STRETCH,cell.column,cell.column_span,LV_GRID_ALIGN_STRETCH,cell.row,cell.row_span);
     lv_obj_clear_flag(w.button,LV_OBJ_FLAG_HIDDEN);
     const bool clickable =
-        cell.back || (s.definition && (s.definition->definition.kind == BasicCardKind::TOGGLE ||
-                                       s.definition->definition.kind == BasicCardKind::LOCAL_RELAY ||
-                                       s.definition->definition.kind == BasicCardKind::SCREEN_LOCK ||
-                                       s.definition->definition.kind == BasicCardKind::TIMER ||
-                                       s.definition->definition.kind == BasicCardKind::COVER_COMMAND ||
-                                       s.definition->definition.kind == BasicCardKind::COVER_TOGGLE ||
-                                       s.definition->definition.kind == BasicCardKind::ACCESS ||
-                                       s.definition->definition.kind == BasicCardKind::ALARM ||
-                                       s.definition->definition.kind == BasicCardKind::IMAGE ||
-                                       s.definition->definition.kind == BasicCardKind::WIFI_QR ||
-                                       (s.definition->definition.kind == BasicCardKind::CLEANING &&
-                                        s.definition->definition.cleaning.mode != cleaning::Mode::STATUS) ||
-                                       s.definition->definition.kind == BasicCardKind::FOLDER ||
-                                       s.definition->definition.kind == BasicCardKind::CLIMATE ||
-                                       s.definition->definition.kind == BasicCardKind::ACTION ||
-                                       s.definition->definition.kind == BasicCardKind::LIGHT ||
-                                       s.definition->definition.kind == BasicCardKind::FAN_CONTROL ||
-                                       s.definition->definition.kind == BasicCardKind::FAN_SWITCH ||
-                                       s.definition->definition.kind == BasicCardKind::FAN_OSCILLATE ||
-                                       s.definition->definition.kind == BasicCardKind::FAN_DIRECTION ||
-                                       s.definition->definition.kind == BasicCardKind::FAN_PRESET ||
-                                       s.definition->definition.kind == BasicCardKind::OPTION_SELECT ||
-                                       s.definition->definition.kind == BasicCardKind::COVER ||
-                                       s.definition->definition.kind == BasicCardKind::FORECAST ||
-                                       s.definition->definition.kind == BasicCardKind::MEDIA_ACTION ||
-                                       s.definition->definition.kind == BasicCardKind::MEDIA_COVER_ART ||
-                                       s.definition->definition.kind == BasicCardKind::MEDIA_CONTROL));
+        cell.back ||
+        (s.definition &&
+         (s.definition->definition.kind == BasicCardKind::TOGGLE ||
+          s.definition->definition.kind == BasicCardKind::LOCAL_RELAY ||
+          s.definition->definition.kind == BasicCardKind::SCREEN_LOCK ||
+          s.definition->definition.kind == BasicCardKind::TIMER ||
+          s.definition->definition.kind == BasicCardKind::COVER_COMMAND ||
+          s.definition->definition.kind == BasicCardKind::COVER_TOGGLE ||
+          s.definition->definition.kind == BasicCardKind::ACCESS ||
+          s.definition->definition.kind == BasicCardKind::ALARM ||
+          s.definition->definition.kind == BasicCardKind::IMAGE ||
+          s.definition->definition.kind == BasicCardKind::WIFI_QR ||
+          (s.definition->definition.kind == BasicCardKind::CLEANING &&
+           s.definition->definition.cleaning.mode != cleaning::Mode::STATUS) ||
+          s.definition->definition.kind == BasicCardKind::FOLDER ||
+          s.definition->definition.kind == BasicCardKind::CLIMATE ||
+          s.definition->definition.kind == BasicCardKind::PERCENT_SLIDER ||
+          s.definition->definition.kind == BasicCardKind::ACTION ||
+          s.definition->definition.kind == BasicCardKind::LIGHT ||
+          s.definition->definition.kind == BasicCardKind::FAN_CONTROL ||
+          s.definition->definition.kind == BasicCardKind::FAN_SWITCH ||
+          s.definition->definition.kind == BasicCardKind::FAN_OSCILLATE ||
+          s.definition->definition.kind == BasicCardKind::FAN_DIRECTION ||
+          s.definition->definition.kind == BasicCardKind::FAN_PRESET ||
+          s.definition->definition.kind == BasicCardKind::OPTION_SELECT ||
+          s.definition->definition.kind == BasicCardKind::COVER ||
+          s.definition->definition.kind == BasicCardKind::FORECAST ||
+          s.definition->definition.kind == BasicCardKind::MEDIA_ACTION ||
+          s.definition->definition.kind == BasicCardKind::MEDIA_COVER_ART ||
+          s.definition->definition.kind == BasicCardKind::MEDIA_CONTROL));
     if(clickable)lv_obj_add_flag(w.button,LV_OBJ_FLAG_CLICKABLE);else lv_obj_clear_flag(w.button,LV_OBJ_FLAG_CLICKABLE);
     // Do not read the new state graph here: its activation may follow ours.
   }
@@ -2840,7 +2843,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       port->timer_click(*shell, origin);
       return;
     }
-    if ((percent_card(*shell) || temperature_card(*shell)) && port->actions_.slider_toggle) {
+    if (percent_card(*shell) && port->actions_.slider_toggle) {
       port->actions_.slider_toggle(port->actions_.owner, origin, shell->button_press_connection);
       return;
     }
