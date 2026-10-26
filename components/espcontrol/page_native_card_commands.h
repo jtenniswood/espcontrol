@@ -25,6 +25,10 @@ class PageNativeCardCommandPort final : public PageCardCommandPort {
                        const PageCardCommandValue& value) override {
     if (controls_) controls_->discard(origin, kind, value);
   }
+  void accepted_control(PageBindingToken origin, PageCardCommandKind kind,
+                        const PageCardCommandValue& value) override {
+    if (controls_) controls_->accepted(origin, kind, value);
+  }
   bool dispatch_control(const PageCardCommandSnapshot& snapshot) override {
     assert(ready());
     const auto& config = snapshot.config;
@@ -33,6 +37,10 @@ class PageNativeCardCommandPort final : public PageCardCommandPort {
                                 config.type == "cover" && config.sensor == "tilt");
     if (snapshot.kind == PageCardCommandKind::NUMBER)
       return send_numeric_slider_action(config.entity, snapshot.value.number, snapshot.value.metadata);
+    if (snapshot.kind == PageCardCommandKind::TIMER_START)
+      return ha_send_entity_action(config.entity, "timer.start");
+    if (snapshot.kind == PageCardCommandKind::TIMER_CANCEL)
+      return ha_send_entity_action(config.entity, "timer.cancel");
     if (snapshot.kind == PageCardCommandKind::SLIDER_TOGGLE)
       return ha_send_entity_action(config.entity, "homeassistant.toggle");
     if (snapshot.kind == PageCardCommandKind::TEMPERATURE) {
@@ -119,6 +127,8 @@ class PageNativeCardCommandPort final : public PageCardCommandPort {
       case PageCardCommandKind::NUMBER:
       case PageCardCommandKind::TEMPERATURE:
       case PageCardCommandKind::SLIDER_TOGGLE:
+      case PageCardCommandKind::TIMER_START:
+      case PageCardCommandKind::TIMER_CANCEL:
         dispatch_control(snapshot);
         break;
     }

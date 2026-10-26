@@ -4,8 +4,9 @@
 Production still uses the existing renderer. It does not enable nested pages,
 select the new scene, retire compiled legacy handlers or establish device memory
 savings. [Slider dispatch](pooled-slider-commands.md) shares this queue. Media,
-access, cleaning, timer and other control routes still need their own final
-main-loop dispatch integration.
+access, cleaning and other control routes still need their own final main-loop
+dispatch integration. [Timer actions](pooled-timer-commands.md) also share the
+FIFO, with cancellation history updated after an accepted send.
 
 An eight-entry fixed FIFO accepts validated grid bindings and the connection
 captured with input. Admission allocates nothing and retains no configuration

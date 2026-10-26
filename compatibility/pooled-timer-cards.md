@@ -42,7 +42,9 @@ reconnect between press/click, stale bindings, reentrant navigation, 1,000
 confirmation cycles with no timer additions and 1,000 navigation cycles with
 stable retained resources. Use `ESPCONTROL_TEST_FAMILY=timers` for that suite.
 
-Remaining view ports, scene/action integration, physical S3/working 20-slot P4
+The [deferred timer command owner](pooled-timer-commands.md) now admits these
+view callbacks without acknowledging queue admission as a sent cancellation.
+Remaining view ports, scene integration, physical S3/working 20-slot P4
 qualification and the full factory build matrix remain required. No device is
 flashed by this stage. Host retained bytes are not physical heap/PSRAM savings;
 saved documents, backups and nesting depth are unchanged. P4-86 remains reserved

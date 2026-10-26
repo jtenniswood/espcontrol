@@ -8,6 +8,7 @@
 #include "page_confirmation_policy.h"
 #include "page_entity_state_runtime.h"
 #include "page_renderer_runtime.h"
+#include "page_timer_runtime.h"
 #include "page_toggle_state.h"
 
 namespace espcontrol::pages {
@@ -29,7 +30,9 @@ enum class PageCardCommandKind : uint8_t {
   PERCENT,
   NUMBER,
   TEMPERATURE,
-  SLIDER_TOGGLE
+  SLIDER_TOGGLE,
+  TIMER_START,
+  TIMER_CANCEL
 };
 struct PageCardCommandValue {
   double number{0};
@@ -52,6 +55,8 @@ class PageCardControlPolicy {
   virtual bool valid(const PageStore&, PageBindingToken, PageCardCommandKind,
                      const PageCardCommandValue&) = 0;
   virtual void discard(PageBindingToken, PageCardCommandKind, const PageCardCommandValue&) = 0;
+  // Scalar history acknowledgement after a helper accepted a send. No callbacks.
+  virtual void accepted(PageBindingToken, PageCardCommandKind, const PageCardCommandValue&) {}
 };
 class PageCardCommandPort {
  public:
@@ -75,6 +80,7 @@ class PageCardCommandPort {
   }
   virtual void discard_control(PageBindingToken, PageCardCommandKind, const PageCardCommandValue&) {}
   virtual bool dispatch_control(const PageCardCommandSnapshot&) { return false; }
+  virtual void accepted_control(PageBindingToken, PageCardCommandKind, const PageCardCommandValue&) {}
 };
 enum class PageCardCommandResult : uint8_t { NONE, CANCELLED, DISPATCHED, FAILED };
 struct PageCardCommandMemory {
@@ -83,7 +89,7 @@ struct PageCardCommandMemory {
 
 // A fixed FIFO of basic-card intents, independent of configured card count. The
 // native adapter consumes existing service/local/webhook policies in dispatch.
-// Typed sliders share this queue. Other media/alarm routes remain separate.
+// Typed sliders and timers share this queue. Media/alarm routes remain separate.
 class PageCardCommands final : public PageRuntimeResources {
   struct Pending;
 
@@ -156,9 +162,23 @@ class PageCardCommands final : public PageRuntimeResources {
   bool request_slider_toggle(PageBindingToken origin, uint32_t connection) {
     return request_control(origin, connection, PageCardCommandKind::SLIDER_TOGGLE, {});
   }
+  bool request_timer(PageBindingToken origin, PageTimerAction action, PageTimerCommandProof proof) {
+    if (action != PageTimerAction::START && action != PageTimerAction::CANCEL) {
+      ++rejected_;
+      return false;
+    }
+    PageCardCommandValue value;
+    value.integer = proof.confirmed ? 1 : 0;
+    value.write_revision = proof.state_revision;
+    return request_control(origin, proof.connection,
+                           action == PageTimerAction::START ? PageCardCommandKind::TIMER_START
+                                                            : PageCardCommandKind::TIMER_CANCEL,
+                           value);
+  }
   static bool control(PageCardCommandKind kind) {
     return kind == PageCardCommandKind::PERCENT || kind == PageCardCommandKind::NUMBER ||
-           kind == PageCardCommandKind::TEMPERATURE || kind == PageCardCommandKind::SLIDER_TOGGLE;
+           kind == PageCardCommandKind::TEMPERATURE || kind == PageCardCommandKind::SLIDER_TOGGLE ||
+           kind == PageCardCommandKind::TIMER_START || kind == PageCardCommandKind::TIMER_CANCEL;
   }
 
  private:
@@ -228,6 +248,9 @@ class PageCardCommands final : public PageRuntimeResources {
       sent = port_.dispatch_control(snapshot);
     else
       port_.dispatch(snapshot);
+    if (typed && sent && active_.source_document() && pending.activation == activation_ &&
+        pending.connection == graph_.connection_generation())
+      port_.accepted_control(pending.origin, pending.kind, pending.value);
     dispatching_ = false;
     if (!sent) {
       discard(pending);

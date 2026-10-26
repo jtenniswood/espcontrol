@@ -80,7 +80,8 @@ struct PageBasicActions {
   void (*percent_slider)(void*, PageBindingToken, int percent){nullptr};
   void (*number_slider)(void*, PageBindingToken, double, const number_slider::Metadata&){nullptr};
   void (*light_temperature)(void*, PageBindingToken, int kelvin){nullptr};
-  bool (*timer)(void*, PageBindingToken, PageTimerAction){nullptr};
+  // Queue admission only. The command owner records cancellation after sending.
+  void (*timer)(void*, PageBindingToken, PageTimerAction, PageTimerCommandProof){nullptr};
   void (*cover_command)(void*, PageBindingToken, PageCoverCommandSnapshot){nullptr};
   void (*access)(void*, PageBindingToken, PageAccessActionSnapshot){nullptr};
   void (*cleaning)(void*, PageBindingToken, const char* service){nullptr};
@@ -1473,12 +1474,12 @@ class PageBasicLvglPort final:public PageRendererPort {
       paint(shell.index, shell.token, false);
       return;
     }
-    const auto connection = shell.gesture_connection;
+    const PageTimerCommandProof proof{shell.gesture_connection, snapshot.confirmation_revision,
+                                      action == PageTimerAction::CANCEL && snapshot.confirmation &&
+                                          timer_confirmation_valid(shell, snapshot)};
     shell.pending_target = -1;
     paint(shell.index, shell.token, false);
-    const bool accepted = actions_.timer && actions_.timer(actions_.owner, origin, action);
-    if (action == PageTimerAction::CANCEL && connection == timer_->connection_generation())
-      timer_->cancel_sent({origin.configuration, origin.card}, accepted);
+    if (actions_.timer) actions_.timer(actions_.owner, origin, action, proof);
   }
   static bool temperature_card(const Shell& shell) {
     return shell.definition && shell.definition->definition.kind == BasicCardKind::LIGHT_TEMPERATURE;

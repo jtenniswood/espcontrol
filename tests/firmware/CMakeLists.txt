@@ -101,6 +101,15 @@ target_compile_options(page_card_commands_test PRIVATE -Wall -Wextra -Werror -fn
 target_include_directories(page_card_commands_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_card_commands_test COMMAND page_card_commands_test)
 
+add_executable(page_timer_commands_test page_timer_commands_test.cpp
+  ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_timer_runtime.cpp)
+target_compile_features(page_timer_commands_test PRIVATE cxx_std_17)
+target_compile_options(page_timer_commands_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_timer_commands_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_timer_commands_test COMMAND page_timer_commands_test)
+
 add_executable(page_slider_commands_test page_slider_commands_test.cpp
   ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_card_dependencies.cpp
   ../../components/espcontrol/page_entity_state_runtime.cpp
