@@ -1260,6 +1260,36 @@
     }
   },
   {
+    "name": "weather: wind",
+    "input": "~weather.example,,Auto,Auto,,,weather,wind,",
+    "expected": {
+      "entity": "weather.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "wind",
+      "options": ""
+    }
+  },
+  {
+    "name": "weather: wind_sensors",
+    "input": "~sensor.wind_direction,,Auto,Auto,sensor.wind_speed,,weather,wind,wind_source%3Dsensors",
+    "expected": {
+      "entity": "sensor.wind_direction",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.wind_speed",
+      "unit": "",
+      "type": "weather",
+      "precision": "wind",
+      "options": "wind_source=sensors"
+    }
+  },
+  {
     "name": "weather: today",
     "input": "~weather.example,,Auto,Auto,,,weather,today,",
     "expected": {

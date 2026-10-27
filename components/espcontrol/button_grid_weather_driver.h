@@ -5,6 +5,7 @@
 
 #include "button_grid_weather_daily_ui.h"
 #include "card_modal_target.h"
+#include "button_grid_weather_wind.h"
 
 namespace espcontrol::cards {
 
@@ -34,6 +35,15 @@ inline bool weather_driver_setup_visual(
   if (!weather_driver_matches(context)) return false;
   weather_driver_apply_background(slot, palette);
   lv_obj_clear_flag(slot.btn, LV_OBJ_FLAG_CLICKABLE);
+
+  if (config.precision == "wind") {
+    weather_wind_layout(slot, display);
+    lv_label_set_display_text(slot.icon_lbl, find_icon("Weather Windy"));
+    lv_label_set_display_text(slot.text_lbl, "--");
+    lv_label_set_display_text(slot.sensor_lbl, "--");
+    lv_label_set_display_text(slot.unit_lbl, "");
+    return true;
+  }
 
   if (weather_driver_shows_forecast(config)) {
     lv_obj_add_flag(slot.icon_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -67,6 +77,10 @@ inline bool weather_driver_bind_data(
     BtnSlot &slot, const ParsedCfg &config, const Context &context) {
   if (!weather_driver_matches(context)) return false;
   if (weather_driver_shows_forecast(config)) return true;
+  if (config.precision == "wind") {
+    subscribe_weather_wind(slot, config.entity, config.sensor, weather_wind_uses_sensors(config));
+    return true;
+  }
   if (!config.entity.empty()) {
     subscribe_weather_state(slot.icon_lbl, slot.text_lbl, config.entity);
   }
@@ -77,7 +91,8 @@ inline bool weather_driver_refresh_layout(
     BtnSlot &slot, const ParsedCfg &config, const Context &context,
     const DisplayProfile &display, int row_span, int col_span) {
   if (!weather_driver_matches(context)) return false;
-  (void) display; (void) row_span; (void) col_span;
+  (void) row_span; (void) col_span;
+  if (config.precision == "wind") weather_wind_layout(slot, display);
   if (weather_driver_shows_forecast(config))
     weather_daily_render_card(weather_daily_card_for(slot.btn));
   return true;

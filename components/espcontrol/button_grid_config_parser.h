@@ -528,9 +528,13 @@ inline void normalize_saved_config_media_fields(ParsedCfg &p) {
   }
 }
 
-inline std::string weather_card_options_normalized(const std::string &, const ParsedCfg &) {
-  // All forecast modes use the compact day layout; legacy number sizing is obsolete.
-  return "";
+inline bool weather_wind_uses_sensors(const ParsedCfg &config) {
+  return config.precision == "wind" && cfg_option_value(config.options, "wind_source") == "sensors";
+}
+
+inline std::string weather_card_options_normalized(const std::string &options, const ParsedCfg &config) {
+  return config.precision == "wind" && cfg_option_value(options, "wind_source") == "sensors"
+    ? "wind_source=sensors" : "";
 }
 
 inline std::string normalize_image_modal_mode(const std::string &value) {
@@ -1270,7 +1274,8 @@ inline std::string normalize_saved_config_security_options(
 
 inline void normalize_saved_config_weather_fields(ParsedCfg &p, bool was_legacy_forecast) {
   if (was_legacy_forecast && p.label == "Weather") p.label.clear();
-  if (!card_runtime_weather_forecast_precision(p.precision)) p.precision.clear();
+  if (p.precision != "wind" && !card_runtime_weather_forecast_precision(p.precision)) p.precision.clear();
+  if (!weather_wind_uses_sensors(p)) p.sensor.clear();
 }
 
 inline std::string normalize_saved_config_weather_options(
@@ -1421,7 +1426,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   const bool normalized_saved_occupancy = normalize_saved_config_occupancy(
       p, normalize_saved_config_occupancy_fields,
       normalize_saved_config_occupancy_options);
-  if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "sensor" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "wifi_qr" && p.type != "wifi_qr_card" && p.type != "light_control" && p.type != "vacuum" && !card_large_numbers_supported(p)) {
+  if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "sensor" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "wifi_qr" && p.type != "wifi_qr_card" && p.type != "light_control" && p.type != "vacuum" && p.type != "weather" && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   if ((p.type == "wifi_qr" || p.type == "wifi_qr_card") &&
