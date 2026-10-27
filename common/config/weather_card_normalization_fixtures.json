@@ -73,5 +73,50 @@
       "precision": "wind",
       "options": ""
     }
+  },
+  {
+    "name": "separate wind sensors survive normalization",
+    "input": "sensor.wind_direction;;Auto;Auto;sensor.wind_speed;;weather;wind;ignored=1,wind_source=sensors",
+    "expected": {
+      "entity": "sensor.wind_direction",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.wind_speed",
+      "unit": "",
+      "type": "weather",
+      "precision": "wind",
+      "options": "wind_source=sensors"
+    }
+  },
+  {
+    "name": "wind weather entity clears leftover speed sensor",
+    "input": "weather.home;;Auto;Auto;sensor.wind_speed;;weather;wind;wind_source=weather",
+    "expected": {
+      "entity": "weather.home",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "wind",
+      "options": ""
+    }
+  },
+  {
+    "name": "forecast clears wind-only sensor settings",
+    "input": "weather.home;;Auto;Auto;sensor.wind_speed;;weather;today;wind_source=sensors",
+    "expected": {
+      "entity": "weather.home",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "today",
+      "options": ""
+    }
   }
 ]

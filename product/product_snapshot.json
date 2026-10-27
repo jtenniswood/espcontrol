@@ -6077,7 +6077,9 @@
         "label": "Weather",
         "allowInSubpage": true,
         "domains": [
-          "weather"
+          "weather",
+          "sensor",
+          "input_number"
         ],
         "options": [
           {
@@ -6094,6 +6096,30 @@
             "defaultValue": "",
             "storageField": "precision",
             "omitDefault": true
+          },
+          {
+            "name": "wind_source",
+            "label": "Wind Source",
+            "kind": "choice",
+            "values": [
+              "weather",
+              "sensors"
+            ],
+            "defaultValue": "weather",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "precision",
+                "operator": "equals",
+                "value": "wind"
+              }
+            ],
+            "supportedWhen": {
+              "precision": [
+                "wind"
+              ]
+            }
           }
         ],
         "normalization": {
@@ -6112,7 +6138,8 @@
               "policy": "keep"
             },
             "sensor": {
-              "policy": "clear"
+              "policy": "hook",
+              "hook": "normalize_weather_fields"
             },
             "unit": {
               "policy": "keep"
@@ -6131,7 +6158,9 @@
             }
           },
           "unknownOptions": "drop",
-          "canonicalOptionOrder": [],
+          "canonicalOptionOrder": [
+            "wind_source"
+          ],
           "migrationActions": [
             "legacy_weather_forecast"
           ],

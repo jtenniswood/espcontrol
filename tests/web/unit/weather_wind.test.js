@@ -24,3 +24,40 @@ test("wind is selectable and retained with or without forecast support", () => {
     assert.equal(preview.labelEditable, false);
   }
 });
+
+test("separate wind sensors preserve their source and render two required fields", () => {
+    const options = createConfigWeatherOptionsFeature({});
+    const config = { precision: "wind", options: "wind_source=sensors", entity: "sensor.direction", sensor: "sensor.speed" };
+    assert.equal(options.weatherWindUsesSensors(config), true);
+    assert.equal(options.normalizeWeatherOptions("ignored=1,wind_source=sensors", config), "wind_source=sensors");
+    assert.equal(options.normalizeWeatherOptions("wind_source=sensors", { precision: "today" }), "");
+    let weather;
+    registerWeatherCardTypes({ register: (_, definition) => weather = definition }, options, {}, {}, {});
+    const oldDocument = globalThis.document;
+    globalThis.document = { createElement: () => ({ appendChild: () => {} }) };
+    const fields = [];
+    let sourceChange;
+    const helpers = {
+        renderCardModeSelector: () => {},
+        markCardPrimaryField: () => {},
+        selectField: (_label, _id, choices, value, onChange) => {
+            assert.equal(value, "sensors");
+            assert.deepEqual(choices.map(([key]) => key), ["weather", "sensors"]);
+            sourceChange = onChange;
+            return { field: {} };
+        },
+        renderCardEntityField: (_panel, _button, _helpers, metadata) => fields.push(metadata.entity),
+        saveField: () => {},
+    };
+    weather.renderSettings({ appendChild: () => {} }, config, 1, helpers);
+    assert.deepEqual(fields.map(field => field.bindName), ["entity", "sensor"]);
+    assert(fields.every(field => field.requiredMessage && field.domains.includes("sensor")));
+    // Re-register with a real rerender callback for changing sources.
+    registerWeatherCardTypes({ register: (_, definition) => weather = definition }, options, {}, {}, { renderButtonSettings: () => {} });
+    weather.renderSettings({ appendChild: () => {} }, config, 1, helpers);
+    sourceChange.call({ value: "weather" });
+    assert.equal(config.entity, "");
+    assert.equal(config.sensor, "");
+    assert.equal(options.weatherWindUsesSensors(config), false);
+    globalThis.document = oldDocument;
+});

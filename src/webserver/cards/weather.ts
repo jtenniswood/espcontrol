@@ -1,3 +1,4 @@
+import { setConfigOptionValue } from "../model/config_primitives";
 import {
     cardContractAllowInSubpage,
     cardContractCardLabel,
@@ -29,6 +30,7 @@ export function registerWeatherCardTypes(
         weatherCardIsForecastMode,
         weatherModeOptions,
         normalizeWeatherCardMode,
+        weatherWindUsesSensors,
     } = weatherOptions;
     // Current conditions or a shared forecast layout for one or several days.
     const WEATHER_CARD_METADATA: any = {
@@ -40,6 +42,14 @@ export function registerWeatherCardTypes(
                 return normalizeWeatherCardMode(b.precision);
             },
             onChange: function (this: any, b?: any, helpers?: any) {
+                if (weatherWindUsesSensors(b) && this.value !== "wind") {
+                    b.entity = "";
+                    b.sensor = "";
+                    b.options = setConfigOptionValue(b.options, "wind_source", "");
+                    helpers.saveField("entity", b.entity);
+                    helpers.saveField("sensor", b.sensor);
+                    helpers.saveField("options", b.options);
+                }
                 b.precision = this.value;
                 helpers.saveField("precision", b.precision);
                 renderButtonSettings();
@@ -78,7 +88,49 @@ export function registerWeatherCardTypes(
         },
         renderSettings: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
             helpers.renderCardModeSelector(panel, b, helpers, WEATHER_CARD_METADATA);
-            helpers.renderCardEntityField(panel, b, helpers, WEATHER_CARD_METADATA);
+            if (b.precision === "wind") {
+                const sourceFields = document.createElement("div");
+                helpers.markCardPrimaryField(sourceFields, "entity");
+                panel.appendChild(sourceFields);
+                const source = helpers.selectField("Wind Source", helpers.idPrefix + "wind-source",
+                    [["weather", "Weather Entity"], ["sensors", "Separate Sensors"]],
+                    weatherWindUsesSensors(b) ? "sensors" : "weather", function (this: HTMLSelectElement) {
+                        b.options = setConfigOptionValue(b.options, "wind_source", this.value === "sensors" ? "sensors" : "");
+                        b.entity = "";
+                        b.sensor = "";
+                        helpers.saveField("entity", b.entity);
+                        helpers.saveField("sensor", b.sensor);
+                        helpers.saveField("options", b.options);
+                        renderButtonSettings();
+                    });
+                sourceFields.appendChild(source.field);
+                if (weatherWindUsesSensors(b)) {
+                    helpers.renderCardEntityField(sourceFields, b, helpers, {
+                        entity: {
+                            label: "Wind Direction Sensor", idSuffix: "wind-direction",
+                            placeholder: "e.g. sensor.wind_direction", domains: ["sensor", "input_number"],
+                            bindName: "entity", rerender: false,
+                            requiredMessage: "Add a wind direction sensor before saving.",
+                        },
+                    });
+                    helpers.renderCardEntityField(sourceFields, b, helpers, {
+                        entity: {
+                            label: "Wind Speed Sensor", idSuffix: "wind-speed",
+                            placeholder: "e.g. sensor.wind_speed", domains: ["sensor", "input_number"],
+                            bindName: "sensor", rerender: false,
+                            requiredMessage: "Add a wind speed sensor before saving.",
+                        },
+                    });
+                    return;
+                }
+                helpers.renderCardEntityField(sourceFields, b, helpers, {
+                    entity: { ...WEATHER_CARD_METADATA.entity, domains: ["weather"] },
+                });
+                return;
+            }
+            helpers.renderCardEntityField(panel, b, helpers, {
+                entity: { ...WEATHER_CARD_METADATA.entity, domains: ["weather"] },
+            });
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             if (b.precision === "wind") {
@@ -107,7 +159,7 @@ export function registerWeatherCardTypes(
         },
     });
     return {
-        entityMetadata: WEATHER_CARD_METADATA.entity,
+        entityMetadata: { ...WEATHER_CARD_METADATA.entity, domains: ["weather"] },
         previewMetadata: WEATHER_CARD_METADATA.preview,
     };
 }
