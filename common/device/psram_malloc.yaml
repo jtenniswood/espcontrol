@@ -1,0 +1,9 @@
+# Large SDK-owned containers also need PSRAM; explicit RAMAllocator users do
+# not cover ordinary std::vector allocations such as native HA subscriptions.
+# Keep small allocations internal and protect DMA/cache-disabled allocations.
+esp32:
+  framework:
+    sdkconfig_options:
+      CONFIG_SPIRAM_USE_MALLOC: "y"
+      CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "4096"
+      CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL: "32768"

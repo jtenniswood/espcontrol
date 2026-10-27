@@ -65,6 +65,14 @@ fail under large subscription loads. The callback lease avoids these hidden
 allocations while keeping an executing callback alive through owner retirement
 and skipping cancelled callbacks in the remaining snapshot. It must not cross
 threads; the coordinator and its dispatch already require the main loop.
+SDK-owned subscription records also need external memory: their ordinary
+`std::vector` allocations bypass the application allocator. Display profiles
+share an ESP-IDF policy that prefers PSRAM for allocations above 4 KiB and
+internal RAM for smaller allocations, with 32 KiB reserved for internal-only
+and DMA requirements. This changes neither document capacity nor storage
+layout or watchdog timeouts. SDK storage remains outside the scene arena
+counters, so qualification also measures free memory and low-water marks in
+each heap region.
 Native graph registration borrows a temporary sorted index of existing
 coordinator channels. Each new graph pair is unique, so registration searches
 only that index and appends missing channels without rescanning the growing

@@ -196,6 +196,7 @@ ota:
 # Shared infrastructure (API, logging, web server, restart button)
 # ---------------------------------------------------------------------------
 packages:
+  psram_malloc: !include ../../../common/device/psram_malloc.yaml
   core_infra: !include ../../../common/device/core_infra.yaml
 
 # The Waveshare USB-C debug port is exposed through a USB-UART bridge.

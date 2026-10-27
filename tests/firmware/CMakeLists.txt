@@ -71,6 +71,8 @@ target_include_directories(panel_config_legacy_capacity_test PRIVATE text_prefer
 add_test(NAME panel_config_legacy_capacity_test COMMAND panel_config_legacy_capacity_test)
 add_test(NAME panel_config_empty_defaults_codegen_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/panel_config_empty_defaults_codegen_test.py)
+add_test(NAME psram_allocation_policy_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/psram_allocation_policy_test.py)
 
 add_executable(legacy_text_preference_test legacy_text_preference_test.cpp)
 target_compile_features(legacy_text_preference_test PRIVATE cxx_std_17)
