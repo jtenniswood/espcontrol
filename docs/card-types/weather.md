@@ -18,6 +18,7 @@ Show current conditions or daily forecasts from a Home Assistant weather entity.
 2. Enter a **Weather Entity**, for example `weather.forecast_home`.
 3. Choose **Type**:
    - **Current Conditions** — the live condition icon and label.
+   - **Rainfall** — a rain icon, label and measured or predicted rainfall amount.
    - **Today's Forecast** — today's icon and high/low temperatures.
    - **Tomorrow's Forecast** — tomorrow's icon and high/low temperatures.
    - **Daily Forecast** — up to eight days in a row or grid.
@@ -72,6 +73,15 @@ Forecasts show whole-degree high/low temperatures, such as **18°/2°**, using t
 Forecasts refresh hourly and after reconnecting. **Loading** appears while fetching data. If a refresh fails, the previous forecast keeps the same card layout, with **Last forecast** shown in the details popup; if no data is available for the requested date, the card shows **Forecast unavailable**. Your Home Assistant provider must support daily forecasts.
 
 All forecast modes work on supported panels, including the 4-inch ESP32-S3. The panel supports up to eight weather entities and sixteen forecast cards across the home screen and subpages.
+
+## Rainfall
+
+Choose **Weather → Rainfall**, then choose **Rainfall Source**:
+
+- **Rainfall Sensor** — select a sensor such as `sensor.rainfall_today`. The card shows its current numeric value and `unit_of_measurement`; the selected sensor determines the measurement period. Sensor units are retained, including mm, inches, or a rate unit if you deliberately select a rate sensor. No Home Assistant actions permission is needed.
+- **Today's Forecast** — select a weather entity. The card shows today's **predicted precipitation amount**, not measured rain or rain probability, using the provider's precipitation unit. Enable Home Assistant actions permission as for the other forecast cards. Tap the card for forecast details.
+
+Both sources use the same small secondary text and 70% alpha as forecast temperatures, on home cards and subpages. Amounts show up to three decimal places without trailing zeros. Zero remains **0**; missing, invalid or unavailable sensor readings show **--**. Forecast refreshes, missing dates and stale data follow the existing forecast behavior. A provider's precipitation total can include snow or other precipitation, not only rain.
 
 ## Forecast Details
 

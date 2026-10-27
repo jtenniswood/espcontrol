@@ -1,3 +1,4 @@
+import { setConfigOptionValue } from "../model/config_primitives";
 import {
     cardContractAllowInSubpage,
     cardContractCardLabel,
@@ -29,6 +30,8 @@ export function registerWeatherCardTypes(
         weatherCardIsForecastMode,
         weatherModeOptions,
         normalizeWeatherCardMode,
+        rainfallUsesForecast,
+        weatherForecastCardsSupported,
     } = weatherOptions;
     // Current conditions or a shared forecast layout for one or several days.
     const WEATHER_CARD_METADATA: any = {
@@ -37,9 +40,15 @@ export function registerWeatherCardTypes(
             idSuffix: "weather-display",
             options: weatherModeOptions,
             value: function (this: any, b?: any) {
-                return weatherCardIsForecastMode(b) ? b.precision : "";
+                return normalizeWeatherCardMode(b.precision);
             },
             onChange: function (this: any, b?: any, helpers?: any) {
+                if (b.precision === "rainfall" && !rainfallUsesForecast(b) && this.value !== "rainfall") {
+                    b.entity = "";
+                    helpers.saveField("entity", b.entity);
+                }
+                b.options = setConfigOptionValue(b.options, "rainfall_source", "");
+                helpers.saveField("options", b.options);
                 b.precision = this.value;
                 helpers.saveField("precision", b.precision);
                 renderButtonSettings();
@@ -78,9 +87,45 @@ export function registerWeatherCardTypes(
         },
         renderSettings: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
             helpers.renderCardModeSelector(panel, b, helpers, WEATHER_CARD_METADATA);
-            helpers.renderCardEntityField(panel, b, helpers, WEATHER_CARD_METADATA);
+            if (b.precision === "rainfall") {
+                const group = document.createElement("div");
+                helpers.markCardPrimaryField(group, "entity");
+                panel.appendChild(group);
+                const sources = [["sensor", "Rainfall Sensor"]];
+                if (weatherForecastCardsSupported()) sources.push(["forecast", "Today's Forecast"]);
+                const source = helpers.selectField("Rainfall Source", helpers.idPrefix + "rainfall-source",
+                    sources, rainfallUsesForecast(b) ? "forecast" : "sensor", function (this: HTMLSelectElement) {
+                        b.options = setConfigOptionValue(b.options, "rainfall_source", this.value === "forecast" ? "forecast" : "");
+                        b.entity = "";
+                        helpers.saveField("entity", b.entity);
+                        helpers.saveField("options", b.options);
+                        renderButtonSettings();
+                    });
+                group.appendChild(source.field);
+                const forecast = rainfallUsesForecast(b);
+                helpers.renderCardEntityField(group, b, helpers, {
+                    entity: {
+                        ...WEATHER_CARD_METADATA.entity,
+                        label: forecast ? "Weather Entity" : "Rainfall Sensor",
+                        placeholder: forecast ? "e.g. weather.forecast_home" : "e.g. sensor.rainfall_today",
+                        domains: forecast ? ["weather"] : ["sensor", "input_number"],
+                    },
+                });
+                return;
+            }
+            helpers.renderCardEntityField(panel, b, helpers, {
+                entity: { ...WEATHER_CARD_METADATA.entity, domains: ["weather"] },
+            });
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
+            if (b.precision === "rainfall") {
+                return {
+                    buttonClass: "sp-rainfall-card",
+                    iconHtml: '<span class="sp-btn-icon mdi mdi-weather-rainy"></span>',
+                    labelHtml: '<span class="sp-btn-label">Rainfall<span class="sp-rainfall-value">2.4 mm</span></span>',
+                    labelEditable: false,
+                };
+            }
             if (weatherCardIsForecastMode(b)) {
                 let samples: [string, string, string][] = [["Today", "weather-rainy", "18°/2°"], ["Tues", "weather-sunny", "20°/9°"], ["Weds", "weather-partly-cloudy", "18°/14°"], ["Thurs", "weather-rainy", "20°/13°"], ["Fri", "weather-sunny", "14°/6°"], ["Sat", "weather-cloudy", "18°/10°"], ["Sun", "weather-sunny", "19°/11°"], ["Mon", "weather-cloudy", "17°/8°"]];
                 if (b.precision === "today") samples = samples.slice(0, 1);
@@ -99,7 +144,7 @@ export function registerWeatherCardTypes(
         },
     });
     return {
-        entityMetadata: WEATHER_CARD_METADATA.entity,
+        entityMetadata: { ...WEATHER_CARD_METADATA.entity, domains: ["weather"] },
         previewMetadata: WEATHER_CARD_METADATA.preview,
     };
 }

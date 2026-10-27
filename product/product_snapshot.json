@@ -6077,7 +6077,9 @@
         "label": "Weather",
         "allowInSubpage": true,
         "domains": [
-          "weather"
+          "weather",
+          "sensor",
+          "input_number"
         ],
         "options": [
           {
@@ -6088,11 +6090,36 @@
               "",
               "today",
               "tomorrow",
-              "daily"
+              "daily",
+              "rainfall"
             ],
             "defaultValue": "",
             "storageField": "precision",
             "omitDefault": true
+          },
+          {
+            "name": "rainfall_source",
+            "label": "Rainfall Source",
+            "kind": "choice",
+            "values": [
+              "sensor",
+              "forecast"
+            ],
+            "defaultValue": "sensor",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "precision",
+                "operator": "equals",
+                "value": "rainfall"
+              }
+            ],
+            "supportedWhen": {
+              "precision": [
+                "rainfall"
+              ]
+            }
           }
         ],
         "normalization": {
@@ -6130,7 +6157,9 @@
             }
           },
           "unknownOptions": "drop",
-          "canonicalOptionOrder": [],
+          "canonicalOptionOrder": [
+            "rainfall_source"
+          ],
           "migrationActions": [
             "legacy_weather_forecast"
           ],

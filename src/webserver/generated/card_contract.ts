@@ -3740,7 +3740,9 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "label": "Weather",
     "allowInSubpage": true,
     "domains": [
-      "weather"
+      "weather",
+      "sensor",
+      "input_number"
     ],
     "options": [
       {
@@ -3751,11 +3753,36 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "",
           "today",
           "tomorrow",
-          "daily"
+          "daily",
+          "rainfall"
         ],
         "defaultValue": "",
         "storageField": "precision",
         "omitDefault": true
+      },
+      {
+        "name": "rainfall_source",
+        "label": "Rainfall Source",
+        "kind": "choice",
+        "values": [
+          "sensor",
+          "forecast"
+        ],
+        "defaultValue": "sensor",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "precision",
+            "operator": "equals",
+            "value": "rainfall"
+          }
+        ],
+        "supportedWhen": {
+          "precision": [
+            "rainfall"
+          ]
+        }
       }
     ],
     "normalization": {
@@ -3793,7 +3820,9 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         }
       },
       "unknownOptions": "drop",
-      "canonicalOptionOrder": [],
+      "canonicalOptionOrder": [
+        "rainfall_source"
+      ],
       "migrationActions": [
         "legacy_weather_forecast"
       ],
@@ -4899,6 +4928,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "playlist_content_type": "playlist_content_type",
   "playlist_player_source": "playlist_player_source",
   "power_entity": "power_entity",
+  "rainfall_source": "rainfall_source",
   "screensaver_on_lock": "screensaver_on_lock",
   "script_fields": "script_fields",
   "security": "security",

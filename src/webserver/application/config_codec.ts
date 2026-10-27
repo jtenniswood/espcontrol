@@ -134,7 +134,7 @@ export function createConfigCodecFeature(
         imageIconEnabled,
         normalizeImageOptions,
     } = imageOptions;
-    const { normalizeWeatherCardMode } = weatherOptions;
+    const { normalizeWeatherCardMode, normalizeWeatherOptions } = weatherOptions;
     const { normalizeWebhookConfig, webhookMethod } = webhookOptions;
     const {
         lawnMowerModeDefaultIcon,
@@ -408,7 +408,7 @@ export function createConfigCodecFeature(
         b.precision = normalizeWeatherCardMode(b.precision);
     }
     function normalizeSavedConfigWeatherOptions(this: any, options?: any, b?: any) {
-        return b && cardLargeNumbersSupported(b) ? copyLargeNumbersOption("", options || "") : "";
+        return normalizeWeatherOptions(options, b);
     }
     function normalizeSavedConfigImageFields(this: any, b?: any) {
         if (!b)
@@ -494,7 +494,7 @@ export function createConfigCodecFeature(
         var normalizedSavedSensor: any = !!(b && normalizeSavedConfigSensor(b, wasLegacyTextSensor, normalizeSavedConfigSensorFields, normalizeSensorOptions));
         var normalizedSavedOccupancy: any = !!(b && normalizeSavedConfigOccupancy(b, normalizeSavedConfigOccupancyFields, normalizeSavedConfigOccupancyOptions));
         var normalizedSavedSwitch: any = !!(b && !normalizedSavedSensor && normalizeSavedConfigSwitch(b, normalizeSwitchConfirmationOptions));
-        if (b && !normalizedSavedSensor && !normalizedSavedSwitch && !normalizedSavedAccess && !normalizedSavedOccupancy && !normalizedSavedStatic && !normalizedSavedFan && !normalizedSavedMower && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && !isClimateCardType(b.type) && b.type !== "webhook" && b.type !== "media" && b.type !== "subpage" && b.type !== "image" && b.type !== "wifi_qr" && b.type !== "wifi_qr_card" && b.type !== "light_control" && b.type !== "vacuum" && !cardLargeNumbersSupported(b)) {
+        if (b && !normalizedSavedSensor && !normalizedSavedSwitch && !normalizedSavedAccess && !normalizedSavedOccupancy && !normalizedSavedStatic && !normalizedSavedFan && !normalizedSavedMower && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && !isClimateCardType(b.type) && b.type !== "webhook" && b.type !== "media" && b.type !== "subpage" && b.type !== "image" && b.type !== "wifi_qr" && b.type !== "wifi_qr_card" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "weather" && !cardLargeNumbersSupported(b)) {
             b.options = "";
         }
         if (b && cardColorOptions) b.options = [b.options || "", cardColorOptions].filter(Boolean).join(",");
@@ -651,7 +651,7 @@ export function createConfigCodecFeature(
             options = normalizeMediaOptions(options, sensor);
         }
         else if (type === "weather") {
-            options = cardLargeNumbersSupported({ type: type, precision: precision }) ? copyLargeNumbersOption("", options) : "";
+            options = normalizeWeatherOptions(options, { precision });
         }
         else if (type === "subpage") {
             options = normalizeSubpageOptions(options, sensor, precision);
@@ -714,7 +714,7 @@ export function createConfigCodecFeature(
         else if (isActionOptionSelect || isFanCardType(type)) {
             options = "";
         }
-        else if (type !== "action" && type !== "alarm_action" && !isClimateCardType(type) && type !== "cover" && type !== "garage" && type !== "gate" && type !== "webhook" && type !== "screen_lock" && type !== "media" && type !== "presence" && type !== "light_control" && type !== "fan_control" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
+        else if (type !== "action" && type !== "alarm_action" && !isClimateCardType(type) && type !== "cover" && type !== "garage" && type !== "gate" && type !== "webhook" && type !== "screen_lock" && type !== "media" && type !== "presence" && type !== "light_control" && type !== "fan_control" && type !== "weather" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
             options = "";
         }
         if (type === "image") {

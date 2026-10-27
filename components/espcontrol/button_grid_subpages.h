@@ -72,7 +72,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.precision = "tomorrow";
     if (b.label == "Weather") b.label.clear();
   }
-  if (b.type == "weather" && !card_runtime_weather_forecast_precision(b.precision)) {
+  if (b.type == "weather" && b.precision != "rainfall" && !card_runtime_weather_forecast_precision(b.precision)) {
     b.precision.clear();
   }
   if (b.type == "media") {
@@ -226,7 +226,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
       b.type != "webhook" && b.type != "wifi_qr" && b.type != "wifi_qr_card" &&
       b.type != "sensor" && b.type != "door_window" && b.type != "presence" &&
       b.type != "subpage" && b.type != "light_control" && b.type != "media" &&
-      b.type != "image" &&
+      b.type != "image" && b.type != "weather" &&
       !fan_card_type(b.type) && !card_large_numbers_supported(p)) {
     b.options.clear();
   }
