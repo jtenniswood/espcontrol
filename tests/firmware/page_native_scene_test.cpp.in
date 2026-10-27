@@ -264,7 +264,7 @@ struct Platform : PageNativeScenePlatform {
   void chrome(const PageStore&,PageId p,bool active) override { ++chrome_updates; page=p; settings=active; }
 };
 struct Document {
-  std::array<uint8_t,16384> bytes{}; size_t size{0};
+  std::array<uint8_t,65536> bytes{}; size_t size{0};
   explicit Document(const DeviceUiLimits& profile, const char* last="number.room;Level;Auto;Auto;;;slider;;",
                     const char* root_order="1,2,3,4,5,6,7,8,9") {
     PanelConfigWriter writer(bytes.data(),bytes.size()); assert(writer.begin()==PanelConfigStatus::OK);
@@ -293,24 +293,33 @@ void click(lv_obj_t* obj) {
   lv_obj_send_event(obj,LV_EVENT_CLICKED,nullptr);
 }
 size_t objects(lv_obj_t* obj) { size_t n=1; for(uint32_t i=0;i<lv_obj_get_child_count(obj);++i)n+=objects(lv_obj_get_child(obj,i)); return n; }
-struct Harness {
+template<size_t ProfileIndex>
+struct ProfileHarness {
+  static constexpr const auto& limits=DEVICE_UI_PROFILES[ProfileIndex];
+  static constexpr size_t slots=limits.slot_count, image_slots=limits.image_slot_count;
+  static_assert(ProfileIndex==8||ProfileIndex==6,"Qualified S3 and P4 V3 test budgets");
+  static constexpr bool constrained=ProfileIndex==8;
   Arena arena; Styles styles; Platform platform; PageNetworkStatusSource network;
   PageCountedArena counted{arena};
   lv_obj_t* root;
-  std::array<PageBasicWidgets,9> widgets{};
-  std::optional<PageNativeWidgetBank<9>> bank;
-  std::array<lv_coord_t,4> columns{LV_GRID_FR(1),LV_GRID_FR(1),LV_GRID_FR(1),LV_GRID_TEMPLATE_LAST};
-  std::array<lv_coord_t,4> rows=columns;
+  std::array<PageBasicWidgets,slots> widgets{};
+  std::optional<PageNativeWidgetBank<slots>> bank;
+  std::array<lv_coord_t,limits.grid_columns+1> columns{};
+  std::array<lv_coord_t,limits.grid_rows+1> rows{};
   PageBasicTheme theme;
-  esphome::artwork_image::ArtworkImage a,b,modal;
-  esphome::artwork_image::ArtworkImage* images[2]{&a,&b};
-  using Scene=PageNativeScene<9,2>;
+  esphome::artwork_image::ArtworkImage a,b,c,d,e,f,modal;
+  esphome::artwork_image::ArtworkImage* images[6]{&a,&b,&c,&d,&e,&f};
+  using Scene=PageNativeScene<slots,image_slots>;
   alignas(Scene) std::array<uint8_t,sizeof(Scene)> memory{};
   Scene* scene{nullptr};
-  explicit Harness(bool elastic_state=false, bool production_budget=false) {
-    root=lv_obj_create(lv_screen_active()); lv_obj_set_size(root,480,480);
+  explicit ProfileHarness(bool elastic_state=false, bool production_budget=false) {
+    static_assert(image_slots<=6);
+    columns.fill(LV_GRID_FR(1));columns.back()=LV_GRID_TEMPLATE_LAST;
+    rows.fill(LV_GRID_FR(1));rows.back()=LV_GRID_TEMPLATE_LAST;
+    root=lv_obj_create(lv_screen_active());
+    lv_obj_set_size(root,constrained?480:1280,constrained?480:800);
     lv_obj_set_grid_dsc_array(root,columns.data(),rows.data());
-    std::array<BtnSlot,9> source{};
+    std::array<BtnSlot,slots> source{};
     for(size_t i=0;i<widgets.size();++i) {
       auto& w=widgets[i];
       w.button=lv_button_create(root);w.icon=lv_label_create(w.button);w.label=lv_label_create(w.button);
@@ -321,18 +330,18 @@ struct Harness {
     theme.sensor_font=theme.large_sensor_font=theme.media_title_font=theme.icon_font=theme.label_font=
       theme.media_control_title_font=theme.media_control_artist_font=theme.cover_title_font=theme.cover_artist_font=
       theme.option_select_font=&lv_font_montserrat_14;
-    const auto cards=DEVICE_UI_PROFILES[8].max_cards();
+    const auto cards=limits.max_cards();
     const PageNativeSceneBudget budget = production_budget
       ? PageNativeSceneBudget{{cards,cards*512,
-          {cards*40,cards*40,128*1024,32*1024,4096},
-          {cards,cards,16*1024,HA_TEXT_SENSOR_STATE_MAX_LEN}},128*1024}
+          {cards*40,cards*40,constrained?128u*1024:512u*1024,32*1024,4096},
+          {cards,cards,16*1024,HA_TEXT_SENSOR_STATE_MAX_LEN}},constrained?128u*1024:256u*1024}
       : PageNativeSceneBudget{{128,16384,{1024,512,65536,SIZE_MAX,elastic_state?size_t{1024}:SIZE_MAX},{128,128,8192}},65536};
-    scene=new(memory.data()) Scene(DEVICE_UI_PROFILES[8],counted,budget,
-      widgets,{9,3},theme,page_timezone_resolver(),{},nullptr,styles,platform,network);
-    assert(!scene->ready() && !scene->initialize(images,2,&modal,false));
-    assert(scene->initialize(images,2,&modal,true) && scene->initialize(images,2,&modal,true));
+    scene=new(memory.data()) Scene(limits,counted,budget,
+      widgets,{limits.slot_count,limits.grid_columns},theme,page_timezone_resolver(),{},nullptr,styles,platform,network);
+    assert(!scene->ready() && !scene->initialize(images,image_slots,&modal,false));
+    assert(scene->initialize(images,image_slots,&modal,true) && scene->initialize(images,image_slots,&modal,true));
   }
-  ~Harness() {
+  ~ProfileHarness() {
     scene->~Scene(); bank.reset(); lv_obj_delete(root); assert(coordinator.entries.empty());
     const auto counters=counted.memory();
     assert(counters.reserved_bytes==0&&counters.live_allocations==0&&counters.accounting_errors==0);
@@ -352,6 +361,7 @@ struct Harness {
     coordinator.report("media_player.room","supported_features","4");
   }
 };
+using Harness=ProfileHarness<8>;
 void navigation_and_state() {
   Document doc(DEVICE_UI_PROFILES[8]); Harness h; h.apply(doc);
   assert(h.scene->active_page()==0 && h.platform.page==0);
@@ -450,41 +460,53 @@ void elastic_state_scene_transactions() {
   assert(h.arena.calls == calls && coordinator.entries.size() == registrations && objects(h.root) == count);
   h.arena.fail = false;
 }
-Document maximum_sensor_document(char variant) {
-  Document doc(DEVICE_UI_PROFILES[8]);
+Document maximum_sensor_document(char variant,const DeviceUiLimits& limits) {
+  Document doc(limits);
   PanelConfigWriter writer(doc.bytes.data(),doc.bytes.size());
   assert(writer.begin()==PanelConfigStatus::OK);
-  const std::string profile=DEVICE_UI_PROFILES[8].device_profile;
+  const std::string profile=limits.device_profile;
   const auto data=[](const std::string& value) { return reinterpret_cast<const uint8_t*>(value.data()); };
   assert(writer.append_device_profile(data(profile),profile.size())==PanelConfigStatus::OK);
-  for(unsigned parent=1;parent<=9;++parent) {
+  std::string order;
+  for(unsigned parent=1;parent<=limits.max_first_level_subpages;++parent) {
+    if(parent!=1)order+=",";
+    order+=std::to_string(parent);
     const std::string root=";Room "+std::to_string(parent)+";Home;Auto;;;subpage;;";
     assert(writer.append_button(parent,data(root),root.size())==PanelConfigStatus::OK);
-    std::string child="~B,1,2,3,4,5,6,7,8";
-    for(unsigned slot=1;slot<=8;++slot)
+    std::string child="~B";
+    for(unsigned slot=1;slot<=limits.cards_per_subpage;++slot)child+=","+std::to_string(slot);
+    for(unsigned slot=1;slot<=limits.cards_per_subpage;++slot)
       child+="|S,,Temperature,Auto,Auto,sensor.maximum_"+std::string(1,variant)+"_"+
         std::to_string(parent)+"_"+std::to_string(slot)+",%C2%B0C,1,";
-    assert(child.size()<=DEVICE_UI_PROFILES[8].legacy_subpage_byte_ceiling());
+    assert(child.size()<=limits.legacy_subpage_byte_ceiling());
     assert(writer.append_subpage(parent,data(child),child.size())==PanelConfigStatus::OK);
   }
-  const std::string key="button_order",order="1,2,3,4,5,6,7,8,9";
+  const std::string key="button_order";
   assert(writer.append_setting(data(key),key.size(),data(order),order.size())==PanelConfigStatus::OK);
   assert(writer.finish(&doc.size)==PanelConfigStatus::OK);
   return doc;
 }
+template<size_t ProfileIndex>
 void maximum_profile_disjoint_replacements() {
-  // Exercise all 81 supported S3 cards with the actual device arena budgets,
-  // not the larger generic harness limits. Sensor sources live in SENSOR.
-  const auto a=maximum_sensor_document('a'),b=maximum_sensor_document('b');
-  Harness h(false,true);
+  // Actual device budgets: 81 S3 cards or 400 P4 V3 cards. Sensor sources
+  // belong to SENSOR. Each disjoint replacement retires all previous reports.
+  constexpr const auto& limits=DEVICE_UI_PROFILES[ProfileIndex];
+  const auto channels=limits.max_child_cards();
+  const auto a=maximum_sensor_document('a',limits),b=maximum_sensor_document('b',limits);
+  ProfileHarness<ProfileIndex> h(false,true);
   size_t stable_bytes=0,stable_objects=0;
   std::function<void(Coordinator::State)> retired_report;
+  const auto visible=[&] {
+    for(size_t slot=0;slot<limits.slot_count;++slot)
+      assert(h.scene->visible(h.scene->binding(slot)));
+  };
   for(unsigned iteration=0;iteration<20;++iteration) {
     const bool second=iteration%2;
     h.apply(second?b:a,100+iteration);
-    assert(h.scene->active().card_count()==81&&h.scene->active().page_count()==10);
-    assert(h.scene->visible(h.scene->binding(0)));
-    assert(h.scene->memory().state.active_channels==72&&coordinator.entries.size()==72);
+    assert(h.scene->active().card_count()==limits.max_cards()&&
+      h.scene->active().page_count()==limits.max_first_level_subpages+1u);
+    visible();
+    assert(h.scene->memory().state.active_channels==channels&&coordinator.entries.size()==channels);
     const auto empty=h.scene->memory().state.active_state_bytes;
     if(retired_report) retired_report("stale generation");
     assert(h.scene->memory().state.active_state_bytes==empty);
@@ -495,23 +517,21 @@ void maximum_profile_disjoint_replacements() {
     }
     retired_report=coordinator.entries.front().receive;
     h.scene->loop();
-    assert(h.scene->memory().state.active_state_bytes==72*4);
+    assert(h.scene->memory().state.active_state_bytes==channels*4);
     const auto before=h.counted.memory();
     const auto widget_count=objects(h.root);
     if(iteration==0) { stable_bytes=before.reserved_bytes;stable_objects=widget_count; }
     else assert(before.reserved_bytes==stable_bytes&&widget_count==stable_objects);
     h.arena.fail=true;
     for(unsigned cycle=0;cycle<100;++cycle) {
-      const unsigned page=cycle%9+1;
+      const unsigned page=cycle%limits.max_first_level_subpages+1;
       assert(h.scene->navigate("slot:"+std::to_string(page)));h.scene->loop();
-      assert(h.scene->active_page()==page);
-      assert(h.scene->visible(h.scene->binding(0)));
-      assert(h.scene->home());h.scene->loop();assert(h.scene->active_page()==0);
-      assert(h.scene->visible(h.scene->binding(0)));
+      assert(h.scene->active_page()==page);visible();
+      assert(h.scene->home());h.scene->loop();assert(h.scene->active_page()==0);visible();
     }
     h.arena.fail=false;
     assert(h.counted.memory().allocation_calls==before.allocation_calls&&
-      coordinator.entries.size()==72&&objects(h.root)==widget_count);
+      coordinator.entries.size()==channels&&objects(h.root)==widget_count);
     assert(h.counted.memory().accounting_errors==0);
   }
 }
@@ -882,16 +902,22 @@ void qr_images_and_transactions() {
   { ModalCallbackDispatchScope callback; h.scene->stop(); assert(!h.scene->ready() && !PageNativeModalBank::instance->runtime().valid(token)); }
   assert(!h.scene->prepare(PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
 }
-int main() {
-  lv_init();auto* display=lv_display_create(480,480);assert(display);
+int main(int argc,char** argv) {
+  const bool maximum_p4=argc==2&&std::string_view(argv[1])=="--maximum-p4";
+  assert(argc==1||maximum_p4);
+  lv_init();auto* display=lv_display_create(maximum_p4?1280:480,maximum_p4?800:480);assert(display);
   lv_timer_pause(lv_display_get_refr_timer(display));
-  static std::array<uint16_t,480*32> pixels{};
+  static std::array<uint16_t,1280*32> pixels{};
   lv_display_set_buffers(display,pixels.data(),nullptr,sizeof(pixels),LV_DISPLAY_RENDER_MODE_PARTIAL);
   lv_display_set_flush_cb(display,[](lv_display_t* d,const lv_area_t*,uint8_t*) { lv_display_flush_ready(d); });
   native_dispatch_safe=[] { return lv_is_initialized() && !page_lvgl_dispatching() && !modal_callback_dispatching(); };
-  navigation_and_state();live_temperature_policy();elastic_state_scene_transactions();maximum_profile_disjoint_replacements();panels_and_retirement();mode_and_feedback();source_styles();slider_input();slider_background_hit_testing();appearance_transactions();initial_appearance();appearance_wake_without_intermediate_maintenance();remote_navigation();
-  assert(!application_scene_navigation());
-  remote_selection_order();qr_images_and_transactions();
+  if(maximum_p4) {
+    maximum_profile_disjoint_replacements<6>();
+  } else {
+    navigation_and_state();live_temperature_policy();elastic_state_scene_transactions();maximum_profile_disjoint_replacements<8>();panels_and_retirement();mode_and_feedback();source_styles();slider_input();slider_background_hit_testing();appearance_transactions();initial_appearance();appearance_wake_without_intermediate_maintenance();remote_navigation();
+    assert(!application_scene_navigation());
+    remote_selection_order();qr_images_and_transactions();
+  }
   native_dispatch_safe=nullptr;
   lv_display_delete(display);lv_deinit();
 }
