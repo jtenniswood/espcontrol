@@ -18,6 +18,7 @@ Show current conditions or daily forecasts from a Home Assistant weather entity.
 2. Enter a **Weather Entity**, for example `weather.forecast_home`.
 3. Choose **Type**:
    - **Current Conditions** — the live condition icon and label.
+   - **Wind** — a direction arrow, direction name, and current wind speed below.
    - **Today's Forecast** — today's icon and high/low temperatures.
    - **Tomorrow's Forecast** — tomorrow's icon and high/low temperatures.
    - **Daily Forecast** — up to eight days in a row or grid.
@@ -72,6 +73,12 @@ Forecasts show whole-degree high/low temperatures, such as **18°/2°**, using t
 Forecasts refresh hourly and after reconnecting. **Loading** appears while fetching data. If a refresh fails, the previous forecast keeps the same card layout, with **Last forecast** shown in the details popup; if no data is available for the requested date, the card shows **Forecast unavailable**. Your Home Assistant provider must support daily forecasts.
 
 All forecast modes work on supported panels, including the 4-inch ESP32-S3. The panel supports up to eight weather entities and sixteen forecast cards across the home screen and subpages.
+
+## Wind
+
+Choose **Weather → Wind** and select your weather entity. The arrow points toward the compass direction the wind comes **from** (north is up), and the label names that direction. Speed appears below in the weather entity's wind speed unit, such as **12.5 km/h**. Direction uses eight compass points; degree bearings and compass abbreviations are supported. Missing direction or speed shows **--** for that reading. An unavailable entity clears both readings.
+
+Wind updates with the entity and does not need forecast actions permission. It works on the home screen and subpages.
 
 ## Forecast Details
 

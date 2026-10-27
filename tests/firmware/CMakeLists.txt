@@ -731,3 +731,9 @@ add_test(NAME camera_screensaver_dimming_test COMMAND
 
 add_test(NAME discovery_shutdown_order_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/discovery_shutdown_order_test.py)
+
+add_executable(weather_wind_test weather_wind_test.cpp)
+target_compile_features(weather_wind_test PRIVATE cxx_std_17)
+target_compile_options(weather_wind_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(weather_wind_test PRIVATE ../../components/espcontrol)
+add_test(NAME weather_wind_test COMMAND weather_wind_test)

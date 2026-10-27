@@ -58,5 +58,20 @@
       "precision": "tomorrow",
       "options": ""
     }
+  },
+  {
+    "name": "wind mode survives saved configuration normalization",
+    "input": "weather.home;Weather;Auto;Auto;ignored;unit;weather;wind;large_numbers,ignored=1",
+    "expected": {
+      "entity": "weather.home",
+      "label": "Weather",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "unit",
+      "type": "weather",
+      "precision": "wind",
+      "options": ""
+    }
   }
 ]

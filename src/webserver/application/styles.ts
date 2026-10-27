@@ -104,6 +104,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-btn>.sp-btn-label,.sp-btn>.sp-btn-label-row{margin-top:auto}" +
         ".sp-media-group-active{box-shadow:inset 0 0 0 3px var(--accent)}" +
         ".sp-btn-label{display:block;max-height:var(--btn-label-max-height);overflow:hidden;word-break:break-word;min-height:0}" +
+        ".sp-btn.sp-weather-wind-card>.sp-btn-label{max-height:none}" +
+        ".sp-weather-wind-speed{display:block;font-size:.85em;opacity:.7;margin-top:4px}" +
         ".sp-editable-title{cursor:text;pointer-events:auto}.sp-editable-title:focus-visible{outline:2px solid currentColor;outline-offset:2px}" +
         ".sp-card-name-input{display:block;box-sizing:border-box;width:100%;min-width:0;margin:0;padding:0;border:0;border-bottom:1px solid currentColor;border-radius:0;outline:none;background:transparent;color:inherit;font:inherit;line-height:inherit;user-select:text}" +
         ".sp-image-label-stack:has(.sp-card-name-input){min-width:5em;max-width:100%;font-size:var(--btn-label);line-height:1.2;color:#fff}" +

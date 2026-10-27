@@ -22,6 +22,12 @@
 - "\U000F0458"  # mdi-repeat-once (Media modal repeat-one state)
 - "\U000F02ED"  # mdi-image-broken (Image card unavailable state)
 - "\U000F035B"  # mdi-memory (Build information card)
+- "\U000F005C"  # mdi-arrow-top-right
+- "\U000F0054"  # mdi-arrow-right
+- "\U000F0043"  # mdi-arrow-bottom-right
+- "\U000F0042"  # mdi-arrow-bottom-left
+- "\U000F004D"  # mdi-arrow-left
+- "\U000F005B"  # mdi-arrow-top-left
 - "\U000F0141"  # mdi-chevron-left
 - "\U000F0142"  # mdi-chevron-right
 - "\U000F0004"  # mdi-account

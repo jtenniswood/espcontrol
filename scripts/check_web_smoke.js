@@ -319,7 +319,7 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
   if (((device.web || {}).disabledCardTypes || []).includes("weather_forecast")) {
     assert.deepStrictEqual(
       Array.from(generatedHooks.weatherModeOptionValues()),
-      [""],
+      ["", "wind"],
       `${slug}: generated web UI must hide weather forecast modes when forecast cards are disabled`
     );
     assert.strictEqual(
@@ -335,7 +335,7 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
   } else {
     assert.deepStrictEqual(
       Array.from(generatedHooks.weatherModeOptionValues()),
-      ["", "today", "tomorrow", "daily"],
+      ["", "today", "tomorrow", "daily", "wind"],
       `${slug}: generated web UI must offer current conditions and all forecast modes`
     );
     for (const day of ["today", "tomorrow", "daily"]) {

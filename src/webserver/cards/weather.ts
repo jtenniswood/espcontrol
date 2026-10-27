@@ -37,7 +37,7 @@ export function registerWeatherCardTypes(
             idSuffix: "weather-display",
             options: weatherModeOptions,
             value: function (this: any, b?: any) {
-                return weatherCardIsForecastMode(b) ? b.precision : "";
+                return normalizeWeatherCardMode(b.precision);
             },
             onChange: function (this: any, b?: any, helpers?: any) {
                 b.precision = this.value;
@@ -81,6 +81,14 @@ export function registerWeatherCardTypes(
             helpers.renderCardEntityField(panel, b, helpers, WEATHER_CARD_METADATA);
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
+            if (b.precision === "wind") {
+                return {
+                    buttonClass: "sp-weather-wind-card",
+                    iconHtml: '<span class="sp-btn-icon mdi mdi-arrow-top-right"></span>',
+                    labelHtml: '<span class="sp-btn-label">North East<span class="sp-weather-wind-speed">12.5 km/h</span></span>',
+                    labelEditable: false,
+                };
+            }
             if (weatherCardIsForecastMode(b)) {
                 let samples: [string, string, string][] = [["Today", "weather-rainy", "18°/2°"], ["Tues", "weather-sunny", "20°/9°"], ["Weds", "weather-partly-cloudy", "18°/14°"], ["Thurs", "weather-rainy", "20°/13°"], ["Fri", "weather-sunny", "14°/6°"], ["Sat", "weather-cloudy", "18°/10°"], ["Sun", "weather-sunny", "19°/11°"], ["Mon", "weather-cloudy", "17°/8°"]];
                 if (b.precision === "today") samples = samples.slice(0, 1);
