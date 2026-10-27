@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <type_traits>
 
 #include "application_scene_runtime.h"
 #include "espcontrol_app_core.h"
@@ -11,6 +12,10 @@
 #include "esphome/core/component.h"
 #include "home_assistant_endpoint_resolver.h"
 #include "panel_identity.h"
+namespace esphome::template_ {
+class TemplateText;
+}
+
 namespace espcontrol {
 
 // The main ESPHome component boundary for EspControl runtime services.
@@ -67,6 +72,45 @@ class EspControlApp : public esphome::Component {
       esphome::text::Text *subpage_5 = nullptr,
       esphome::text::Text *subpage_6 = nullptr,
       esphome::text::Text *subpage_7 = nullptr);
+  // Preserve the concrete type supplied by ESPHome code generation. Only
+  // TemplateText uses the SDK preference format; custom Text platforms retain
+  // their normal control path.
+  template <typename Text> void set_panel_config_button_order(Text *value) {
+    set_panel_config_button_order(static_cast<esphome::text::Text *>(value));
+    panel_config_order_template_ =
+        std::is_same_v<Text, esphome::template_::TemplateText>;
+  }
+  template <typename Text> void set_panel_config_button_on_color(Text *value) {
+    set_panel_config_button_on_color(static_cast<esphome::text::Text *>(value));
+    panel_config_color_template_ =
+        std::is_same_v<Text, esphome::template_::TemplateText>;
+  }
+  template <typename Text, typename... Subpages>
+  void set_panel_config_button(uint8_t slot, Text *button,
+                               Subpages... subpages) {
+    static_assert(sizeof...(Subpages) >= 4 && sizeof...(Subpages) <= 8);
+    set_panel_config_button(slot, static_cast<esphome::text::Text *>(button),
+                            static_cast<esphome::text::Text *>(subpages)...);
+    if (slot == 0 || slot > panel_config_button_texts_.size())
+      return;
+    auto &sources = panel_config_button_texts_[slot - 1];
+    sources.template_button =
+        std::is_same_v<Text, esphome::template_::TemplateText>;
+    sources.template_subpages = {
+        std::is_same_v<std::remove_pointer_t<Subpages>,
+                       esphome::template_::TemplateText>...};
+  }
+  size_t template_text_preference_count() const {
+    size_t count =
+        (panel_config_button_order_ && panel_config_order_template_) +
+        (panel_config_button_on_color_ && panel_config_color_template_);
+    for (const auto &sources : panel_config_button_texts_) {
+      count += sources.button && sources.template_button;
+      for (size_t i = 0; i < sources.subpages.size(); ++i)
+        count += sources.subpages[i] && sources.template_subpages[i];
+    }
+    return count;
+  }
   void set_panel_config_card_images_storage(bool enabled) {
     panel_config_card_images_storage_ = enabled;
   }
@@ -89,11 +133,15 @@ class EspControlApp : public esphome::Component {
   struct PanelConfigTextSources {
     esphome::text::Text *button{nullptr};
     std::array<esphome::text::Text *, 8> subpages{};
+    bool template_button{false};
+    std::array<bool, 8> template_subpages{};
   };
 
   const char *panel_config_device_profile_{nullptr};
   esphome::text::Text *panel_config_button_order_{nullptr};
   esphome::text::Text *panel_config_button_on_color_{nullptr};
+  bool panel_config_order_template_{false};
+  bool panel_config_color_template_{false};
   std::array<PanelConfigTextSources, 32> panel_config_button_texts_{};
   bool panel_config_card_images_storage_{false};
   // This owns every non-trivial configuration object. Keeping it separate

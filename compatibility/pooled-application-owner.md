@@ -94,6 +94,15 @@ The device owner commits its grid descriptors and source style profile at the
 same safe boundary. The scene performs a layout pass after bank binding before
 starting size-dependent image/QR work.
 
+Default ESPHome TemplateText mirrors use the pinned SDK's existing preference
+keys and length-prefixed payloads directly. Each field drains the preference
+queue before and after its write, with a stack window of at most 256 bytes.
+This avoids the SDK control path's extra cached string and a complete batch of
+pending blobs. Failed flushes report a compatibility failure; retries compare
+durable data instead of trusting the SDK saver's potentially stale cache.
+Unchanged live text is not published again. Other Text platforms retain their
+normal control behavior. This does not change native or legacy storage layouts.
+
 Compatibility text limits apply to fields owned by that projection. Native-only
 settings, such as badge rows, retain their native size limits and remain in the
 durable document; they do not prevent compatible button fields from being

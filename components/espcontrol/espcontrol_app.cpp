@@ -135,11 +135,13 @@ void EspControlApp::set_panel_config_device_profile(const char *device_profile) 
 void EspControlApp::set_panel_config_button_order(
     esphome::text::Text *button_order) {
   panel_config_button_order_ = button_order;
+  panel_config_order_template_ = false;
 }
 
 void EspControlApp::set_panel_config_button_on_color(
     esphome::text::Text *button_on_color) {
   panel_config_button_on_color_ = button_on_color;
+  panel_config_color_template_ = false;
 }
 
 void EspControlApp::set_panel_config_button(
@@ -169,9 +171,11 @@ bool EspControlApp::create_native_configuration_runtime() {
   }
   native_configuration_runtime_.reset(runtime);
   runtime->text_bindings.set_device_profile(panel_config_device_profile_);
-  runtime->button_order.bind(panel_config_button_order_);
+  runtime->button_order.bind(panel_config_button_order_,
+                             panel_config_order_template_);
   runtime->text_bindings.set_button_order(&runtime->button_order);
-  runtime->button_on_color.bind(panel_config_button_on_color_);
+  runtime->button_on_color.bind(panel_config_button_on_color_,
+                                panel_config_color_template_);
   runtime->text_bindings.set_button_on_color(&runtime->button_on_color);
   for (size_t index = 0; index < panel_config_button_texts_.size(); ++index) {
     const PanelConfigTextSources &sources = panel_config_button_texts_[index];
@@ -182,13 +186,14 @@ bool EspControlApp::create_native_configuration_runtime() {
     if (sources.button == nullptr) continue;
     NativeConfigurationRuntime::LegacyButtonTextSources &legacy_sources =
         runtime->buttons[index];
-    legacy_sources.button.bind(sources.button);
+    legacy_sources.button.bind(sources.button, sources.template_button);
     std::array<configuration::PanelConfigTextValue *,
                configuration::PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS>
         legacy_subpages{};
     for (size_t subpage = 0; subpage < sources.subpages.size(); ++subpage) {
       if (sources.subpages[subpage] == nullptr) continue;
-      legacy_sources.subpages[subpage].bind(sources.subpages[subpage]);
+      legacy_sources.subpages[subpage].bind(sources.subpages[subpage],
+                                            sources.template_subpages[subpage]);
       legacy_subpages[subpage] = &legacy_sources.subpages[subpage];
     }
     runtime->text_bindings.set_button(static_cast<uint8_t>(index + 1),
