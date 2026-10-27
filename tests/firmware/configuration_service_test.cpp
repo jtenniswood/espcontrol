@@ -33,6 +33,7 @@ class MemoryBackend final : public StorageBackend {
   }
   bool write(uint8_t slot, size_t offset, const uint8_t *data,
              size_t size) override {
+    ++write_calls;
     if (fail_writes_ || slot >= slots_.size() ||
         offset > slots_[slot].size() ||
         size > slots_[slot].size() - offset) {
@@ -43,8 +44,9 @@ class MemoryBackend final : public StorageBackend {
   }
   bool sync() override { return true; }
   void fail_writes(bool value) { fail_writes_ = value; }
+  size_t write_calls{0};
 
- private:
+private:
   std::array<std::vector<uint8_t>, CONFIGURATION_SLOT_COUNT> slots_;
   bool fail_writes_{false};
 };
@@ -674,10 +676,172 @@ bool import_only_still_publishes_live_compatibility_values() {
          legacy.published == value && runtime.applied == value;
 }
 
+struct BufferProbe {
+  size_t calls{0}, releases{0}, live{0}, peak{0}, fail_on{0};
+  static BufferProbe state;
+  static uint8_t *allocate(size_t size) {
+    auto &s = state;
+    if (++s.calls == s.fail_on)
+      return nullptr;
+    auto *memory = static_cast<uint8_t *>(std::malloc(size));
+    if (memory) {
+      ++s.live;
+      s.peak = std::max(s.peak, s.live);
+    }
+    return memory;
+  }
+  static void release(uint8_t *memory) {
+    ++state.releases;
+    --state.live;
+    std::free(memory);
+  }
+};
+BufferProbe BufferProbe::state{};
+
+bool transient_service_buffers_release_and_fail_before_publication() {
+  BufferProbe::state = {};
+  auto &buffers = BufferProbe::state;
+  MemoryBackend backend(40960);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  FakeRuntime runtime;
+  ConfigurationService service(store, legacy);
+  service.set_buffer_allocator(BufferProbe::allocate, BufferProbe::release);
+  service.set_runtime_adapter(&runtime);
+  std::array<uint8_t, 40960> output{};
+  legacy.value = bytes("original");
+  auto loaded = service.load_and_apply_runtime(output.data(), output.size());
+  if (!loaded.ok() || buffers.live || buffers.peak != 1 ||
+      runtime.applied != legacy.value)
+    return false;
+  auto generation = loaded.generation;
+  auto writes = backend.write_calls;
+  auto publications = legacy.publish_calls;
+  auto mirrors = legacy.mirror_calls;
+  const auto replacement = bytes("replacement");
+
+  // Loading, encoding a prepared save, and both forms of legacy refresh must
+  // leave durable bytes, the active runtime and compatibility views untouched
+  // when their next temporary buffer cannot be reserved.
+  buffers.fail_on = buffers.calls + 1;
+  loaded = service.load(output.data(), output.size());
+  if (loaded.status != ServiceStatus::STORE_FAILED || buffers.live ||
+      backend.write_calls != writes)
+    return false;
+  buffers.fail_on = buffers.calls + 1;
+  const auto failed = service.save_if_generation(
+      generation, 1, replacement.data(), replacement.size());
+  if (failed.status != ServiceStatus::STORE_FAILED || failed.durable() ||
+      runtime.has_prepared || buffers.live || backend.write_calls != writes ||
+      legacy.publish_calls != publications || legacy.mirror_calls != mirrors ||
+      runtime.applied != bytes("original"))
+    return false;
+  buffers.fail_on = 0;
+  legacy.value = replacement;
+  for (size_t step = 1; step <= 3; ++step) {
+    buffers.fail_on = buffers.calls + step;
+    loaded = service.synchronize_legacy_runtime(output.data(), output.size());
+    if (loaded.status != ServiceStatus::STORE_FAILED || buffers.live ||
+        runtime.has_prepared || backend.write_calls != writes ||
+        runtime.applied != bytes("original") ||
+        legacy.publish_calls != publications || legacy.mirror_calls != mirrors)
+      return false;
+  }
+  buffers.fail_on = buffers.calls + 1;
+  if (service.refresh_legacy_shadow(output.data(), output.size()).status !=
+          ServiceStatus::STORE_FAILED ||
+      buffers.live || backend.write_calls != writes)
+    return false;
+  buffers.fail_on = 0;
+  loaded = service.load(output.data(), output.size());
+  if (!loaded.ok() || loaded.generation != generation ||
+      std::memcmp(output.data(), "original", loaded.document_size) != 0)
+    return false;
+
+  // Success, no-op refresh, conflicts, store errors and mirror failures all
+  // release scratch. Repeated operations cannot retain old allocation peaks.
+  for (size_t cycle = 0; cycle < 25; ++cycle) {
+    legacy.value = bytes(cycle % 2 ? "original" : "replacement");
+    loaded = service.synchronize_legacy_runtime(output.data(), output.size());
+    if (!loaded.ok() || buffers.live || runtime.applied != legacy.value)
+      return false;
+    generation = loaded.generation;
+    if (service.synchronize_legacy_runtime(output.data(), output.size())
+                .generation != generation ||
+        buffers.live)
+      return false;
+    if (service.save_if_generation(0, 1, replacement.data(), replacement.size())
+                .status != ServiceStatus::GENERATION_CONFLICT ||
+        buffers.live || runtime.has_prepared)
+      return false;
+    backend.fail_writes(true);
+    if (service.save_current(replacement.data(), replacement.size()).status !=
+            ServiceStatus::STORE_FAILED ||
+        buffers.live || runtime.has_prepared)
+      return false;
+    backend.fail_writes(false);
+  }
+  legacy.mirror_failed = true;
+  const auto durable =
+      service.save_current(replacement.data(), replacement.size());
+  if (durable.status != ServiceStatus::LEGACY_MIRROR_FAILED ||
+      !durable.durable() || buffers.live || buffers.peak != 1)
+    return false;
+  loaded = service.load_and_apply_runtime(output.data(), output.size());
+  if (!loaded.ok() || loaded.generation != durable.generation || buffers.live ||
+      runtime.applied != replacement)
+    return false;
+
+  // Refreshing an old legacy-only shadow also releases its read scratch
+  // before encoding a changed document.
+  legacy.mirror_failed = false;
+  legacy.value = bytes("shadow replacement");
+  const auto shadow =
+      service.refresh_legacy_shadow(output.data(), output.size());
+  if (shadow.status != ServiceStatus::SYNCED_LEGACY || buffers.live ||
+      buffers.peak != 1)
+    return false;
+
+  // Explicit borrowed scratch remains compatible and never uses the allocator.
+  std::array<uint8_t, 40960> borrowed{};
+  ConfigurationService borrowed_service(store, legacy, nullptr, borrowed.data(),
+                                        borrowed.size());
+  borrowed_service.set_buffer_allocator(BufferProbe::allocate,
+                                        BufferProbe::release);
+  const auto calls = buffers.calls;
+  buffers.fail_on = calls + 1;
+  if (!borrowed_service.load(output.data(), output.size()).ok() ||
+      buffers.calls != calls ||
+      !borrowed_service.save_current(replacement.data(), replacement.size())
+           .ok() ||
+      buffers.calls != calls || buffers.live)
+    return false;
+  buffers.fail_on = 0;
+
+  // A failed empty-store import must also remain empty and retry normally.
+  MemoryBackend empty_backend(512);
+  ConfigurationStore empty_store(empty_backend);
+  FakeLegacy import_legacy;
+  import_legacy.value = bytes("legacy import");
+  ConfigurationService importing(empty_store, import_legacy);
+  importing.set_buffer_allocator(BufferProbe::allocate, BufferProbe::release);
+  buffers.fail_on =
+      buffers.calls + 2; // read scratch succeeds, import encoding fails
+  if (importing.load(output.data(), output.size()).status !=
+          ServiceStatus::STORE_FAILED ||
+      buffers.live || empty_backend.write_calls)
+    return false;
+  buffers.fail_on = 0;
+  loaded = importing.load(output.data(), output.size());
+  return loaded.imported_legacy() && loaded.generation == 1 &&
+         buffers.live == 0 && buffers.peak == 1;
+}
+
 }  // namespace
 
 int main() {
   const bool passed =
+      transient_service_buffers_release_and_fail_before_publication() &&
       compatibility_publication_is_separate_from_runtime_activation() &&
       import_only_still_publishes_live_compatibility_values() &&
       compatibility_edits_use_prepared_runtime_transaction() &&

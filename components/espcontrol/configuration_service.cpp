@@ -1,7 +1,6 @@
 #include "configuration_service.h"
 
 #include <cstring>
-#include <vector>
 
 namespace espcontrol::configuration {
 namespace {
@@ -80,12 +79,12 @@ bool ConfigurationService::document_is_valid(uint16_t document_version,
          validator_->validate(document_version, document, document_size);
 }
 
-uint8_t *ConfigurationService::encoded_buffer(
-    size_t required_size, std::vector<uint8_t> *fallback) const {
+uint8_t *
+ConfigurationService::encoded_buffer(size_t required_size,
+                                     ConfigurationBuffer *fallback) const {
   if (scratch_buffer_ != nullptr && scratch_capacity_ >= required_size)
     return scratch_buffer_;
-  fallback->resize(required_size);
-  return fallback->empty() ? nullptr : fallback->data();
+  return fallback->allocate(required_size);
 }
 
 size_t ConfigurationService::maximum_document_size() const {
@@ -102,7 +101,7 @@ CommitResult ConfigurationService::commit_document(
     return {StoreStatus::PAYLOAD_TOO_LARGE, 0, document_size};
   }
 
-  std::vector<uint8_t> fallback;
+  ConfigurationBuffer fallback(allocate_, release_);
   const size_t encoded_size = CONFIGURATION_DOCUMENT_HEADER_SIZE + document_size;
   uint8_t *encoded = encoded_buffer(encoded_size, &fallback);
   if (encoded == nullptr) return {StoreStatus::WRITE_FAILED, 0, document_size};
@@ -124,7 +123,7 @@ CommitResult ConfigurationService::commit_document_if_generation(
     return {StoreStatus::PAYLOAD_TOO_LARGE, 0, document_size};
   }
 
-  std::vector<uint8_t> fallback;
+  ConfigurationBuffer fallback(allocate_, release_);
   const size_t encoded_size = CONFIGURATION_DOCUMENT_HEADER_SIZE + document_size;
   uint8_t *encoded = encoded_buffer(encoded_size, &fallback);
   if (encoded == nullptr) return {StoreStatus::WRITE_FAILED, 0, document_size};
@@ -177,9 +176,11 @@ ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
   if (output == nullptr && output_capacity > 0) {
     return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT};
   }
-  std::vector<uint8_t> fallback;
+  ConfigurationBuffer fallback(allocate_, release_);
   const size_t encoded_capacity = store_.maximum_payload_size();
   uint8_t *encoded = encoded_buffer(encoded_capacity, &fallback);
+  if (encoded == nullptr)
+    return {ServiceStatus::STORE_FAILED, StoreStatus::WRITE_FAILED};
   const LoadResult stored = store_.load(encoded, encoded_capacity);
   if (stored.ok()) {
     if (stored.payload_size < CONFIGURATION_DOCUMENT_HEADER_SIZE ||
@@ -223,6 +224,7 @@ ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
     return {ServiceStatus::STORE_FAILED, stored.status};
   }
 
+  fallback.reset();
   const LegacyLoadResult legacy = legacy_.load(output, output_capacity);
   if (legacy.status == LegacyStatus::EMPTY) {
     return {ServiceStatus::EMPTY, stored.status};
@@ -299,7 +301,7 @@ ServiceLoadResult ConfigurationService::refresh_legacy_shadow_unlocked(
             legacy.document_size};
   }
 
-  std::vector<uint8_t> fallback;
+  ConfigurationBuffer fallback(allocate_, release_);
   const size_t encoded_capacity = store_.maximum_payload_size();
   uint8_t *encoded = encoded_buffer(encoded_capacity, &fallback);
   if (encoded == nullptr) {
@@ -326,6 +328,7 @@ ServiceLoadResult ConfigurationService::refresh_legacy_shadow_unlocked(
             legacy.document_version, stored.generation, legacy.document_size};
   }
 
+  fallback.reset();
   const CommitResult committed = commit_document(
       legacy.document_version, output, legacy.document_size);
   if (!committed.ok()) {
@@ -350,10 +353,9 @@ ConfigurationService::synchronize_legacy_runtime(uint8_t *output,
     failed.status = ServiceStatus::LEGACY_MIRROR_FAILED;
     return failed;
   }
-  // The ordinary scratch slot is available after load has copied the durable
-  // document into the caller's boot buffer. No extra document allocation on
-  // the device, and no borrowing the HTTP task's request buffer.
-  std::vector<uint8_t> fallback;
+  // Load scratch has been released. Borrow a separate merge buffer until the
+  // output is ready, then release it before save prepares its encoded payload.
+  ConfigurationBuffer fallback(allocate_, release_);
   const auto capacity = store_.maximum_payload_size();
   auto *merged = encoded_buffer(capacity, &fallback);
   if (!merged)
@@ -378,6 +380,7 @@ ConfigurationService::synchronize_legacy_runtime(uint8_t *output,
     return {ServiceStatus::BUFFER_TOO_SMALL, loaded.store_status,
             legacy.document_version, loaded.generation, legacy.document_size};
   std::memcpy(output, merged, legacy.document_size);
+  fallback.reset();
   const auto saved =
       save_unlocked(legacy.document_version, output, legacy.document_size);
   return {saved.status, saved.store_status, saved.document_version,

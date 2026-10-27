@@ -192,8 +192,20 @@ Configuration storage now reads and writes raw partition byte ranges without
 retaining either full slot image. NVS keeps its deployed whole-blob format and
 borrows one PSRAM slot image only during each serialized store load or commit;
 all exits release it. The two permanent slot buffers are removed (32 KiB on
-NVS profiles; 80 KiB with 40 KiB partition slots). Three permanent service,
-HTTP and deferred-application buffers remain for the next storage stage.
+NVS profiles; 80 KiB with 40 KiB partition slots).
+
+The service scratch buffer is now scoped to a serialized load, merge or commit.
+Firmware allocations use PSRAM explicitly and fail before durable publication
+if unavailable; there is no throwing vector resize or internal-heap fallback.
+Read/merge scratch is released before a subsequent encoding allocation, so the
+service borrows at most one slot at a time. Tests inject allocation failure at
+each stage, verify the old generation and active runtime remain intact, and
+exercise repeated success, conflicts, store/mirror failure and retry without
+retained allocations. The optional externally supplied scratch API remains
+compatible. This removes another 16 KiB permanent allocation on NVS profiles,
+or 40 KiB with partition slots. HTTP and deferred-application buffers remain;
+this is not yet the completed streaming-persistence gate. Physical measurements
+of this service-buffer change are pending.
 
 Host tests compare complete old/new durable images, read in both firmware
 directions, interrupt every mutating storage call before/during/after its

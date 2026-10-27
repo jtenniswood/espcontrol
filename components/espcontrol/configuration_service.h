@@ -3,8 +3,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
-#include <vector>
 
+#include "configuration_buffer.h"
 #include "configuration_store.h"
 
 namespace espcontrol::configuration {
@@ -190,6 +190,12 @@ class ConfigurationService {
     scratch_buffer_ = scratch_buffer;
     scratch_capacity_ = scratch_capacity;
   }
+  // Configure before operations begin, just like the optional borrowed scratch.
+  void set_buffer_allocator(ConfigurationBuffer::Allocate allocate,
+                            ConfigurationBuffer::Release release) {
+    allocate_ = allocate;
+    release_ = release;
+  }
   void set_runtime_adapter(ConfigurationRuntimeAdapter *runtime) {
     runtime_ = runtime;
   }
@@ -215,13 +221,15 @@ class ConfigurationService {
   bool document_is_valid(uint16_t document_version, const uint8_t *document,
                          size_t document_size) const;
   uint8_t *encoded_buffer(size_t required_size,
-                          std::vector<uint8_t> *fallback) const;
+                          ConfigurationBuffer *fallback) const;
 
   ConfigurationStore &store_;
   LegacyConfigurationAdapter &legacy_;
   const ConfigurationDocumentValidator *validator_{nullptr};
   uint8_t *scratch_buffer_{nullptr};
   size_t scratch_capacity_{0};
+  ConfigurationBuffer::Allocate allocate_{ConfigurationBuffer::allocate_host};
+  ConfigurationBuffer::Release release_{ConfigurationBuffer::release_host};
   ConfigurationRuntimeAdapter *runtime_{nullptr};
   LegacyConfigurationMode legacy_mode_{LegacyConfigurationMode::DUAL_WRITE};
   // A partially published compatibility view must not be re-imported as an

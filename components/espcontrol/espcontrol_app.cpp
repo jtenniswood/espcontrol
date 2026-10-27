@@ -408,9 +408,9 @@ void EspControlApp::initialize_native_configuration() {
     }
     ESP_LOGI(TAG, "Allocating native configuration buffers");
 #ifdef USE_ESP32
-    // Store slots stream from flash, or borrow one transient NVS slot. The
-    // service scratch, HTTP request and delayed boot buffers remain distinct.
-    const size_t panel_config_memory_size = runtime.slot_capacity * 3;
+    // Service scratch is borrowed only for a serialized operation. HTTP and
+    // delayed boot buffers remain distinct until their request owners move.
+    const size_t panel_config_memory_size = runtime.slot_capacity * 2;
     runtime.memory = static_cast<uint8_t *>(
         heap_caps_malloc(panel_config_memory_size,
                          MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
@@ -423,10 +423,10 @@ void EspControlApp::initialize_native_configuration() {
       return;
     }
     ESP_LOGI(TAG, "Loading native configuration document");
-    panel_config_service->set_scratch_buffer(runtime.memory,
-                                             runtime.slot_capacity);
-    runtime.document_buffer = runtime.memory + runtime.slot_capacity;
-    runtime.boot_buffer = runtime.memory + runtime.slot_capacity * 2;
+    panel_config_service->set_buffer_allocator(allocate_configuration_slot,
+                                               release_configuration_slot);
+    runtime.document_buffer = runtime.memory;
+    runtime.boot_buffer = runtime.memory + runtime.slot_capacity;
     const configuration::ServiceLoadResult loaded = panel_config_service->load(
         runtime.document_buffer, runtime.slot_capacity);
     if (!configuration::panel_config_load_allows_native_endpoints(loaded.status)) {
