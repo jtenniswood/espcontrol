@@ -67,7 +67,10 @@ struct Subscriptions final : PageEntitySubscriptions {
                  uint32_t channel, Deliver deliver) override {
     if (remaining == 0) return false;
     if (remaining > 0) --remaining;
-    entries.push_back({entity, attribute, owner, revision, channel, deliver}); return true;
+    entries.push_back({entity, attribute, owner, revision, channel, deliver});
+    if (on_subscribe)
+      on_subscribe();
+    return true;
   }
   void release(void *owner) override {
     entries.erase(std::remove_if(entries.begin(), entries.end(),
@@ -80,6 +83,7 @@ struct Subscriptions final : PageEntitySubscriptions {
       e.deliver(e.owner, e.revision, e.channel, value);
   }
   std::vector<Item> entries; int remaining{-1}; uint32_t connection{1};
+  std::function<void()> on_subscribe;
 };
 struct Fixture {
   Fixture() {
@@ -820,7 +824,104 @@ void shared_observers_see_borrowed_previous_values() {
   observers.remove(second);
 }
 
+// Exercise the full S3 channel/cache budget, including reordered shared keys,
+// disjoint generations, connection changes, and every fallible staging step.
+void maximum_shared_state_replacement_is_atomic() {
+  Fixture fixture;
+  constexpr size_t channels = 1440, capacity = 128 * 1024;
+  for (int allocation_limit = 0; allocation_limit < 10; ++allocation_limit) {
+    Arena arena;
+    Subscriptions subscriptions;
+    Source source;
+    for (size_t i = 0; i < channels; ++i)
+      source.items.push_back({0,
+                              "climate.qualification_" + std::to_string(i / 20),
+                              "attribute_" + std::to_string(i % 20)});
+    {
+      PageEntityStateRuntime state(
+          source, arena, subscriptions,
+          {channels, channels, capacity, 32 * 1024, 4096});
+      assert(state.prepare(fixture.store));
+      state.activate_prepared(17);
+      size_t used = 0;
+      for (size_t i = 0; i < channels; ++i) {
+        const size_t bytes = capacity / channels + (i < capacity % channels);
+        const std::string value(bytes, static_cast<char>('a' + i % 26));
+        const auto &entry = subscriptions.entries[i];
+        entry.deliver(entry.owner, entry.revision, entry.channel, value);
+        used += bytes;
+      }
+      assert(used == capacity && state.memory().active_state_bytes == capacity);
+      const auto old_delivery = subscriptions.entries.front();
+      std::reverse(source.items.begin(), source.items.end());
+      arena.remaining = allocation_limit;
+      const bool prepared = state.prepare(fixture.store);
+      arena.remaining = -1;
+      // Successful and failed preparation both leave the active graph intact.
+      assert(state.memory().active_state_bytes == capacity);
+      for (size_t i = 0; i < channels; ++i) {
+        const auto value = state.dependency({17, 0}, i);
+        assert(value.status == PageEntityStatus::AVAILABLE);
+        assert(value.value ==
+               std::string(capacity / channels + (i < capacity % channels),
+                           static_cast<char>('a' + i % 26)));
+      }
+      if (!prepared) {
+        assert(state.memory().staged_arena_bytes == 0);
+        assert(subscriptions.entries.size() == channels &&
+               arena.live.size() == 2);
+        assert(state.prepare(fixture.store));
+      }
+      assert(state.memory().staged_state_capacity_bytes == capacity);
+      assert(state.memory().peak_arena_bytes == arena.peak_bytes);
+      state.activate_prepared(18);
+      assert(arena.live.size() == 2 &&
+             subscriptions.entries.size() == channels);
+      for (size_t i = 0; i < channels; ++i) {
+        const auto original = channels - i - 1;
+        assert(
+            state.dependency({18, 0}, i).value ==
+            std::string(capacity / channels + (original < capacity % channels),
+                        static_cast<char>('a' + original % 26)));
+      }
+      old_delivery.deliver(old_delivery.owner, old_delivery.revision,
+                           old_delivery.channel, "stale");
+      assert(state.memory().active_state_bytes == capacity);
+      for (auto &item : source.items)
+        item.entity += "_different";
+      assert(state.prepare(fixture.store));
+      state.activate_prepared(19);
+      assert(state.memory().active_state_bytes == 0);
+      assert(state.memory().active_state_capacity_bytes == 4096);
+      assert(arena.live.size() == 2 &&
+             subscriptions.entries.size() == channels);
+      assert(state.memory().peak_arena_bytes == arena.peak_bytes);
+      assert(state.dependency({19, 0}, 0).status == PageEntityStatus::UNKNOWN);
+      const auto &first = subscriptions.entries.front();
+      first.deliver(first.owner, first.revision, first.channel,
+                    "before reconnect");
+      bool reconnected = false;
+      subscriptions.on_subscribe = [&] {
+        if (!reconnected) {
+          ++subscriptions.connection;
+          reconnected = true;
+        }
+      };
+      assert(state.prepare(fixture.store));
+      subscriptions.on_subscribe = {};
+      state.activate_prepared(20);
+      assert(state.memory().active_state_bytes == 0);
+      for (size_t i = 0; i < channels; ++i)
+        assert(state.dependency({20, 0}, i).status ==
+               PageEntityStatus::UNKNOWN);
+      assert(state.memory().peak_arena_bytes == arena.peak_bytes);
+    }
+    assert(arena.live.empty() && subscriptions.entries.empty());
+  }
+}
+
 int main() {
+  maximum_shared_state_replacement_is_atomic();
   coordinator_callbacks_use_allocation_free_revocable_batches();
   coordinator_callback_tokens_refuse_wraparound();
   elastic_growth_preserves_full_ceilings();

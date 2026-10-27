@@ -43,6 +43,13 @@ other channels; a later report can recover. Allocation failures are counted
 separately from quota overflows. Owner counters include value capacity and the
 overlap of active/staged metadata and old/new value buffers. Replacing the
 configuration releases its retired pool rather than retaining past demand.
+Large replacements use a temporary sorted channel-index array to match shared
+values, rather than scanning every old channel for every new one. The array
+uses the fallible scene allocator and is released before preparation returns;
+its bytes and overlapping value-pool growth count toward the graph peak.
+Allocation failure preserves the active graph. Coordinator retirement marks
+channel activity once and remaps subscriptions and deferred reads in single
+passes, preserving callback order and stable native callback identities.
 
 The concrete device wraps its scene allocator with `PageCountedArena`, tracking
 live requests, allocation failures and the actual overlapping arena high-water

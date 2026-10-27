@@ -54,24 +54,39 @@ class HaReadCoordinator {
     } else {
       if (!channels_need_reclamation_ || callback_depth_ != 0 || channel_dispatch_depth_ != 0) return 0;
       const size_t before = subscription_channels_.size();
+      mark_channel_activity();
       size_t write = 0;
+      // Build the complete old-to-new map before moving any channel. The
+      // subscription and deferred lists then each need only one pass.
+      for (auto &channel : subscription_channels_) {
+        channel.maintenance_index = (channel.maintenance_flags & CHANNEL_ACTIVE)
+                                        ? static_cast<uint32_t>(write++)
+                                        : UINT32_MAX;
+      }
+      for (const auto &channel : subscription_channels_) {
+        if (channel.maintenance_index == UINT32_MAX)
+          transport_.unsubscribe(channel.transport_registration);
+      }
+      deferred_.erase(
+          std::remove_if(deferred_.begin(), deferred_.end(),
+                         [this](const DeferredRequest &request) {
+                           return request.channel >=
+                                      subscription_channels_.size() ||
+                                  subscription_channels_[request.channel]
+                                          .maintenance_index == UINT32_MAX;
+                         }),
+          deferred_.end());
+      for (auto &ref : subscriptions_)
+        if (ref.channel < before)
+          ref.channel = subscription_channels_[ref.channel].maintenance_index;
+      for (auto &request : deferred_)
+        request.channel =
+            subscription_channels_[request.channel].maintenance_index;
       for (size_t read = 0; read < before; ++read) {
-        const bool live = std::any_of(subscriptions_.begin(), subscriptions_.end(),
-            [read](const SubscriptionRef &ref) {
-              return ref.channel == read && !ref.pending_release && ref.callback && *ref.callback;
-            });
-        if (!live) {
-          transport_.unsubscribe(subscription_channels_[read].transport_registration);
-          deferred_.erase(std::remove_if(deferred_.begin(), deferred_.end(),
-              [read](const DeferredRequest &request) { return request.channel == read; }), deferred_.end());
-          continue;
-        }
-        if (write != read) {
-          subscription_channels_[write] = std::move(subscription_channels_[read]);
-          for (auto &ref : subscriptions_) if (ref.channel == read) ref.channel = write;
-          for (auto &request : deferred_) if (request.channel == read) request.channel = write;
-        }
-        ++write;
+        const auto destination = subscription_channels_[read].maintenance_index;
+        if (destination != UINT32_MAX && destination != read)
+          subscription_channels_[destination] =
+              std::move(subscription_channels_[read]);
       }
       subscription_channels_.resize(write);
       trim_container(subscription_channels_);
@@ -425,14 +440,20 @@ class HaReadCoordinator {
     AllocatedString entity_id;
     AllocatedString attribute;
     AllocatedString last_state;
-    bool has_last_state = false;
     AllocatedString cached_state;
     AllocatedVector<CallbackRef> pending_reads;
-    bool has_cached_state = false;
-    bool fresh_request_pending = false;
     uint32_t refresh_scopes = 0;
     uint32_t refresh_due = 0;
+    uint32_t maintenance_index = 0;
+    bool has_last_state = false;
+    bool has_cached_state = false;
+    bool fresh_request_pending = false;
+    uint8_t maintenance_flags = 0;
   };
+
+  static constexpr uint8_t CHANNEL_ACTIVE = 1;
+  static constexpr uint8_t CHANNEL_REPLAY = 2;
+  static constexpr uint8_t CHANNEL_RETAINED_READS = 4;
 
   static constexpr size_t MAX_DEFERRED_REQUESTS = 64;
   static constexpr size_t MAX_PENDING_READS = 64;
@@ -658,20 +679,29 @@ class HaReadCoordinator {
     subscription.has_last_state = true;
   }
 
+  void mark_channel_activity() {
+    for (auto &channel : subscription_channels_)
+      channel.maintenance_flags = 0;
+    for (const auto &ref : subscriptions_) {
+      if (ref.pending_release || ref.channel >= subscription_channels_.size() ||
+          !ref.callback || !*ref.callback)
+        continue;
+      subscription_channels_[ref.channel].maintenance_flags |=
+          CHANNEL_ACTIVE | (ref.retain_replay ? CHANNEL_REPLAY : 0) |
+          (ref.retain_latest ? CHANNEL_RETAINED_READS : 0);
+    }
+  }
+
   void release_inactive_channel_state() {
-    for (size_t channel = 0; channel < subscription_channels_.size(); channel++) {
-      bool active = false, replay = false;
-      for (const auto &ref : subscriptions_) {
-        if (ref.channel != channel || ref.pending_release || !ref.callback || !*ref.callback) continue;
-        active = true;
-        replay = replay || ref.retain_replay;
+    mark_channel_activity();
+    for (auto &subscription : subscription_channels_) {
+      const auto flags = subscription.maintenance_flags;
+      if ((flags & CHANNEL_ACTIVE) && !(flags & CHANNEL_REPLAY)) {
+        release_string_storage(subscription.last_state);
+        subscription.has_last_state = false;
       }
-      if (active && !replay) {
-        release_string_storage(subscription_channels_[channel].last_state);
-        subscription_channels_[channel].has_last_state = false;
-      }
-      if (channel_reuses_reads(channel)) continue;
-      SubscriptionChannel &subscription = subscription_channels_[channel];
+      if (flags & CHANNEL_RETAINED_READS)
+        continue;
       release_string_storage(subscription.cached_state);
       release_callback_storage(subscription.pending_reads);
       subscription.has_cached_state = false;

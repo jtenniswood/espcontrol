@@ -199,6 +199,7 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
   int active_{-1}, staged_{-1};
   uint32_t next_revision_{1}, connection_generation_{0};
   PageEntityMemory memory_;
+  size_t preparation_scratch_bytes_{0};
   uint64_t revision_{0};
 };
 }  // namespace espcontrol::pages

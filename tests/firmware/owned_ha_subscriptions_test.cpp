@@ -239,10 +239,82 @@ void cached_string_views_survive_owner_retirement() {
   }
   empty_registry();
 }
+void maximum_interleaved_retirement_preserves_live_channels() {
+  {
+    Coordinator coordinator;
+    constexpr size_t channels = 1440;
+    int retiring_owner = 0, retained_owner = 0;
+    std::vector<size_t> deliveries;
+    size_t read_deliveries = 0;
+    for (size_t i = 0; i < channels; ++i) {
+      const std::string entity = "climate.maximum_" + std::to_string(i);
+      const bool retiring = i % 2 == 0;
+      require(coordinator.subscribe(
+                  entity, "temperature",
+                  [&, i](auto) { deliveries.push_back(i * 2); },
+                  retiring ? 1u : 2u,
+                  retiring ? &retiring_owner : &retained_owner, !retiring,
+                  !retiring, false),
+              "maximum subscribe failed");
+      if (!retiring)
+        require(coordinator.subscribe(
+                    entity, "temperature",
+                    [&, i](auto) { deliveries.push_back(i * 2 + 1); }, 2u,
+                    &retained_owner, true, true, false),
+                "shared maximum subscribe failed");
+    }
+    maintain(coordinator);
+    auto stale = Backend::native.front().callback;
+    for (size_t i = 1; i < 64; i += 2) {
+      require(coordinator.read_retained(
+                  "climate.maximum_" + std::to_string(i), "temperature",
+                  [&](auto state) {
+                    require(std::string(state.c_str(), state.size()) == "fresh",
+                            "wrong retained value");
+                    ++read_deliveries;
+                  },
+                  true, 0, 0),
+              "maximum pending read failed");
+    }
+    coordinator.release_owner(&retiring_owner);
+    require(coordinator.reclaim_unused_channels() == channels / 2,
+            "maximum reclamation count");
+    Registry::instance().flush();
+    require(coordinator.subscription_count() == channels,
+            "lost live shared subscriptions");
+    require(coordinator.subscription_channel_count() == channels / 2,
+            "retained retired channels");
+    require(Backend::native.size() == channels / 2,
+            "native maximum compaction failed");
+    stale(Backend::State("late"));
+    require(deliveries.empty(),
+            "retired native callback reached a live channel");
+    for (size_t i = 1; i < channels; i += 2) {
+      const auto before = deliveries.size();
+      Backend::publish("climate.maximum_" + std::to_string(i), "fresh");
+      require(deliveries.size() == before + 2 && deliveries[before] == i * 2 &&
+                  deliveries[before + 1] == i * 2 + 1,
+              "maximum remap lost delivery order or channel identity");
+    }
+    require(read_deliveries == 32 && coordinator.pending_read_count() == 0,
+            "maximum compaction lost pending reads");
+    coordinator.invalidate_retained_state();
+    coordinator.release_owner(&retained_owner);
+    maintain(coordinator);
+    require(coordinator.subscription_count() == 0 &&
+                coordinator.subscription_channel_count() == 0,
+            "maximum retirement retained subscriptions");
+    require(coordinator.persistent_container_capacity_bytes() == 0,
+            "maximum retirement retained container history");
+  }
+  empty_registry();
+}
+
 }  // namespace
 
 int main() {
   try {
+    maximum_interleaved_retirement_preserves_live_channels();
     disjoint_configurations_release_both_layers();
     callback_mutations_wait_until_dispatch_returns();
     compaction_preserves_pending_reads_and_reconnect_rules();
