@@ -115,8 +115,19 @@ queue before and after its write, with a stack window of at most 256 bytes.
 This avoids the SDK control path's extra cached string and a complete batch of
 pending blobs. Failed flushes report a compatibility failure; retries compare
 durable data instead of trusting the SDK saver's potentially stale cache.
-Unchanged live text is not published again. Other Text platforms retain their
-normal control behavior. This does not change native or legacy storage layouts.
+Unchanged live text is not published again. Before replacement writes, a fully
+validated mirror clears obsolete empty preferences only for restore-enabled
+TemplateText fields whose configured initial value is empty. Missing keys restore
+the same empty value in the pinned SDK and older readers. This reclaims space in
+small NVS partitions and avoids materializing every unused subpage chunk. Fields
+with nonempty defaults retain explicit empty blobs; other Text platforms retain
+their normal control behavior. Generated metadata selects eligible fields without
+user YAML changes. Native and legacy storage layouts remain unchanged.
+
+A native document may still exceed the legacy partition budget even when its
+individual fields fit. Its durable native save remains valid, while the API
+reports the compatibility warning; this does not reduce native configuration
+limits or establish compatibility with firmware that only reads legacy fields.
 
 Compatibility text limits apply to fields owned by that projection. Native-only
 settings, such as badge rows, retain their native size limits and remain in the

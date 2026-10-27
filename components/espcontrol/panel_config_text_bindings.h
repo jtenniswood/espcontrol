@@ -20,6 +20,10 @@ class PanelConfigTextValue {
   virtual const std::string &value() const = 0;
   virtual bool set_value(const char *value, size_t value_size) = 0;
   virtual bool publish_value(const char *value, size_t value_size) = 0;
+  virtual bool can_persist_value(size_t) const { return true; }
+  // Reclaim storage for a wanted empty value when absence restores exactly
+  // that value. Custom platforms/defaults retain the ordinary write path.
+  virtual bool prepare_empty_value() { return true; }
 };
 
 class PanelConfigTextBindings {
@@ -50,19 +54,20 @@ class PanelConfigTextBindings {
   bool publish_document(const uint8_t *document, size_t document_size);
 
  private:
-  struct ButtonSources {
-    PanelConfigTextValue *button{nullptr};
-    std::array<PanelConfigTextValue *, MAX_SUBPAGE_CHUNKS> subpage_chunks{};
-  };
+   enum class ApplyMode { PUBLISH, CHECK_PERSIST, PREPARE_EMPTY, PERSIST };
+   struct ButtonSources {
+     PanelConfigTextValue *button{nullptr};
+     std::array<PanelConfigTextValue *, MAX_SUBPAGE_CHUNKS> subpage_chunks{};
+   };
 
   bool owns_record(const PanelConfigRecord &record) const;
   bool write_document(const uint8_t *native, size_t native_size,
                       uint8_t *output, size_t output_capacity,
                       size_t *document_size) const;
   bool apply_document(const uint8_t *document, size_t document_size,
-                      bool persist);
+                      ApplyMode mode);
   bool write_value(PanelConfigTextValue *target, const char *value,
-                   size_t value_size, bool persist);
+                   size_t value_size, ApplyMode mode);
 
   // Runtime-only overflow can leave the preference copy behind. The next
   // compatible mirror must rewrite even values that already match live state.

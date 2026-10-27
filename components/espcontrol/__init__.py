@@ -81,6 +81,18 @@ def _consume_endpoint_socket(config):
 CONFIG_SCHEMA = cv.All(CONFIG_SCHEMA, _consume_endpoint_socket)
 
 
+def _empty_template_preference_ids(text_configs):
+    """Only missing preferences which the pinned SDK restores as empty."""
+    return {
+        str(entry[CONF_ID])
+        for entry in text_configs
+        if entry.get("platform") == "template"
+        and entry.get("restore_value", False)
+        and entry.get("initial_value", "") == ""
+        and "lambda" not in entry
+    }
+
+
 @coroutine_with_priority(CoroPriority.DIAGNOSTICS)
 async def to_code(config):
     # Run before safe_mode's early return and before any preference consumers.
@@ -123,6 +135,9 @@ async def to_code(config):
         if CONF_BUTTON_ON_COLOR in panel_config:
             button_on_color = await cg.get_variable(panel_config[CONF_BUTTON_ON_COLOR])
             cg.add(var.set_panel_config_button_on_color(button_on_color))
+        referenced_texts = [panel_config[CONF_BUTTON_ORDER]]
+        if CONF_BUTTON_ON_COLOR in panel_config:
+            referenced_texts.append(panel_config[CONF_BUTTON_ON_COLOR])
         for slot, button_sources in enumerate(panel_config[CONF_BUTTONS], start=1):
             button = await cg.get_variable(button_sources[CONF_CONFIG])
             subpages = [
@@ -130,6 +145,13 @@ async def to_code(config):
                 for source in button_sources[CONF_SUBPAGE_CHUNKS]
             ]
             cg.add(var.set_panel_config_button(slot, button, *subpages))
+            referenced_texts.extend(
+                [button_sources[CONF_CONFIG], *button_sources[CONF_SUBPAGE_CHUNKS]]
+            )
+        empty_defaults = _empty_template_preference_ids(CORE.config.get("text", []))
+        for source in referenced_texts:
+            if str(source) in empty_defaults:
+                cg.add(var.set_panel_config_text_empty_default(await cg.get_variable(source)))
 
     for update_config in CORE.config.get("update", []):
         update_entity = await cg.get_variable(update_config[CONF_ID])

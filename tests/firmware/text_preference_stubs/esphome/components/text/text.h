@@ -13,7 +13,8 @@ public:
   std::string state;
   Traits traits;
   size_t controls{0}, publications{0};
-  uint32_t get_preference_hash() const { return 0x12345678; }
+  uint32_t preference_hash{0x12345678};
+  uint32_t get_preference_hash() const { return preference_hash; }
   void publish_state(const std::string &value) {
     state = value;
     ++publications;

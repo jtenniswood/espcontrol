@@ -180,20 +180,35 @@ bool PanelConfigTextBindings::persist_document(const uint8_t *document,
     }
     if (offset != record.value_size) return false;
   }
-  const bool mirrored = apply_document(document, document_size, true);
+  if (!apply_document(document, document_size, ApplyMode::CHECK_PERSIST))
+    return false;
+  // Free obsolete empty defaults before updating nonempty fields. A nearly
+  // full NVS partition may otherwise fail on the first replacement blob even
+  // though the desired compatibility projection is much smaller.
+  if (!apply_document(document, document_size, ApplyMode::PREPARE_EMPTY)) {
+    legacy_mirror_current_ = false;
+    return false;
+  }
+  const bool mirrored =
+      apply_document(document, document_size, ApplyMode::PERSIST);
   legacy_mirror_current_ = mirrored;
   return mirrored;
 }
 
 bool PanelConfigTextBindings::publish_document(const uint8_t *document,
                                                size_t document_size) {
-  return apply_document(document, document_size, false);
+  return apply_document(document, document_size, ApplyMode::PUBLISH);
 }
 
 bool PanelConfigTextBindings::write_value(PanelConfigTextValue *target,
                                           const char *value, size_t value_size,
-                                          bool persist) {
+                                          ApplyMode mode) {
   if (target == nullptr) return false;
+  if (mode == ApplyMode::CHECK_PERSIST)
+    return target->can_persist_value(value_size);
+  if (mode == ApplyMode::PREPARE_EMPTY)
+    return value_size != 0 || target->prepare_empty_value();
+  const bool persist = mode == ApplyMode::PERSIST;
   const std::string &current = target->value();
   if ((!persist || legacy_mirror_current_) && current.size() == value_size &&
       (value_size == 0 || std::memcmp(current.data(), value, value_size) == 0)) {
@@ -206,7 +221,7 @@ bool PanelConfigTextBindings::write_value(PanelConfigTextValue *target,
 
 bool PanelConfigTextBindings::apply_document(const uint8_t *document,
                                              size_t document_size,
-                                             bool persist) {
+                                             ApplyMode mode) {
   PanelConfigReader reader(document, document_size);
   if (reader.begin() != PanelConfigStatus::OK) return false;
 
@@ -228,7 +243,7 @@ bool PanelConfigTextBindings::apply_document(const uint8_t *document,
       if (sources.button == nullptr ||
           !write_value(sources.button,
                        reinterpret_cast<const char *>(record.value),
-                       record.value_size, persist)) {
+                       record.value_size, mode)) {
         return false;
       }
       button_slots |= uint32_t{1} << (record.slot - 1);
@@ -243,12 +258,14 @@ bool PanelConfigTextBindings::apply_document(const uint8_t *document,
         --remaining_chunks;
         // Runtime publication bypasses the preference-backed 255-byte text
         // calls. Keep existing chunks, with native overflow in the final field.
-        const size_t chunk_size = !persist && remaining_chunks == 0
-            ? record.value_size - offset
-            : legacy_chunk_size(record.value + offset, record.value_size - offset);
+        const size_t chunk_size =
+            mode == ApplyMode::PUBLISH && remaining_chunks == 0
+                ? record.value_size - offset
+                : legacy_chunk_size(record.value + offset,
+                                    record.value_size - offset);
         if (!write_value(chunk,
                          reinterpret_cast<const char *>(record.value + offset),
-                         chunk_size, persist)) {
+                         chunk_size, mode)) {
           return false;
         }
         offset += chunk_size;
@@ -260,7 +277,7 @@ bool PanelConfigTextBindings::apply_document(const uint8_t *document,
                std::memcmp(record.key, BUTTON_ORDER_KEY, record.key_size) == 0) {
       if (!write_value(button_order_,
                        reinterpret_cast<const char *>(record.value),
-                       record.value_size, persist)) {
+                       record.value_size, mode)) {
         return false;
       }
       has_button_order = true;
@@ -271,7 +288,7 @@ bool PanelConfigTextBindings::apply_document(const uint8_t *document,
       if (button_on_color_ != nullptr &&
           !write_value(button_on_color_,
                        reinterpret_cast<const char *>(record.value),
-                       record.value_size, persist)) {
+                       record.value_size, mode)) {
         return false;
       }
       has_button_on_color = true;
@@ -279,20 +296,21 @@ bool PanelConfigTextBindings::apply_document(const uint8_t *document,
   }
   if (status != PanelConfigStatus::END) return false;
 
-  if (!has_button_order && !write_value(button_order_, "", 0, persist))
+  if (!has_button_order && !write_value(button_order_, "", 0, mode))
     return false;
   if (!has_button_on_color && button_on_color_ != nullptr &&
-      !write_value(button_on_color_, "", 0, persist))
+      !write_value(button_on_color_, "", 0, mode))
     return false;
   for (size_t index = 0; index < buttons_.size(); ++index) {
     ButtonSources &sources = buttons_[index];
     const uint32_t slot_mask = uint32_t{1} << index;
     if ((button_slots & slot_mask) == 0 && sources.button != nullptr &&
-        !write_value(sources.button, "", 0, persist))
+        !write_value(sources.button, "", 0, mode))
       return false;
     if ((subpage_slots & slot_mask) != 0) continue;
     for (PanelConfigTextValue *chunk : sources.subpage_chunks) {
-      if (chunk != nullptr && !write_value(chunk, "", 0, persist)) return false;
+      if (chunk != nullptr && !write_value(chunk, "", 0, mode))
+        return false;
     }
   }
   return true;

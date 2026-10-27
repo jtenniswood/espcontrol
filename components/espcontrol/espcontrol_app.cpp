@@ -155,12 +155,14 @@ void EspControlApp::set_panel_config_button_order(
     esphome::text::Text *button_order) {
   panel_config_button_order_ = button_order;
   panel_config_order_template_ = false;
+  panel_config_chrome_empty_defaults_ &= ~uint8_t{1};
 }
 
 void EspControlApp::set_panel_config_button_on_color(
     esphome::text::Text *button_on_color) {
   panel_config_button_on_color_ = button_on_color;
   panel_config_color_template_ = false;
+  panel_config_chrome_empty_defaults_ &= ~uint8_t{2};
 }
 
 void EspControlApp::set_panel_config_button(
@@ -173,6 +175,23 @@ void EspControlApp::set_panel_config_button(
   panel_config_button_texts_[slot - 1] = {
       button, {subpage_0, subpage_1, subpage_2, subpage_3, subpage_4,
                subpage_5, subpage_6, subpage_7}};
+}
+
+void EspControlApp::set_panel_config_text_empty_default(
+    esphome::text::Text *text) {
+  if (!text)
+    return;
+  if (text == panel_config_button_order_ && panel_config_order_template_)
+    panel_config_chrome_empty_defaults_ |= 1u;
+  if (text == panel_config_button_on_color_ && panel_config_color_template_)
+    panel_config_chrome_empty_defaults_ |= 2u;
+  for (auto &sources : panel_config_button_texts_) {
+    if (text == sources.button && sources.template_button)
+      sources.empty_defaults |= 1u;
+    for (size_t i = 0; i < sources.subpages.size(); ++i)
+      if (text == sources.subpages[i] && sources.template_subpages[i])
+        sources.empty_defaults |= uint16_t{1} << (i + 1);
+  }
 }
 
 bool EspControlApp::native_configuration_requested() const {
@@ -191,10 +210,12 @@ bool EspControlApp::create_native_configuration_runtime() {
   native_configuration_runtime_.reset(runtime);
   runtime->text_bindings.set_device_profile(panel_config_device_profile_);
   runtime->button_order.bind(panel_config_button_order_,
-                             panel_config_order_template_);
+                             panel_config_order_template_,
+                             (panel_config_chrome_empty_defaults_ & 1u) != 0);
   runtime->text_bindings.set_button_order(&runtime->button_order);
-  runtime->button_on_color.bind(panel_config_button_on_color_,
-                                panel_config_color_template_);
+  runtime->button_on_color.bind(
+      panel_config_button_on_color_, panel_config_color_template_,
+      (panel_config_chrome_empty_defaults_ & 2u) != 0);
   runtime->text_bindings.set_button_on_color(&runtime->button_on_color);
   for (size_t index = 0; index < panel_config_button_texts_.size(); ++index) {
     const PanelConfigTextSources &sources = panel_config_button_texts_[index];
@@ -205,14 +226,16 @@ bool EspControlApp::create_native_configuration_runtime() {
     if (sources.button == nullptr) continue;
     NativeConfigurationRuntime::LegacyButtonTextSources &legacy_sources =
         runtime->buttons[index];
-    legacy_sources.button.bind(sources.button, sources.template_button);
+    legacy_sources.button.bind(sources.button, sources.template_button,
+                               (sources.empty_defaults & 1u) != 0);
     std::array<configuration::PanelConfigTextValue *,
                configuration::PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS>
         legacy_subpages{};
     for (size_t subpage = 0; subpage < sources.subpages.size(); ++subpage) {
       if (sources.subpages[subpage] == nullptr) continue;
-      legacy_sources.subpages[subpage].bind(sources.subpages[subpage],
-                                            sources.template_subpages[subpage]);
+      legacy_sources.subpages[subpage].bind(
+          sources.subpages[subpage], sources.template_subpages[subpage],
+          (sources.empty_defaults & (1u << (subpage + 1))) != 0);
       legacy_subpages[subpage] = &legacy_sources.subpages[subpage];
     }
     runtime->text_bindings.set_button(static_cast<uint8_t>(index + 1),

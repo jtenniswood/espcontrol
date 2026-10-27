@@ -65,6 +65,10 @@ class EspControlApp : public esphome::Component {
   void set_panel_config_device_profile(const char *device_profile);
   void set_panel_config_button_order(esphome::text::Text *button_order);
   void set_panel_config_button_on_color(esphome::text::Text *button_on_color);
+  // Code generation marks only restore-enabled TemplateText fields whose
+  // configured initial value is empty. Missing preferences are equivalent to
+  // empty values for those fields, including after a firmware downgrade.
+  void set_panel_config_text_empty_default(esphome::text::Text *text);
   void set_panel_config_button(
       uint8_t slot, esphome::text::Text *button,
       esphome::text::Text *subpage_0, esphome::text::Text *subpage_1,
@@ -112,6 +116,14 @@ class EspControlApp : public esphome::Component {
     }
     return count;
   }
+  size_t empty_default_preference_count() const {
+    size_t count = (panel_config_chrome_empty_defaults_ & 1u) != 0;
+    count += (panel_config_chrome_empty_defaults_ & 2u) != 0;
+    for (const auto &sources : panel_config_button_texts_)
+      for (unsigned bit = 0; bit < 9; ++bit)
+        count += (sources.empty_defaults & (1u << bit)) != 0;
+    return count;
+  }
   void set_panel_config_card_images_storage(bool enabled) {
     panel_config_card_images_storage_ = enabled;
   }
@@ -137,13 +149,21 @@ class EspControlApp : public esphome::Component {
     std::array<esphome::text::Text *, 8> subpages{};
     bool template_button{false};
     std::array<bool, 8> template_subpages{};
+    uint16_t empty_defaults{0};
   };
+  static_assert(sizeof(PanelConfigTextSources) ==
+                    ((9 * sizeof(esphome::text::Text *) + 9 * sizeof(bool) +
+                      alignof(esphome::text::Text *) - 1) /
+                     alignof(esphome::text::Text *)) *
+                        alignof(esphome::text::Text *),
+                "Empty-default metadata must fit existing source padding");
 
   const char *panel_config_device_profile_{nullptr};
   esphome::text::Text *panel_config_button_order_{nullptr};
   esphome::text::Text *panel_config_button_on_color_{nullptr};
   bool panel_config_order_template_{false};
   bool panel_config_color_template_{false};
+  uint8_t panel_config_chrome_empty_defaults_{0};
   std::array<PanelConfigTextSources, 32> panel_config_button_texts_{};
   bool panel_config_card_images_storage_{false};
   // This owns every non-trivial configuration object. Keeping it separate

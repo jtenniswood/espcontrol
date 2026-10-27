@@ -62,6 +62,16 @@ target_compile_options(panel_config_esphome_text_test PRIVATE -Wall -Wextra -Wer
 target_include_directories(panel_config_esphome_text_test PRIVATE text_preference_stubs ../../components/espcontrol)
 add_test(NAME panel_config_esphome_text_test COMMAND panel_config_esphome_text_test)
 
+add_executable(panel_config_legacy_capacity_test panel_config_legacy_capacity_test.cpp
+  ../../components/espcontrol/panel_config_text_bindings.cpp)
+target_compile_features(panel_config_legacy_capacity_test PRIVATE cxx_std_17)
+target_compile_definitions(panel_config_legacy_capacity_test PRIVATE USE_ESP32)
+target_compile_options(panel_config_legacy_capacity_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_legacy_capacity_test PRIVATE text_preference_stubs ../../components/espcontrol)
+add_test(NAME panel_config_legacy_capacity_test COMMAND panel_config_legacy_capacity_test)
+add_test(NAME panel_config_empty_defaults_codegen_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/panel_config_empty_defaults_codegen_test.py)
+
 add_executable(legacy_text_preference_test legacy_text_preference_test.cpp)
 target_compile_features(legacy_text_preference_test PRIVATE cxx_std_17)
 target_compile_options(legacy_text_preference_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
