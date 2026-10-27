@@ -731,3 +731,9 @@ add_test(NAME camera_screensaver_dimming_test COMMAND
 
 add_test(NAME discovery_shutdown_order_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/discovery_shutdown_order_test.py)
+
+add_executable(rainfall_card_test rainfall_card_test.cpp)
+target_compile_features(rainfall_card_test PRIVATE cxx_std_17)
+target_compile_options(rainfall_card_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(rainfall_card_test PRIVATE ../../components/espcontrol)
+add_test(NAME rainfall_card_test COMMAND rainfall_card_test)

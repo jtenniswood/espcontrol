@@ -58,5 +58,50 @@
       "precision": "tomorrow",
       "options": ""
     }
+  },
+  {
+    "name": "rainfall sensor mode is retained",
+    "input": "sensor.rainfall_today;;Auto;Auto;ignored;;weather;rainfall;ignored=1",
+    "expected": {
+      "entity": "sensor.rainfall_today",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "rainfall",
+      "options": ""
+    }
+  },
+  {
+    "name": "rainfall forecast source is retained",
+    "input": "weather.home;;Auto;Auto;;;weather;rainfall;ignored=1,rainfall_source=forecast",
+    "expected": {
+      "entity": "weather.home",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "rainfall",
+      "options": "rainfall_source=forecast"
+    }
+  },
+  {
+    "name": "other weather modes drop rainfall source",
+    "input": "weather.home;;Auto;Auto;;;weather;today;rainfall_source=forecast",
+    "expected": {
+      "entity": "weather.home",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "today",
+      "options": ""
+    }
   }
 ]

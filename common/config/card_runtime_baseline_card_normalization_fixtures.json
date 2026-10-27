@@ -1260,6 +1260,36 @@
     }
   },
   {
+    "name": "weather: rainfall_sensor",
+    "input": "~sensor.rainfall_today,,Auto,Auto,,,weather,rainfall,",
+    "expected": {
+      "entity": "sensor.rainfall_today",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "rainfall",
+      "options": ""
+    }
+  },
+  {
+    "name": "weather: rainfall_forecast",
+    "input": "~weather.example,,Auto,Auto,,,weather,rainfall,rainfall_source%3Dforecast",
+    "expected": {
+      "entity": "weather.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "rainfall",
+      "options": "rainfall_source=forecast"
+    }
+  },
+  {
     "name": "weather: today",
     "input": "~weather.example,,Auto,Auto,,,weather,today,",
     "expected": {

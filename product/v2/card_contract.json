@@ -2349,33 +2349,93 @@
     "weather": {
       "label": "Weather",
       "allowInSubpage": true,
-      "domains": ["weather"],
+      "domains": [
+        "weather",
+        "sensor",
+        "input_number"
+      ],
       "options": [
         {
           "name": "weather_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["", "today", "tomorrow", "daily"],
+          "values": [
+            "",
+            "today",
+            "tomorrow",
+            "daily",
+            "rainfall"
+          ],
           "defaultValue": "",
           "storageField": "precision",
           "omitDefault": true
+        },
+        {
+          "name": "rainfall_source",
+          "label": "Rainfall Source",
+          "kind": "choice",
+          "values": [
+            "sensor",
+            "forecast"
+          ],
+          "defaultValue": "sensor",
+          "omitDefault": true,
+          "applicability": [
+            {
+              "source": "field",
+              "name": "precision",
+              "operator": "equals",
+              "value": "rainfall"
+            }
+          ],
+          "supportedWhen": {
+            "precision": [
+              "rainfall"
+            ]
+          }
         }
       ],
       "normalization": {
         "fields": {
-          "entity": { "policy": "keep" },
-          "label": { "policy": "hook", "hook": "normalize_weather_fields" },
-          "icon": { "policy": "keep" },
-          "icon_on": { "policy": "keep" },
-          "sensor": { "policy": "clear" },
-          "unit": { "policy": "keep" },
-          "type": { "policy": "default", "value": "weather" },
-          "precision": { "policy": "hook", "hook": "normalize_weather_fields" },
-          "options": { "policy": "hook", "hook": "normalize_weather_options" }
+          "entity": {
+            "policy": "keep"
+          },
+          "label": {
+            "policy": "hook",
+            "hook": "normalize_weather_fields"
+          },
+          "icon": {
+            "policy": "keep"
+          },
+          "icon_on": {
+            "policy": "keep"
+          },
+          "sensor": {
+            "policy": "clear"
+          },
+          "unit": {
+            "policy": "keep"
+          },
+          "type": {
+            "policy": "default",
+            "value": "weather"
+          },
+          "precision": {
+            "policy": "hook",
+            "hook": "normalize_weather_fields"
+          },
+          "options": {
+            "policy": "hook",
+            "hook": "normalize_weather_options"
+          }
         },
         "unknownOptions": "drop",
-        "canonicalOptionOrder": [],
-        "migrationActions": ["legacy_weather_forecast"],
+        "canonicalOptionOrder": [
+          "rainfall_source"
+        ],
+        "migrationActions": [
+          "legacy_weather_forecast"
+        ],
         "optionHook": "normalize_weather_options"
       },
       "default": {
