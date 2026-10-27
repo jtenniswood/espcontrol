@@ -72,7 +72,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.precision = "tomorrow";
     if (b.label == "Weather") b.label.clear();
   }
-  if (b.type == "weather" && !card_runtime_weather_forecast_precision(b.precision)) {
+  if (b.type == "weather" && b.precision != "wind" && !card_runtime_weather_forecast_precision(b.precision)) {
     b.precision.clear();
   }
   if (b.type == "media") {

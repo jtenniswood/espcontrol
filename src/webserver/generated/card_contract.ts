@@ -3751,7 +3751,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "",
           "today",
           "tomorrow",
-          "daily"
+          "daily",
+          "wind"
         ],
         "defaultValue": "",
         "storageField": "precision",

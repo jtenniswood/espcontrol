@@ -1270,7 +1270,7 @@ inline std::string normalize_saved_config_security_options(
 
 inline void normalize_saved_config_weather_fields(ParsedCfg &p, bool was_legacy_forecast) {
   if (was_legacy_forecast && p.label == "Weather") p.label.clear();
-  if (!card_runtime_weather_forecast_precision(p.precision)) p.precision.clear();
+  if (p.precision != "wind" && !card_runtime_weather_forecast_precision(p.precision)) p.precision.clear();
 }
 
 inline std::string normalize_saved_config_weather_options(

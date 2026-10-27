@@ -986,7 +986,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
   control_modal_register_card_label(s);
   display_apply_slot_text_width(s, display);
   if (espcontrol::cards::weather_driver_matches(context) &&
-      espcontrol::cards::weather_driver_shows_forecast(p)) {
+      (p.precision == "wind" || espcontrol::cards::weather_driver_shows_forecast(p))) {
     espcontrol::cards::weather_driver_refresh_layout(s, p, context, display, row_span, col_span);
     return;
   }
