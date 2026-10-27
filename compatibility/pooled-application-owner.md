@@ -94,6 +94,11 @@ The device owner commits its grid descriptors and source style profile at the
 same safe boundary. The scene performs a layout pass after bank binding before
 starting size-dependent image/QR work.
 
+Compatibility text limits apply to fields owned by that projection. Native-only
+settings, such as badge rows, retain their native size limits and remain in the
+durable document; they do not prevent compatible button fields from being
+mirrored. Compatibility edits continue to preserve those native-only records.
+
 The optional `page_native_scene_test` sanitizer harness compiles the complete
 production scene unchanged with real LVGL widgets, state owners, command
 policies/queue, artwork request/view pipelines and QR encoder/frames. Hardware,

@@ -361,6 +361,64 @@ bool legacy_unicode_capacity_is_checked_before_writing() {
   return true;
 }
 
+bool native_only_settings_do_not_take_legacy_text_capacity() {
+  // Badge rows are native records, not 255-byte compatibility text entities.
+  // Oversized owned settings must still reject the whole mirror before writes.
+  for (const std::string key : {"badge_row_0", "button_order", "button_on_color"}) {
+    FakeText order("old-order"), color("old-color"), button("old-button");
+    PanelConfigTextBindings bindings;
+    bindings.set_device_profile("profile");
+    bindings.set_button_order(&order);
+    bindings.set_button_on_color(&color);
+    bindings.set_button(1, &button, {});
+    PanelConfigLegacyAdapter adapter(bindings);
+    const std::string large = "{\"label\":\"" + std::string(305, 'x') + "\"}";
+    std::array<uint8_t, 1024> document{}, merged{};
+    PanelConfigWriter writer(document.data(), document.size());
+    const auto bytes = [](const std::string &value) {
+      return reinterpret_cast<const uint8_t *>(value.data());
+    };
+    size_t size = 0;
+    if (writer.begin() != PanelConfigStatus::OK ||
+        writer.append_device_profile(bytes("profile"), 7) != PanelConfigStatus::OK ||
+        writer.append_button(1, bytes("new-button"), 10) != PanelConfigStatus::OK ||
+        writer.append_setting(bytes(key), key.size(), bytes(large), large.size()) != PanelConfigStatus::OK)
+      return false;
+    if (key != "button_order" &&
+        writer.append_setting(bytes("button_order"), 12, bytes("1"), 1) != PanelConfigStatus::OK)
+      return false;
+    if (writer.finish(&size) != PanelConfigStatus::OK) return false;
+    const bool native_only = key == "badge_row_0";
+    if (adapter.mirror(1, document.data(), size) != native_only) return false;
+    if (!native_only) {
+      if (button.value() != "old-button" || order.value() != "old-order" ||
+          color.value() != "old-color" || button.persistent_writes ||
+          order.persistent_writes || color.persistent_writes)
+        return false;
+      continue;
+    }
+    if (button.value() != "new-button" || order.value() != "1" ||
+        button.persistent_writes != 1 || order.persistent_writes != 1 ||
+        !adapter.mirror(1, document.data(), size) || button.persistent_writes != 1)
+      return false;
+    bool changed = true;
+    const auto result = adapter.merge(1, document.data(), size, merged.data(), merged.size(), &changed);
+    if (result.status != LegacyStatus::OK || changed) return false;
+    PanelConfigReader reader(merged.data(), result.document_size);
+    if (reader.begin() != PanelConfigStatus::OK) return false;
+    PanelConfigRecord record;
+    bool preserved = false;
+    while (reader.next(&record) == PanelConfigStatus::OK) {
+      if (record.type == PanelConfigRecordType::SETTING && record.key_size == key.size() &&
+          std::memcmp(record.key, key.data(), key.size()) == 0)
+        preserved = record.value_size == large.size() &&
+          std::memcmp(record.value, large.data(), large.size()) == 0;
+    }
+    if (!preserved) return false;
+  }
+  return true;
+}
+
 bool compatibility_merge_preserves_native_only_fields_and_order_independence() {
   FakeText order("1"), button("native button"), child("old child");
   PanelConfigTextBindings bindings;
@@ -449,7 +507,8 @@ bool compatibility_merge_preserves_native_only_fields_and_order_independence() {
 }  // namespace
 
 int main() {
-  return compatibility_merge_preserves_native_only_fields_and_order_independence() &&
+  return native_only_settings_do_not_take_legacy_text_capacity() &&
+                 compatibility_merge_preserves_native_only_fields_and_order_independence() &&
                  imports_legacy_button_subpage_and_order() &&
                  native_document_mirrors_back_to_legacy_entities_for_downgrade() &&
                  native_document_updates_live_grid_without_writing_legacy_preferences() &&

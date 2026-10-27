@@ -161,15 +161,16 @@ bool PanelConfigTextBindings::write_document(const uint8_t *native,
 
 bool PanelConfigTextBindings::persist_document(const uint8_t *document,
                                                size_t document_size) {
-  // Check the entire mirror before touching preferences. Larger native values
-  // remain durable and usable, but cannot be restored by older firmware.
+  // Check the entire compatibility projection before touching preferences.
+  // Native-only settings are not text entities and keep their native limits.
   PanelConfigReader reader(document, document_size);
   if (reader.validate() != PanelConfigStatus::OK ||
       reader.begin() != PanelConfigStatus::OK) return false;
   PanelConfigRecord record;
   while (reader.next(&record) == PanelConfigStatus::OK) {
     if ((record.type == PanelConfigRecordType::BUTTON ||
-         record.type == PanelConfigRecordType::SETTING) && record.value_size > 255)
+         (record.type == PanelConfigRecordType::SETTING && owns_record(record))) &&
+        record.value_size > 255)
       return false;
     if (record.type != PanelConfigRecordType::SUBPAGE) continue;
     size_t offset = 0;
