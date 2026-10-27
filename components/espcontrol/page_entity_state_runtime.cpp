@@ -9,6 +9,27 @@
 
 namespace espcontrol::pages {
 namespace {
+struct PreparationIndex {
+  PageArenaAllocator &allocator;
+  size_t &bytes;
+  uint32_t *data{nullptr};
+  ~PreparationIndex() {
+    if (data != nullptr)
+      allocator.release(data, bytes);
+    bytes = 0;
+  }
+};
+
+uint32_t channel_hash(std::string_view entity, std::string_view attribute) {
+  uint32_t value = 2166136261u;
+  for (const unsigned char byte : entity)
+    value = (value ^ byte) * 16777619u;
+  value *= 16777619u; // NUL separates the two validated, NUL-free names.
+  for (const unsigned char byte : attribute)
+    value = (value ^ byte) * 16777619u;
+  return value;
+}
+
 bool add_size(size_t &total, size_t count, size_t unit = 1) {
   if (unit != 0 && count > (std::numeric_limits<size_t>::max() - total) / unit) return false;
   total += count * unit;
@@ -40,43 +61,81 @@ class PageEntityStateRuntime::Counter final : public PageDependencySink {
 
 class PageEntityStateRuntime::Builder final : public PageDependencySink {
  public:
-  Builder(Slot &slot, const PageStore &store, size_t count, size_t names, size_t channels)
-      : slot(slot), store(store), count_limit(count), names_limit(names), channels_limit(channels) {}
-  bool add(CardId card, std::string_view entity, std::string_view attribute) override {
-    if (!valid || ++count > count_limit || card >= store.card_count() || entity.empty() ||
-        !valid_name(entity) || !valid_name(attribute)) return valid = false;
-    size_t channel = 0;
-    for (; channel < slot.channel_count; ++channel) {
-      const auto &entry = slot.channels[channel];
-      if (std::string_view(slot.names + entry.entity_offset, entry.entity_size) == entity &&
-          std::string_view(slot.names + entry.attribute_offset, entry.attribute_size) == attribute) break;
-    }
-    if (channel == slot.channel_count) {
-      size_t bytes = entity.size();
-      if (channel >= channels_limit || !add_size(bytes, attribute.size()) || !add_size(bytes, 2) ||
-          bytes > names_limit - slot.names_used) return valid = false;
-      auto &entry = *new (slot.channels + channel) Channel{};
-      entry.entity_offset = static_cast<uint32_t>(slot.names_used);
-      entry.entity_size = static_cast<uint32_t>(entity.size());
-      std::memcpy(slot.names + slot.names_used, entity.data(), entity.size());
-      slot.names_used += entity.size();
-      slot.names[slot.names_used++] = '\0';
-      entry.attribute_offset = static_cast<uint32_t>(slot.names_used);
-      entry.attribute_size = static_cast<uint32_t>(attribute.size());
-      if (!attribute.empty()) std::memcpy(slot.names + slot.names_used, attribute.data(), attribute.size());
-      slot.names_used += attribute.size();
-      slot.names[slot.names_used++] = '\0';
-      ++slot.channel_count;
-    }
-    for (size_t i = 0; i < slot.edge_count; ++i)
-      if (slot.edges[i].card == card && slot.edges[i].channel == channel) return true;
-    new (slot.edges + slot.edge_count++) Edge{card, static_cast<uint32_t>(channel)};
-    return true;
-  }
+   Builder(Slot &slot, const PageStore &store, size_t count, size_t names,
+           size_t channels, uint32_t *lookup, size_t lookup_size)
+       : slot(slot), store(store), count_limit(count), names_limit(names),
+         channels_limit(channels), lookup(lookup), lookup_size(lookup_size) {}
+   bool add(CardId card, std::string_view entity,
+            std::string_view attribute) override {
+     if (!valid || ++count > count_limit || card >= store.card_count() ||
+         entity.empty() || !valid_name(entity) || !valid_name(attribute))
+       return valid = false;
+     const auto matches = [&](size_t channel) {
+       const auto &entry = slot.channels[channel];
+       return std::string_view(slot.names + entry.entity_offset,
+                               entry.entity_size) == entity &&
+              std::string_view(slot.names + entry.attribute_offset,
+                               entry.attribute_size) == attribute;
+     };
+     size_t channel = slot.channel_count, bucket = 0;
+     if (lookup != nullptr) {
+       bucket = channel_hash(entity, attribute) & (lookup_size - 1);
+       while (lookup[bucket] != UINT32_MAX) {
+         if (matches(lookup[bucket])) {
+           channel = lookup[bucket];
+           break;
+         }
+         bucket = (bucket + 1) & (lookup_size - 1);
+       }
+     } else {
+       for (channel = 0; channel < slot.channel_count; ++channel)
+         if (matches(channel))
+           break;
+     }
+     if (channel == slot.channel_count) {
+       size_t bytes = entity.size();
+       if (channel >= channels_limit || !add_size(bytes, attribute.size()) ||
+           !add_size(bytes, 2) || bytes > names_limit - slot.names_used)
+         return valid = false;
+       auto &entry = *new (slot.channels + channel) Channel{};
+       entry.entity_offset = static_cast<uint32_t>(slot.names_used);
+       entry.entity_size = static_cast<uint32_t>(entity.size());
+       std::memcpy(slot.names + slot.names_used, entity.data(), entity.size());
+       slot.names_used += entity.size();
+       slot.names[slot.names_used++] = '\0';
+       entry.attribute_offset = static_cast<uint32_t>(slot.names_used);
+       entry.attribute_size = static_cast<uint32_t>(attribute.size());
+       if (!attribute.empty())
+         std::memcpy(slot.names + slot.names_used, attribute.data(),
+                     attribute.size());
+       slot.names_used += attribute.size();
+       slot.names[slot.names_used++] = '\0';
+       ++slot.channel_count;
+       if (lookup != nullptr)
+         lookup[bucket] = static_cast<uint32_t>(channel);
+     }
+     // Production declarations visit cards in order. Limit duplicate checks to
+     // the current card; interleaved sources retain the general stable path.
+     if (card != previous_card) {
+       if (previous_card != NO_CARD && card < previous_card)
+         ordered = false;
+       previous_card = card;
+       card_edge_begin = slot.edge_count;
+     }
+     for (size_t i = ordered ? card_edge_begin : 0; i < slot.edge_count; ++i)
+       if (slot.edges[i].card == card && slot.edges[i].channel == channel)
+         return true;
+     new (slot.edges + slot.edge_count++)
+         Edge{card, static_cast<uint32_t>(channel)};
+     return true;
+   }
   Slot &slot;
   const PageStore &store;
   size_t count_limit, names_limit, channels_limit, count{0};
-  bool valid{true};
+  uint32_t *lookup;
+  size_t lookup_size, card_edge_begin{0};
+  CardId previous_card{NO_CARD};
+  bool ordered{true}, valid{true};
 };
 
 PageEntityStateRuntime::PageEntityStateRuntime(const PageDependencySource &source,
@@ -135,25 +194,49 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
   if (elastic && channels != 0 &&
       !reserve_values(slot, budget_.initial_state_bytes))
     return fail();
-  Builder builder(slot, store, counter.count, counter.names, channels);
-  if (!source_.enumerate(store, builder) || !builder.valid || builder.count != counter.count ||
-      !index_dependencies(slot)) return fail();
+  {
+    PreparationIndex lookup{allocator_, preparation_scratch_bytes_};
+    size_t lookup_size = 0;
+    if (channels > 16) {
+      lookup_size = 1;
+      // Keep the table at most half full, including when all names differ.
+      while (lookup_size < channels) {
+        if (lookup_size > SIZE_MAX / 2)
+          return fail();
+        lookup_size *= 2;
+      }
+      if (lookup_size > SIZE_MAX / 2)
+        return fail();
+      lookup_size *= 2;
+      if (!add_size(preparation_scratch_bytes_, lookup_size, sizeof(uint32_t)))
+        return fail();
+      lookup.data = static_cast<uint32_t *>(
+          allocator_.allocate(preparation_scratch_bytes_));
+      if (lookup.data == nullptr)
+        return fail();
+      const auto current = memory();
+      memory_.peak_arena_bytes =
+          std::max(memory_.peak_arena_bytes, current.active_arena_bytes +
+                                                 current.staged_arena_bytes +
+                                                 preparation_scratch_bytes_);
+      std::fill_n(lookup.data, lookup_size, UINT32_MAX);
+    }
+    Builder builder(slot, store, counter.count, counter.names, channels,
+                    lookup.data, lookup_size);
+    if (!source_.enumerate(store, builder) || !builder.valid ||
+        builder.count != counter.count)
+      return fail();
+  } // Release build lookup before edge grouping, shared-value copy or transport
+    // setup.
+  if (!index_dependencies(slot))
+    return fail();
   if (!subscriptions_.prepare_batch(slot.subscription_batch, &slot,
                                     slot.revision, slot.channel_count, deliver))
     return fail();
   synchronize_connection();
   // Keep large replacements bounded by sorting channel indices once. Names
   // and values remain owned by the old arena; no second state cache is kept.
-  struct CopyIndex {
-    PageArenaAllocator &allocator;
-    size_t &bytes;
-    uint32_t *data{nullptr};
-    ~CopyIndex() {
-      if (data != nullptr)
-        allocator.release(data, bytes);
-      bytes = 0;
-    }
-  } copy_index{allocator_, preparation_scratch_bytes_};
+  PreparationIndex copy_index{allocator_, preparation_scratch_bytes_};
   const Slot *old = active_ >= 0 && subscriptions_.copy_shared_values()
                         ? &slots_[active_]
                         : nullptr;
@@ -382,11 +465,16 @@ bool PageEntityStateRuntime::receive(Slot &slot, uint32_t revision,
       std::memmove(slot.values + offset, value.data(), value.size());
     }
   }
-  for (size_t i = 0; i < slot.channel_count; ++i) {
-    auto &other = slot.channels[i];
-    if (&other != &entry && other.value_size != 0 && other.value_offset >= tail)
-      other.value_offset = static_cast<uint32_t>(
-          other.value_offset - entry.value_size + value.size());
+  // Appending an initial/copied value or resizing the final packed value
+  // moves no neighbours. Avoid rescanning every channel for each copied key.
+  if (tail != slot.values_used) {
+    for (size_t i = 0; i < slot.channel_count; ++i) {
+      auto &other = slot.channels[i];
+      if (&other != &entry && other.value_size != 0 &&
+          other.value_offset >= tail)
+        other.value_offset = static_cast<uint32_t>(
+            other.value_offset - entry.value_size + value.size());
+    }
   }
   entry.value_offset = static_cast<uint32_t>(offset);
   entry.value_size = static_cast<uint32_t>(value.size());

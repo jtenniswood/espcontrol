@@ -2,6 +2,7 @@
 #include <cmath>
 #include <tuple>
 #include <optional>
+#include <map>
 #include "theme_palette.h"
 #include "button_grid_modal_layout.h"
 #include "lvgl.h"
@@ -467,7 +468,7 @@ void elastic_state_scene_transactions() {
   assert(h.arena.calls == calls && coordinator.entries.size() == registrations && objects(h.root) == count);
   h.arena.fail = false;
 }
-Document maximum_sensor_document(char variant,const DeviceUiLimits& limits) {
+Document maximum_profile_document(char variant,const DeviceUiLimits& limits, bool climate=false) {
   Document doc(limits);
   PanelConfigWriter writer(doc.bytes.data(),doc.bytes.size());
   assert(writer.begin()==PanelConfigStatus::OK);
@@ -482,9 +483,11 @@ Document maximum_sensor_document(char variant,const DeviceUiLimits& limits) {
     assert(writer.append_button(parent,data(root),root.size())==PanelConfigStatus::OK);
     std::string child="~B";
     for(unsigned slot=1;slot<=limits.cards_per_subpage;++slot)child+=","+std::to_string(slot);
-    for(unsigned slot=1;slot<=limits.cards_per_subpage;++slot)
-      child+="|S,,Temperature,Auto,Auto,sensor.maximum_"+std::string(1,variant)+"_"+
-        std::to_string(parent)+"_"+std::to_string(slot)+",%C2%B0C,1,";
+    for(unsigned slot=1;slot<=limits.cards_per_subpage;++slot) {
+      const std::string suffix=std::string(1,variant)+"_"+std::to_string(parent)+"_"+std::to_string(slot);
+      child+=climate ? "|HC,climate.maximum_"+suffix+",Climate,Auto,Auto,,,,"
+                     : "|S,,Temperature,Auto,Auto,sensor.maximum_"+suffix+",%C2%B0C,1,";
+    }
     assert(child.size()<=limits.legacy_subpage_byte_ceiling());
     assert(writer.append_subpage(parent,data(child),child.size())==PanelConfigStatus::OK);
   }
@@ -499,7 +502,7 @@ void maximum_profile_disjoint_replacements() {
   // belong to SENSOR. Each disjoint replacement retires all previous reports.
   constexpr const auto& limits=DEVICE_UI_PROFILES[ProfileIndex];
   const auto channels=limits.max_child_cards();
-  const auto a=maximum_sensor_document('a',limits),b=maximum_sensor_document('b',limits);
+  const auto a=maximum_profile_document('a',limits),b=maximum_profile_document('b',limits);
   ProfileHarness<ProfileIndex> h(false,true);
   size_t stable_bytes=0,stable_objects=0;
   std::function<void(Coordinator::State)> retired_report;
@@ -952,6 +955,80 @@ void qr_images_and_transactions() {
   { ModalCallbackDispatchScope callback; h.scene->stop(); assert(!h.scene->ready() && !PageNativeModalBank::instance->runtime().valid(token)); }
   assert(!h.scene->prepare(PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
 }
+
+void maximum_p4_climate_cache_replacements() {
+  constexpr const auto &limits=DEVICE_UI_PROFILES[6];
+  constexpr size_t channels=7600, quota=512*1024;
+  const auto a=maximum_profile_document('a',limits,true);
+  const auto b=maximum_profile_document('b',limits,true);
+  const std::map<std::string,std::string> common{
+      {"", "heat"},
+      {"hvac_action", "heating"},
+      {"supported_features", "511"},
+      {"current_temperature", "20.0"},
+      {"temperature", "21.0"},
+      {"target_temp_low", "18.0"},
+      {"target_temp_high", "24.0"},
+      {"min_temp", "7.0"},
+      {"max_temp", "35.0"},
+      {"target_temp_step", "0.5"},
+      {"hvac_modes", "[\"off\", \"heat\", \"cool\", \"heat_cool\", \"auto\", \"dry\", \"fan_only\"]"},
+      {"fan_modes", "[\"auto\", \"low\", \"medium\", \"high\"]"},
+      {"swing_modes", "[\"off\", \"on\"]"},
+      {"swing_horizontal_modes", "[\"off\", \"on\"]"},
+      {"preset_modes", "[\"none\", \"eco\", \"comfort\", \"away\", \"sleep\"]"},
+      {"preset_mode", "comfort"},
+      {"fan_mode", "auto"},
+      {"swing_mode", "off"},
+      {"swing_horizontal_mode", "off"},
+      {"friendly_name", "Qualification 1-1 µµµµµµµ"}};
+  ProfileHarness<6> h(false,true);
+  size_t stable_bytes=0, stable_objects=0;
+  std::function<void(Coordinator::State)> stale;
+  for(unsigned iteration=0;iteration<4;++iteration) {
+    // A,A,B,B exercises full shared-cache copies and fully disjoint sets.
+    h.apply(iteration<2?a:b,100+iteration);
+    assert(h.scene->active().card_count()==400&&h.scene->active().page_count()==21);
+    assert(h.scene->memory().state.active_channels==channels&&coordinator.entries.size()==channels);
+    const size_t copied=iteration%2?quota:0;
+    assert(h.scene->memory().state.active_state_bytes==copied);
+    if(stale) stale("retired generation");
+    assert(h.scene->memory().state.active_state_bytes==copied);
+    stale=coordinator.entries.front().receive;
+    if(iteration%2==0) {
+      std::vector<std::string> values;
+      size_t used=0;
+      for(const auto &entry:coordinator.entries) {
+        values.push_back(common.at(entry.attribute));used+=values.back().size();
+      }
+      assert(used<quota);
+      size_t remaining=quota-used;
+      for(size_t i=0;i<values.size();++i) {
+        if(coordinator.entries[i].attribute!="friendly_name")continue;
+        const size_t extra=std::min(remaining,size_t{2048}-values[i].size());
+        values[i].append(extra,'x');remaining-=extra;
+      }
+      assert(remaining==0);
+      for(size_t i=0;i<values.size();++i)coordinator.entries[i].receive(values[i]);
+      h.scene->loop();
+    }
+    assert(h.scene->memory().state.active_state_bytes==quota);
+    assert(h.scene->memory().state.active_state_capacity_bytes==quota);
+    const auto before=h.counted.memory();
+    if(iteration==0){stable_bytes=before.reserved_bytes;stable_objects=objects(h.root);}
+    else assert(before.reserved_bytes==stable_bytes&&objects(h.root)==stable_objects);
+    h.arena.fail=true;
+    for(unsigned page=1;page<=limits.max_first_level_subpages;++page) {
+      assert(h.scene->navigate("slot:"+std::to_string(page)));h.scene->loop();
+      for(size_t slot=0;slot<limits.slot_count;++slot)assert(h.scene->visible(h.scene->binding(slot)));
+      assert(h.scene->home());h.scene->loop();
+    }
+    h.arena.fail=false;
+    assert(h.counted.memory().allocation_calls==before.allocation_calls);
+    assert(coordinator.entries.size()==channels&&objects(h.root)==stable_objects);
+  }
+}
+
 int main(int argc,char** argv) {
   const bool maximum_p4=argc==2&&std::string_view(argv[1])=="--maximum-p4";
   assert(argc==1||maximum_p4);
@@ -964,6 +1041,7 @@ int main(int argc,char** argv) {
   if(maximum_p4) {
     live_palette_policy<6>();
     maximum_profile_disjoint_replacements<6>();
+    maximum_p4_climate_cache_replacements();
   } else {
     navigation_and_state();live_temperature_policy();elastic_state_scene_transactions();maximum_profile_disjoint_replacements<8>();panels_and_retirement();mode_and_feedback();source_styles();slider_input();slider_background_hit_testing();appearance_transactions();live_palette_policy<8>();initial_appearance();appearance_wake_without_intermediate_maintenance();remote_navigation();
     assert(!application_scene_navigation());

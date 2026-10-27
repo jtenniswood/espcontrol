@@ -824,12 +824,72 @@ void shared_observers_see_borrowed_previous_values() {
   observers.remove(second);
 }
 
+void colliding_channel_names_keep_identity_and_card_ordinals() {
+  Fixture fixture;
+  Arena arena;
+  Subscriptions transport;
+  Source source;
+  // These distinct names share a bucket in the build lookup. Include repeated
+  // declarations, interleaved cards and duplicate edges after returning to a
+  // previous card: all must retain the original per-card order and identity.
+  const std::array<const char *, 32> entities{
+      {"sensor.lookup_2",    "sensor.lookup_19",   "sensor.lookup_42",
+       "sensor.lookup_147",  "sensor.lookup_226",  "sensor.lookup_323",
+       "sensor.lookup_381",  "sensor.lookup_419",  "sensor.lookup_442",
+       "sensor.lookup_576",  "sensor.lookup_594",  "sensor.lookup_604",
+       "sensor.lookup_741",  "sensor.lookup_778",  "sensor.lookup_837",
+       "sensor.lookup_882",  "sensor.lookup_903",  "sensor.lookup_998",
+       "sensor.lookup_1108", "sensor.lookup_1131", "sensor.lookup_1193",
+       "sensor.lookup_1203", "sensor.lookup_1298", "sensor.lookup_1337",
+       "sensor.lookup_1382", "sensor.lookup_1412", "sensor.lookup_1449",
+       "sensor.lookup_1535", "sensor.lookup_1540", "sensor.lookup_1658",
+       "sensor.lookup_1661", "sensor.lookup_1764"}};
+  for (const auto *entity : entities) {
+    source.items.push_back({0, entity, ""});
+    source.items.push_back({0, entity, ""});
+  }
+  for (const auto *entity : entities) {
+    source.items.push_back({2, entity, ""});
+    source.items.push_back({1, entity, ""});
+    source.items.push_back({0, entity, ""});
+  }
+  {
+    PageEntityStateRuntime state(source, arena, transport, {200, 32, 512});
+    assert(state.prepare(fixture.store));
+    state.activate_prepared(17);
+    assert(state.memory().active_channels == 32 &&
+           state.memory().active_dependencies == 96);
+    assert(transport.entries.size() == 32);
+    for (size_t i = 0; i < entities.size(); ++i)
+      transport.send(entities[i], "", std::to_string(i));
+    for (CardId card = 0; card < 3; ++card) {
+      assert(state.dependency_count({17, card}) == 32);
+      for (size_t i = 0; i < entities.size(); ++i) {
+        const auto dependency = state.dependency({17, card}, i);
+        assert(dependency.entity == entities[i] &&
+               dependency.attribute.empty());
+        assert(dependency.status == PageEntityStatus::AVAILABLE &&
+               dependency.value == std::to_string(i));
+      }
+    }
+    assert(state.memory().active_arena_bytes == arena.live_bytes());
+    assert(state.memory().peak_arena_bytes == arena.peak_bytes);
+    source.items.push_back({1, "sensor.one_more", ""});
+    assert(!state.prepare(fixture.store));
+    assert(state.memory().active_channels == 32 &&
+           state.memory().active_dependencies == 96);
+    assert(state.dependency({17, 0}, 31).value == "31" &&
+           transport.entries.size() == 32);
+  }
+  assert(arena.live.empty() && transport.entries.empty());
+}
+
 // Exercise the full S3 channel/cache budget, including reordered shared keys,
 // disjoint generations, connection changes, and every fallible staging step.
 void maximum_shared_state_replacement_is_atomic() {
   Fixture fixture;
   constexpr size_t channels = 1440, capacity = 128 * 1024;
-  for (int allocation_limit = 0; allocation_limit < 10; ++allocation_limit) {
+  for (int allocation_limit = 0; allocation_limit < 12; ++allocation_limit) {
     Arena arena;
     Subscriptions subscriptions;
     Source source;
@@ -921,6 +981,7 @@ void maximum_shared_state_replacement_is_atomic() {
 }
 
 int main() {
+  colliding_channel_names_keep_identity_and_card_ordinals();
   maximum_shared_state_replacement_is_atomic();
   coordinator_callbacks_use_allocation_free_revocable_batches();
   coordinator_callback_tokens_refuse_wraparound();

@@ -43,6 +43,14 @@ other channels; a later report can recover. Allocation failures are counted
 separately from quota overflows. Owner counters include value capacity and the
 overlap of active/staged metadata and old/new value buffers. Replacing the
 configuration releases its retired pool rather than retaining past demand.
+Large graph builds use a temporary hash lookup to deduplicate entity/attribute
+pairs. Ordered declarations check duplicate edges within the current card;
+interleaved sources keep their stable general path. Lookup allocation failure
+rejects preparation without changing the active configuration, and lookup
+storage is released before edge grouping, value copying or transport setup.
+Its live bytes are included in the graph's overlapping reservation peak.
+Appending copied values to the packed pool skips neighbour-offset scans when
+no existing values move; in-place growth/shrink still preserves borrowed views.
 Large replacements use a temporary sorted channel-index array to match shared
 values, rather than scanning every old channel for every new one. The array
 uses the fallible scene allocator and is released before preparation returns;
