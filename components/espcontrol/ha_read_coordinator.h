@@ -179,6 +179,8 @@ class HaReadCoordinator {
     size_t attempts = 0;
     for (size_t i = 0; i < subscription_channels_.size(); ++i) {
       auto &channel = subscription_channels_[i];
+      if (channel.refresh_scopes == 0)
+        continue;
       channel.refresh_scopes &= active_channel_scopes(i);
       if (channel.refresh_scopes == 0 || static_cast<int32_t>(now - channel.refresh_due) < 0) continue;
       channel.refresh_due = now + 1000;
@@ -481,6 +483,9 @@ class HaReadCoordinator {
      subscriptions_.push_back({callback_ref, scope, owner, channel,
                                retain_latest, false, retain_replay});
      auto &registered_channel = subscription_channels_[channel];
+     registered_channel.maintenance_flags |=
+         CHANNEL_ACTIVE | (retain_latest ? CHANNEL_RETAINED_READS : 0) |
+         (retain_replay ? CHANNEL_REPLAY : 0);
      if (!(registered_channel.maintenance_flags & CHANNEL_SHARED)) {
        if (registered_channel.maintenance_index == UINT32_MAX)
          registered_channel.maintenance_index =
@@ -766,6 +771,17 @@ class HaReadCoordinator {
   }
 
   uint32_t active_channel_scopes(size_t channel) const {
+    const auto &entry = subscription_channels_[channel];
+    if (!(entry.maintenance_flags & CHANNEL_SHARED)) {
+      const auto index = entry.maintenance_index;
+      if (index >= subscriptions_.size())
+        return 0;
+      const auto &ref = subscriptions_[index];
+      return !ref.pending_release && ref.channel == channel && ref.callback &&
+                     *ref.callback
+                 ? ref.scope
+                 : 0;
+    }
     uint32_t scopes = 0;
     for (const auto &ref : subscriptions_) {
       if (!ref.pending_release && ref.channel == channel && ref.callback && *ref.callback) scopes |= ref.scope;
@@ -774,11 +790,9 @@ class HaReadCoordinator {
   }
 
   bool channel_reuses_reads(size_t channel) const {
-    for (const auto &ref : subscriptions_) {
-      if (!ref.pending_release && ref.channel == channel && ref.retain_latest &&
-          ref.callback && *ref.callback) return true;
-    }
-    return false;
+    return channel < subscription_channels_.size() &&
+           (subscription_channels_[channel].maintenance_flags &
+            CHANNEL_RETAINED_READS);
   }
 
   bool subscription_callback_active(const CallbackLease &callback) const {
@@ -910,7 +924,7 @@ class HaReadCoordinator {
     // consumer needs neither a global scan nor an allocated callback snapshot.
     for (auto &channel : subscription_channels_) {
       channel.maintenance_index = UINT32_MAX;
-      channel.maintenance_flags &= ~CHANNEL_SHARED;
+      channel.maintenance_flags = 0;
     }
     for (size_t i = 0; i < subscriptions_.size(); ++i) {
       const auto &ref = subscriptions_[i];
@@ -918,6 +932,9 @@ class HaReadCoordinator {
           ref.channel >= subscription_channels_.size())
         continue;
       auto &channel = subscription_channels_[ref.channel];
+      channel.maintenance_flags |=
+          CHANNEL_ACTIVE | (ref.retain_latest ? CHANNEL_RETAINED_READS : 0) |
+          (ref.retain_replay ? CHANNEL_REPLAY : 0);
       if (channel.maintenance_index == UINT32_MAX)
         channel.maintenance_index = static_cast<uint32_t>(i);
       else

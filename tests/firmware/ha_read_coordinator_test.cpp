@@ -1080,6 +1080,41 @@ void temporary_and_pending_callback_storage_use_the_configured_allocator() {
           "released callback storage did not use the configured allocator");
 }
 
+void retained_policy_cache_tracks_reentrant_owner_replacement() {
+  Coordinator coordinator;
+  int reader, retiring, replacement;
+  bool checked = false;
+  require(
+      coordinator.subscribe(
+          "sensor.policy", "",
+          [&](auto) {
+            coordinator.release_owner(&retiring);
+            require(coordinator.retained_channel_count() == 0,
+                    "pending retirement still counted as a retained policy");
+            require(coordinator.subscribe(
+                        "sensor.policy", "", [](auto) {}, 1, &replacement,
+                        false, false, false),
+                    "replacement consumer failed");
+            require(
+                !coordinator.read_retained(
+                    "sensor.policy", "", [](auto) {}, false, 0, 0),
+                "nonretaining replacement inherited the old retained policy");
+            checked = true;
+          },
+          1, &reader, false, false, false),
+      "reader consumer failed");
+  require(
+      coordinator.subscribe(
+          "sensor.policy", "", [](auto) {}, 1, &retiring, true, true, false),
+      "retained consumer failed");
+  require(coordinator.retained_channel_count() == 1,
+          "shared retained policy not counted");
+  coordinator.transport().publish(0, "live");
+  require(checked && coordinator.retained_channel_count() == 0 &&
+              coordinator.pending_read_count() == 0,
+          "retired retained policy survived compaction");
+}
+
 void single_consumer_delivery_avoids_snapshot_allocation_after_shared_retirement() {
   TrackingAllocatorState::reset();
   TrackingCoordinator coordinator;
@@ -1180,6 +1215,7 @@ void unique_graph_registration_indexes_old_pairs_without_retaining_scratch() {
 }  // namespace
 
 int main() {
+  retained_policy_cache_tracks_reentrant_owner_replacement();
   single_consumer_delivery_avoids_snapshot_allocation_after_shared_retirement();
   unique_graph_registration_indexes_old_pairs_without_retaining_scratch();
   scheduled_metadata_refreshes_share_channels_and_retry_only_failed_sends();
