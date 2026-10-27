@@ -1,5 +1,7 @@
 #pragma once
 
+#include "theme_palette.h"
+
 #include <cmath>
 
 // Include after button_grid.h and the clock/date producer helpers. The selected
@@ -67,6 +69,10 @@ public:
   virtual void alarm_failure(PageAlarmFailure) = 0;
   // Called from safe maintenance only, after the current view/panel settles.
   virtual void chrome(const PageStore &, PageId, bool settings) = 0;
+  // Immutable firmware-lifetime palette, sampled in safe scene maintenance.
+  // A null source leaves explicitly supplied host/embedded themes unchanged.
+  virtual const ThemePalette *palette() const { return nullptr; }
+  virtual void apply_palette(const ThemePalette &) {}
 };
 
 struct PageNativeSceneBudget {
@@ -365,8 +371,10 @@ public:
     view_.geometry(geometry);
     // Restored appearance/orientation scripts may run before the delayed boot
     // document. No active resources exist yet; the first prepare uses these.
-    if (!store_.active().page_count())
+    if (!store_.active().page_count()) {
+      palette_ = nullptr;
       return true;
+    }
     if (!renderer_.prepare(store_.active()) ||
         !modals_.prepare(store_.active())) {
       renderer_.discard_prepared();
@@ -387,6 +395,7 @@ public:
     origin_ = {};
     advance_chrome();
     chrome_dirty_ = layout_dirty_ = true;
+    palette_ = nullptr;
     reconcile_display();
     return true;
   }
@@ -404,6 +413,7 @@ public:
     if (!maintenance_ready())
       return;
     Flag guard(running_);
+    refresh_palette();
     state_.loop();
     if (stopped_)
       return;
@@ -676,6 +686,26 @@ public:
   void refresh_chrome() override { chrome_dirty_ = true; }
 
 private:
+  void refresh_palette() {
+    const auto *next = platform_.palette();
+    if (next == nullptr || next == palette_)
+      return;
+    const auto correct = [this](uint32_t rgb) {
+      return correct_display_color(rgb, theme_.red_percent,
+                                   theme_.green_percent, theme_.blue_percent);
+    };
+    theme_.surface = correct(next->surface_card);
+    theme_.sensor_surface = correct(next->surface_sensor);
+    theme_.media_surface = correct(next->surface_secondary);
+    theme_.alarm_surface = correct(next->surface_card);
+    theme_.image_loading_surface = correct(next->surface_secondary);
+    theme_.text = correct(next->text_primary);
+    theme_.disabled_text = correct(next->text_disabled);
+    ++theme_.revision;
+    palette_ = next;
+    platform_.apply_palette(*next);
+    renderer_.refresh();
+  }
   enum class UiKind : uint8_t { NONE, PAGE, ACTIVATE };
   struct UiRequest {
     UiKind kind{UiKind::NONE};
@@ -1153,6 +1183,7 @@ private:
   AlarmPort alarm_port_;
   PageAlarmPresentation alarm_;
   PageBasicTheme theme_;
+  const ThemePalette *palette_{nullptr};
   PageBasicLvglPort<Slots> view_;
   PageRendererRuntime<Slots> renderer_;
   PageGridInput<Slots> input_;

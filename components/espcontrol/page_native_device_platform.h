@@ -54,6 +54,11 @@ public:
     return grid_ && hooks_.ready && hooks_.touch_allowed &&
            hooks_.begin_takeover && hooks_.end_takeover;
   }
+  const ThemePalette *palette() const override { return &current_theme(); }
+  void apply_palette(const ThemePalette &palette) override {
+    lv_obj_set_style_bg_color(grid_, lv_color_hex(palette.background),
+                              LV_PART_MAIN);
+  }
   bool grid_active() const override {
     return ready() && hooks_.ready() &&
            app_.display().target_mode_is(DisplayMode::ACTIVE) &&

@@ -249,6 +249,12 @@ struct Styles : PageNativeSceneStyles {
   bool resolve(const PageStore&,PageLocalModalOrigin p,PageModalToken,PageNetworkStatusEnvironment&) const override { page=p.page; return true; }
 };
 struct Platform : PageNativeScenePlatform {
+  const ThemePalette *active_palette{nullptr};
+  const ThemePalette *palette() const override { return active_palette; }
+  lv_obj_t *grid{nullptr};
+  void apply_palette(const ThemePalette &palette) override {
+    if(grid)lv_obj_set_style_bg_color(grid,lv_color_hex(palette.background),LV_PART_MAIN);
+  }
   bool shown{true},input{true},critical_active{false},settings{false}; size_t chrome_updates{0}; PageId page{NO_PAGE};
   bool grid_active() const override { return shown; }
   bool input_allowed() const override { return input; }
@@ -317,6 +323,7 @@ struct ProfileHarness {
     columns.fill(LV_GRID_FR(1));columns.back()=LV_GRID_TEMPLATE_LAST;
     rows.fill(LV_GRID_FR(1));rows.back()=LV_GRID_TEMPLATE_LAST;
     root=lv_obj_create(lv_screen_active());
+    platform.grid=root;
     lv_obj_set_size(root,constrained?480:1280,constrained?480:800);
     lv_obj_set_grid_dsc_array(root,columns.data(),rows.data());
     std::array<BtnSlot,slots> source{};
@@ -762,6 +769,49 @@ void appearance_transactions() {
   assert(!h.scene->valid(h.scene->binding(1)));
   h.platform.shown=true;h.scene->loop();assert(h.scene->active_page()==1);
 }
+template<size_t ProfileIndex> void live_palette_policy() {
+  Document doc(DEVICE_UI_PROFILES[ProfileIndex]); ProfileHarness<ProfileIndex> h;
+  const auto background=[](lv_obj_t *object) {
+    const auto color=lv_color_to_32(lv_obj_get_style_bg_color(object,LV_PART_MAIN),255);
+    return (uint32_t(color.red)<<16)|(uint32_t(color.green)<<8)|color.blue;
+  };
+  h.platform.active_palette=&LIGHT_THEME;h.apply(doc);
+  assert(background(h.root)==LIGHT_THEME.background);
+  auto calibrated=h.theme;calibrated.red_percent=80;calibrated.green_percent=90;calibrated.blue_percent=70;
+  assert(h.scene->reconfigure({9,3},calibrated));h.scene->loop();
+  const auto correct=[](uint32_t rgb){return correct_display_color(rgb,80,90,70);};
+  coordinator.report("switch.one","","on"); h.scene->loop();
+  h.platform.active_palette=&DARK_THEME;h.scene->loop();
+  const auto checked=background(h.widgets[0].button);
+  const auto token=h.scene->binding(1);
+  const auto calls=h.arena.calls,count=objects(h.root),registrations=coordinator.entries.size();
+  h.arena.fail=true;
+  {
+    ModalCallbackDispatchScope dispatch;
+    h.platform.active_palette=&LIGHT_THEME;
+    h.scene->loop();
+    assert(background(h.widgets[1].button)==correct(DARK_THEME.surface_card));
+  }
+  h.scene->loop();
+  assert(background(h.widgets[1].button)==correct(LIGHT_THEME.surface_card));
+  assert(background(h.root)==LIGHT_THEME.background);
+  assert(background(h.widgets[0].button)==checked);
+  assert(lv_obj_has_state(h.widgets[0].button,LV_STATE_CHECKED));
+  assert(h.scene->valid(token)&&h.scene->active().generation()==17);
+  click(h.widgets[1].button);h.scene->loop();
+  assert(h.scene->active_page()==1&&background(h.widgets[0].button)==correct(LIGHT_THEME.surface_card));
+  for(size_t i=0;i<20;++i) {
+    h.platform.shown=false;h.scene->loop();
+    h.platform.active_palette=i%2?&LIGHT_THEME:&DARK_THEME;
+    h.scene->loop();
+    h.platform.shown=true;h.scene->loop();
+    assert(background(h.widgets[0].button)==correct(h.platform.active_palette->surface_card));
+    assert(background(h.root)==h.platform.active_palette->background);
+    assert(h.scene->active_page()==1&&h.scene->active().generation()==17);
+  }
+  assert(h.arena.calls==calls&&objects(h.root)==count&&coordinator.entries.size()==registrations);
+  h.arena.fail=false;
+}
 void appearance_wake_without_intermediate_maintenance() {
   Document doc(DEVICE_UI_PROFILES[8]);Harness h;h.apply(doc);
   const auto registrations=coordinator.entries.size(),count=objects(h.root);
@@ -912,9 +962,10 @@ int main(int argc,char** argv) {
   lv_display_set_flush_cb(display,[](lv_display_t* d,const lv_area_t*,uint8_t*) { lv_display_flush_ready(d); });
   native_dispatch_safe=[] { return lv_is_initialized() && !page_lvgl_dispatching() && !modal_callback_dispatching(); };
   if(maximum_p4) {
+    live_palette_policy<6>();
     maximum_profile_disjoint_replacements<6>();
   } else {
-    navigation_and_state();live_temperature_policy();elastic_state_scene_transactions();maximum_profile_disjoint_replacements<8>();panels_and_retirement();mode_and_feedback();source_styles();slider_input();slider_background_hit_testing();appearance_transactions();initial_appearance();appearance_wake_without_intermediate_maintenance();remote_navigation();
+    navigation_and_state();live_temperature_policy();elastic_state_scene_transactions();maximum_profile_disjoint_replacements<8>();panels_and_retirement();mode_and_feedback();source_styles();slider_input();slider_background_hit_testing();appearance_transactions();live_palette_policy<8>();initial_appearance();appearance_wake_without_intermediate_maintenance();remote_navigation();
     assert(!application_scene_navigation());
     remote_selection_order();qr_images_and_transactions();
   }

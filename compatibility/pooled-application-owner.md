@@ -136,6 +136,13 @@ display; the bank stays suspended until the main page is shown. Appearance and
 configuration activation synchronize with the renderer's actual suspension state,
 including a wake that occurs before the next scene-maintenance iteration.
 
+The native device exposes the current immutable palette to scene maintenance.
+Light, Dark and automatic theme changes repaint the retained bank and grid
+background in place, preserving display calibration, checked accents, page
+bindings, configuration generations and subscriptions. Changes during callback
+dispatch wait for safe maintenance, including while the display is suspended;
+no document or view-bank rebuild is needed.
+
 Remote modal/page/navigation APIs and network settings delegate to one native
 navigation owner. Selection uses immutable definitions and compiled visible
 layouts, with root/display-order priority and rejection of unreachable folders.
