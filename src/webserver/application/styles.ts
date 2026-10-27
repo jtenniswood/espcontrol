@@ -105,7 +105,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-media-group-active{box-shadow:inset 0 0 0 3px var(--accent)}" +
         ".sp-btn-label{display:block;max-height:var(--btn-label-max-height);overflow:hidden;word-break:break-word;min-height:0}" +
         ".sp-btn.sp-weather-wind-card>.sp-btn-label{max-height:none}" +
-        ".sp-weather-wind-speed{display:block;font-size:.85em;opacity:.7;margin-top:4px}" +
+        ".sp-weather-wind-speed{display:block;margin-top:.2em}" +
         ".sp-editable-title{cursor:text;pointer-events:auto}.sp-editable-title:focus-visible{outline:2px solid currentColor;outline-offset:2px}" +
         ".sp-card-name-input{display:block;box-sizing:border-box;width:100%;min-width:0;margin:0;padding:0;border:0;border-bottom:1px solid currentColor;border-radius:0;outline:none;background:transparent;color:inherit;font:inherit;line-height:inherit;user-select:text}" +
         ".sp-image-label-stack:has(.sp-card-name-input){min-width:5em;max-width:100%;font-size:var(--btn-label);line-height:1.2;color:#fff}" +
@@ -124,7 +124,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-weather-day{min-width:0;min-height:0;display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:.2em;font-size:var(--btn-label);white-space:nowrap}" +
         ".sp-weather-day[hidden]{display:none}.sp-weather-day .mdi{font-size:var(--btn-icon);line-height:1;margin-bottom:auto}" +
         ".sp-weather-grid .sp-weather-day{justify-content:center}.sp-weather-grid .sp-weather-day .mdi{margin-bottom:var(--weather-icon-gap)}" +
-        ".sp-weather-temperature-high{white-space:nowrap;font-size:var(--btn-small-text);color:var(--card-text-color,var(--preview-text-primary));opacity:.7}" +
+        ".sp-weather-wind-speed,.sp-weather-temperature-high{white-space:nowrap;font-size:var(--btn-small-text);color:var(--card-text-color,var(--preview-text-primary));opacity:.7}" +
         ".sp-sensor-value{font-size:var(--btn-icon);line-height:1;font-weight:300}" +
         ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;color:var(--card-text-color,var(--preview-text-primary))}" +
         ".sp-slider-preview{position:absolute;inset:0;border-radius:var(--r);overflow:hidden;pointer-events:none}" +

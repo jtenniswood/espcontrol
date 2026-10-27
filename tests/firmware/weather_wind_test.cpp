@@ -6,18 +6,20 @@
 #include <vector>
 
 struct lv_font_t { int line_height = 16; };
-struct lv_obj_t { std::string text; bool valid = true; int flags = 1, y = 0, padding = 16; };
+struct lv_obj_t { std::string text; bool valid = true; int flags = 1, y = 0, padding = 16, text_color = 0, text_opa = 255; const lv_font_t *font = nullptr; };
 struct BtnSlot { lv_obj_t *btn, *icon_lbl, *text_lbl, *sensor_container, *sensor_lbl, *unit_lbl; };
 struct DisplayProfile {};
-constexpr int LV_PART_MAIN=0, LV_OBJ_FLAG_HIDDEN=1, LV_ALIGN_BOTTOM_LEFT=0, LV_ALIGN_TOP_LEFT=1;
+constexpr int LV_PART_MAIN=0, LV_OPA_70=178, LV_OBJ_FLAG_HIDDEN=1, LV_ALIGN_BOTTOM_LEFT=0, LV_ALIGN_TOP_LEFT=1;
 constexpr size_t HA_SHORT_STATE_MAX_LEN=64;
 lv_font_t font;
 int padding_captures=0;
 void capture_card_padding(lv_obj_t *btn) { ++padding_captures; if (!btn->padding) btn->padding=16; }
 const lv_font_t *display_small_text_font(const DisplayProfile &, const lv_font_t *fallback) { return fallback; }
 const lv_font_t *lv_obj_get_style_text_font(lv_obj_t *, int) { return &font; }
-void lv_obj_set_style_text_font(lv_obj_t *, const lv_font_t *, int) {}
-void lv_obj_set_style_text_opa(lv_obj_t *, int, int) {}
+void lv_obj_set_style_text_font(lv_obj_t *obj, const lv_font_t *value, int) { obj->font=value; }
+void lv_obj_set_style_text_opa(lv_obj_t *obj, int value, int) { obj->text_opa=value; }
+void lv_obj_set_style_text_color(lv_obj_t *obj, int value, int) { obj->text_color=value; }
+int lv_obj_get_style_text_color(lv_obj_t *obj, int) { return obj->text_color; }
 void lv_obj_set_style_pad_bottom(lv_obj_t *, int, int) {}
 void lv_obj_clear_flag(lv_obj_t *o, int flag) { o->flags &= ~flag; }
 void lv_obj_add_flag(lv_obj_t *o, int flag) { o->flags |= flag; }
@@ -51,14 +53,18 @@ int main() {
   assert(espcontrol::wind::speed("12.56")=="12.6");
   for (auto text : {"", "unknown", "nan", "inf", "-2", "20mph"}) assert(espcontrol::wind::speed(text)=="--");
   lv_obj_t button,icon,label,container,speed,unit;
-  button.padding=0;
+  button.padding=0; button.text_color=0xFFFFFF;
   BtnSlot slot{&button,&icon,&label,&container,&speed,&unit};
   weather_wind_layout(slot, {});
   assert(!(container.flags & LV_OBJ_FLAG_HIDDEN) && label.y < container.y);
   assert(unit.flags & LV_OBJ_FLAG_HIDDEN);
+  assert(speed.font==&font && speed.text_opa==LV_OPA_70 && speed.text_color==button.text_color);
+  assert(label.y==-(font.line_height+2));
   assert(padding_captures==1 && button.padding==16);
   button.padding=24; weather_wind_layout(slot, {});
-  assert(button.padding==24); // Preserve a subpage's explicit inset.
+  assert(button.padding==24);
+  button.text_color=0x212121; weather_wind_layout(slot, {});
+  assert(speed.text_color==button.text_color && speed.text_opa==LV_OPA_70); // Preserve a subpage's explicit inset.
   subscribe_weather_wind(slot,"weather.home");
   assert(label.text=="--" && speed.text=="--");
   subscriptions["wind_bearing"]("225");
