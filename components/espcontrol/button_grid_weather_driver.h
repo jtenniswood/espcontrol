@@ -78,7 +78,7 @@ inline bool weather_driver_bind_data(
   if (!weather_driver_matches(context)) return false;
   if (weather_driver_shows_forecast(config)) return true;
   if (config.precision == "wind") {
-    if (!config.entity.empty()) subscribe_weather_wind(slot, config.entity);
+    subscribe_weather_wind(slot, config.entity, config.sensor, weather_wind_uses_sensors(config));
     return true;
   }
   if (!config.entity.empty()) {

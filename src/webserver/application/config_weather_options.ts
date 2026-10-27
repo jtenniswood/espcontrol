@@ -1,3 +1,4 @@
+import { configOptionValue } from "../model/config_primitives";
 import type { DeviceConfig } from "../state/types";
 import {
     cardContractOptionSpec,
@@ -44,7 +45,18 @@ export function createConfigWeatherOptionsFeature(
         return button.precision === "today" ? "Today" : "Tomorrow";
     }
 
+    function weatherWindUsesSensors(button?: any): boolean {
+        return !!button && button.precision === "wind" &&
+            configOptionValue(button.options, "wind_source") === "sensors";
+    }
+
+    function normalizeWeatherOptions(options?: string, button?: any): string {
+        return weatherWindUsesSensors({ ...button, options }) ? "wind_source=sensors" : "";
+    }
+
     return {
+        weatherWindUsesSensors,
+        normalizeWeatherOptions,
         weatherCardDefaultForecastLabel,
         weatherCardIsForecastMode,
         weatherForecastCardsSupported,

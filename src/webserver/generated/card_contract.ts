@@ -3740,7 +3740,9 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "label": "Weather",
     "allowInSubpage": true,
     "domains": [
-      "weather"
+      "weather",
+      "sensor",
+      "input_number"
     ],
     "options": [
       {
@@ -3757,6 +3759,30 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "defaultValue": "",
         "storageField": "precision",
         "omitDefault": true
+      },
+      {
+        "name": "wind_source",
+        "label": "Wind Source",
+        "kind": "choice",
+        "values": [
+          "weather",
+          "sensors"
+        ],
+        "defaultValue": "weather",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "precision",
+            "operator": "equals",
+            "value": "wind"
+          }
+        ],
+        "supportedWhen": {
+          "precision": [
+            "wind"
+          ]
+        }
       }
     ],
     "normalization": {
@@ -3775,7 +3801,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "policy": "keep"
         },
         "sensor": {
-          "policy": "clear"
+          "policy": "hook",
+          "hook": "normalize_weather_fields"
         },
         "unit": {
           "policy": "keep"
@@ -3794,7 +3821,9 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         }
       },
       "unknownOptions": "drop",
-      "canonicalOptionOrder": [],
+      "canonicalOptionOrder": [
+        "wind_source"
+      ],
       "migrationActions": [
         "legacy_weather_forecast"
       ],
@@ -4922,7 +4951,8 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "volume_max": "volume_max",
   "weather_mode": "weather_mode",
   "webhook_headers": "webhook_headers",
-  "wifi_tabs": "wifi_tabs"
+  "wifi_tabs": "wifi_tabs",
+  "wind_source": "wind_source"
 };
 
 function cardContractListContains(list: readonly string[] | undefined, value: string): boolean {

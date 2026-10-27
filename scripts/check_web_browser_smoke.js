@@ -7741,7 +7741,7 @@ async function assertS3ForecastEditorLayout(browser) {
     await page.waitForSelector(".sp-settings-overlay.sp-visible");
     const modeSelect = page.locator('.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select');
     assert.deepStrictEqual(await modeSelect.locator('option').allTextContents(),
-      ["Current Conditions", "Today's Forecast", "Tomorrow's Forecast", "Daily Forecast"]);
+      ["Current Conditions", "Wind", "Today's Forecast", "Tomorrow's Forecast", "Daily Forecast"]);
     for (const [mode, label] of [["today", "Today"], ["tomorrow", "Tomorrow"]]) {
       await page.locator('.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select').selectOption(mode);
       await page.getByRole("button", { name: "Save", exact: true }).click();
@@ -7869,10 +7869,65 @@ async function assertCameraScreensaverDimming(browser, testCase) {
   } finally { await context.close(); }
 }
 
+
+async function assertWindSensorEditor(browser) {
+  const slug = "guition-esp32-p4-jc1060p470";
+  const nativeState = nativeConfigState(slug);
+  nativeState.document.buttons[1] = "weather.home;;Auto;Auto;;;weather;wind";
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await installRoutes(context, slug, { nativeState });
+  const page = await context.newPage();
+  await installFakeEventSource(page);
+  async function openWind() {
+    await page.locator('.sp-main [data-slot="1"]').click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  }
+  try {
+    await page.goto('http://espcontrol.test/' + slug + '?events=1');
+    await page.waitForSelector('#sp-app');
+    await seedNativeDocument(page, nativeState);
+    await openWind();
+    await page.locator('select[id$="wind-source"]').selectOption("sensors");
+    await page.locator('input[id$="wind-direction"]').fill("sensor.wind_direction");
+    await page.locator('input[id$="wind-speed"]').fill("sensor.wind_speed");
+    await page.locator('input[id$="wind-speed"]').press("Tab");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible", { state: "hidden" });
+    await waitForNativeState(nativeState, () => nativeState.document.buttons[1].includes("sensor.wind_speed"), "Wind sensors saved");
+    assert(nativeState.document.buttons[1].includes("wind_source"));
+    const geometry = await page.locator('.sp-main [data-slot="1"] .sp-weather-wind-speed').evaluate(speed => {
+      const card = speed.closest('.sp-btn').getBoundingClientRect();
+      const rect = speed.getBoundingClientRect();
+      return { left: rect.left - card.left, bottom: card.bottom - rect.bottom };
+    });
+    assert(geometry.left >= 10 && geometry.bottom >= 10, "Wind preview retains card padding");
+    await page.reload();
+    await page.waitForSelector('#sp-app');
+    await seedNativeDocument(page, nativeState);
+    await openWind();
+    assert.strictEqual(await page.locator('select[id$="wind-source"]').inputValue(), "sensors");
+    assert.strictEqual(await page.locator('input[id$="wind-direction"]').inputValue(), "sensor.wind_direction");
+    assert.strictEqual(await page.locator('input[id$="wind-speed"]').inputValue(), "sensor.wind_speed");
+    await page.locator('select[id$="wind-source"]').selectOption("weather");
+    assert.strictEqual(await page.locator('input[id$="wind-speed"]').count(), 0);
+    await page.locator('.sp-settings-modal input[id$="entity"]').fill("weather.home");
+    await page.locator('.sp-settings-modal input[id$="entity"]').press("Tab");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible", { state: "hidden" });
+    await waitForNativeState(nativeState, () => nativeState.document.buttons[1].includes("weather.home"), "Weather source saved");
+    assert(!nativeState.document.buttons[1].includes("sensor.wind_speed"));
+    assert(!nativeState.document.buttons[1].includes("wind_source"));
+    console.log("Wind editor: separate sensors save/reload, source switching, and padded preview passed.");
+  } finally { await context.close(); }
+}
+
 (async function main() {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    await assertWindSensorEditor(browser);
+    if (process.env.ESPCONTROL_WIND_ONLY === "1") return;
     if (process.env.ESPCONTROL_CAMERA_DIMMING_ONLY === "1") {
       for (const testCase of ACTIVE_CASES) await assertCameraScreensaverDimming(browser, testCase);
       console.log(`Camera dimming browser checks passed for ${ACTIVE_CASES.length} layouts.`);

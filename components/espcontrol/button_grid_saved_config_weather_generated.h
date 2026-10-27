@@ -19,7 +19,6 @@ inline bool normalize_saved_config_weather(Config &config, bool was_legacy_forec
                                            OptionHook normalize_options) {
   if (config.type != "weather") return false;
   normalize_fields(config, was_legacy_forecast);
-    config.sensor.clear();
     config.type = "weather";
   config.options = normalize_options(config.options, config);
   return true;

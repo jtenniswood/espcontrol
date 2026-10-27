@@ -76,7 +76,12 @@ All forecast modes work on supported panels, including the 4-inch ESP32-S3. The 
 
 ## Wind
 
-Choose **Weather → Wind** and select your weather entity. The arrow points toward the compass direction the wind comes **from** (north is up), and the label names that direction. Speed appears below in the weather entity's wind speed unit, such as **12.5 km/h**. Direction uses eight compass points; degree bearings and compass abbreviations are supported. Missing direction or speed shows **--** for that reading. An unavailable entity clears both readings.
+Choose **Weather → Wind**, then choose a **Wind Source**:
+
+- **Weather Entity** — use the weather entity's wind direction, speed and speed unit.
+- **Separate Sensors** — pick a **Wind Direction Sensor** and a **Wind Speed Sensor**. Direction can be degrees, compass abbreviations, or full English compass names; speed uses its sensor's `unit_of_measurement`. Each reading updates independently, so a missing speed does not hide a valid direction.
+
+ The arrow points toward the compass direction the wind comes **from** (north is up), and the label names that direction. Speed appears below in the weather entity's wind speed unit, such as **12.5 km/h**. Direction uses eight compass points; degree bearings and compass abbreviations are supported. Missing direction or speed shows **--** for that reading. An unavailable weather entity clears both readings; with separate sensors, only the unavailable reading clears.
 
 Wind updates with the entity and does not need forecast actions permission. It works on the home screen and subpages.
 

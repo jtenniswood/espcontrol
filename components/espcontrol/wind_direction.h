@@ -26,9 +26,12 @@ inline int direction(const std::string &text) {
   }
   std::string compass;
   for (char ch : text) {
-    if (!std::isspace(static_cast<unsigned char>(ch)))
+    if (!std::isspace(static_cast<unsigned char>(ch)) && ch != '-' && ch != '_')
       compass += static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
   }
+  static const char *names[] = {"NORTH", "NORTHEAST", "EAST", "SOUTHEAST",
+                                 "SOUTH", "SOUTHWEST", "WEST", "NORTHWEST"};
+  for (int i = 0; i < 8; ++i) if (compass == names[i]) return i;
   static const char *points[] = {"N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
                                   "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"};
   for (int i = 0; i < 16; ++i) if (compass == points[i]) return ((i + 1) / 2) % 8;

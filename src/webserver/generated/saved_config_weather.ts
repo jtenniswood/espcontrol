@@ -22,7 +22,6 @@ export function normalizeSavedConfigWeather(
 ): boolean {
   if (config.type !== "weather") return false;
   normalizeFields(config, wasLegacyForecast);
-    config.sensor = "";
     config.type = "weather";
   config.options = normalizeOptions(config.options || "", config);
   return true;

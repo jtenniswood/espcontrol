@@ -4,6 +4,8 @@
 #include "wind_direction.h"
 
 inline void weather_wind_layout(BtnSlot &slot, const DisplayProfile &display) {
+  capture_card_padding(slot.btn);
+  lv_obj_align(slot.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
   lv_obj_clear_flag(slot.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN);
   const lv_font_t *font = display_small_text_font(
@@ -14,7 +16,8 @@ inline void weather_wind_layout(BtnSlot &slot, const DisplayProfile &display) {
   lv_obj_align(slot.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, -(font->line_height + 4));
 }
 
-inline void subscribe_weather_wind(BtnSlot &slot, const std::string &entity) {
+inline void subscribe_weather_wind(BtnSlot &slot, const std::string &entity,
+                                   const std::string &speed_sensor = "", bool sensors = false) {
   struct WindState {
     lv_obj_t *icon, *label, *speed;
     uint32_t generation;
@@ -39,6 +42,25 @@ inline void subscribe_weather_wind(BtnSlot &slot, const std::string &entity) {
   state->speed = slot.sensor_lbl;
   state->generation = ha_subscription_generation();
   state->render();
+  if (sensors) {
+    if (!entity.empty()) ha_subscribe_state(entity, [state](esphome::StringRef value) {
+      state->direction = espcontrol::wind::direction(string_ref_limited(value, HA_SHORT_STATE_MAX_LEN));
+      state->render();
+    });
+    if (!speed_sensor.empty()) {
+      ha_subscribe_state(speed_sensor, [state](esphome::StringRef value) {
+        state->value = espcontrol::wind::speed(string_ref_limited(value, HA_SHORT_STATE_MAX_LEN));
+        state->render();
+      });
+      ha_subscribe_attribute(speed_sensor, "unit_of_measurement", [state](esphome::StringRef value) {
+        state->unit = string_ref_limited(value, HA_SHORT_STATE_MAX_LEN);
+        if (state->unit == "unknown" || state->unit == "unavailable") state->unit.clear();
+        state->render();
+      });
+    }
+    return;
+  }
+  if (entity.empty()) return;
   ha_subscribe_state(entity, [state](esphome::StringRef value) {
     const std::string text = string_ref_limited(value, HA_SHORT_STATE_MAX_LEN);
     state->available = !text.empty() && text != "unknown" && text != "unavailable";
