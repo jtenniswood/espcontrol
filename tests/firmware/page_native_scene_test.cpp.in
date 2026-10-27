@@ -483,6 +483,7 @@ void maximum_profile_disjoint_replacements() {
     const bool second=iteration%2;
     h.apply(second?b:a,100+iteration);
     assert(h.scene->active().card_count()==81&&h.scene->active().page_count()==10);
+    assert(h.scene->visible(h.scene->binding(0)));
     assert(h.scene->memory().state.active_channels==72&&coordinator.entries.size()==72);
     const auto empty=h.scene->memory().state.active_state_bytes;
     if(retired_report) retired_report("stale generation");
@@ -504,7 +505,9 @@ void maximum_profile_disjoint_replacements() {
       const unsigned page=cycle%9+1;
       assert(h.scene->navigate("slot:"+std::to_string(page)));h.scene->loop();
       assert(h.scene->active_page()==page);
+      assert(h.scene->visible(h.scene->binding(0)));
       assert(h.scene->home());h.scene->loop();assert(h.scene->active_page()==0);
+      assert(h.scene->visible(h.scene->binding(0)));
     }
     h.arena.fail=false;
     assert(h.counted.memory().allocation_calls==before.allocation_calls&&
