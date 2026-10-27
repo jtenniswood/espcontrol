@@ -13,3 +13,7 @@ test("native PanelConfig migration client", async () => {
   const { runNativePanelConfigTests } = loadTypescriptTest("tests/web/native_panel_config.test.ts");
   await runNativePanelConfigTests(migrationFixture);
 });
+
+test("native backup snapshots preserve records and serialize with saves", async () => {
+  await loadTypescriptTest("tests/web/native_panel_config.test.ts").runNativePanelConfigBackupTests();
+});

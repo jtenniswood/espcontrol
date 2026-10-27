@@ -1,5 +1,5 @@
 import { createBackupExportController } from "../../src/webserver/features/backup_export_controller";
-import { decodePanelConfig, decodePanelConfigBackupPayload } from "../../src/webserver/model";
+import { decodePanelConfig, decodePanelConfigBackupPayload, encodePanelConfig } from "../../src/webserver/model";
 
 function equal<T>(actual: T, expected: T, message: string): void {
   if (actual !== expected) throw new Error(`${message}: expected ${String(expected)}, received ${String(actual)}`);
@@ -51,4 +51,28 @@ export function runBackupExportControllerTests(): void {
   const wifiNativeConfig = decodePanelConfig(decodePanelConfigBackupPayload(wifiBackup.native_config));
   equal(wifiNativeConfig.buttons[1], wifiCard,
     "native backup intentionally retains Wifi network names and passwords");
+
+  const savedBytes = encodePanelConfig({
+    deviceProfile: "panel-a",
+    buttons: { 1: "saved-card", 9: "inactive-card" },
+    subpages: { 9: "inactive-subpage" },
+    settings: { button_order: "1", future_setting: "温度🌡️".repeat(100) },
+  });
+  const completeBackup = controller.addNativeConfig({}, {
+    deviceProfile: "panel-a", buttons: [], subpages: {}, nativeDocumentBytes: savedBytes,
+  });
+  equal(JSON.stringify(Array.from(decodePanelConfigBackupPayload(completeBackup.native_config))),
+    JSON.stringify(Array.from(savedBytes)),
+    "the existing backup payload format preserves the complete native document byte for byte");
+  for (const invalidBytes of [new Uint8Array([1, 2, 3]), encodePanelConfig({
+    deviceProfile: "different-panel", buttons: {}, subpages: {}, settings: {},
+  })]) {
+    let rejected = false;
+    try {
+      controller.addNativeConfig({}, {
+        deviceProfile: "panel-a", buttons: [], subpages: {}, nativeDocumentBytes: invalidBytes,
+      });
+    } catch { rejected = true; }
+    equal(rejected, true, "invalid or mismatched native snapshots cannot be exported");
+  }
 }

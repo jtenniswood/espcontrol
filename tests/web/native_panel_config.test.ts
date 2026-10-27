@@ -43,6 +43,88 @@ const document = encodePanelConfig({
   settings: { button_order: "1" },
 });
 
+export async function runNativePanelConfigBackupTests(): Promise<void> {
+  const completeBytes = encodePanelConfig({
+    deviceProfile: "panel-a", buttons: { 9: "inactive" }, subpages: { 9: "folder" },
+    settings: { future_setting: "温度🌡️".repeat(100) },
+  });
+  const client = createNativePanelConfigClient(async (path) => path.endsWith("capabilities")
+    ? response(200) : response(200, completeBytes, '"12"'));
+  deepEqual(Array.from((await client.readForBackup("panel-a"))!), Array.from(completeBytes),
+    "backup reads preserve native-only settings and inactive records byte for byte");
+
+  const rejects = async (operation: Promise<unknown>, message: string): Promise<void> => {
+    let rejected = false;
+    try { await operation; } catch { rejected = true; }
+    equal(rejected, true, message);
+  };
+  await rejects(client.readForBackup("different-panel"), "backup reads reject a changed device profile");
+  for (const status of [401, 403, 404, 503, 500]) {
+    const failedRead = createNativePanelConfigClient(async (path) => path.endsWith("capabilities")
+      ? response(200) : response(status));
+    await rejects(failedRead.readForBackup("panel-a"), `${status} config reads cannot become partial backups`);
+    const failedDiscovery = createNativePanelConfigClient(async () => response(status));
+    await rejects(failedDiscovery.readForBackup("panel-a"), `${status} discovery cannot become partial backups`);
+  }
+  const corruptRead = createNativePanelConfigClient(async (path) => path.endsWith("capabilities")
+    ? response(200) : response(200, new Uint8Array([1, 2, 3])));
+  await rejects(corruptRead.readForBackup("panel-a"), "corrupt native reads cannot become partial backups");
+  const legacy = createNativePanelConfigClient(async () => ({
+    ...response(200), json: async () => ({ configuration: { read: false, write: false, document_versions: [] } }),
+  }));
+  equal(await legacy.readForBackup("panel-a"), null, "confirmed older firmware retains portable backup export");
+
+  let current = decodePanelConfig(document);
+  let releaseRead: (() => void) | undefined;
+  let blockRead = false;
+  let failRead = false;
+  const events: string[] = [];
+  const controller = new NativePanelConfigController({
+    fetch: async (path, request) => {
+      if (path.endsWith("capabilities")) return response(200);
+      if (request?.method === "PUT") {
+        current = decodePanelConfig(request.body!);
+        events.push(`save:${current.settings.button_order}`);
+        return response(204);
+      }
+      if (blockRead) {
+        blockRead = false;
+        events.push("snapshot-start");
+        await new Promise<void>((resolve) => { releaseRead = resolve; });
+        events.push("snapshot-end");
+      }
+      return response(failRead ? 503 : 200, encodePanelConfig(current), '"12"');
+    },
+    deviceProfile: () => "panel-a", slotCount: () => 9,
+    entityName: (name) => name, entityNameForSlot: (name, slot) => `${name}_${slot}`,
+    normalizeHexColor: (value) => value, showBanner: () => undefined,
+    delay: (callback) => { callback(); },
+  });
+  const first = controller.writeText("button_order", "1d");
+  const snapshot = controller.readForBackup();
+  // The snapshot is queued before the later edit, even though neither has run yet.
+  await first;
+  blockRead = true;
+  const later = controller.writeText("button_order", "1w");
+  for (let i = 0; i < 20 && !releaseRead; i += 1) await Promise.resolve();
+  equal(typeof releaseRead, "function", "the snapshot reaches the transport after the preceding save");
+  deepEqual(events, ["save:1d", "snapshot-start"], "later edits wait for the snapshot read");
+  releaseRead!();
+  equal(decodePanelConfig((await snapshot)!).settings.button_order, "1d", "the snapshot includes the preceding saved change");
+  equal(await later, "saved", "later edits resume after the snapshot");
+  deepEqual(events, ["save:1d", "snapshot-start", "snapshot-end", "save:1w"], "snapshot and saves remain ordered");
+  failRead = true;
+  await rejects(controller.readForBackup(), "a failed snapshot is reported");
+  failRead = false;
+  equal(await controller.writeText("button_order", "1"), "saved", "a failed snapshot does not poison later saves");
+  controller.saveQueue = Promise.resolve("conflict");
+  await rejects(controller.readForBackup(), "a failed preceding save blocks an incomplete backup");
+  equal(await controller.saveQueue, "conflict", "a backup attempt preserves the failed save outcome");
+  controller.saveQueue = Promise.resolve("mirror-failed");
+  equal(decodePanelConfig((await controller.readForBackup())!).settings.button_order, "1",
+    "a durable native save remains available for backup even if its legacy mirror failed");
+}
+
 function response(
   status: number,
   body: Uint8Array = new Uint8Array(),

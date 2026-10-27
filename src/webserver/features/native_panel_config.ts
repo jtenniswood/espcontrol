@@ -130,6 +130,21 @@ export class NativePanelConfigClient {
     return this.discovery_;
   }
 
+  /** Backups must retain records that this editor does not understand. */
+  async readForBackup(deviceProfile: string): Promise<Uint8Array | null> {
+    if (!await this.discover()) {
+      if (this.confirmedUnsupported_) return null;
+      throw new Error("Configuration discovery is unavailable.");
+    }
+    const response = await this.fetch_("/api/v1/config", { cache: "no-store" });
+    if (!response.ok) throw new Error("Could not read the saved configuration.");
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (decodePanelConfig(bytes).deviceProfile !== deviceProfile) {
+      throw new Error("The device configuration profile changed.");
+    }
+    return bytes;
+  }
+
   async save(update: (document: PanelConfigDocument) => PanelConfigDocument): Promise<NativePanelConfigSaveResult> {
     if (!await this.discover()) return "unsupported";
     for (let attempt = 0; attempt < 2; attempt += 1) {

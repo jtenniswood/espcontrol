@@ -125,6 +125,21 @@ export class NativePanelConfigController {
     return save;
   }
 
+  readForBackup(): Promise<Uint8Array | null> {
+    const client = this.client_;
+    const precedingSave = this.saveQueue_;
+    const read = precedingSave.then(async (outcome) => {
+      if (outcome !== "saved" && outcome !== "mirror-failed" && outcome !== "legacy-fallback") {
+        throw new Error("The previous configuration change did not save.");
+      }
+      return client ? client.readForBackup(this.dependencies.deviceProfile()) : null;
+    });
+    // Later edits wait for this snapshot too. A failed read must neither
+    // poison the save queue nor erase a preceding failed save outcome.
+    this.saveQueue_ = read.then(() => precedingSave, () => precedingSave);
+    return read;
+  }
+
   writeText(name: string, value: string): Promise<NativePanelConfigSaveOutcome> | null | false {
     if (name === this.dependencies.entityName("button_order")) {
       return this.schedule((current) => updateNativePanelConfigDocument(

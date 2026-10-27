@@ -12,6 +12,7 @@ const { freshWebOutputDir } = require("./web_source");
 const ROOT = path.resolve(__dirname, "..");
 const {
   createPanelConfigBackupPayload,
+  decodePanelConfigBackupPayload,
   decodePanelConfig,
   encodePanelConfig,
   activeCardColor,
@@ -6432,6 +6433,63 @@ async function assertNativeProfileJourney(browser, testCase) {
   }
 }
 
+async function assertNativeBackupPreservation(browser, testCase) {
+  const nativeState = nativeConfigState(testCase.slug);
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(context, testCase.slug, { nativeState });
+  const page = await context.newPage();
+  const errors = [];
+  page.on("pageerror", error => errors.push(error.message));
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await seedNativeDocument(page, nativeState);
+    // Another browser saves a record before its SSE projection reaches this editor.
+    nativeState.document.buttons[1] = "light.other;Saved elsewhere;Lightbulb;Auto";
+    nativeState.document.settings.button_order = "1,3";
+    nativeState.document.settings.button_on_color = "123ABC";
+    nativeState.document.settings.future_native_setting = "温度🌡️".repeat(100);
+    nativeState.document.buttons[testCase.slots] = "sensor.inactive;Inactive;Gauge;Auto;;;sensor";
+    nativeState.document.subpages[testCase.slots] = "~B,1|,light.hidden,Hidden,Lightbulb,Auto";
+    const expectedBytes = encodePanelConfig(nativeState.document);
+    await openBackupControls(page);
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const backup = JSON.parse(fs.readFileSync(await (await downloadPromise).path(), "utf8"));
+    assert.deepStrictEqual(Array.from(decodePanelConfigBackupPayload(backup.native_config)), Array.from(expectedBytes),
+      `${testCase.name}: exported native bytes include unknown settings and inactive records`);
+    assert.strictEqual(backup.buttons[0].label, "Saved elsewhere", "portable cards project the same saved document");
+    assert.strictEqual(backup.button_order, "1,3", "portable order projects the saved document");
+    assert.strictEqual(backup.button_on_color, "123ABC", "portable colour projects the saved document");
+    assert((await page.locator('.sp-main [data-slot="1"]').textContent()).includes("Kitchen"),
+      "exporting a current snapshot does not mutate the editor's displayed state");
+
+    const unexpectedDownloads = [];
+    page.on("download", download => unexpectedDownloads.push(download.suggestedFilename()));
+    const configPath = "http://espcontrol.test/api/v1/config";
+    const failExport = async (reply) => {
+      await context.route(configPath, route => route.fulfill(reply));
+      await page.locator(".sp-banner").evaluate(node => { node.className = "sp-banner"; node.textContent = ""; });
+      await page.getByRole("button", { name: "Export", exact: true }).click();
+      await page.getByText("Could not export the backup. Check that changes have saved and the panel is connected, then try again.", { exact: true }).waitFor();
+      assert.deepStrictEqual(unexpectedDownloads, [], "an unreadable native document cannot download a partial backup");
+      await context.unroute(configPath);
+    };
+    for (const status of [401, 403, 404, 503]) await failExport({ status, body: "unavailable" });
+    await failExport({ status: 200, body: Buffer.from([1, 2, 3]) });
+    await failExport({ status: 200, body: Buffer.from(encodePanelConfig({
+      ...nativeState.document, deviceProfile: "different-panel",
+    })) });
+    const retryDownload = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    await retryDownload;
+    assert.strictEqual(unexpectedDownloads.length, 1, "export recovers when the saved document becomes readable");
+    assert.strictEqual(nativeState.puts.length, 0, "backup export never writes panel configuration");
+    assert.deepStrictEqual(errors, [], "snapshot export has no browser errors");
+  } finally { await context.close(); }
+}
+
 async function assertLegacyProfileFallback(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
   await installRoutes(context, testCase.slug);
@@ -7872,6 +7930,12 @@ async function assertCameraScreensaverDimming(browser, testCase) {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_BACKUP_SNAPSHOT_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) await assertNativeBackupPreservation(browser, testCase);
+      await assertNamingOfflineBackups(browser);
+      console.log(`Backup snapshot browser checks passed for ${ACTIVE_CASES.length} layouts and older firmware.`);
+      return;
+    }
     if (process.env.ESPCONTROL_CAMERA_DIMMING_ONLY === "1") {
       for (const testCase of ACTIVE_CASES) await assertCameraScreensaverDimming(browser, testCase);
       console.log(`Camera dimming browser checks passed for ${ACTIVE_CASES.length} layouts.`);
@@ -7965,6 +8029,7 @@ async function assertCameraScreensaverDimming(browser, testCase) {
         await assertMediaModalSettingsJourney(browser, testCase);
       }
       await assertNativeProfileJourney(browser, testCase);
+      await assertNativeBackupPreservation(browser, testCase);
       await assertLegacyProfileFallback(browser, testCase);
       if (testCase.exerciseInteractions) await assertLegacyRestoreVerificationFailure(browser, testCase);
       await assertOfflineProfileFallback(browser, testCase);

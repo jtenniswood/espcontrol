@@ -194,17 +194,33 @@ borrows one PSRAM slot image only during each serialized store load or commit;
 all exits release it. The two permanent slot buffers are removed (32 KiB on
 NVS profiles; 80 KiB with 40 KiB partition slots). Three permanent service,
 HTTP and deferred-application buffers remain for the next storage stage.
+
 Host tests compare complete old/new durable images, read in both firmware
 directions, interrupt every mutating storage call before/during/after its
 write, and cover allocation/read/sync failure and retry. These checks do not
 replace physical power-loss or full backup/downgrade qualification.
+
+Browser backup export reads the complete saved native-v1 document after queued
+native edits finish, and before later edits run. It preserves the original bytes,
+including native-only settings and inactive cards/subpages. The portable layout
+is projected from that same snapshot rather than potentially stale SSE state.
+The backup envelope and native payload versions remain unchanged. Confirmed
+legacy-only firmware retains the portable export path; discovery, authentication,
+read, profile or validation failures stop the export instead of downloading an
+incomplete backup. A preceding failed save also stops export until a later save
+succeeds. A durable native save whose compatibility mirror failed remains
+available for backup. These checks do not establish full downgrade qualification.
 
 Partition validation uses a 1 KiB stack window. The preceding 64-byte window
 made the direct-flash backend perform 2,566 reads to inspect two full 40 KiB
 slots and load the selected payload; the bounded window reduces this to 166
 reads without allocating slot RAM or changing CRC bytes. The physical S3
 21,694-byte save/restart/restore test exposed the transaction overhead; latency
-must be measured again on the updated firmware, separately from host checks.
+was checked again on the S3. Five settled reads of the unchanged original
+configuration had median latency 50.1 ms before and 37.7 ms after this change;
+the ranges overlap and include network/scheduler time. Separate 21,694-byte
+save/reboot/restore tests pass on both versions, but their individual save times
+do not establish an end-to-end save speedup.
 
 Remaining gates are current factory builds, matched S3 and working 20-slot P4
 heap/PSRAM tests, the remaining transient configuration buffers and
