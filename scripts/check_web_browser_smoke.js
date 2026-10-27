@@ -7874,6 +7874,7 @@ async function assertWindSensorEditor(browser) {
   const slug = "guition-esp32-p4-jc1060p470";
   const nativeState = nativeConfigState(slug);
   nativeState.document.buttons[1] = "weather.home;;Auto;Auto;;;weather;wind";
+  nativeState.document.buttons[2] = "weather.home;;Auto;Auto;;;weather;today";
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   await installRoutes(context, slug, { nativeState });
   const page = await context.newPage();
@@ -7902,6 +7903,16 @@ async function assertWindSensorEditor(browser) {
       return { left: rect.left - card.left, bottom: card.bottom - rect.bottom };
     });
     assert(geometry.left >= 10 && geometry.bottom >= 10, "Wind preview retains card padding");
+    const styles = await page.evaluate(() => {
+      const properties = ["fontFamily", "fontSize", "fontWeight", "color", "opacity"];
+      const style = selector => {
+        const css = getComputedStyle(document.querySelector(selector));
+        return Object.fromEntries(properties.map(key => [key, css[key]]));
+      };
+      return { wind: style('.sp-main [data-slot="1"] .sp-weather-wind-speed'),
+        forecast: style('.sp-main [data-slot="2"] .sp-weather-temperature-high') };
+    });
+    assert.deepStrictEqual(styles.wind, styles.forecast, "Wind secondary text matches forecast temperatures");
     await page.reload();
     await page.waitForSelector('#sp-app');
     await seedNativeDocument(page, nativeState);

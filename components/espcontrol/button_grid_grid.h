@@ -284,6 +284,8 @@ inline void apply_large_sensor_number_style(const BtnSlot &s, const lv_font_t *l
 }
 
 inline void apply_standard_sensor_number_style(const BtnSlot &s, const DisplayProfile &display) {
+  // A reused Wind slot must not dim the next card's ordinary sensor value.
+  if (s.sensor_lbl) lv_obj_set_style_text_opa(s.sensor_lbl, LV_OPA_COVER, LV_PART_MAIN);
   if (s.sensor_lbl && display_sensor_font(display)) {
     lv_obj_set_style_text_font(s.sensor_lbl, display_sensor_font(display), LV_PART_MAIN);
   }
