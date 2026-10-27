@@ -229,13 +229,16 @@ def test_s3_low_heap_policy() -> None:
     artwork = S3_ARTWORK_TRANSFER_CPP.read_text(encoding="utf-8")
     server = WEB_SERVER_IDF_CPP.read_text(encoding="utf-8")
 
-    for option in (
-        'CONFIG_SPIRAM_USE_MALLOC: "y"',
-        'CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "4096"',
-        'CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL: "32768"',
-        'CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"',
-    ):
-        assert option in device, f"S3 device profile is missing {option}"
+    options = local_sdkconfig_options(S3_DEVICE_YAML)
+    for key, expected in {
+        "CONFIG_SPIRAM_USE_MALLOC": "y",
+        "CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL": "4096",
+        "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL": "32768",
+        "CONFIG_ESP32S3_DATA_CACHE_LINE_64B": "y",
+    }.items():
+        value = options.get(key)
+        actual = "y" if value is True else "n" if value is False else str(value)
+        assert actual == expected, f"S3 device profile requires {key}={expected}"
     assert "loop_task_stack_size: 16384" in device, (
         "S3 loop task must retain enough stack for display transitions"
     )
@@ -271,6 +274,19 @@ def _construct_tagged(loader: yaml.SafeLoader, _tag: str, node: yaml.Node):
 
 
 _EsphomeLoader.add_multi_constructor("!", _construct_tagged)
+
+
+def local_sdkconfig_options(path: Path, stack: tuple[Path, ...] = ()) -> dict:
+    """Keep this lightweight check aware of local packages and root overrides."""
+    path = path.resolve()
+    assert path.is_relative_to(ROOT) and path not in stack, path
+    config = yaml.load(path.read_text(encoding="utf-8"), _EsphomeLoader) or {}
+    options = {}
+    for package in config.get("packages", {}).values():
+        assert isinstance(package, str), f"Expected a local package in {path}"
+        options.update(local_sdkconfig_options(path.parent / package, (*stack, path)))
+    options.update(config.get("esp32", {}).get("framework", {}).get("sdkconfig_options", {}))
+    return options
 
 
 def test_native_panel_config_bindings(slug: str, profile: dict, device: str) -> None:
