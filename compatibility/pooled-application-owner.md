@@ -65,6 +65,21 @@ fail under large subscription loads. The callback lease avoids these hidden
 allocations while keeping an executing callback alive through owner retirement
 and skipping cancelled callbacks in the remaining snapshot. It must not cross
 threads; the coordinator and its dispatch already require the main loop.
+Native graph registration borrows a temporary sorted index of existing
+coordinator channels. Each new graph pair is unique, so registration searches
+only that index and appends missing channels without rescanning the growing
+list. The fallible scene allocator owns the index, counts its peak bytes and
+releases it before preparation returns, after ending the borrowed batch. The
+shared-value copy index is released before this transport index is allocated.
+Stable coordinator IDs and native registry tokens use binary lookup. Registry
+retirement temporarily sorts borrowed-name addresses for exact ownership
+removal, then restores token order before dispatch or new installation;
+foreign and one-shot native subscriptions remain untouched.
+Single-consumer channels reuse the existing maintenance word as a callback
+index, avoiding a global subscription scan and temporary vector on each value.
+Shared channels keep ordered snapshots. Compaction rebuilds the index, activity
+refresh preserves shared status, and pending-read reentrancy revalidates the
+callback before delivery. This adds no per-channel or per-subscription storage.
 
 The concrete device wraps its scene allocator with `PageCountedArena`, tracking
 live requests, allocation failures and the actual overlapping arena high-water

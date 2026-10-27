@@ -62,15 +62,36 @@ class OwnedHaSubscriptions {
     if (!pending_ || dispatch_depth_ != 0 || !Backend::available()) return false;
     // Identify ownership by the exact borrowed buffer addresses, not by entity
     // text or RTTI. Other components can subscribe to the same pair safely.
-    const bool removed = Backend::remove_if([this](const char *entity, const char *attribute, bool once) {
-      if (once) return false;
-      for (const auto &record : records_) {
-        if (record.callback || !record.installed || entity != record.names.data()) continue;
-        const char *expected = record.names.data() + record.attribute_offset;
-        if (attribute == (*expected ? expected : nullptr)) return true;
-      }
-      return false;
-    });
+    bool removed = false;
+    if (std::any_of(records_.begin(), records_.end(), [](const Record &record) {
+          return !record.callback && record.installed;
+        })) {
+      // The backend removes records synchronously without dispatch. Sort only
+      // during that operation, then restore token order before any callbacks
+      // or new installation. Borrowed names never move with their Record.
+      const std::less<const char *> less;
+      std::sort(records_.begin(), records_.end(),
+                [&](const auto &a, const auto &b) {
+                  return less(a.names.data(), b.names.data());
+                });
+      removed = Backend::remove_if([&](const char *entity,
+                                       const char *attribute, bool once) {
+        if (once)
+          return false;
+        const auto found =
+            std::lower_bound(records_.begin(), records_.end(), entity,
+                             [&](const Record &record, const char *name) {
+                               return less(record.names.data(), name);
+                             });
+        if (found == records_.end() || found->names.data() != entity ||
+            found->callback || !found->installed)
+          return false;
+        const char *expected = found->names.data() + found->attribute_offset;
+        return attribute == (*expected ? expected : nullptr);
+      });
+      std::sort(records_.begin(), records_.end(),
+                [](const auto &a, const auto &b) { return a.token < b.token; });
+    }
     // Free names only after the corresponding borrowed native pointers vanish.
     records_.erase(std::remove_if(records_.begin(), records_.end(),
         [](const Record &record) { return !record.callback; }), records_.end());
@@ -123,8 +144,13 @@ class OwnedHaSubscriptions {
   };
 
   Record *find(uint32_t token) {
-    for (auto &record : records_) if (record.token == token) return &record;
-    return nullptr;
+    // Tokens increase on append and compaction preserves their order.
+    const auto found =
+        std::lower_bound(records_.begin(), records_.end(), token,
+                         [](const Record &record, uint32_t value) {
+                           return record.token < value;
+                         });
+    return found != records_.end() && found->token == token ? &*found : nullptr;
   }
   void dispatch(uint32_t token, State state) {
     const auto *record = find(token);

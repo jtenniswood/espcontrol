@@ -44,13 +44,21 @@ class PageEntitySubscriptions {
                               size_t, Deliver) {
      return true;
    }
-  virtual bool subscribe(const char *entity, const char *attribute, void *owner,
-                         uint32_t revision, uint32_t channel, Deliver deliver) = 0;
-  // Immediately cancel callbacks for this owner, including retained replay.
-  virtual void release(void *owner) = 0;
-  virtual uint32_t connection_generation() const = 0;
-  // Local producers seed each replacement directly, including initial empty-text semantics.
-  virtual bool copy_shared_values() const { return true; }
+   // Temporary lookup storage for a synchronous pass of unique graph channels.
+   // The runtime owns this fallible allocation and ends the pass before freeing
+   // it, on both success and failure. Backends must not retain it afterward.
+   virtual size_t registration_scratch_bytes() const { return 0; }
+   virtual bool begin_registration_batch(void *, size_t) { return true; }
+   virtual void end_registration_batch() {}
+   virtual bool subscribe(const char *entity, const char *attribute,
+                          void *owner, uint32_t revision, uint32_t channel,
+                          Deliver deliver) = 0;
+   // Immediately cancel callbacks for this owner, including retained replay.
+   virtual void release(void *owner) = 0;
+   virtual uint32_t connection_generation() const = 0;
+   // Local producers seed each replacement directly, including initial
+   // empty-text semantics.
+   virtual bool copy_shared_values() const { return true; }
 };
 
 struct PageEntityBudget {

@@ -1065,9 +1065,14 @@ void temporary_and_pending_callback_storage_use_the_configured_allocator() {
               "sensor.shared", "", [&](std::string) { calls++; }, false,
               10, 5, &owner),
           "pending retained read should register");
+  require(coordinator.subscribe(
+              "sensor.shared", "", [&](std::string) { calls++; }, 1u, &owner,
+              false),
+          "shared subscription should register");
   const size_t before_publish = TrackingAllocatorState::allocation_calls;
   coordinator.transport().publish(0, "ready");
-  require(calls == 2, "subscription and pending callback did not both run");
+  require(calls == 3,
+          "shared subscriptions and pending callback did not all run");
   require(TrackingAllocatorState::allocation_calls > before_publish,
           "dispatch snapshot bypassed the configured allocator");
   coordinator.release_owner(&owner);
@@ -1075,9 +1080,108 @@ void temporary_and_pending_callback_storage_use_the_configured_allocator() {
           "released callback storage did not use the configured allocator");
 }
 
+void single_consumer_delivery_avoids_snapshot_allocation_after_shared_retirement() {
+  TrackingAllocatorState::reset();
+  TrackingCoordinator coordinator;
+  int first_owner, second_owner, unrelated_owner;
+  size_t first = 0, second = 0;
+  require(coordinator.subscribe(
+              "sensor.fast", "", [&](auto) { ++first; }, 1, &first_owner, false,
+              false, false),
+          "single consumer failed");
+  auto before = TrackingAllocatorState::allocation_calls;
+  coordinator.transport().publish(0, "one");
+  require(first == 1 && TrackingAllocatorState::allocation_calls == before,
+          "single-consumer dispatch allocated a snapshot");
+  require(coordinator.subscribe(
+              "sensor.fast", "", [&](auto) { ++second; }, 1, &second_owner,
+              false, false, false),
+          "second consumer failed");
+  require(coordinator.subscribe(
+              "sensor.other", "", [](auto) {}, 2, &unrelated_owner, false,
+              false, false),
+          "unrelated consumer failed");
+  // Activity refresh during an unrelated retirement must preserve shared mode.
+  coordinator.release_owner(&unrelated_owner);
+  coordinator.transport().publish(0, "both");
+  require(first == 2 && second == 1,
+          "activity maintenance lost a shared callback");
+  coordinator.release_owner(&first_owner);
+  before = TrackingAllocatorState::allocation_calls;
+  coordinator.transport().publish(0, "remaining");
+  require(first == 2 && second == 2 &&
+              TrackingAllocatorState::allocation_calls == before,
+          "retirement did not restore allocation-free single delivery");
+}
+
+void unique_graph_registration_indexes_old_pairs_without_retaining_scratch() {
+  TrackingAllocatorState::reset();
+  TrackingCoordinator coordinator;
+  int old_owner, new_owner;
+  require(!coordinator.subscribe_unique(
+              "sensor.outside", "", [](auto) {}, 1, &new_owner),
+          "unique registration requires an active borrowed index");
+  require(coordinator.begin_unique_subscription_batch(nullptr, 0),
+          "empty index should need no allocation");
+  require(coordinator.subscribe_unique(
+              "sensor.z", "", [](auto) {}, 1, &old_owner),
+          "first unique registration failed");
+  require(coordinator.subscribe_unique(
+              "sensor.a", "unit", [](auto) {}, 1, &old_owner),
+          "second unique registration failed");
+  coordinator.end_unique_subscription_batch();
+  for (size_t i = 64; i > 0; --i)
+    require(coordinator.subscribe(
+                "sensor.existing_" + std::to_string(i), "unit", [](auto) {}, 1,
+                &old_owner),
+            "old unordered channel setup failed");
+  const auto bytes = coordinator.unique_subscription_scratch_bytes();
+  require(bytes == 66 * sizeof(uint32_t),
+          "index must use one integer per old channel");
+  std::vector<uint32_t> index(bytes / sizeof(uint32_t));
+  require(!coordinator.begin_unique_subscription_batch(index.data(), bytes - 1),
+          "short index was accepted");
+  require(!coordinator.begin_unique_subscription_batch(
+              reinterpret_cast<char *>(index.data()) + 1, bytes),
+          "unaligned index was accepted");
+  const auto allocations = TrackingAllocatorState::allocation_calls;
+  require(coordinator.begin_unique_subscription_batch(index.data(), bytes),
+          "old-pair index failed");
+  require(allocations == TrackingAllocatorState::allocation_calls,
+          "sorting borrowed index allocated storage");
+  require(!coordinator.begin_unique_subscription_batch(index.data(), bytes),
+          "overlapping registration batches accepted");
+  int delivered = 0;
+  require(coordinator.subscribe_unique(
+              "sensor.a", "unit", [&](auto) { ++delivered; }, 1, &new_owner),
+          "shared indexed pair failed");
+  for (size_t i = 1; i <= 64; ++i)
+    require(coordinator.subscribe_unique(
+                "sensor.existing_" + std::to_string(i), "unit", [](auto) {}, 1,
+                &new_owner),
+            "old indexed pair was not reused");
+  for (size_t i = 0; i < 1024; ++i)
+    require(
+        coordinator.subscribe_unique(
+            "sensor.new." + std::to_string(i), "", [](auto) {}, 1, &new_owner),
+        "new unique channel failed during vector growth");
+  require(coordinator.subscription_channel_count() == 1090 &&
+              coordinator.transport().subscriptions.size() == 1090,
+          "indexed shared pair created another transport channel");
+  coordinator.end_unique_subscription_batch();
+  index.clear();
+  index.shrink_to_fit();
+  coordinator.transport().publish(1, "new");
+  require(delivered == 1, "delivery used retired borrowed lookup storage");
+  coordinator.release_owner(&old_owner);
+  coordinator.release_owner(&new_owner);
+}
+
 }  // namespace
 
 int main() {
+  single_consumer_delivery_avoids_snapshot_allocation_after_shared_retirement();
+  unique_graph_registration_indexes_old_pairs_without_retaining_scratch();
   scheduled_metadata_refreshes_share_channels_and_retry_only_failed_sends();
   scheduled_metadata_refreshes_recover_and_cancel_by_consumer();
   scheduled_metadata_refreshes_isolate_players_and_handle_clock_wrap();

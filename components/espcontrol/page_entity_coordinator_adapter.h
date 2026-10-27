@@ -8,6 +8,15 @@
 
 namespace espcontrol::pages {
 
+template <typename Coordinator, typename = void>
+struct HasUniqueSubscriptionBatch : std::false_type {};
+template <typename Coordinator>
+struct HasUniqueSubscriptionBatch<
+    Coordinator, std::void_t<decltype(std::declval<Coordinator &>()
+                                          .begin_unique_subscription_batch(
+                                              nullptr, size_t{}))>>
+    : std::true_type {};
+
 // Reuse the application's deduplicated transport channels across staged and
 // active configurations. Only the configuration cache retains these values;
 // legacy widget/modal consumers can continue to share the same channels.
@@ -74,9 +83,29 @@ public:
     if (!batch || batch->revision != revision || batch->deliver != deliver ||
         channel >= batch->channels)
       return false;
-    return coordinator_.subscribe(std::string(entity), std::string(attribute),
-                                  CallbackToken{batch->first_token + channel},
-                                  scope_, owner, false, false, false);
+    if constexpr (HasUniqueSubscriptionBatch<Coordinator>::value) {
+      return coordinator_.subscribe_unique(
+          std::string(entity), std::string(attribute),
+          CallbackToken{batch->first_token + channel}, scope_, owner);
+    } else {
+      return coordinator_.subscribe(std::string(entity), std::string(attribute),
+                                    CallbackToken{batch->first_token + channel},
+                                    scope_, owner, false, false, false);
+    }
+  }
+  size_t registration_scratch_bytes() const override {
+    if constexpr (HasUniqueSubscriptionBatch<Coordinator>::value)
+      return coordinator_.unique_subscription_scratch_bytes();
+    return 0;
+  }
+  bool begin_registration_batch(void *scratch, size_t bytes) override {
+    if constexpr (HasUniqueSubscriptionBatch<Coordinator>::value)
+      return coordinator_.begin_unique_subscription_batch(scratch, bytes);
+    return true;
+  }
+  void end_registration_batch() override {
+    if constexpr (HasUniqueSubscriptionBatch<Coordinator>::value)
+      coordinator_.end_unique_subscription_batch();
   }
   void release(void *owner) override {
     auto **link = &batches_;

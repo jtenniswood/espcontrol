@@ -63,6 +63,24 @@ struct Source final : PageDependencySource {
 };
 struct Subscriptions final : PageEntitySubscriptions {
   struct Item { std::string entity, attribute; void *owner; uint32_t revision, channel; Deliver deliver; };
+  size_t registration_scratch_bytes() const override { return scratch_bytes; }
+  bool begin_registration_batch(void *scratch, size_t bytes) override {
+    ++registration_begins;
+    assert(bytes == scratch_bytes && (!bytes || scratch));
+    if (reject_registration)
+      return false;
+    registration_scratch = scratch;
+    registration_active = true;
+    return true;
+  }
+  void end_registration_batch() override {
+    assert(registration_active);
+    if (on_registration_end)
+      on_registration_end(registration_scratch);
+    ++registration_ends;
+    registration_active = false;
+    registration_scratch = nullptr;
+  }
   bool subscribe(const char *entity, const char *attribute, void *owner, uint32_t revision,
                  uint32_t channel, Deliver deliver) override {
     if (remaining == 0) return false;
@@ -84,6 +102,10 @@ struct Subscriptions final : PageEntitySubscriptions {
   }
   std::vector<Item> entries; int remaining{-1}; uint32_t connection{1};
   std::function<void()> on_subscribe;
+  size_t scratch_bytes{0}, registration_begins{0}, registration_ends{0};
+  bool reject_registration{false}, registration_active{false};
+  void *registration_scratch{nullptr};
+  std::function<void(void *)> on_registration_end;
 };
 struct Fixture {
   Fixture() {
@@ -980,7 +1002,61 @@ void maximum_shared_state_replacement_is_atomic() {
   }
 }
 
+void registration_scratch_is_fallible_counted_and_released_after_the_batch() {
+  Fixture fixture;
+  Arena arena;
+  Source source;
+  Subscriptions subscriptions;
+  source.items = {{0, "sensor.a", ""}, {1, "sensor.b", ""}};
+  PageEntityStateRuntime state(source, arena, subscriptions, {8, 4, 128});
+  assert(state.prepare(fixture.store));
+  state.activate_prepared(17);
+  subscriptions.send("sensor.a", "", "original");
+  const auto original_entries = subscriptions.entries.size();
+  const auto original_bytes = arena.live_bytes();
+  auto verify_original = [&] {
+    assert(state.dependency({17, 0}, 0).value == "original");
+    assert(subscriptions.entries.size() == original_entries &&
+           arena.live_bytes() == original_bytes);
+    assert(!subscriptions.registration_active);
+  };
+  subscriptions.scratch_bytes = 512;
+  subscriptions.on_registration_end = [&](void *scratch) {
+    assert(arena.live.at(scratch) == 512); // End must precede deallocation.
+  };
+  auto begins = subscriptions.registration_begins,
+       ends = subscriptions.registration_ends;
+  arena.remaining = 1; // Staged arena succeeds; registration scratch fails.
+  assert(!state.prepare(fixture.store));
+  arena.remaining = -1;
+  assert(subscriptions.registration_begins == begins &&
+         subscriptions.registration_ends == ends);
+  verify_original();
+  subscriptions.reject_registration = true;
+  assert(!state.prepare(fixture.store));
+  subscriptions.reject_registration = false;
+  assert(subscriptions.registration_begins == ++begins &&
+         subscriptions.registration_ends == ends);
+  verify_original();
+  subscriptions.remaining =
+      1; // Partial registration must also end its borrowed lookup.
+  assert(!state.prepare(fixture.store));
+  subscriptions.remaining = -1;
+  assert(subscriptions.registration_begins == ++begins &&
+         subscriptions.registration_ends == ++ends);
+  verify_original();
+  assert(state.prepare(fixture.store));
+  assert(subscriptions.registration_begins == ++begins &&
+         subscriptions.registration_ends == ++ends);
+  assert(!subscriptions.registration_active && arena.live.size() == 2);
+  assert(state.memory().peak_arena_bytes == arena.peak_bytes);
+  state.activate_prepared(18);
+  assert(state.dependency({18, 0}, 0).value == "original");
+  assert(arena.live_bytes() == original_bytes);
+}
+
 int main() {
+  registration_scratch_is_fallible_counted_and_released_after_the_batch();
   colliding_channel_names_keep_identity_and_card_ordinals();
   maximum_shared_state_replacement_is_atomic();
   coordinator_callbacks_use_allocation_free_revocable_batches();

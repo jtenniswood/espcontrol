@@ -242,7 +242,7 @@ void cached_string_views_survive_owner_retirement() {
 void maximum_interleaved_retirement_preserves_live_channels() {
   {
     Coordinator coordinator;
-    constexpr size_t channels = 1440;
+    constexpr size_t channels = 7600;
     int retiring_owner = 0, retained_owner = 0;
     std::vector<size_t> deliveries;
     size_t read_deliveries = 0;
@@ -276,7 +276,19 @@ void maximum_interleaved_retirement_preserves_live_channels() {
                   true, 0, 0),
               "maximum pending read failed");
     }
+    std::vector<uint32_t> registration_index(
+        coordinator.unique_subscription_scratch_bytes() / sizeof(uint32_t));
+    require(coordinator.begin_unique_subscription_batch(
+                registration_index.data(),
+                registration_index.size() * sizeof(uint32_t)),
+            "maximum borrowed index failed");
     coordinator.release_owner(&retiring_owner);
+    require(
+        coordinator.reclaim_unused_channels() == 0,
+        "reclamation moved channels while a registration index was borrowed");
+    coordinator.end_unique_subscription_batch();
+    registration_index.clear();
+    registration_index.shrink_to_fit();
     require(coordinator.reclaim_unused_channels() == channels / 2,
             "maximum reclamation count");
     Registry::instance().flush();

@@ -236,68 +236,103 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
   synchronize_connection();
   // Keep large replacements bounded by sorting channel indices once. Names
   // and values remain owned by the old arena; no second state cache is kept.
-  PreparationIndex copy_index{allocator_, preparation_scratch_bytes_};
-  const Slot *old = active_ >= 0 && subscriptions_.copy_shared_values()
-                        ? &slots_[active_]
-                        : nullptr;
-  const auto key = [](const Slot &source, size_t channel) {
-    const auto &entry = source.channels[channel];
-    return std::pair<std::string_view, std::string_view>{
-        {source.names + entry.entity_offset, entry.entity_size},
-        {source.names + entry.attribute_offset, entry.attribute_size}};
-  };
-  if (old != nullptr && old->channel_count > 16) {
-    if (!add_size(preparation_scratch_bytes_, old->channel_count,
-                  sizeof(uint32_t)))
-      return fail();
-    copy_index.data = static_cast<uint32_t *>(
+  {
+    PreparationIndex copy_index{allocator_, preparation_scratch_bytes_};
+    const Slot *old = active_ >= 0 && subscriptions_.copy_shared_values()
+                          ? &slots_[active_]
+                          : nullptr;
+    const auto key = [](const Slot &source, size_t channel) {
+      const auto &entry = source.channels[channel];
+      return std::pair<std::string_view, std::string_view>{
+          {source.names + entry.entity_offset, entry.entity_size},
+          {source.names + entry.attribute_offset, entry.attribute_size}};
+    };
+    if (old != nullptr && old->channel_count > 16) {
+      if (!add_size(preparation_scratch_bytes_, old->channel_count,
+                    sizeof(uint32_t)))
+        return fail();
+      copy_index.data = static_cast<uint32_t *>(
+          allocator_.allocate(preparation_scratch_bytes_));
+      if (copy_index.data == nullptr)
+        return fail();
+      const auto current = memory();
+      memory_.peak_arena_bytes =
+          std::max(memory_.peak_arena_bytes, current.active_arena_bytes +
+                                                 current.staged_arena_bytes +
+                                                 preparation_scratch_bytes_);
+      for (size_t i = 0; i < old->channel_count; ++i)
+        copy_index.data[i] = static_cast<uint32_t>(i);
+      std::sort(copy_index.data, copy_index.data + old->channel_count,
+                [&](uint32_t left, uint32_t right) {
+                  return key(*old, left) < key(*old, right);
+                });
+    }
+    for (size_t i = 0; i < slot.channel_count; ++i) {
+      synchronize_connection();
+      if (old != nullptr) {
+        const auto wanted = key(slot, i);
+        size_t previous_channel = old->channel_count;
+        if (copy_index.data != nullptr) {
+          const auto *found = std::lower_bound(
+              copy_index.data, copy_index.data + old->channel_count, wanted,
+              [&](uint32_t channel, const auto &value) {
+                return key(*old, channel) < value;
+              });
+          if (found != copy_index.data + old->channel_count &&
+              key(*old, *found) == wanted)
+            previous_channel = *found;
+        } else {
+          for (size_t j = 0; j < old->channel_count; ++j) {
+            if (key(*old, j) == wanted) {
+              previous_channel = j;
+              break;
+            }
+          }
+        }
+        if (previous_channel != old->channel_count) {
+          const auto &previous = old->channels[previous_channel];
+          if (previous.status == PageEntityStatus::AVAILABLE &&
+              !receive(
+                  slot, slot.revision, static_cast<uint32_t>(i),
+                  {old->values + previous.value_offset, previous.value_size},
+                  true))
+            return fail();
+        }
+      }
+    }
+  } // Shared-value lookup is gone before reserving transport lookup scratch.
+  if (slot.channel_count == 0)
+    return true;
+  PreparationIndex registration_index{allocator_, preparation_scratch_bytes_};
+  preparation_scratch_bytes_ = subscriptions_.registration_scratch_bytes();
+  if (preparation_scratch_bytes_ == SIZE_MAX)
+    return fail();
+  if (preparation_scratch_bytes_) {
+    registration_index.data = static_cast<uint32_t *>(
         allocator_.allocate(preparation_scratch_bytes_));
-    if (copy_index.data == nullptr)
+    if (!registration_index.data)
       return fail();
     const auto current = memory();
     memory_.peak_arena_bytes =
         std::max(memory_.peak_arena_bytes, current.active_arena_bytes +
                                                current.staged_arena_bytes +
                                                preparation_scratch_bytes_);
-    for (size_t i = 0; i < old->channel_count; ++i)
-      copy_index.data[i] = static_cast<uint32_t>(i);
-    std::sort(copy_index.data, copy_index.data + old->channel_count,
-              [&](uint32_t left, uint32_t right) {
-                return key(*old, left) < key(*old, right);
-              });
   }
+  struct RegistrationGuard {
+    PageEntitySubscriptions &subscriptions;
+    bool active{false};
+    ~RegistrationGuard() {
+      if (active)
+        subscriptions.end_registration_batch();
+    }
+  } registration_guard{subscriptions_};
+  if (!subscriptions_.begin_registration_batch(registration_index.data,
+                                               preparation_scratch_bytes_))
+    return fail();
+  registration_guard.active = true;
   for (size_t i = 0; i < slot.channel_count; ++i) {
     const auto &entry = slot.channels[i];
     synchronize_connection();
-    if (old != nullptr) {
-      const auto wanted = key(slot, i);
-      size_t previous_channel = old->channel_count;
-      if (copy_index.data != nullptr) {
-        const auto *found = std::lower_bound(
-            copy_index.data, copy_index.data + old->channel_count, wanted,
-            [&](uint32_t channel, const auto &value) {
-              return key(*old, channel) < value;
-            });
-        if (found != copy_index.data + old->channel_count &&
-            key(*old, *found) == wanted)
-          previous_channel = *found;
-      } else {
-        for (size_t j = 0; j < old->channel_count; ++j) {
-          if (key(*old, j) == wanted) {
-            previous_channel = j;
-            break;
-          }
-        }
-      }
-      if (previous_channel != old->channel_count) {
-        const auto &previous = old->channels[previous_channel];
-        if (previous.status == PageEntityStatus::AVAILABLE &&
-            !receive(slot, slot.revision, static_cast<uint32_t>(i),
-                     {old->values + previous.value_offset, previous.value_size},
-                     true))
-          return fail();
-      }
-    }
     if (!subscriptions_.subscribe(slot.names + entry.entity_offset, slot.names + entry.attribute_offset,
           &slot, slot.revision, static_cast<uint32_t>(i), deliver)) return fail();
   }
