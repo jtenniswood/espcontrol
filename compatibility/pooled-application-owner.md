@@ -91,6 +91,12 @@ real-family UI tests. Coverage includes 1,000 navigation cycles without widget
 growth, hidden-page styles, modal retirement, deferred commands, slider tap/drag
 separation, three QR tiles with two image slots, image completion/drawing,
 configuration replacement/rollback, appearance-only rollback and shutdown.
+The complete scene also exercises all 81 supported S3 cards using production
+arena budgets: 20 replacements between disjoint sets of 72 sensor sources,
+2,000 navigation cycles with further arena reservations disabled, stable
+registrations/widgets/reserved bytes, and rejection of retired-generation
+reports. This is a host capacity fixture, not physical maximum-configuration
+qualification or a maximum-dependency/text fixture.
 The state-owner test independently repeats 1,000 configuration cycles. An S3
 SDK syntax probe instantiates the actual scene and native style adapter; that
 is separate from a complete selected firmware build or physical testing.
