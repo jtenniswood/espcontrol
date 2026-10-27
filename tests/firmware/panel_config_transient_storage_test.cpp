@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
+#include <vector>
 
 #include "panel_config_espidf_storage.h"
 #include "panel_config_transient_storage.h"
@@ -192,6 +193,31 @@ void failures_do_not_retain_memory_or_overwrite() {
   assert(raw_store.load(nullptr, 0).status == StoreStatus::READ_FAILED);
   fixture::fail_read = false;
 }
+
+void bounded_partition_read_transactions() {
+  fixture::reset();
+  constexpr size_t capacity = 40 * 1024;
+  EspIdfPanelConfigBlobStorage port;
+  assert(port.begin_card_images_partition(capacity));
+  TransientBlobStorageBackend<capacity> backend(port, allocate, release);
+  assert(backend.begin(capacity));
+  ConfigurationStore store(backend);
+  std::vector<uint8_t> payload(store.maximum_payload_size(), 0xA5);
+  const auto before = allocations;
+  assert(store.commit(payload.data(), payload.size()).ok());
+  payload.front() = 0x5A;
+  payload.back() = 0x42;
+  assert(store.commit(payload.data(), payload.size()).ok());
+  fixture::read_calls = 0;
+  std::vector<uint8_t> output(payload.size());
+  assert(store.load(output.data(), output.size()).generation == 2);
+  assert(output == payload && allocations == before && live_bytes == 0);
+  // A raw-flash call costs far more than a RAM copy. Inspect both full slots
+  // and load the winner within a bounded transaction budget, without slot RAM.
+  std::cout << "40KiB slot load flash reads: " << fixture::read_calls
+            << std::endl;
+  assert(fixture::read_calls <= 256);
+}
 } // namespace
 
 int main() {
@@ -200,6 +226,7 @@ int main() {
   power_loss_at_every_mutation(false);
   power_loss_at_every_mutation(true);
   failures_do_not_retain_memory_or_overwrite();
+  bounded_partition_read_transactions();
   assert(live_bytes == 0 && peak_bytes == CAPACITY);
   std::cout << "PASS legacy bytes, downgrade reads, operation-scoped memory "
                "and power cuts\n";

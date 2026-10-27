@@ -199,6 +199,13 @@ directions, interrupt every mutating storage call before/during/after its
 write, and cover allocation/read/sync failure and retry. These checks do not
 replace physical power-loss or full backup/downgrade qualification.
 
+Partition validation uses a 1 KiB stack window. The preceding 64-byte window
+made the direct-flash backend perform 2,566 reads to inspect two full 40 KiB
+slots and load the selected payload; the bounded window reduces this to 166
+reads without allocating slot RAM or changing CRC bytes. The physical S3
+21,694-byte save/restart/restore test exposed the transaction overhead; latency
+must be measured again on the updated firmware, separately from host checks.
+
 Remaining gates are current factory builds, matched S3 and working 20-slot P4
 heap/PSRAM tests, the remaining transient configuration buffers and
 backup/downgrade qualification. Depth-two nesting follows the runtime overhaul. Do not access the

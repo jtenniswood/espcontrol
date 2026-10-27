@@ -15,7 +15,10 @@ constexpr size_t HEADER_SIZE_OFFSET = 6;
 constexpr size_t GENERATION_OFFSET = 8;
 constexpr size_t PAYLOAD_SIZE_OFFSET = 12;
 constexpr size_t CHECKSUM_OFFSET = 16;
-constexpr size_t CHECKSUM_CHUNK_SIZE = 64;
+// Keep validation bounded while amortizing raw-flash transaction overhead.
+// This window lives only on the store call's stack; the CRC/layout is
+// unchanged.
+constexpr size_t CHECKSUM_CHUNK_SIZE = 1024;
 
 class CommitLockGuard {
  public:
