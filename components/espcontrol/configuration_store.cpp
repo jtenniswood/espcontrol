@@ -29,6 +29,21 @@ class CommitLockGuard {
   std::atomic_flag &lock_;
 };
 
+class StorageOperation {
+public:
+  explicit StorageOperation(StorageBackend &backend)
+      : backend_(backend), ready_(backend.begin_operation()) {}
+  ~StorageOperation() {
+    if (ready_)
+      backend_.end_operation();
+  }
+  bool ready() const { return ready_; }
+
+private:
+  StorageBackend &backend_;
+  bool ready_;
+};
+
 uint16_t read_u16(const uint8_t *data) {
   return static_cast<uint16_t>(data[0]) |
          (static_cast<uint16_t>(data[1]) << 8);
@@ -156,6 +171,10 @@ ConfigurationStore::SlotMetadata ConfigurationStore::inspect_slot(
 
 LoadResult ConfigurationStore::load(uint8_t *output,
                                     size_t output_capacity) {
+  CommitLockGuard lock(commit_lock_);
+  StorageOperation operation(backend_);
+  if (!operation.ready())
+    return {StoreStatus::READ_FAILED};
   const SlotMetadata first = inspect_slot(0);
   const SlotMetadata second = inspect_slot(1);
 
@@ -220,6 +239,10 @@ CommitResult ConfigurationStore::commit_internal(bool enforce_generation,
   if (payload_size > maximum_payload_size()) {
     return {StoreStatus::PAYLOAD_TOO_LARGE, 0, payload_size};
   }
+
+  StorageOperation operation(backend_);
+  if (!operation.ready())
+    return {StoreStatus::READ_FAILED};
 
   const SlotMetadata first = inspect_slot(0);
   const SlotMetadata second = inspect_slot(1);

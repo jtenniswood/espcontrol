@@ -1026,6 +1026,17 @@ target_compile_options(panel_config_storage_backend_test PRIVATE -Wall -Wextra -
 target_include_directories(panel_config_storage_backend_test PRIVATE ../../components/espcontrol)
 add_test(NAME panel_config_storage_backend_test COMMAND panel_config_storage_backend_test)
 
+add_executable(panel_config_transient_storage_test
+  panel_config_transient_storage_test.cpp
+  ../../components/espcontrol/configuration_store.cpp
+  ../../components/espcontrol/panel_config_espidf_storage.cpp)
+target_compile_features(panel_config_transient_storage_test PRIVATE cxx_std_17)
+target_compile_definitions(panel_config_transient_storage_test PRIVATE USE_ESP32)
+target_compile_options(panel_config_transient_storage_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_transient_storage_test PRIVATE
+  config_storage_stubs ../../components/espcontrol)
+add_test(NAME panel_config_transient_storage_test COMMAND panel_config_transient_storage_test)
+
 add_executable(panel_config_storage_selection_test
   panel_config_storage_selection_test.cpp)
 target_compile_features(panel_config_storage_selection_test PRIVATE cxx_std_17)

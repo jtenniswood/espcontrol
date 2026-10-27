@@ -13,25 +13,25 @@
 
 #include "esphome/core/log.h"
 
-#include "panel_config_capabilities_endpoint.h"
+#include "button_grid.h"
+#include "configuration_main_loop.h"
 #include "configuration_release_policy.h"
 #include "configuration_service.h"
-#include "configuration_main_loop.h"
 #include "configuration_store.h"
-#include "panel_config_read_endpoint.h"
-#include "panel_config_espidf_storage.h"
+#include "panel_config_capabilities_endpoint.h"
+#include "panel_config_endpoint_policy.h"
 #include "panel_config_esphome_text.h"
+#include "panel_config_espidf_storage.h"
+#include "panel_config_http_context.h"
 #include "panel_config_legacy_adapter.h"
+#include "panel_config_read_endpoint.h"
 #include "panel_config_runtime_adapter.h"
 #include "panel_config_service_validator.h"
-#include "panel_config_storage_backend.h"
-#include "panel_config_endpoint_policy.h"
 #include "panel_config_storage_selection.h"
+#include "panel_config_transient_storage.h"
 #include "panel_config_write_endpoint.h"
-#include "panel_config_http_context.h"
 #include "panel_identity_endpoint.h"
 #include "screensaver_pin_endpoint.h"
-#include "button_grid.h"
 
 extern "C" void espcontrol_register_web_server_handlers(
     esphome::web_server_idf::AsyncWebServer *server) {
@@ -58,6 +58,24 @@ static const char *const TAG = "espcontrol.config";
 // to fail safely after the display and restored text entities have settled.
 constexpr uint32_t NATIVE_CONFIGURATION_INITIALIZATION_DELAY_MS = 5000;
 
+static uint8_t *allocate_configuration_slot(size_t size) {
+#ifdef USE_ESP32
+  return static_cast<uint8_t *>(
+      heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+#else
+  (void)size;
+  return nullptr;
+#endif
+}
+
+static void release_configuration_slot(uint8_t *buffer) {
+#ifdef USE_ESP32
+  heap_caps_free(buffer);
+#else
+  (void)buffer;
+#endif
+}
+
 class EspControlApp::NativeConfigurationRuntime {
  public:
   struct LegacyButtonTextSources {
@@ -69,14 +87,15 @@ class EspControlApp::NativeConfigurationRuntime {
 
   NativeConfigurationRuntime()
       : legacy_config(text_bindings), runtime_config(text_bindings),
-        backend(blobs), store(backend) {}
+        backend(blobs, allocate_configuration_slot, release_configuration_slot),
+        store(backend) {}
 
   configuration::PanelConfigTextBindings text_bindings{};
   configuration::PanelConfigLegacyAdapter legacy_config;
   configuration::PanelConfigRuntimeAdapter runtime_config;
   configuration::PanelConfigDocumentValidator validator{};
   configuration::EspIdfPanelConfigBlobStorage blobs{};
-  configuration::BufferedBlobStorageBackend<PANEL_CONFIG_STORAGE_SLOT_CAPACITY>
+  configuration::TransientBlobStorageBackend<PANEL_CONFIG_STORAGE_SLOT_CAPACITY>
       backend;
   configuration::ConfigurationStore store;
   configuration::ConfigurationMainLoop transactions;
@@ -389,29 +408,25 @@ void EspControlApp::initialize_native_configuration() {
     }
     ESP_LOGI(TAG, "Allocating native configuration buffers");
 #ifdef USE_ESP32
-    // Two fixed slots back the atomic store; the scratch, HTTP request, and
-    // delayed boot-application buffers must not overlap each other.
-    const size_t panel_config_memory_size = runtime.slot_capacity * 5;
+    // Store slots stream from flash, or borrow one transient NVS slot. The
+    // service scratch, HTTP request and delayed boot buffers remain distinct.
+    const size_t panel_config_memory_size = runtime.slot_capacity * 3;
     runtime.memory = static_cast<uint8_t *>(
         heap_caps_malloc(panel_config_memory_size,
                          MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
 #endif
     if (runtime.memory == nullptr ||
-        !runtime.backend.begin(runtime.memory,
-                               runtime.slot_capacity * 2,
-                               runtime.slot_capacity)) {
+        !runtime.backend.begin(runtime.slot_capacity)) {
       ESP_LOGE(TAG, "Native configuration memory is unavailable");
       native_configuration_initialized_ = true;
       register_panel_config_endpoints();
       return;
     }
     ESP_LOGI(TAG, "Loading native configuration document");
-    panel_config_service->set_scratch_buffer(
-        runtime.memory + runtime.slot_capacity * 2,
-        runtime.slot_capacity);
-    runtime.document_buffer =
-        runtime.memory + runtime.slot_capacity * 3;
-    runtime.boot_buffer = runtime.memory + runtime.slot_capacity * 4;
+    panel_config_service->set_scratch_buffer(runtime.memory,
+                                             runtime.slot_capacity);
+    runtime.document_buffer = runtime.memory + runtime.slot_capacity;
+    runtime.boot_buffer = runtime.memory + runtime.slot_capacity * 2;
     const configuration::ServiceLoadResult loaded = panel_config_service->load(
         runtime.document_buffer, runtime.slot_capacity);
     if (!configuration::panel_config_load_allows_native_endpoints(loaded.status)) {

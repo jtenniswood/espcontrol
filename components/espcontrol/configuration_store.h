@@ -49,6 +49,10 @@ class StorageBackend {
   virtual ~StorageBackend() = default;
 
   virtual size_t slot_capacity() const = 0;
+  // A backend may borrow scratch memory only for this load or commit. Every
+  // successful begin is paired with end, including all failure paths.
+  virtual bool begin_operation() { return true; }
+  virtual void end_operation() {}
   virtual bool read(uint8_t slot, size_t offset, uint8_t *output,
                     size_t size) = 0;
   virtual bool write(uint8_t slot, size_t offset, const uint8_t *data,

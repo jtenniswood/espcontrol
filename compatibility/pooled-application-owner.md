@@ -165,7 +165,34 @@ settings/image takeover, legacy publication/merge and transaction failure
 regressions pass locally. Full CI and selected factory build results belong to
 the immutable commit recorded in the PR validation notes.
 
-Remaining gates are selected factory builds, matched S3 and working 20-slot P4
-heap/PSRAM tests, streaming configuration storage and backup/downgrade
-qualification. Depth-two nesting follows the runtime overhaul. Do not access the
+The controlled S3 comparison on `2b0e6c6c5` against legacy `ac5214e3c`
+uses SDK 2026.10.0, the same read-only memory action and nine root sensor cards.
+Both cohorts verify visible cards, no loaded artwork or image requests, ten
+settled samples, zero unexpected API disconnects and exact original-document
+restoration. Median internal free memory rises from 70,871 to 80,419 bytes;
+PSRAM free falls from 2,523,900 to 2,264,472 bytes. Combined free therefore
+falls by 249,880 bytes. This is a regression, not a completed memory gate.
+
+The S3 copies instructions and read-only data into PSRAM. ELF instruction-page
+reservation grows by 196,608 bytes and read-only data by 16,256 bytes, matching
+the measured 212,864-byte drop in allocator-managed PSRAM capacity. Those
+allocator totals are not physical RAM capacity. The remaining difference also
+includes runtime allocations; retaining both compiled renderers is still a
+separate cleanup gate. This small fixture does not qualify maximum real HA
+values, artwork peaks, every card family or the P4.
+
+Configuration storage now reads and writes raw partition byte ranges without
+retaining either full slot image. NVS keeps its deployed whole-blob format and
+borrows one PSRAM slot image only during each serialized store load or commit;
+all exits release it. The two permanent slot buffers are removed (32 KiB on
+NVS profiles; 80 KiB with 40 KiB partition slots). Three permanent service,
+HTTP and deferred-application buffers remain for the next storage stage.
+Host tests compare complete old/new durable images, read in both firmware
+directions, interrupt every mutating storage call before/during/after its
+write, and cover allocation/read/sync failure and retry. These checks do not
+replace physical power-loss or full backup/downgrade qualification.
+
+Remaining gates are current factory builds, matched S3 and working 20-slot P4
+heap/PSRAM tests, the remaining transient configuration buffers and
+backup/downgrade qualification. Depth-two nesting follows the runtime overhaul. Do not access the
 P4-86 reserved for USB diagnosis as part of these hardware tests.
