@@ -58,6 +58,13 @@ its bytes and overlapping value-pool growth count toward the graph peak.
 Allocation failure preserves the active graph. Coordinator retirement marks
 channel activity once and remaps subscriptions and deferred reads in single
 passes, preserving callback order and stable native callback identities.
+Callback snapshots use an allocator-backed reference count confined to the main
+loop. The P4 C++ library implements `std::shared_ptr` control blocks with OS
+mutexes, whose internal-RAM allocations bypass the external allocator and can
+fail under large subscription loads. The callback lease avoids these hidden
+allocations while keeping an executing callback alive through owner retirement
+and skipping cancelled callbacks in the remaining snapshot. It must not cross
+threads; the coordinator and its dispatch already require the main loop.
 
 The concrete device wraps its scene allocator with `PageCountedArena`, tracking
 live requests, allocation failures and the actual overlapping arena high-water

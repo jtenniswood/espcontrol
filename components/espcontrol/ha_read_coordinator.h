@@ -10,6 +10,8 @@
 #include <utility>
 #include <vector>
 
+#include "ha_callback_lease.h"
+
 template<typename Transport, typename = void>
 struct HaTransportOwnsSubscriptions : std::false_type {};
 template<typename Transport>
@@ -27,6 +29,7 @@ class HaReadCoordinator {
  public:
   using State = typename Transport::State;
   using Callback = typename Transport::Callback;
+  using CallbackLease = HaCallbackLease<Callback, Allocator>;
   template<typename T>
   using ReboundAllocator =
       typename std::allocator_traits<Allocator>::template rebind_alloc<T>;
@@ -202,9 +205,8 @@ class HaReadCoordinator {
     if (!heap_probe_.available("Home Assistant state request", min_free, min_largest)) return false;
     size_t channel = find_subscription_channel(entity_id, attribute, has_attribute);
     if (channel == subscription_channels_.size() || !channel_reuses_reads(channel)) return false;
-    CallbackRef callback_ref{
-        std::allocate_shared<Callback>(ReboundAllocator<Callback>{}, std::move(callback)),
-        owner, owner_generation(owner)};
+    CallbackRef callback_ref{CallbackLease::create(std::move(callback)), owner,
+                             owner_generation(owner)};
     if (callback_depth_ != 0) {
       return queue(channel, std::move(callback_ref));
     }
@@ -220,8 +222,7 @@ class HaReadCoordinator {
                  bool retain_replay = true,
                  bool initial_replay = true) {
     if (!available() || entity_id.empty() || !callback) return false;
-    auto callback_ref =
-        std::allocate_shared<Callback>(ReboundAllocator<Callback>{}, std::move(callback));
+    auto callback_ref = CallbackLease::create(std::move(callback));
     size_t channel = find_subscription_channel(entity_id, attribute, true);
     const bool new_channel = channel == subscription_channels_.size();
     if (new_channel) {
@@ -403,7 +404,7 @@ class HaReadCoordinator {
 
  private:
   struct CallbackRef {
-    std::shared_ptr<Callback> callback;
+    CallbackLease callback;
     void *owner = nullptr;
     // Only retained-read callbacks need this token. It prevents an old read
     // from being delivered after its LVGL owner address has been reused.
@@ -422,7 +423,7 @@ class HaReadCoordinator {
   };
 
   struct SubscriptionRef {
-    std::shared_ptr<Callback> callback;
+    CallbackLease callback;
     uint32_t scope = 0;
     void *owner = nullptr;
     size_t channel = 0;
@@ -515,7 +516,7 @@ class HaReadCoordinator {
     }
   }
 
-  bool mark_initial_delivery(const std::shared_ptr<Callback> &callback) {
+  bool mark_initial_delivery(const CallbackLease &callback) {
     for(auto &entry:subscriptions_) {
       if(entry.callback!=callback||entry.pending_release||entry.initial_delivery)continue;
       entry.initial_delivery=true;return true;
@@ -523,7 +524,7 @@ class HaReadCoordinator {
     return false;
   }
 
-  void invoke(const std::shared_ptr<Callback> &callback, State state) {
+  void invoke(const CallbackLease &callback, State state) {
     if (!callback || !*callback) return;
     callback_depth_++;
     (*callback)(state);
@@ -545,7 +546,7 @@ class HaReadCoordinator {
     subscription.fresh_request_pending = false;
     AllocatedVector<CallbackRef> pending_reads;
     pending_reads.swap(subscription.pending_reads);
-    AllocatedVector<std::shared_ptr<Callback>> callbacks;
+    AllocatedVector<CallbackLease> callbacks;
     size_t matching_callbacks = 0;
     for (const auto &ref : subscriptions_) {
       if (!ref.pending_release && ref.channel == channel &&
@@ -652,7 +653,7 @@ class HaReadCoordinator {
     return false;
   }
 
-  bool subscription_callback_active(const std::shared_ptr<Callback> &callback) const {
+  bool subscription_callback_active(const CallbackLease &callback) const {
     for (const auto &ref : subscriptions_) {
       if (!ref.pending_release && ref.callback == callback && ref.callback && *ref.callback) return true;
     }
