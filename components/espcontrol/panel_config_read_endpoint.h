@@ -47,8 +47,19 @@ class PanelConfigReadHandler final
     }
 #endif
     httpd_req_t *raw_request = *request;
+    ConfigurationBuffer buffer(context.allocate, context.release);
+    auto *document = buffer.allocate(context.document_capacity);
+    if (!document) {
+      httpd_resp_set_status(raw_request, "503 Service Unavailable");
+      httpd_resp_set_type(raw_request, "text/plain");
+      httpd_resp_send(
+          raw_request,
+          "Panel configuration memory is unavailable; retry the request",
+          HTTPD_RESP_USE_STRLEN);
+      return;
+    }
     const auto transaction =
-        context.transactions->load(context.document, context.document_capacity);
+        context.transactions->load(document, context.document_capacity);
     if (transaction.dispatch != ConfigurationDispatchStatus::COMPLETED) {
       httpd_resp_set_status(raw_request, "503 Service Unavailable");
       httpd_resp_set_type(raw_request, "text/plain");
@@ -83,7 +94,7 @@ class PanelConfigReadHandler final
     httpd_resp_set_hdr(raw_request, "ETag", etag);
     httpd_resp_set_hdr(raw_request, "X-Panel-Config-Generation", generation);
     httpd_resp_set_hdr(raw_request, "X-Panel-Config-Version", version);
-    httpd_resp_send(raw_request, reinterpret_cast<const char *>(context.document),
+    httpd_resp_send(raw_request, reinterpret_cast<const char *>(document),
                     loaded.document_size);
   }
 };

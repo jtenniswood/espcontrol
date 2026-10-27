@@ -948,6 +948,12 @@ target_compile_features(network_status_layout_test PRIVATE cxx_std_17)
 target_compile_options(network_status_layout_test PRIVATE -Wall -Wextra -Werror)
 add_test(NAME network_status_layout_test COMMAND network_status_layout_test)
 
+add_executable(panel_config_upload_test panel_config_upload_test.cpp)
+target_compile_features(panel_config_upload_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_upload_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_upload_test PRIVATE ../../components/espcontrol ../../components/web_server_idf)
+add_test(NAME panel_config_upload_test COMMAND panel_config_upload_test)
+
 add_executable(configuration_store_test
   configuration_store_test.cpp
   ../../components/espcontrol/configuration_store.cpp

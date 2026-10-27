@@ -5,13 +5,15 @@
 #include "esphome/core/helpers.h"
 #include "esphome/core/string_ref.h"
 #include "esphome/core/version.h"
+#include "request_body_context.h"
 #include <esp_http_server.h>
 
-#include <atomic>
 #include <array>
+#include <atomic>
 #include <functional>
 #include <list>
 #include <map>
+#include <memory>
 #include <span>
 #include <string>
 #include <utility>
@@ -114,6 +116,11 @@ class AsyncWebServerRequest {
  public:
   ~AsyncWebServerRequest();
 
+  RequestBodyContext *body_context() const { return body_context_.get(); }
+  void set_body_context(std::unique_ptr<RequestBodyContext> context) {
+    body_context_ = std::move(context);
+  }
+
   http_method method() const { return static_cast<http_method>(this->req_->method); }
   static constexpr size_t URL_BUF_SIZE = CONFIG_HTTPD_MAX_URI_LEN + 1;  ///< Buffer size for url_to()
   /// Write URL (without query string) to buffer, returns StringRef pointing to buffer.
@@ -193,15 +200,17 @@ class AsyncWebServerRequest {
   bool hasHeader(const char *name) const;
 
  protected:
-  httpd_req_t *req_;
-  AsyncWebServerResponse *rsp_{};
-  // Use vector instead of map/unordered_map: most requests have 0-3 params, so linear search
-  // is faster than tree/hash overhead. AsyncWebParameter stores both name and value to avoid
-  // duplicate storage. Only successful lookups are cached to prevent cache pollution when
-  // handlers check for optional parameters that don't exist.
-  optional<std::string> find_query_value_(const char *name) const;
-  std::vector<AsyncWebParameter *> params_;
-  std::string post_query_;
+   std::unique_ptr<RequestBodyContext> body_context_;
+   httpd_req_t *req_;
+   AsyncWebServerResponse *rsp_{};
+   // Use vector instead of map/unordered_map: most requests have 0-3 params, so
+   // linear search is faster than tree/hash overhead. AsyncWebParameter stores
+   // both name and value to avoid duplicate storage. Only successful lookups
+   // are cached to prevent cache pollution when handlers check for optional
+   // parameters that don't exist.
+   optional<std::string> find_query_value_(const char *name) const;
+   std::vector<AsyncWebParameter *> params_;
+   std::string post_query_;
 #ifdef USE_WEBSERVER_AUTH_DIGEST
   mutable bool digest_nonce_stale_{false};
   // A raw-body handler may authenticate once before receiving the body and

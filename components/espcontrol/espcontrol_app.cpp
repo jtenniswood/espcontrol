@@ -100,7 +100,7 @@ class EspControlApp::NativeConfigurationRuntime {
   configuration::ConfigurationStore store;
   configuration::ConfigurationMainLoop transactions;
   uint8_t *memory{nullptr};
-  uint8_t *document_buffer{nullptr};
+  bool document_available{false};
   uint8_t *boot_buffer{nullptr};
   size_t slot_capacity{0};
   bool boot_configuration_pending{false};
@@ -229,16 +229,17 @@ void EspControlApp::register_panel_config_endpoints() {
   configuration::ConfigurationService *const panel_config_service =
       core_.configuration_service();
   NativeConfigurationRuntime *const runtime = native_configuration_runtime_.get();
-  const bool can_bind_document_endpoints = panel_config_service != nullptr &&
-      runtime != nullptr && runtime->document_buffer != nullptr &&
-      runtime->slot_capacity > 0;
+  const bool can_bind_document_endpoints =
+      panel_config_service != nullptr && runtime != nullptr &&
+      runtime->document_available && runtime->slot_capacity > 0;
   if (!can_bind_document_endpoints) {
     ESP_LOGE(TAG,
-             "Native configuration endpoints unavailable: service=%s runtime=%s document_buffer=%s",
+             "Native configuration endpoints unavailable: service=%s "
+             "runtime=%s document=%s",
              panel_config_service != nullptr ? "ready" : "missing",
              runtime != nullptr ? "ready" : "missing",
-             runtime != nullptr && runtime->document_buffer != nullptr ? "ready"
-                                                                    : "missing");
+             runtime != nullptr && runtime->document_available ? "ready"
+                                                               : "missing");
     configuration::set_panel_config_read_supported(false);
     configuration::set_panel_config_write_supported(false);
     panel_config_http_context_bound_ = true;
@@ -246,8 +247,8 @@ void EspControlApp::register_panel_config_endpoints() {
     return;
   }
   configuration::bind_panel_config_http_context(
-      *panel_config_service, runtime->transactions, runtime->document_buffer,
-      runtime->slot_capacity,
+      *panel_config_service, runtime->transactions, runtime->slot_capacity,
+      allocate_configuration_slot, release_configuration_slot,
       web_auth_username_ == nullptr ? "" : web_auth_username_,
       web_auth_password_ == nullptr ? "" : web_auth_password_);
   configuration::set_panel_config_read_supported(true);
@@ -408,9 +409,9 @@ void EspControlApp::initialize_native_configuration() {
     }
     ESP_LOGI(TAG, "Allocating native configuration buffers");
 #ifdef USE_ESP32
-    // Service scratch is borrowed only for a serialized operation. HTTP and
-    // delayed boot buffers remain distinct until their request owners move.
-    const size_t panel_config_memory_size = runtime.slot_capacity * 2;
+    // HTTP and service buffers are owned by each operation. Only the delayed
+    // boot/compatibility buffer remains allocated between operations.
+    const size_t panel_config_memory_size = runtime.slot_capacity;
     runtime.memory = static_cast<uint8_t *>(
         heap_caps_malloc(panel_config_memory_size,
                          MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
@@ -425,15 +426,15 @@ void EspControlApp::initialize_native_configuration() {
     ESP_LOGI(TAG, "Loading native configuration document");
     panel_config_service->set_buffer_allocator(allocate_configuration_slot,
                                                release_configuration_slot);
-    runtime.document_buffer = runtime.memory;
-    runtime.boot_buffer = runtime.memory + runtime.slot_capacity;
-    const configuration::ServiceLoadResult loaded = panel_config_service->load(
-        runtime.document_buffer, runtime.slot_capacity);
-    if (!configuration::panel_config_load_allows_native_endpoints(loaded.status)) {
+    runtime.boot_buffer = runtime.memory;
+    const configuration::ServiceLoadResult loaded =
+        panel_config_service->load(runtime.boot_buffer, runtime.slot_capacity);
+    runtime.document_available =
+        configuration::panel_config_load_allows_native_endpoints(loaded.status);
+    if (!runtime.document_available) {
       ESP_LOGW(TAG,
                "Native configuration initial load failed (%u); keeping legacy configuration endpoints active",
                static_cast<unsigned>(loaded.status));
-      runtime.document_buffer = nullptr;
     }
     if (loaded.status == configuration::ServiceStatus::IMPORTED_LEGACY) {
       ESP_LOGI(TAG, "Imported legacy panel configuration into generation %" PRIu32,

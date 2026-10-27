@@ -203,9 +203,22 @@ each stage, verify the old generation and active runtime remain intact, and
 exercise repeated success, conflicts, store/mirror failure and retry without
 retained allocations. The optional externally supplied scratch API remains
 compatible. This removes another 16 KiB permanent allocation on NVS profiles,
-or 40 KiB with partition slots. HTTP and deferred-application buffers remain;
-this is not yet the completed streaming-persistence gate. Physical measurements
-of this service-buffer change are pending.
+or 40 KiB with partition slots. The S3 service-buffer build gains 39,962 bytes
+combined free over its predecessor in the settled nine-root-sensor workload.
+The largest internal block stays 31,744 bytes; combined free remains 127,404
+bytes below the original legacy baseline. The 21,694-byte save/software-reboot/
+exact-restore check also passes. Full maximum-workload qualification remains.
+
+HTTP now owns separate buffers for each request. GET keeps its scoped output
+alive through main-loop dispatch and response transmission. PUT authenticates
+and checks media type, generation header and bounded length before allocating
+its exact-length upload. The request owns upload state through reception,
+dispatch and response; destruction also frees an incomplete upload after a
+disconnect or timeout. No handler-wide upload state or retained document buffer
+is shared between requests. Native initialization uses the remaining boot buffer
+and records endpoint readiness separately. This removes a fourth permanent
+slot-sized buffer, leaving only the deferred-application buffer. Whole-document
+temporary buffers and final streaming-persistence qualification still remain.
 
 Host tests compare complete old/new durable images, read in both firmware
 directions, interrupt every mutating storage call before/during/after its
