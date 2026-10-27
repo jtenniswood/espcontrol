@@ -137,6 +137,9 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
   Builder builder(slot, store, counter.count, counter.names, channels);
   if (!source_.enumerate(store, builder) || !builder.valid || builder.count != counter.count ||
       !index_dependencies(slot)) return fail();
+  if (!subscriptions_.prepare_batch(slot.subscription_batch, &slot,
+                                    slot.revision, slot.channel_count, deliver))
+    return fail();
   synchronize_connection();
   for (size_t i = 0; i < slot.channel_count; ++i) {
     const auto &entry = slot.channels[i];

@@ -53,6 +53,17 @@ an accounting error invalidates the counter snapshot without changing the
 backing allocator's behavior. Complete-scene shutdown tests require the counted
 reservations to return to zero.
 
+HA coordinator callbacks capture a four-byte token, rather than the owner,
+revision, channel and delivery function. The S3 toolchain's eight-byte inline
+callback storage otherwise puts that sixteen-byte capture on the internal
+heap for every channel. Each graph instead embeds one dispatch lease per
+active/staged slot. Preparing a lease reserves a never-reused token range;
+release unlinks it before resetting or freeing graph storage. Late callbacks
+therefore remain harmless after graph/adapter destruction and address reuse.
+Dispatch copies its scalar destination before entering consumer code, so that
+delivery may retire its own lease. The lease bookkeeping needs no allocation,
+including during activation/release, and token exhaustion rejects preparation.
+
 Ordinary panels cover input while retaining the underlying full bindings and
 artwork. Retired panels continue covering input until safe collection. Full
 display/PIN takeovers suspend the bank; critical alarm presentation uses the

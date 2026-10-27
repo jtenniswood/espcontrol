@@ -23,10 +23,27 @@ class PageDependencySource {
   virtual bool enumerate(const PageStore &store, PageDependencySink &sink) const = 0;
 };
 
+using PageEntityDeliver = void (*)(void *, uint32_t, uint32_t,
+                                   std::string_view);
+
+// One stable, caller-owned dispatch lease per staged/active graph. A port can
+// route small callback tokens through this node without a heap capture per
+// channel. release(owner) must unlink it before its storage is reset or freed.
+struct PageEntitySubscriptionBatch {
+  PageEntitySubscriptionBatch *next{nullptr};
+  void *adapter{nullptr}, *owner{nullptr};
+  PageEntityDeliver deliver{nullptr};
+  uint32_t revision{0}, first_token{0}, channels{0};
+};
+
 class PageEntitySubscriptions {
  public:
-  using Deliver = void (*)(void *, uint32_t, uint32_t, std::string_view);
-  virtual ~PageEntitySubscriptions() = default;
+   using Deliver = PageEntityDeliver;
+   virtual ~PageEntitySubscriptions() = default;
+   virtual bool prepare_batch(PageEntitySubscriptionBatch &, void *, uint32_t,
+                              size_t, Deliver) {
+     return true;
+   }
   virtual bool subscribe(const char *entity, const char *attribute, void *owner,
                          uint32_t revision, uint32_t channel, Deliver deliver) = 0;
   // Immediately cancel callbacks for this owner, including retained replay.
@@ -149,6 +166,7 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
   struct Edge { CardId card; uint32_t channel; };
   struct Slot {
     PageEntityStateRuntime *runtime{nullptr};
+    PageEntitySubscriptionBatch subscription_batch;
     void *arena{nullptr};
     size_t arena_size{0};
     Channel *channels{nullptr};

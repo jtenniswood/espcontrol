@@ -198,6 +198,173 @@ struct Transport {
   uint32_t next{0}; std::vector<Entry> entries;
 };
 struct Heap { bool available(const char *,size_t,size_t) { return true; } };
+struct CallbackCoordinator {
+  using State = std::string;
+  using Callback = std::function<void(State)>;
+  struct Entry {
+    void *owner;
+    Callback callback;
+  };
+  std::vector<Entry> entries;
+  bool accept{true};
+  bool subscribe(const std::string &, const std::string &, Callback callback,
+                 uint32_t, void *owner, bool retain, bool replay,
+                 bool initial) {
+    assert(!retain && !replay && !initial);
+    if (!accept)
+      return false;
+    entries.push_back({owner, std::move(callback)});
+    return true;
+  }
+  void release_owner(void *owner) {
+    entries.erase(std::remove_if(entries.begin(), entries.end(),
+                                 [owner](const Entry &entry) {
+                                   return entry.owner == owner;
+                                 }),
+                  entries.end());
+  }
+  uint32_t connection_generation() const { return 1; }
+};
+struct CallbackSink {
+  size_t calls{0};
+  uint32_t revision{0}, channel{0};
+  void *adapter{nullptr};
+  void (*after)(CallbackSink &){nullptr};
+  static void receive(void *owner, uint32_t revision, uint32_t channel,
+                      std::string_view) {
+    auto &sink = *static_cast<CallbackSink *>(owner);
+    ++sink.calls;
+    sink.revision = revision;
+    sink.channel = channel;
+    if (sink.after)
+      sink.after(sink);
+  }
+};
+void coordinator_callbacks_use_allocation_free_revocable_batches() {
+  CallbackCoordinator coordinator;
+  coordinator.entries.reserve(1442);
+  CoordinatorPageEntitySubscriptions adapter(coordinator, 16);
+  PageEntitySubscriptionBatch batch;
+  CallbackSink sink;
+  const auto allocations = allocation_calls;
+  assert(adapter.prepare_batch(batch, &sink, 17, 1440, CallbackSink::receive));
+  for (uint32_t channel = 0; channel < 1440; ++channel)
+    assert(adapter.subscribe("sensor.one", "", &sink, 17, channel,
+                             CallbackSink::receive));
+  assert(allocation_calls ==
+         allocations); // Includes std::function conversion/copies.
+  assert(coordinator.entries.size() == 1440);
+  const auto first = coordinator.entries.front().callback;
+  const auto last = coordinator.entries.back().callback;
+  first("one");
+  last("last");
+  assert(sink.calls == 2 && sink.revision == 17 && sink.channel == 1439);
+  PageEntitySubscriptionBatch duplicate;
+  assert(
+      !adapter.prepare_batch(duplicate, &sink, 18, 1, CallbackSink::receive));
+  assert(!adapter.prepare_batch(batch, &sink, 18, 1, CallbackSink::receive));
+  assert(!adapter.subscribe("sensor.one", "", &sink, 18, 0,
+                            CallbackSink::receive));
+  assert(!adapter.subscribe("sensor.one", "", &sink, 17, 1440,
+                            CallbackSink::receive));
+
+  // Another port of the same type retains independent leases and callbacks.
+  CoordinatorPageEntitySubscriptions other(coordinator, 32);
+  PageEntitySubscriptionBatch other_batch;
+  CallbackSink other_sink;
+  assert(other.prepare_batch(other_batch, &other_sink, 18, 1,
+                             CallbackSink::receive));
+  assert(other.subscribe("sensor.one", "", &other_sink, 18, 0,
+                         CallbackSink::receive));
+  const auto other_report = coordinator.entries.back().callback;
+  adapter.release(&sink);
+  assert(!batch.adapter && coordinator.entries.size() == 1);
+  first("late");
+  last("late");
+  other_report("live");
+  assert(sink.calls == 2 && other_sink.calls == 1);
+
+  // Reuse the exact owner/node addresses. Old callbacks never reach a new
+  // configuration, and activation/release needs no scratch allocation.
+  for (uint32_t revision = 19; revision < 1019; ++revision) {
+    assert(adapter.prepare_batch(batch, &sink, revision, 1,
+                                 CallbackSink::receive));
+    assert(adapter.subscribe("sensor.one", "", &sink, revision, 0,
+                             CallbackSink::receive));
+    const auto current = coordinator.entries.back().callback;
+    const auto before = sink.calls;
+    first("late");
+    last("late");
+    assert(sink.calls == before);
+    current("fresh");
+    assert(sink.calls == before + 1 && sink.revision == revision);
+    adapter.release(&sink);
+    current("retired");
+    assert(sink.calls == before + 1);
+  }
+  assert(allocation_calls == allocations);
+  coordinator.accept = false;
+  assert(adapter.prepare_batch(batch, &sink, 1019, 1, CallbackSink::receive));
+  assert(!adapter.subscribe("sensor.one", "", &sink, 1019, 0,
+                            CallbackSink::receive));
+  adapter.release(&sink);
+  coordinator.accept = true;
+  other_report("still live");
+  assert(other_sink.calls == 2);
+  other.release(&other_sink);
+  assert(coordinator.entries.empty());
+
+  // Delivery may unlink its own node; dispatch borrows nothing afterwards.
+  sink.adapter = &adapter;
+  sink.after = [](CallbackSink &value) {
+    static_cast<CoordinatorPageEntitySubscriptions<CallbackCoordinator> *>(
+        value.adapter)
+        ->release(&value);
+  };
+  assert(adapter.prepare_batch(batch, &sink, 1020, 1, CallbackSink::receive));
+  assert(adapter.subscribe("sensor.one", "", &sink, 1020, 0,
+                           CallbackSink::receive));
+  const auto self_retiring = coordinator.entries.front().callback;
+  self_retiring("retire");
+  assert(coordinator.entries.empty() && !batch.adapter);
+  const auto retired_calls = sink.calls;
+  self_retiring("late");
+  assert(sink.calls == retired_calls);
+
+  CallbackCoordinator::Callback destroyed_adapter_report;
+  {
+    CoordinatorPageEntitySubscriptions temporary(coordinator, 16);
+    assert(
+        temporary.prepare_batch(batch, &sink, 1021, 1, CallbackSink::receive));
+    assert(temporary.subscribe("sensor.one", "", &sink, 1021, 0,
+                               CallbackSink::receive));
+    destroyed_adapter_report = coordinator.entries.front().callback;
+  }
+  assert(coordinator.entries.empty() && !batch.adapter);
+  destroyed_adapter_report("late");
+  assert(sink.calls == retired_calls);
+  assert(allocation_calls == allocations);
+}
+void coordinator_callback_tokens_refuse_wraparound() {
+  struct ExhaustionCoordinator : CallbackCoordinator {};
+  ExhaustionCoordinator coordinator;
+  coordinator.entries.reserve(1);
+  CoordinatorPageEntitySubscriptions adapter(coordinator, 16);
+  PageEntitySubscriptionBatch batch, extra;
+  CallbackSink sink;
+  assert(adapter.prepare_batch(batch, &sink, 1, UINT32_MAX,
+                               CallbackSink::receive));
+  assert(adapter.subscribe("sensor.one", "", &sink, 1, UINT32_MAX - 1,
+                           CallbackSink::receive));
+  const auto callback = coordinator.entries.front().callback;
+  callback("last token");
+  assert(sink.calls == 1 && sink.channel == UINT32_MAX - 1);
+  assert(!adapter.prepare_batch(extra, &sink, 2, 1, CallbackSink::receive));
+  adapter.release(&sink);
+  callback("late");
+  assert(sink.calls == 1);
+  assert(!adapter.prepare_batch(batch, &sink, 2, 1, CallbackSink::receive));
+}
 void coordinator_deduplicates_generations_without_an_extra_cache() {
   Fixture f; Arena arena; Source source; source.items={{0,"sensor.shared",""},{1,"sensor.shared",""}};
   HaReadCoordinator<Transport,Heap> coordinator;
@@ -654,6 +821,8 @@ void shared_observers_see_borrowed_previous_values() {
 }
 
 int main() {
+  coordinator_callbacks_use_allocation_free_revocable_batches();
+  coordinator_callback_tokens_refuse_wraparound();
   elastic_growth_preserves_full_ceilings();
   elastic_failures_and_atomic_copies();
   elastic_zero_capacity_and_disjoint_replacements();
