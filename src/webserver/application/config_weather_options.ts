@@ -1,3 +1,4 @@
+import { configOptionValue } from "../model/config_primitives";
 import type { DeviceConfig } from "../state/types";
 import {
     cardContractOptionSpec,
@@ -14,18 +15,19 @@ export function createConfigWeatherOptionsFeature(
     function weatherModeOptions(this: any) {
         const options: any = [
             ["", "Current Conditions"],
+            ["rainfall", "Rainfall"],
             ["today", "Today's Forecast"],
             ["tomorrow", "Tomorrow's Forecast"],
             ["daily", "Daily Forecast"],
         ];
-        return weatherForecastCardsSupported() ? options : [options[0]];
+        return weatherForecastCardsSupported() ? options : options.slice(0, 2);
     }
 
     function weatherModeOptionValues(this: any) {
         const spec: any = cardContractOptionSpec("weather", "weather_mode");
-        const values: any = spec && spec.values ? spec.values.slice() : ["", "today", "tomorrow"];
+        const values: any = spec && spec.values ? spec.values.slice() : ["", "today", "tomorrow", "daily", "rainfall"];
         return weatherForecastCardsSupported() ? values : values.filter(function (value: any) {
-            return value === "";
+            return value === "" || value === "rainfall";
         });
     }
 
@@ -43,7 +45,18 @@ export function createConfigWeatherOptionsFeature(
         return button.precision === "today" ? "Today" : "Tomorrow";
     }
 
+    function rainfallUsesForecast(button?: any): boolean {
+        return weatherForecastCardsSupported() && !!button && button.precision === "rainfall" &&
+            configOptionValue(button.options, "rainfall_source") === "forecast";
+    }
+
+    function normalizeWeatherOptions(options?: string, button?: any): string {
+        return rainfallUsesForecast({ ...button, options }) ? "rainfall_source=forecast" : "";
+    }
+
     return {
+        rainfallUsesForecast,
+        normalizeWeatherOptions,
         weatherCardDefaultForecastLabel,
         weatherCardIsForecastMode,
         weatherForecastCardsSupported,

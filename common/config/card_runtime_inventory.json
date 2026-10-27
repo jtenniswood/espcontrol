@@ -342,6 +342,8 @@
       "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["none"], "modalOwner": "none" },
       "modes": [
         { "name": "current", "config": { "entity": "weather.example", "precision": "" } },
+        { "name": "rainfall_sensor", "config": { "entity": "sensor.rainfall_today", "precision": "rainfall" } },
+        { "name": "rainfall_forecast", "config": { "entity": "weather.example", "precision": "rainfall", "options": "rainfall_source=forecast" }, "lifecycle": { "subscriptions": ["action_response"], "actions": ["modal"], "modalOwner": "weather" } },
         { "name": "today", "config": { "entity": "weather.example", "precision": "today" }, "lifecycle": { "subscriptions": ["action_response"], "actions": ["modal"], "modalOwner": "weather" } },
         { "name": "tomorrow", "config": { "entity": "weather.example", "precision": "tomorrow" }, "lifecycle": { "subscriptions": ["action_response"], "actions": ["modal"], "modalOwner": "weather" } },
         { "name": "daily", "config": { "entity": "weather.example", "precision": "daily" }, "lifecycle": { "subscriptions": ["action_response"], "actions": ["modal"], "modalOwner": "weather" } }

@@ -284,6 +284,7 @@ inline void apply_large_sensor_number_style(const BtnSlot &s, const lv_font_t *l
 }
 
 inline void apply_standard_sensor_number_style(const BtnSlot &s, const DisplayProfile &display) {
+  if (s.sensor_lbl) lv_obj_set_style_text_opa(s.sensor_lbl, LV_OPA_COVER, LV_PART_MAIN);
   if (s.sensor_lbl && display_sensor_font(display)) {
     lv_obj_set_style_text_font(s.sensor_lbl, display_sensor_font(display), LV_PART_MAIN);
   }
@@ -986,7 +987,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
   control_modal_register_card_label(s);
   display_apply_slot_text_width(s, display);
   if (espcontrol::cards::weather_driver_matches(context) &&
-      espcontrol::cards::weather_driver_shows_forecast(p)) {
+      (p.precision == "rainfall" || espcontrol::cards::weather_driver_shows_forecast(p))) {
     espcontrol::cards::weather_driver_refresh_layout(s, p, context, display, row_span, col_span);
     return;
   }
