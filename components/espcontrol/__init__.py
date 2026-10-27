@@ -127,6 +127,18 @@ async def to_code(config):
 
     panel_config = config.get(CONF_PANEL_CONFIG)
     if panel_config is not None:
+        # Every translation unit includes these generated defines through the
+        # component header, so the application's field layout stays consistent.
+        cg.add_define(
+            "ESPCONTROL_PANEL_CONFIG_TEXT_SLOT_COUNT", len(panel_config[CONF_BUTTONS])
+        )
+        cg.add_define(
+            "ESPCONTROL_PANEL_CONFIG_TEXT_CHUNK_COUNT",
+            max(
+                len(button[CONF_SUBPAGE_CHUNKS])
+                for button in panel_config[CONF_BUTTONS]
+            ),
+        )
         if panel_config[CONF_STORAGE] == "card_images":
             cg.add(var.set_panel_config_card_images_storage(True))
         cg.add(var.set_panel_config_device_profile(panel_config[CONF_DEVICE_PROFILE]))

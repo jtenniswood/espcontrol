@@ -102,6 +102,9 @@ text:
         print(result.stderr)
         raise SystemExit(result.returncode)
     generated = (root / ".esphome/build/empty-defaults-test/src/main.cpp").read_text()
+    defines = (root / ".esphome/build/empty-defaults-test/src/esphome/core/defines.h").read_text()
+    assert "#define ESPCONTROL_PANEL_CONFIG_TEXT_SLOT_COUNT 1" in defines
+    assert "#define ESPCONTROL_PANEL_CONFIG_TEXT_CHUNK_COUNT 6" in defines
     marked = set(re.findall(r"target_app->set_panel_config_text_empty_default\((\w+)\)", generated))
     assert marked == {"order", "empty_restore", "another_empty"}, marked
     assert "target_app->set_panel_config_button(1," in generated

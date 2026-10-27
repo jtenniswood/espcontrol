@@ -3,6 +3,7 @@
 #include "home_assistant_transport_runtime.h"
 #include "esphome/components/artwork_image/transfer_observer.h"
 
+#include <algorithm>
 #include <array>
 #include <cinttypes>
 #include <new>
@@ -78,37 +79,57 @@ static void release_configuration_slot(uint8_t *buffer) {
 
 class EspControlApp::NativeConfigurationRuntime {
  public:
-  struct LegacyButtonTextSources {
-    configuration::EspHomePanelConfigTextValue button;
-    std::array<configuration::EspHomePanelConfigTextValue,
-               configuration::PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS>
-        subpages{};
-  };
+   using LegacyButtonTextSources = configuration::PanelConfigTextValues<
+       configuration::EspHomePanelConfigTextValue>;
 
-  NativeConfigurationRuntime()
-      : legacy_config(text_bindings), runtime_config(text_bindings),
-        backend(blobs, allocate_configuration_slot, release_configuration_slot),
-        store(backend) {}
+   // The profile-sized owner is below the ordinary malloc internal-preference
+   // threshold on several devices. Keep its metadata explicitly in PSRAM and
+   // preserve the existing fallible initialization contract.
+   static void *operator new(size_t size, const std::nothrow_t &) noexcept {
+#ifdef USE_ESP32
+     return allocate_configuration_slot(size);
+#else
+     return ::operator new(size, std::nothrow);
+#endif
+   }
+   static void operator delete(void *storage) noexcept {
+#ifdef USE_ESP32
+     release_configuration_slot(static_cast<uint8_t *>(storage));
+#else
+     ::operator delete(storage);
+#endif
+   }
+   static void operator delete(void *storage, const std::nothrow_t &) noexcept {
+     operator delete(storage);
+   }
 
-  configuration::PanelConfigTextBindings text_bindings{};
-  configuration::PanelConfigLegacyAdapter legacy_config;
-  configuration::PanelConfigRuntimeAdapter runtime_config;
-  configuration::PanelConfigDocumentValidator validator{};
-  configuration::EspIdfPanelConfigBlobStorage blobs{};
-  configuration::TransientBlobStorageBackend<PANEL_CONFIG_STORAGE_SLOT_CAPACITY>
-      backend;
-  configuration::ConfigurationStore store;
-  configuration::ConfigurationMainLoop transactions;
-  bool document_available{false};
-  bool service_configured{false};
-  bool storage_ready{false};
-  size_t slot_capacity{0};
-  bool boot_configuration_pending{false};
-  bool boot_configuration_due{false};
-  configuration::EspHomePanelConfigTextValue button_order{};
-  configuration::EspHomePanelConfigTextValue button_on_color{};
-  std::array<LegacyButtonTextSources, configuration::PANEL_CONFIG_MAX_SLOT_COUNT>
-      buttons{};
+   NativeConfigurationRuntime()
+       : legacy_config(text_bindings), runtime_config(text_bindings),
+         backend(blobs, allocate_configuration_slot,
+                 release_configuration_slot),
+         store(backend) {}
+
+   configuration::PanelConfigTextBindings text_bindings{};
+   configuration::PanelConfigLegacyAdapter legacy_config;
+   configuration::PanelConfigRuntimeAdapter runtime_config;
+   configuration::PanelConfigDocumentValidator validator{};
+   configuration::EspIdfPanelConfigBlobStorage blobs{};
+   configuration::TransientBlobStorageBackend<
+       PANEL_CONFIG_STORAGE_SLOT_CAPACITY>
+       backend;
+   configuration::ConfigurationStore store;
+   configuration::ConfigurationMainLoop transactions;
+   bool document_available{false};
+   bool service_configured{false};
+   bool storage_ready{false};
+   size_t slot_capacity{0};
+   bool boot_configuration_pending{false};
+   bool boot_configuration_due{false};
+   configuration::EspHomePanelConfigTextValue button_order{};
+   configuration::EspHomePanelConfigTextValue button_on_color{};
+   std::array<LegacyButtonTextSources,
+              configuration::PANEL_CONFIG_TEXT_SLOT_COUNT>
+       buttons{};
 };
 
 EspControlApp::EspControlApp() = default;
@@ -172,9 +193,14 @@ void EspControlApp::set_panel_config_button(
       esphome::text::Text *subpage_4, esphome::text::Text *subpage_5,
       esphome::text::Text *subpage_6, esphome::text::Text *subpage_7) {
   if (slot == 0 || slot > panel_config_button_texts_.size()) return;
-  panel_config_button_texts_[slot - 1] = {
-      button, {subpage_0, subpage_1, subpage_2, subpage_3, subpage_4,
-               subpage_5, subpage_6, subpage_7}};
+  auto &sources = panel_config_button_texts_[slot - 1];
+  sources = {};
+  sources.button = button;
+  const std::array<esphome::text::Text *, 8> chunks = {
+      subpage_0, subpage_1, subpage_2, subpage_3,
+      subpage_4, subpage_5, subpage_6, subpage_7};
+  std::copy_n(chunks.begin(), sources.subpages.size(),
+              sources.subpages.begin());
 }
 
 void EspControlApp::set_panel_config_text_empty_default(
@@ -238,8 +264,13 @@ bool EspControlApp::create_native_configuration_runtime() {
           (sources.empty_defaults & (1u << (subpage + 1))) != 0);
       legacy_subpages[subpage] = &legacy_sources.subpages[subpage];
     }
-    runtime->text_bindings.set_button(static_cast<uint8_t>(index + 1),
-                                      &legacy_sources.button, legacy_subpages);
+    if (!runtime->text_bindings.set_button(static_cast<uint8_t>(index + 1),
+                                           &legacy_sources.button,
+                                           legacy_subpages)) {
+      ESP_LOGE(TAG, "Configured text sources exceed their compiled capacity");
+      native_configuration_runtime_.reset();
+      return false;
+    }
   }
   return true;
 }

@@ -12,6 +12,7 @@
 #include "esphome/components/text/text.h"
 #include "esphome/core/component.h"
 #include "home_assistant_endpoint_resolver.h"
+#include "panel_config_text_storage.h"
 #include "panel_identity.h"
 namespace esphome::template_ {
 class TemplateText;
@@ -93,7 +94,9 @@ class EspControlApp : public esphome::Component {
   template <typename Text, typename... Subpages>
   void set_panel_config_button(uint8_t slot, Text *button,
                                Subpages... subpages) {
-    static_assert(sizeof...(Subpages) >= 4 && sizeof...(Subpages) <= 8);
+    static_assert(sizeof...(Subpages) >= 4 &&
+                  sizeof...(Subpages) <=
+                      configuration::PANEL_CONFIG_TEXT_CHUNK_COUNT);
     set_panel_config_button(slot, static_cast<esphome::text::Text *>(button),
                             static_cast<esphome::text::Text *>(subpages)...);
     if (slot == 0 || slot > panel_config_button_texts_.size())
@@ -144,19 +147,8 @@ class EspControlApp : public esphome::Component {
   bool native_configuration_requested() const;
   bool create_native_configuration_runtime();
 
-  struct PanelConfigTextSources {
-    esphome::text::Text *button{nullptr};
-    std::array<esphome::text::Text *, 8> subpages{};
-    bool template_button{false};
-    std::array<bool, 8> template_subpages{};
-    uint16_t empty_defaults{0};
-  };
-  static_assert(sizeof(PanelConfigTextSources) ==
-                    ((9 * sizeof(esphome::text::Text *) + 9 * sizeof(bool) +
-                      alignof(esphome::text::Text *) - 1) /
-                     alignof(esphome::text::Text *)) *
-                        alignof(esphome::text::Text *),
-                "Empty-default metadata must fit existing source padding");
+  using PanelConfigTextSources =
+      configuration::PanelConfigTextSources<esphome::text::Text>;
 
   const char *panel_config_device_profile_{nullptr};
   esphome::text::Text *panel_config_button_order_{nullptr};
@@ -164,7 +156,9 @@ class EspControlApp : public esphome::Component {
   bool panel_config_order_template_{false};
   bool panel_config_color_template_{false};
   uint8_t panel_config_chrome_empty_defaults_{0};
-  std::array<PanelConfigTextSources, 32> panel_config_button_texts_{};
+  std::array<PanelConfigTextSources,
+             configuration::PANEL_CONFIG_TEXT_SLOT_COUNT>
+      panel_config_button_texts_{};
   bool panel_config_card_images_storage_{false};
   // This owns every non-trivial configuration object. Keeping it separate
   // leaves the ESPHome-created application object safe to construct before

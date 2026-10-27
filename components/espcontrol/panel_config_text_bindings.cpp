@@ -26,12 +26,21 @@ void PanelConfigTextBindings::set_device_profile(const char *device_profile) {
   device_profile_ = device_profile == nullptr ? "" : device_profile;
 }
 
-void PanelConfigTextBindings::set_button(
+bool PanelConfigTextBindings::set_button(
     uint8_t slot, PanelConfigTextValue *button,
     const std::array<PanelConfigTextValue *, MAX_SUBPAGE_CHUNKS>
         &subpage_chunks) {
-  if (slot == 0 || slot > buttons_.size()) return;
-  buttons_[slot - 1] = {button, subpage_chunks};
+  if (slot == 0 || slot > buttons_.size())
+    return false;
+  if (std::any_of(subpage_chunks.begin() + PANEL_CONFIG_TEXT_CHUNK_COUNT,
+                  subpage_chunks.end(),
+                  [](auto *chunk) { return chunk != nullptr; }))
+    return false;
+  auto &sources = buttons_[slot - 1];
+  sources.button = button;
+  std::copy_n(subpage_chunks.begin(), sources.subpage_chunks.size(),
+              sources.subpage_chunks.begin());
+  return true;
 }
 
 bool PanelConfigTextBindings::configured() const {
@@ -48,6 +57,10 @@ bool PanelConfigTextBindings::owns_record(
     const PanelConfigRecord &record) const {
   if (record.type == PanelConfigRecordType::DEVICE_PROFILE)
     return true;
+  if ((record.type == PanelConfigRecordType::BUTTON ||
+       record.type == PanelConfigRecordType::SUBPAGE) &&
+      (record.slot == 0 || record.slot > buttons_.size()))
+    return false;
   if (record.type == PanelConfigRecordType::BUTTON)
     return buttons_[record.slot - 1].button != nullptr;
   if (record.type == PanelConfigRecordType::SUBPAGE) {
@@ -173,6 +186,8 @@ bool PanelConfigTextBindings::persist_document(const uint8_t *document,
         record.value_size > 255)
       return false;
     if (record.type != PanelConfigRecordType::SUBPAGE) continue;
+    if (record.slot == 0 || record.slot > buttons_.size())
+      return false;
     size_t offset = 0;
     for (PanelConfigTextValue *chunk : buttons_[record.slot - 1].subpage_chunks) {
       if (chunk != nullptr)
@@ -232,6 +247,10 @@ bool PanelConfigTextBindings::apply_document(const uint8_t *document,
   PanelConfigRecord record;
   PanelConfigStatus status = PanelConfigStatus::OK;
   while ((status = reader.next(&record)) == PanelConfigStatus::OK) {
+    if ((record.type == PanelConfigRecordType::BUTTON ||
+         record.type == PanelConfigRecordType::SUBPAGE) &&
+        (record.slot == 0 || record.slot > buttons_.size()))
+      return false;
     if (record.type == PanelConfigRecordType::DEVICE_PROFILE) {
       if (record.value_size != device_profile_.size() ||
           std::memcmp(record.value, device_profile_.data(), record.value_size) !=

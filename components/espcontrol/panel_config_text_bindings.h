@@ -6,6 +6,7 @@
 #include <string>
 
 #include "panel_config_document.h"
+#include "panel_config_text_storage.h"
 
 namespace espcontrol::configuration {
 
@@ -37,10 +38,9 @@ class PanelConfigTextBindings {
   void set_button_on_color(PanelConfigTextValue *button_on_color) {
     button_on_color_ = button_on_color;
   }
-  void set_button(
-      uint8_t slot, PanelConfigTextValue *button,
-      const std::array<PanelConfigTextValue *, MAX_SUBPAGE_CHUNKS>
-          &subpage_chunks);
+  bool set_button(uint8_t slot, PanelConfigTextValue *button,
+                  const std::array<PanelConfigTextValue *, MAX_SUBPAGE_CHUNKS>
+                      &subpage_chunks);
 
   bool configured() const;
   bool write_document(uint8_t *output, size_t output_capacity,
@@ -57,7 +57,8 @@ class PanelConfigTextBindings {
    enum class ApplyMode { PUBLISH, CHECK_PERSIST, PREPARE_EMPTY, PERSIST };
    struct ButtonSources {
      PanelConfigTextValue *button{nullptr};
-     std::array<PanelConfigTextValue *, MAX_SUBPAGE_CHUNKS> subpage_chunks{};
+     std::array<PanelConfigTextValue *, PANEL_CONFIG_TEXT_CHUNK_COUNT>
+         subpage_chunks{};
    };
 
   bool owns_record(const PanelConfigRecord &record) const;
@@ -75,7 +76,7 @@ class PanelConfigTextBindings {
   std::string device_profile_;
   PanelConfigTextValue *button_order_{nullptr};
   PanelConfigTextValue *button_on_color_{nullptr};
-  std::array<ButtonSources, PANEL_CONFIG_MAX_SLOT_COUNT> buttons_{};
+  std::array<ButtonSources, PANEL_CONFIG_TEXT_SLOT_COUNT> buttons_{};
 };
 
 }  // namespace espcontrol::configuration

@@ -62,6 +62,41 @@ target_compile_options(panel_config_esphome_text_test PRIVATE -Wall -Wextra -Wer
 target_include_directories(panel_config_esphome_text_test PRIVATE text_preference_stubs ../../components/espcontrol)
 add_test(NAME panel_config_esphome_text_test COMMAND panel_config_esphome_text_test)
 
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/panel_config_text_storage_test.cpp
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_panel_config_text_storage_test.py
+          ${CMAKE_CURRENT_BINARY_DIR}/panel_config_text_storage_test.cpp
+  DEPENDS generate_panel_config_text_storage_test.py panel_config_text_storage_test.cpp.in
+          ../../components/espcontrol/espcontrol_app.h ../../components/espcontrol/espcontrol_app.cpp
+  VERBATIM)
+add_custom_target(panel_config_text_storage_test_source
+  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/panel_config_text_storage_test.cpp)
+function(add_panel_text_storage_test name slots chunks)
+  add_executable(${name} ${CMAKE_CURRENT_BINARY_DIR}/panel_config_text_storage_test.cpp
+    ../../components/espcontrol/panel_config_text_bindings.cpp)
+  add_dependencies(${name} panel_config_text_storage_test_source)
+  target_compile_features(${name} PRIVATE cxx_std_17)
+  target_compile_definitions(${name} PRIVATE USE_ESP32)
+  if(NOT "${slots}" STREQUAL "default")
+    target_compile_definitions(${name} PRIVATE
+      ESPCONTROL_PANEL_CONFIG_TEXT_SLOT_COUNT=${slots}
+      ESPCONTROL_PANEL_CONFIG_TEXT_CHUNK_COUNT=${chunks})
+  endif()
+  target_compile_options(${name} PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+  target_include_directories(${name} PRIVATE profile_text_storage_stubs
+    text_preference_stubs ../../components/espcontrol)
+  add_test(NAME ${name} COMMAND ${name})
+endfunction()
+add_panel_text_storage_test(panel_text_storage_p4_six_test 6 8)
+add_panel_text_storage_test(panel_text_storage_s3_test 9 4)
+add_panel_text_storage_test(panel_text_storage_p4_nine_test 9 8)
+add_panel_text_storage_test(panel_text_storage_p4_fifteen_test 15 8)
+add_panel_text_storage_test(panel_text_storage_p4_twenty_test 20 8)
+add_panel_text_storage_test(panel_text_storage_five_chunks_test 1 5)
+add_panel_text_storage_test(panel_text_storage_six_chunks_test 1 6)
+add_panel_text_storage_test(panel_text_storage_seven_chunks_test 1 7)
+add_panel_text_storage_test(panel_text_storage_fallback_test default default)
+
+
 add_executable(panel_config_legacy_capacity_test panel_config_legacy_capacity_test.cpp
   ../../components/espcontrol/panel_config_text_bindings.cpp)
 target_compile_features(panel_config_legacy_capacity_test PRIVATE cxx_std_17)

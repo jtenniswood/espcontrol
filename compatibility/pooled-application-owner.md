@@ -6,6 +6,14 @@ selects this scene through a PSRAM-backed `PageNativeDevice` and one fixed widge
 bank. This stage neither enables nested pages nor establishes physical memory
 savings; selected firmware builds and physical qualification remain gates.
 
+Configuration text wiring and bound compatibility values use the actual slot
+and chunk counts emitted by ESPHome code generation. The compatibility lookup uses the same bounds; merging preserves unowned
+native records, and unsupported compatibility fields reject mirroring rather
+than truncating data. The native document retains its existing 32-slot format
+and inactive-record semantics. The deferred configuration owner explicitly allocates in PSRAM even
+when its smaller size falls below the SDK's ordinary internal-allocation
+threshold. Allocation failure preserves the existing delayed retry path.
+
 One application-lifetime scene owns the immutable page store, shared HA graph,
 semantic models, a single card command queue, the fifteen-kind modal bank and
 one supplied widget bank. QR leases use the visible slot count independently of
