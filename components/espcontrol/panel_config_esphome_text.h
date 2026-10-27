@@ -117,7 +117,9 @@ class EspHomePanelConfigTextValue final : public PanelConfigTextValue {
    esphome::text::Text *text_{nullptr};
    bool template_preference_{false};
    bool empty_default_{false};
-   std::string empty_;
+   // Unbound adapters share a read-only fallback instead of retaining an
+   // unused std::string in every compatibility field.
+   inline static const std::string empty_{};
 };
 
 // Temporary source-compatible name while device wiring moves away from the

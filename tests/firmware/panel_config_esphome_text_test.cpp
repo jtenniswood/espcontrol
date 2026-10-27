@@ -5,6 +5,16 @@
 
 using espcontrol::configuration::EspHomePanelConfigTextValue;
 int main() {
+  // A compatibility adapter must not retain an unused std::string fallback.
+  static_assert(sizeof(EspHomePanelConfigTextValue) <= 3 * sizeof(void *));
+  EspHomePanelConfigTextValue unbound, another_unbound;
+  const auto &empty = unbound.value();
+  assert(empty.empty() && &empty == &another_unbound.value());
+  {
+    EspHomePanelConfigTextValue temporary;
+    assert(&temporary.value() == &empty);
+  }
+  assert(empty.empty());
   esphome::Preferences prefs;
   esphome::global_preferences = &prefs;
   esphome::text::Text text;
