@@ -725,23 +725,24 @@ bool transient_service_buffers_release_and_fail_before_publication() {
   // when their next temporary buffer cannot be reserved.
   buffers.fail_on = buffers.calls + 1;
   loaded = service.load(output.data(), output.size());
-  if (loaded.status != ServiceStatus::STORE_FAILED || buffers.live ||
+  if (loaded.status != ServiceStatus::ALLOCATION_FAILED || buffers.live ||
       backend.write_calls != writes)
     return false;
   buffers.fail_on = buffers.calls + 1;
   const auto failed = service.save_if_generation(
       generation, 1, replacement.data(), replacement.size());
-  if (failed.status != ServiceStatus::STORE_FAILED || failed.durable() ||
-      runtime.has_prepared || buffers.live || backend.write_calls != writes ||
-      legacy.publish_calls != publications || legacy.mirror_calls != mirrors ||
-      runtime.applied != bytes("original"))
+  if (failed.status != ServiceStatus::ALLOCATION_FAILED ||
+      failed.store_status != StoreStatus::ALLOCATION_FAILED ||
+      failed.durable() || runtime.has_prepared || buffers.live ||
+      backend.write_calls != writes || legacy.publish_calls != publications ||
+      legacy.mirror_calls != mirrors || runtime.applied != bytes("original"))
     return false;
   buffers.fail_on = 0;
   legacy.value = replacement;
   for (size_t step = 1; step <= 3; ++step) {
     buffers.fail_on = buffers.calls + step;
     loaded = service.synchronize_legacy_runtime(output.data(), output.size());
-    if (loaded.status != ServiceStatus::STORE_FAILED || buffers.live ||
+    if (loaded.status != ServiceStatus::ALLOCATION_FAILED || buffers.live ||
         runtime.has_prepared || backend.write_calls != writes ||
         runtime.applied != bytes("original") ||
         legacy.publish_calls != publications || legacy.mirror_calls != mirrors)
@@ -749,7 +750,7 @@ bool transient_service_buffers_release_and_fail_before_publication() {
   }
   buffers.fail_on = buffers.calls + 1;
   if (service.refresh_legacy_shadow(output.data(), output.size()).status !=
-          ServiceStatus::STORE_FAILED ||
+          ServiceStatus::ALLOCATION_FAILED ||
       buffers.live || backend.write_calls != writes)
     return false;
   buffers.fail_on = 0;
@@ -828,7 +829,7 @@ bool transient_service_buffers_release_and_fail_before_publication() {
   buffers.fail_on =
       buffers.calls + 2; // read scratch succeeds, import encoding fails
   if (importing.load(output.data(), output.size()).status !=
-          ServiceStatus::STORE_FAILED ||
+          ServiceStatus::ALLOCATION_FAILED ||
       buffers.live || empty_backend.write_calls)
     return false;
   buffers.fail_on = 0;

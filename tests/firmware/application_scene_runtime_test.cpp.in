@@ -2,6 +2,9 @@
 #include <array>
 #include <cassert>
 #include <chrono>
+#include <cinttypes>
+#include <cstdlib>
+#include <unordered_map>
 #include <cstring>
 #include <functional>
 #include <future>
@@ -12,13 +15,26 @@
 
 #include "application_scene_runtime.h"
 #include "configuration_main_loop.h"
+#include "configuration_release_policy.h"
+#include "panel_config_storage_selection.h"
+#include "panel_config_endpoint_policy.h"
 using namespace espcontrol::configuration;
 static std::string trace;
+static uint32_t fake_time_ms = 0;
+struct ConfigAllocations {
+  static inline std::unordered_map<uint8_t *, size_t> live;
+  static inline size_t calls = 0, fail_at = 0, peak_count = 0;
+  static void reset() { assert(live.empty()); calls = fail_at = peak_count = 0; }
+};
+namespace esphome { uint32_t millis() { return fake_time_ms; } }
+
 static std::function<void()> ha_hook;
 template <class... Args>
 void log_sink(Args&&...) {}
 #define ESP_LOGE(...) log_sink(__VA_ARGS__)
 #define ESP_LOGW(...) log_sink(__VA_ARGS__)
+#define ESP_LOGI(...) log_sink(__VA_ARGS__)
+#define ESP_LOGD(...) log_sink(__VA_ARGS__)
 namespace esphome::artwork_image {
 struct TransferObserver {
   static TransferObserver& instance() {
@@ -30,6 +46,16 @@ struct TransferObserver {
 }  // namespace esphome::artwork_image
 namespace espcontrol {
 static constexpr const char* TAG = "test";
+static uint8_t *allocate_configuration_slot(size_t size) {
+  if (++ConfigAllocations::calls == ConfigAllocations::fail_at) return nullptr;
+  auto *data = static_cast<uint8_t *>(std::malloc(size));
+  assert(data); ConfigAllocations::live.emplace(data, size);
+  ConfigAllocations::peak_count = std::max(ConfigAllocations::peak_count, ConfigAllocations::live.size());
+  return data;
+}
+static void release_configuration_slot(uint8_t *data) {
+  assert(ConfigAllocations::live.erase(data) == 1); std::free(data);
+}
 namespace ha {
 void maintain_subscriptions() {
   trace += 'H';
@@ -41,6 +67,14 @@ void set_card_runtime_registry_service(std::nullptr_t) { trace += 'K'; }
 }  // namespace cards
 struct Core {
   ConfigurationService* service{nullptr};
+  ConfigurationService* available{nullptr};
+  size_t configurations{0};
+  template<class... Args> bool configure_configuration_service(Args&&...) {
+    ++configurations;
+    if (service) return false;
+    service = available;
+    return service != nullptr;
+  }
   ConfigurationService* configuration_service() { return service; }
   void run_once() { trace += 'C'; }
   void stop() { trace += 'S'; }
@@ -69,9 +103,18 @@ struct Transactions {
 struct NativeRuntime {
   LegacyRuntime runtime_config;
   Transactions transactions;
-  std::array<uint8_t, 512> bytes{};
-  uint8_t* boot_buffer{bytes.data()};
-  size_t slot_capacity{bytes.size()};
+  struct Sources { bool configured() const { return true; } } legacy_config;
+  struct Blobs {
+    size_t opens{0}; bool ready{true};
+    bool begin() { ++opens; return ready; }
+    bool begin_card_images_partition(size_t) { ++opens; return ready; }
+  } blobs;
+  struct Backend {
+    size_t starts{0}; bool begin(size_t) { ++starts; return true; }
+  } backend;
+  int store{0}, validator{0};
+  size_t slot_capacity{1024};
+  bool service_configured{false}, storage_ready{false}, document_available{false};
   bool boot_configuration_pending{true}, boot_configuration_due{false};
 };
 // Only ESPHome/device storage is doubled. Bodies below are copied unchanged
@@ -86,6 +129,30 @@ class EspControlApp {
   bool application_scene_required_{false};
   bool configuration_text_refresh_pending_{false};
   bool shutting_down_{false}, native_configuration_initialized_{false};
+  bool native_configuration_initialization_pending_{false};
+  ConfigurationBufferRetry configuration_buffer_retry_{};
+  bool panel_config_card_images_storage_{false}, native_requested{true}, runtime_creation_fails{false};
+  static constexpr size_t PANEL_CONFIG_STORAGE_SLOT_CAPACITY = 1024;
+  static constexpr size_t PANEL_CONFIG_NVS_SLOT_CAPACITY = 1024;
+  std::unique_ptr<NativeRuntime> delayed_runtime;
+  std::vector<std::pair<uint32_t, std::function<void()>>> timers;
+  bool native_configuration_requested() const { return native_requested; }
+  bool create_native_configuration_runtime() {
+    if (native_configuration_runtime_) return true;
+    if (runtime_creation_fails) return false;
+    native_configuration_runtime_ = std::move(delayed_runtime);
+    return native_configuration_runtime_ != nullptr;
+  }
+  void set_timeout(uint32_t delay, std::function<void()> callback) {
+    timers.emplace_back(fake_time_ms + delay, std::move(callback));
+  }
+  void run_timeouts() {
+    while (!timers.empty() && static_cast<int32_t>(fake_time_ms - timers.front().first) >= 0) {
+      auto callback = std::move(timers.front().second); timers.erase(timers.begin()); callback();
+    }
+  }
+  void initialize_native_configuration();
+  void defer_native_configuration_initialization();
   bool install_application_scene(ApplicationSceneRuntime&);
   bool require_application_scene();
   ConfigurationRuntimeAdapter* selected_configuration_runtime();
@@ -98,6 +165,8 @@ class EspControlApp {
 // @production-app-method install_application_scene
 // @production-app-method require_application_scene
 // @production-app-method selected_configuration_runtime
+// @production-app-method initialize_native_configuration
+// @production-app-method defer_native_configuration_initialization
 // @production-app-method apply_configuration_text_refresh
 // @production-app-method apply_boot_configuration
 // @production-app-method loop
@@ -126,6 +195,9 @@ class MemoryBackend final : public StorageBackend {
     return true;
   }
   bool sync() override { return true; }
+  bool begin_operation() override { return !memory_unavailable; }
+  StoreStatus operation_failure() const override { return StoreStatus::ALLOCATION_FAILED; }
+  bool memory_unavailable{false};
   void fail_writes(bool value) { fail_writes_ = value; }
 
  private:
@@ -217,12 +289,14 @@ struct Harness {
   MemoryBackend backend{1024};
   ConfigurationStore store{backend};
   FakeLegacy legacy;
-  std::array<uint8_t, 1024> scratch{};
-  ConfigurationService service{store, legacy, nullptr, scratch.data(), scratch.size()};
+  ConfigurationService service{store, legacy};
   Scene scene, other;
   EspControlApp app;
   uint32_t initial_generation{0};
   Harness() {
+    ConfigAllocations::reset(); fake_time_ms = 0;
+    service.set_buffer_allocator(allocate_configuration_slot, release_configuration_slot);
+    app.core_.available = &service;
     legacy.value = {1, 2, 3};
     std::array<uint8_t, 512> output{};
     auto loaded = service.load(output.data(), output.size());
@@ -371,6 +445,120 @@ void compatibility_refresh_and_publication() {
   assert(h.scene.current[0]==4 && native.runtime_config.applies==0 && h.legacy.publish_calls==4);
 }
 
+void buffer_retry_clock_wrap() {
+  ConfigurationBufferRetry retry;
+  assert(retry.ready(0)); retry.failed(UINT32_MAX - 500);
+  assert(!retry.ready(498) && retry.ready(499));
+  retry.clear(); assert(retry.ready(0));
+}
+
+void boot_output_is_scoped_and_retry_preserves_latest() {
+  for (size_t failed_buffer : {size_t(1), size_t(2)}) {
+    Harness h; h.configure();
+    auto& native = *h.app.native_configuration_runtime_;
+    ConfigAllocations::fail_at = ConfigAllocations::calls + failed_buffer;
+    h.app.apply_boot_configuration();
+    assert(native.boot_configuration_pending && native.boot_configuration_due);
+    assert(h.scene.activates == 0 && ConfigAllocations::live.empty());
+    const auto calls = ConfigAllocations::calls;
+    for (size_t i = 0; i < 20; ++i) h.app.loop();
+    fake_time_ms = 999; h.app.loop();
+    assert(ConfigAllocations::calls == calls && native.boot_configuration_pending);
+    ConfigAllocations::fail_at = 0;
+    const std::array<uint8_t, 3> newer{{9, 8, 7}};
+    const auto saved = h.service.save_current(newer.data(), newer.size());
+    assert(saved.ok() && h.scene.activates == 1);
+    fake_time_ms = 1000; h.app.loop();
+    assert(!native.boot_configuration_pending && !native.boot_configuration_due);
+    assert(h.scene.activates == 2 && h.scene.generation == saved.generation);
+    assert(h.scene.current == std::vector<uint8_t>(newer.begin(), newer.end()));
+    assert(ConfigAllocations::live.empty() && ConfigAllocations::peak_count <= 2);
+  }
+}
+
+void compatibility_output_retries_all_temporary_stages() {
+  // Caller, durable-load scratch, merge scratch, then commit encoding.
+  for (size_t failed_buffer : {size_t(1), size_t(2), size_t(3), size_t(4)}) {
+    Harness h; h.configure(); h.app.apply_boot_configuration();
+    auto& native = *h.app.native_configuration_runtime_;
+    const auto original = h.scene.current;
+    h.legacy.value = {4, 5, 6}; h.app.configuration_text_refresh_pending_ = true;
+    ConfigAllocations::fail_at = ConfigAllocations::calls + failed_buffer;
+    h.app.apply_configuration_text_refresh();
+    assert(h.app.configuration_text_refresh_pending_ && h.scene.current == original);
+    assert(h.scene.generation == h.initial_generation && h.legacy.mirror_calls == 0);
+    assert(ConfigAllocations::live.empty());
+    const auto calls = ConfigAllocations::calls;
+    for (size_t i = 0; i < 20; ++i) h.app.apply_configuration_text_refresh();
+    fake_time_ms = 999; h.app.apply_configuration_text_refresh();
+    assert(ConfigAllocations::calls == calls);
+    ConfigAllocations::fail_at = 0; fake_time_ms = 1000;
+    h.app.apply_configuration_text_refresh();
+    assert(!h.app.configuration_text_refresh_pending_ && !native.boot_configuration_pending);
+    assert(h.scene.current == h.legacy.value && h.scene.generation == h.initial_generation + 1);
+    assert(h.legacy.mirror_calls == 1 && ConfigAllocations::live.empty());
+    assert(ConfigAllocations::peak_count <= 2);
+  }
+}
+
+void initialization_retries_without_reopening_resources() {
+  for (size_t stage : {size_t(1), size_t(2), size_t(3)}) {
+    Harness h;
+    assert(h.app.install_application_scene(h.scene));
+    auto& native = *h.app.native_configuration_runtime_;
+    native.boot_configuration_pending = false;
+    if (stage == 3) h.backend.memory_unavailable = true;
+    else ConfigAllocations::fail_at = ConfigAllocations::calls + stage;
+    h.app.initialize_native_configuration();
+    assert(!h.app.native_configuration_initialized_ && h.app.native_configuration_initialization_pending_);
+    assert(!native.document_available && !native.boot_configuration_pending && h.app.timers.empty());
+    assert(h.app.core_.configurations == 1 && native.blobs.opens == 1 && native.backend.starts == 1);
+    assert(ConfigAllocations::live.empty());
+    const auto calls = ConfigAllocations::calls;
+    for (size_t i = 0; i < 20; ++i) h.app.loop();
+    fake_time_ms = 999; h.app.loop();
+    assert(ConfigAllocations::calls == calls && !h.app.native_configuration_initialized_);
+    ConfigAllocations::fail_at = 0; h.backend.memory_unavailable = false;
+    fake_time_ms = 1000; h.app.loop();
+    assert(h.app.native_configuration_initialized_ && !h.app.native_configuration_initialization_pending_);
+    assert(native.document_available && native.boot_configuration_pending && h.app.timers.size() == 1);
+    assert(h.app.core_.configurations == 1 && native.blobs.opens == 1 && native.backend.starts == 1);
+    assert(ConfigAllocations::live.empty());
+    h.app.initialize_native_configuration();
+    assert(h.app.timers.size() == 1 && h.app.core_.configurations == 1 && native.blobs.opens == 1);
+    fake_time_ms = 2000; h.app.run_timeouts();
+    assert(!native.boot_configuration_pending && h.scene.generation == h.initial_generation);
+    assert(h.scene.current == h.legacy.value && ConfigAllocations::live.empty());
+  }
+}
+
+void runtime_creation_retries_without_a_timer_allocation() {
+  Harness h;
+  assert(h.app.install_application_scene(h.scene));
+  h.app.native_configuration_runtime_->boot_configuration_pending = false;
+  h.app.delayed_runtime = std::move(h.app.native_configuration_runtime_);
+  h.app.runtime_creation_fails = true;
+  h.app.initialize_native_configuration();
+  assert(!h.app.native_configuration_initialized_ && h.app.native_configuration_initialization_pending_);
+  assert(h.app.core_.configurations == 0 && h.app.timers.empty());
+  h.app.runtime_creation_fails = false; fake_time_ms = 1000; h.app.loop();
+  assert(h.app.native_configuration_initialized_ && h.app.native_configuration_runtime_);
+  assert(h.app.core_.configurations == 1 && h.app.timers.size() == 1 && ConfigAllocations::live.empty());
+}
+
+void genuine_store_failure_is_not_a_memory_retry() {
+  Harness h; h.configure(); h.app.apply_boot_configuration();
+  const auto original = h.scene.current;
+  h.legacy.value = {6, 5, 4}; h.backend.fail_writes(true);
+  h.app.configuration_text_refresh_pending_ = true;
+  h.app.apply_configuration_text_refresh();
+  assert(!h.app.configuration_text_refresh_pending_ && h.scene.current == original);
+  assert(h.scene.generation == h.initial_generation && h.legacy.mirror_calls == 0);
+  const auto calls = ConfigAllocations::calls;
+  h.backend.fail_writes(false); fake_time_ms = 1000; h.app.loop();
+  assert(ConfigAllocations::calls == calls && ConfigAllocations::live.empty());
+}
+
 void shutdown() {
   Harness h;
   h.configure();
@@ -392,6 +580,12 @@ void shutdown() {
   assert(trace.empty() && h.scene.stops == 1 && !h.app.install_application_scene(h.other));
 }
 int main() {
+  buffer_retry_clock_wrap();
+  boot_output_is_scoped_and_retry_preserves_latest();
+  compatibility_output_retries_all_temporary_stages();
+  initialization_retries_without_reopening_resources();
+  runtime_creation_retries_without_a_timer_allocation();
+  genuine_store_failure_is_not_a_memory_retry();
   required_scene_failure();
   compatibility_refresh_and_publication();
   registration();

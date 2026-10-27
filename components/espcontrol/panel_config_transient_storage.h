@@ -38,16 +38,21 @@ public:
   size_t slot_capacity() const override { return capacity_; }
 
   bool begin_operation() override {
+    operation_failure_ = StoreStatus::READ_FAILED;
     if (active_ || capacity_ == 0)
       return false;
     if (!storage_.supports_range_io()) {
       buffer_ = allocate_(capacity_);
-      if (buffer_ == nullptr)
+      if (buffer_ == nullptr) {
+        operation_failure_ = StoreStatus::ALLOCATION_FAILED;
         return false;
+      }
     }
     active_ = true;
     return true;
   }
+
+  StoreStatus operation_failure() const override { return operation_failure_; }
 
   void end_operation() override {
     if (buffer_ != nullptr)
@@ -135,6 +140,7 @@ private:
   size_t capacity_{0};
   size_t stored_size_{0};
   uint8_t loaded_slot_{UINT8_MAX};
+  StoreStatus operation_failure_{StoreStatus::READ_FAILED};
   bool active_{false};
   bool dirty_{false};
 };

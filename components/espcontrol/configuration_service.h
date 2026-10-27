@@ -95,6 +95,7 @@ enum class ServiceStatus : uint8_t {
   LEGACY_MIRROR_FAILED,
   RUNTIME_APPLY_FAILED,
   RUNTIME_PREPARE_FAILED,
+  ALLOCATION_FAILED,
 };
 
 struct ServiceLoadResult {

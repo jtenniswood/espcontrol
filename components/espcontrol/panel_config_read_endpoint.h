@@ -68,6 +68,15 @@ class PanelConfigReadHandler final
       return;
     }
     const ServiceLoadResult loaded = transaction.result;
+    if (loaded.status == ServiceStatus::ALLOCATION_FAILED) {
+      httpd_resp_set_status(raw_request, "503 Service Unavailable");
+      httpd_resp_set_type(raw_request, "text/plain");
+      httpd_resp_send(
+          raw_request,
+          "Panel configuration memory is unavailable; retry the request",
+          HTTPD_RESP_USE_STRLEN);
+      return;
+    }
     if (loaded.status == ServiceStatus::EMPTY) {
       httpd_resp_send_err(raw_request, HTTPD_404_NOT_FOUND,
                           "No native configuration is stored");

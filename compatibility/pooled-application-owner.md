@@ -215,10 +215,32 @@ and checks media type, generation header and bounded length before allocating
 its exact-length upload. The request owns upload state through reception,
 dispatch and response; destruction also frees an incomplete upload after a
 disconnect or timeout. No handler-wide upload state or retained document buffer
-is shared between requests. Native initialization uses the remaining boot buffer
-and records endpoint readiness separately. This removes a fourth permanent
-slot-sized buffer, leaving only the deferred-application buffer. Whole-document
-temporary buffers and final streaming-persistence qualification still remain.
+is shared between requests. Endpoint readiness is independent of retained bytes.
+
+Initial loading, deferred boot restoration and compatibility refresh now also
+own scoped output buffers. All five permanently retained full-slot buffers are
+removed. Temporary document/encoding buffers still exist, so this does not
+establish a constant-space streaming pipeline or complete its qualification.
+An HTTP request and a main-loop operation may overlap; account for both callers,
+service scratch and the NVS operation buffer separately from active/staged
+runtime arenas, graphics and transport peaks.
+
+Temporary allocation failure has a distinct service/store status and returns
+HTTP 503. Initialization, boot and compatibility edits keep their pending work
+and retry at most once a second without allocating retry timers. Initialization
+opens storage and configures the service once across retries; it keeps native
+discovery in its starting state until the document can be loaded. Boot retries
+reload the latest committed generation, so a later browser save wins. Actual
+production lifecycle methods have host allocation-fault, clock-wrap, pending
+flag, storage-handle, publication, newer-save and no-retained-buffer coverage.
+Genuine storage I/O failures keep their separate error policy.
+
+The editor preserves the native save path through startup/resource HTTP 503 or
+a missing endpoint on a previously native panel. It reports a failed save
+instead of selecting legacy writes. Explicit legacy-only firmware and capped
+missing endpoints that have never advertised native support retain their
+compatibility path, including portable backup export. Newer/readonly native
+contracts cannot be mistaken for legacy-only firmware.
 
 Host tests compare complete old/new durable images, read in both firmware
 directions, interrupt every mutating storage call before/during/after its
@@ -248,6 +270,6 @@ save/reboot/restore tests pass on both versions, but their individual save times
 do not establish an end-to-end save speedup.
 
 Remaining gates are current factory builds, matched S3 and working 20-slot P4
-heap/PSRAM tests, the remaining transient configuration buffers and
+heap/PSRAM tests, bounded transient configuration peaks and
 backup/downgrade qualification. Depth-two nesting follows the runtime overhaul. Do not access the
 P4-86 reserved for USB diagnosis as part of these hardware tests.

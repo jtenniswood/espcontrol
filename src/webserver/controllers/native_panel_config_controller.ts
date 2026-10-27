@@ -97,8 +97,10 @@ export class NativePanelConfigController {
     }
     if (!this.client_?.retryable()) return "failed";
     if (attempts >= this.maxDiscoveryRetries_) {
-      // Older firmware never exposes the native endpoints. Preserve this
-      // capped decision so queued saves use their legacy paths immediately.
+      // Only a never-native, missing endpoint can identify older firmware.
+      // Busy startup/resource responses and a known-native panel restarting
+      // must not route edits into its compatibility mirror.
+      if (!this.client_?.canUseLegacyFallback()) return "failed";
       this.legacyFallback_ = true;
       return "legacy-fallback";
     }
@@ -120,7 +122,7 @@ export class NativePanelConfigController {
         if (supported === "legacy-fallback" || supported === "failed") return supported;
         return supported ? client.save(update) : result;
       })
-      .then((result) => this.report(result), () => this.report("failed"));
+      .then((result) => this.report(result === "unsupported" ? "failed" : result), () => this.report("failed"));
     this.saveQueue_ = save;
     return save;
   }
@@ -132,7 +134,11 @@ export class NativePanelConfigController {
       if (outcome !== "saved" && outcome !== "mirror-failed" && outcome !== "legacy-fallback") {
         throw new Error("The previous configuration change did not save.");
       }
-      return client ? client.readForBackup(this.dependencies.deviceProfile()) : null;
+      if (!client) return null;
+      const available = this.supported() || await this.waitForDiscovery();
+      if (available === "legacy-fallback") return null;
+      if (available !== true) throw new Error("Configuration discovery is unavailable.");
+      return client.readForBackup(this.dependencies.deviceProfile());
     });
     // Later edits wait for this snapshot too. A failed read must neither
     // poison the save queue nor erase a preceding failed save outcome.

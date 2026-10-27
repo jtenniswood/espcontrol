@@ -159,7 +159,10 @@ void failures_do_not_retain_memory_or_overwrite() {
   ConfigurationStore store(backend);
   fail_allocation = true;
   assert(store.commit(NEW.data(), NEW.size()).status ==
-         StoreStatus::READ_FAILED);
+         StoreStatus::ALLOCATION_FAILED);
+  std::array<uint8_t, OLD.size()> failed_output{};
+  assert(store.load(failed_output.data(), failed_output.size()).status ==
+         StoreStatus::ALLOCATION_FAILED);
   fail_allocation = false;
   fixture::fail_read = true;
   assert(store.commit(NEW.data(), NEW.size()).status ==

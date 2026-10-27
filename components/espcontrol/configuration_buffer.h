@@ -43,4 +43,22 @@ private:
   uint8_t *data_{nullptr};
 };
 
+// Bound deferred memory retries without allocating scheduler entries or
+// repeatedly attempting a full document on every application-loop iteration.
+class ConfigurationBufferRetry {
+public:
+  bool ready(uint32_t now) const {
+    return !pending_ || static_cast<uint32_t>(now - failed_at_) >= 1000;
+  }
+  void failed(uint32_t now) {
+    failed_at_ = now;
+    pending_ = true;
+  }
+  void clear() { pending_ = false; }
+
+private:
+  uint32_t failed_at_{0};
+  bool pending_{false};
+};
+
 } // namespace espcontrol::configuration

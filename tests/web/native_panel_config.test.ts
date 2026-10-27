@@ -511,3 +511,86 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
   equal(await fixtureMirrorClient.save((current) => current), mirrorScenario.expected_result,
     "failed legacy mirrors keep the native document durable but block a downgrade claim");
 }
+
+export async function runNativeReadinessTests(): Promise<void> {
+  const base = {
+    deviceProfile: "panel-a", buttons: { 1: "original", 9: "inactive" }, subpages: {},
+    settings: { button_order: "1", future_setting: "preserved" },
+  };
+  const makeController = (fetch: (path: string, request?: NativePanelConfigRequest) => Promise<NativePanelConfigResponse>, banners: string[] = []) => {
+    const controller = new NativePanelConfigController({
+      fetch, deviceProfile: () => "panel-a", slotCount: () => 9,
+      entityName: (name) => name, entityNameForSlot: (name, slot) => `${name}_${slot}`,
+      normalizeHexColor: (value) => value, showBanner: (message) => { banners.push(message); },
+      delay: (callback) => { callback(); },
+    });
+    controller.maxDiscoveryRetries = 0;
+    return controller;
+  };
+  let ready = false;
+  const saved: PanelConfigDocument[] = [];
+  const startup = makeController(async (path, request) => {
+    if (path.endsWith("capabilities")) return response(ready ? 200 : 503);
+    if (request?.method === "PUT") { saved.push(decodePanelConfig(request.body!)); return response(204); }
+    return response(200, encodePanelConfig(base), '"1"');
+  });
+  equal(await startup.writeText("button_order", "1d"), "failed", "capped startup 503 fails without a legacy write");
+  equal(startup.legacyFallback, false, "busy startup does not latch older-firmware mode");
+  equal(saved.length, 0, "startup failure does not write native data either");
+  ready = true;
+  equal(await startup.writeText("button_order", "1d"), "saved", "native edits recover after startup readiness returns");
+  equal(saved[0]?.settings.future_setting, "preserved", "startup recovery preserves native-only settings");
+  equal(saved[0]?.buttons[9], "inactive", "startup recovery preserves inactive cards");
+
+  for (const status of [404, 503]) {
+    let restarting = false;
+    const known = makeController(async (path) => {
+      if (path.endsWith("capabilities")) return response(restarting ? status : 200);
+      return response(restarting ? status : 200, encodePanelConfig(base), '"1"');
+    });
+    equal(await known.begin(), true, "native support is established before restart");
+    restarting = true;
+    equal(await known.writeText("button_order", "1d"), "failed", `known-native ${status} cannot become legacy editing`);
+    equal(known.legacyFallback, false, "known-native restart failure keeps its native contract");
+  }
+
+  for (const failAt of ["GET", "PUT"]) {
+    const banners: string[] = [];
+    const busy = makeController(async (path, request) => {
+      if (path.endsWith("capabilities")) return response(200);
+      if ((request?.method ?? "GET") === failAt) return response(503);
+      return response(200, encodePanelConfig(base), '"1"');
+    }, banners);
+    equal(await busy.writeText("button_order", "1d"), "failed", `${failAt} resource 503 is a reported save failure`);
+    equal(busy.legacyFallback, false, "resource pressure never invokes legacy editing");
+    equal(banners.length, 1, "an exhausted native save reports one visible error");
+    equal(banners[0]?.includes("Could not save"), true, "resource pressure is not silently reported as unsupported");
+  }
+
+  for (const configuration of [
+    { read: true, write: true, document_versions: [2] },
+    { read: true, write: false, document_versions: [1] },
+    { read: false, write: false, document_versions: [2] },
+    { read: false, write: false, document_versions: [1, 2] },
+  ]) {
+    const fetch = async () => ({ ...response(200), json: async () => ({ configuration }) });
+    const newer = makeController(fetch);
+    equal(await newer.writeText("button_order", "1d"), "failed", "an incompatible or readonly native contract cannot become legacy editing");
+    equal(newer.client?.confirmedUnsupported(), false, "native version/write incompatibility is distinct from legacy-only firmware");
+    const client = createNativePanelConfigClient(fetch);
+    let rejected = false;
+    try { await client.readForBackup("panel-a"); } catch { rejected = true; }
+    equal(rejected, true, "an unreadable native contract cannot export a partial legacy backup");
+  }
+
+  const oldMissing = makeController(async () => response(404));
+  equal(await oldMissing.readForBackup(), null, "never-native missing endpoints still permit the capped legacy backup path");
+  equal(oldMissing.legacyFallback, true, "the missing old endpoint retains the existing compatibility route");
+  for (const document_versions of [[], [1]]) {
+    const legacy = makeController(async () => ({
+      ...response(200), json: async () => ({ configuration: { read: false, write: false, document_versions } }),
+    }));
+    equal(await legacy.readForBackup(), null, "explicit legacy-only flags allow portable backups");
+    equal(await legacy.writeText("button_order", "1d"), "legacy-fallback", "explicit legacy-only flags preserve old editing");
+  }
+}

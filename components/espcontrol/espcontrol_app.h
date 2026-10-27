@@ -7,6 +7,7 @@
 #include <type_traits>
 
 #include "application_scene_runtime.h"
+#include "configuration_buffer.h"
 #include "espcontrol_app_core.h"
 #include "esphome/components/text/text.h"
 #include "esphome/core/component.h"
@@ -125,6 +126,7 @@ class EspControlApp : public esphome::Component {
   configuration::ConfigurationRuntimeAdapter* selected_configuration_runtime();
   void register_panel_config_endpoints();
   void initialize_native_configuration();
+  void defer_native_configuration_initialization();
   void apply_boot_configuration();
   void apply_configuration_text_refresh();
   bool native_configuration_requested() const;
@@ -155,6 +157,8 @@ class EspControlApp : public esphome::Component {
   bool configuration_text_refresh_pending_{false};
   bool shutting_down_{false};
   bool native_configuration_initialized_{false};
+  bool native_configuration_initialization_pending_{false};
+  configuration::ConfigurationBufferRetry configuration_buffer_retry_{};
   bool panel_config_http_context_bound_{false};
   const char *web_auth_username_{nullptr};
   const char *web_auth_password_{nullptr};

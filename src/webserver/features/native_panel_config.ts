@@ -74,6 +74,8 @@ function supportedCapabilities(value: unknown): boolean | null {
 
 export class NativePanelConfigClient {
   private supported_ = false;
+  private knownNative_ = false;
+  private capabilitiesMissing_ = false;
   private retryable_ = false;
   private confirmedUnsupported_ = false;
   private discovery_: Promise<boolean> | null = null;
@@ -88,6 +90,9 @@ export class NativePanelConfigClient {
   }
   retryable(): boolean { return this.retryable_; }
   confirmedUnsupported(): boolean { return this.confirmedUnsupported_; }
+  canUseLegacyFallback(): boolean {
+    return this.confirmedUnsupported_ || (this.capabilitiesMissing_ && !this.knownNative_);
+  }
 
   private retryDiscovery(): void {
     this.supported_ = false;
@@ -104,6 +109,7 @@ export class NativePanelConfigClient {
         // A valid legacy capabilities response, however, must remain on the
         // entity fallback path without waiting for another native request.
         this.retryable_ = response.status === 404 || response.status === 503;
+        this.capabilitiesMissing_ = response.status === 404;
         this.confirmedUnsupported_ = false;
         if (!response.ok) return false;
         const capabilities = await response.json();
@@ -111,11 +117,18 @@ export class NativePanelConfigClient {
         const limit = (capabilities as Capabilities | null)?.configuration?.max_record_body_bytes;
         this.maxRecordBodyBytes_ = supported && Number.isInteger(limit) && Number(limit) > 1
           ? Math.min(Number(limit), PANEL_CONFIG_MAX_RECORD_BODY_BYTES) : null;
-        this.confirmedUnsupported_ = supported === false;
+        const configuration = (capabilities as Capabilities | null)?.configuration;
+        // A readable/readonly/newer native contract must not be mistaken for
+        // firmware that only stores legacy text entities.
+        const versions = Array.isArray(configuration?.document_versions) ? configuration.document_versions : [];
+        if (supported !== null && (configuration?.read || configuration?.write || versions.some((version) => version !== PANEL_CONFIG_DOCUMENT_VERSION))) this.knownNative_ = true;
+        this.confirmedUnsupported_ = supported === false && configuration?.read === false && configuration?.write === false &&
+          versions.every((version) => version === PANEL_CONFIG_DOCUMENT_VERSION);
         return supported === true;
       })
       .catch(() => {
         this.retryable_ = false;
+        this.capabilitiesMissing_ = false;
         this.confirmedUnsupported_ = false;
         return false;
       })

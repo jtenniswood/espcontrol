@@ -41,6 +41,7 @@ public:
       backend_.end_operation();
   }
   bool ready() const { return ready_; }
+  StoreStatus failure() const { return backend_.operation_failure(); }
 
 private:
   StorageBackend &backend_;
@@ -177,7 +178,7 @@ LoadResult ConfigurationStore::load(uint8_t *output,
   CommitLockGuard lock(commit_lock_);
   StorageOperation operation(backend_);
   if (!operation.ready())
-    return {StoreStatus::READ_FAILED};
+    return {operation.failure()};
   const SlotMetadata first = inspect_slot(0);
   const SlotMetadata second = inspect_slot(1);
 
@@ -245,7 +246,7 @@ CommitResult ConfigurationStore::commit_internal(bool enforce_generation,
 
   StorageOperation operation(backend_);
   if (!operation.ready())
-    return {StoreStatus::READ_FAILED};
+    return {operation.failure()};
 
   const SlotMetadata first = inspect_slot(0);
   const SlotMetadata second = inspect_slot(1);

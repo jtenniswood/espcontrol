@@ -21,6 +21,7 @@ enum class StoreStatus : uint8_t {
   WRITE_FAILED,
   SYNC_FAILED,
   VERIFY_FAILED,
+  ALLOCATION_FAILED,
 };
 
 struct LoadResult {
@@ -53,6 +54,10 @@ class StorageBackend {
   // successful begin is paired with end, including all failure paths.
   virtual bool begin_operation() { return true; }
   virtual void end_operation() {}
+  // Distinguish a retryable scratch reservation from a storage I/O failure.
+  virtual StoreStatus operation_failure() const {
+    return StoreStatus::READ_FAILED;
+  }
   virtual bool read(uint8_t slot, size_t offset, uint8_t *output,
                     size_t size) = 0;
   virtual bool write(uint8_t slot, size_t offset, const uint8_t *data,

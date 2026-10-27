@@ -99,9 +99,9 @@ class EspControlApp::NativeConfigurationRuntime {
       backend;
   configuration::ConfigurationStore store;
   configuration::ConfigurationMainLoop transactions;
-  uint8_t *memory{nullptr};
   bool document_available{false};
-  uint8_t *boot_buffer{nullptr};
+  bool service_configured{false};
+  bool storage_ready{false};
   size_t slot_capacity{0};
   bool boot_configuration_pending{false};
   bool boot_configuration_due{false};
@@ -264,27 +264,38 @@ void EspControlApp::apply_boot_configuration() {
   if (shutting_down_) return;
   NativeConfigurationRuntime *const runtime = native_configuration_runtime_.get();
   if (runtime == nullptr || !runtime->boot_configuration_pending ||
-      runtime->boot_buffer == nullptr)
+      runtime->slot_capacity == 0)
     return;
 
   // The timeout establishes the startup delay. A busy scene keeps this work
   // pending for a later safe application loop, without scheduling more timers.
   runtime->boot_configuration_due = true;
   if (application_scene_ && !application_scene_->maintenance_ready()) return;
-  runtime->boot_configuration_pending = false;
-  runtime->boot_configuration_due = false;
+  if (!configuration_buffer_retry_.ready(esphome::millis()))
+    return;
   configuration::ConfigurationService *const panel_config_service =
       core_.configuration_service();
   if (panel_config_service == nullptr) return;
-  // Do not retain the document captured during setup: a browser save can
-  // complete before this timeout runs, and the newest durable document must
-  // always win over startup restoration. The boot buffer is intentionally
-  // separate from the HTTP request buffer. ConfigurationService serializes
-  // this reload and live apply with HTTP saves so neither its scratch buffer
-  // nor the running grid can be reverted by an older startup document.
+  configuration::ConfigurationBuffer buffer(allocate_configuration_slot,
+                                            release_configuration_slot);
+  auto *document = buffer.allocate(runtime->slot_capacity);
+  if (!document) {
+    configuration_buffer_retry_.failed(esphome::millis());
+    return;
+  }
+  // Reload the newest durable generation now, never a setup-time snapshot.
+  // This scoped output stays alive through preparation, activation and
+  // publication.
   const configuration::ServiceLoadResult loaded =
-      panel_config_service->load_and_apply_runtime(
-          runtime->boot_buffer, runtime->slot_capacity);
+      panel_config_service->load_and_apply_runtime(document,
+                                                   runtime->slot_capacity);
+  if (loaded.status == configuration::ServiceStatus::ALLOCATION_FAILED) {
+    configuration_buffer_retry_.failed(esphome::millis());
+    return;
+  }
+  runtime->boot_configuration_pending = false;
+  runtime->boot_configuration_due = false;
+  configuration_buffer_retry_.clear();
   if (loaded.status == configuration::ServiceStatus::LEGACY_MIRROR_FAILED) {
     ESP_LOGW(TAG, "Native configuration restored; compatibility text "
                   "publication is incomplete");
@@ -303,13 +314,27 @@ void EspControlApp::apply_configuration_text_refresh() {
     return;
   auto *runtime = native_configuration_runtime_.get();
   auto *service = core_.configuration_service();
-  if (!runtime || !runtime->boot_buffer || !service ||
+  if (!runtime || !runtime->slot_capacity || !service ||
       runtime->boot_configuration_pending ||
       !application_scene_->maintenance_ready())
     return;
+  if (!configuration_buffer_retry_.ready(esphome::millis()))
+    return;
+  configuration::ConfigurationBuffer buffer(allocate_configuration_slot,
+                                            release_configuration_slot);
+  auto *document = buffer.allocate(runtime->slot_capacity);
+  if (!document) {
+    configuration_buffer_retry_.failed(esphome::millis());
+    return;
+  }
+  const auto synchronized =
+      service->synchronize_legacy_runtime(document, runtime->slot_capacity);
+  if (synchronized.status == configuration::ServiceStatus::ALLOCATION_FAILED) {
+    configuration_buffer_retry_.failed(esphome::millis());
+    return;
+  }
   configuration_text_refresh_pending_ = false;
-  const auto synchronized = service->synchronize_legacy_runtime(
-      runtime->boot_buffer, runtime->slot_capacity);
+  configuration_buffer_retry_.clear();
   if (synchronized.status ==
       configuration::ServiceStatus::LEGACY_MIRROR_FAILED) {
     ESP_LOGW(
@@ -353,8 +378,16 @@ void EspControlApp::setup() {
                     [this]() { this->initialize_native_configuration(); });
 }
 
+void EspControlApp::defer_native_configuration_initialization() {
+  native_configuration_initialization_pending_ = true;
+  configuration_buffer_retry_.failed(esphome::millis());
+  ESP_LOGW(TAG, "Native configuration is waiting for temporary memory");
+}
+
 void EspControlApp::initialize_native_configuration() {
-  if (shutting_down_) return;
+  if (shutting_down_ || native_configuration_initialized_)
+    return;
+  native_configuration_initialization_pending_ = false;
   ESP_LOGI(TAG, "Starting native configuration initialization");
   if (!native_configuration_requested()) {
     ESP_LOGD(TAG, "Native configuration is not requested for this device");
@@ -363,18 +396,20 @@ void EspControlApp::initialize_native_configuration() {
     return;
   }
   if (!create_native_configuration_runtime()) {
-    native_configuration_initialized_ = true;
-    register_panel_config_endpoints();
+    defer_native_configuration_initialization();
     return;
   }
   NativeConfigurationRuntime &runtime = *native_configuration_runtime_;
-  if (!core_.configure_configuration_service(
-          runtime.store, runtime.legacy_config, &runtime.validator,
-          configuration::PANEL_CONFIG_LEGACY_MODE)) {
-    ESP_LOGE(TAG, "Native configuration service is already configured");
-    native_configuration_initialized_ = true;
-    register_panel_config_endpoints();
-    return;
+  if (!runtime.service_configured) {
+    if (!core_.configure_configuration_service(
+            runtime.store, runtime.legacy_config, &runtime.validator,
+            configuration::PANEL_CONFIG_LEGACY_MODE)) {
+      ESP_LOGE(TAG, "Native configuration service is already configured");
+      native_configuration_initialized_ = true;
+      register_panel_config_endpoints();
+      return;
+    }
+    runtime.service_configured = true;
   }
   configuration::ConfigurationService *const panel_config_service =
       core_.configuration_service();
@@ -390,45 +425,43 @@ void EspControlApp::initialize_native_configuration() {
   if (!runtime.legacy_config.configured()) {
     ESP_LOGW(TAG, "Native configuration sources are not configured");
   } else {
-    const configuration::PanelConfigStorageSelection storage =
-        configuration::begin_panel_config_storage(
-            runtime.blobs, panel_config_card_images_storage_,
-            PANEL_CONFIG_STORAGE_SLOT_CAPACITY,
-            PANEL_CONFIG_NVS_SLOT_CAPACITY);
-    if (!storage.ready) {
-      ESP_LOGE(TAG, "Native configuration storage is unavailable");
-      native_configuration_initialized_ = true;
-      register_panel_config_endpoints();
-      return;
+    if (!runtime.storage_ready) {
+      const configuration::PanelConfigStorageSelection storage =
+          configuration::begin_panel_config_storage(
+              runtime.blobs, panel_config_card_images_storage_,
+              PANEL_CONFIG_STORAGE_SLOT_CAPACITY,
+              PANEL_CONFIG_NVS_SLOT_CAPACITY);
+      if (!storage.ready || !runtime.backend.begin(storage.slot_capacity)) {
+        ESP_LOGE(TAG, "Native configuration storage is unavailable");
+        native_configuration_initialized_ = true;
+        register_panel_config_endpoints();
+        return;
+      }
+      runtime.slot_capacity = storage.slot_capacity;
+      runtime.storage_ready = true;
+      if (storage.used_nvs_fallback) {
+        ESP_LOGW(TAG,
+                 "Card-images partition is unavailable; using NVS with %u-byte "
+                 "slots",
+                 static_cast<unsigned>(runtime.slot_capacity));
+      }
     }
-    runtime.slot_capacity = storage.slot_capacity;
-    if (storage.used_nvs_fallback) {
-      ESP_LOGW(TAG,
-               "Card-images partition is unavailable; using NVS with %u-byte slots",
-               static_cast<unsigned>(runtime.slot_capacity));
-    }
-    ESP_LOGI(TAG, "Allocating native configuration buffers");
-#ifdef USE_ESP32
-    // HTTP and service buffers are owned by each operation. Only the delayed
-    // boot/compatibility buffer remains allocated between operations.
-    const size_t panel_config_memory_size = runtime.slot_capacity;
-    runtime.memory = static_cast<uint8_t *>(
-        heap_caps_malloc(panel_config_memory_size,
-                         MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
-#endif
-    if (runtime.memory == nullptr ||
-        !runtime.backend.begin(runtime.slot_capacity)) {
-      ESP_LOGE(TAG, "Native configuration memory is unavailable");
-      native_configuration_initialized_ = true;
-      register_panel_config_endpoints();
+    panel_config_service->set_buffer_allocator(allocate_configuration_slot,
+                                               release_configuration_slot);
+    configuration::ConfigurationBuffer buffer(allocate_configuration_slot,
+                                              release_configuration_slot);
+    auto *document = buffer.allocate(runtime.slot_capacity);
+    if (!document) {
+      defer_native_configuration_initialization();
       return;
     }
     ESP_LOGI(TAG, "Loading native configuration document");
-    panel_config_service->set_buffer_allocator(allocate_configuration_slot,
-                                               release_configuration_slot);
-    runtime.boot_buffer = runtime.memory;
     const configuration::ServiceLoadResult loaded =
-        panel_config_service->load(runtime.boot_buffer, runtime.slot_capacity);
+        panel_config_service->load(document, runtime.slot_capacity);
+    if (loaded.status == configuration::ServiceStatus::ALLOCATION_FAILED) {
+      defer_native_configuration_initialization();
+      return;
+    }
     runtime.document_available =
         configuration::panel_config_load_allows_native_endpoints(loaded.status);
     if (!runtime.document_available) {
@@ -462,11 +495,16 @@ void EspControlApp::initialize_native_configuration() {
     }
   }
   native_configuration_initialized_ = true;
+  configuration_buffer_retry_.clear();
   register_panel_config_endpoints();
 }
 
 void EspControlApp::loop() {
   if (shutting_down_) return;
+  if (native_configuration_initialization_pending_ &&
+      !native_configuration_initialized_ &&
+      configuration_buffer_retry_.ready(esphome::millis()))
+    initialize_native_configuration();
   const bool scene_ready = !application_scene_ || application_scene_->maintenance_ready();
   if (scene_ready && native_configuration_runtime_ != nullptr && core_.configuration_service() != nullptr) {
     native_configuration_runtime_->transactions.process(*core_.configuration_service());

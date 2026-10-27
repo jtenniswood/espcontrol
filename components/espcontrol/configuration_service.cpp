@@ -39,6 +39,12 @@ bool supported_version(uint16_t version) {
   return version == CURRENT_CONFIGURATION_DOCUMENT_VERSION;
 }
 
+ServiceStatus store_failure(StoreStatus status) {
+  return status == StoreStatus::ALLOCATION_FAILED
+             ? ServiceStatus::ALLOCATION_FAILED
+             : ServiceStatus::STORE_FAILED;
+}
+
 // Every unsuccessful path, including prepare itself and a generation conflict,
 // releases staged resources. Destruction after successful activation is safe:
 // adapters transfer staged ownership during activate_prepared().
@@ -104,7 +110,8 @@ CommitResult ConfigurationService::commit_document(
   ConfigurationBuffer fallback(allocate_, release_);
   const size_t encoded_size = CONFIGURATION_DOCUMENT_HEADER_SIZE + document_size;
   uint8_t *encoded = encoded_buffer(encoded_size, &fallback);
-  if (encoded == nullptr) return {StoreStatus::WRITE_FAILED, 0, document_size};
+  if (encoded == nullptr)
+    return {StoreStatus::ALLOCATION_FAILED, 0, document_size};
   write_u32(encoded + DOCUMENT_MAGIC_OFFSET, DOCUMENT_MAGIC);
   write_u16(encoded + DOCUMENT_VERSION_OFFSET, document_version);
   write_u16(encoded + DOCUMENT_HEADER_SIZE_OFFSET,
@@ -126,7 +133,8 @@ CommitResult ConfigurationService::commit_document_if_generation(
   ConfigurationBuffer fallback(allocate_, release_);
   const size_t encoded_size = CONFIGURATION_DOCUMENT_HEADER_SIZE + document_size;
   uint8_t *encoded = encoded_buffer(encoded_size, &fallback);
-  if (encoded == nullptr) return {StoreStatus::WRITE_FAILED, 0, document_size};
+  if (encoded == nullptr)
+    return {StoreStatus::ALLOCATION_FAILED, 0, document_size};
   write_u32(encoded + DOCUMENT_MAGIC_OFFSET, DOCUMENT_MAGIC);
   write_u16(encoded + DOCUMENT_VERSION_OFFSET, document_version);
   write_u16(encoded + DOCUMENT_HEADER_SIZE_OFFSET,
@@ -180,7 +188,7 @@ ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
   const size_t encoded_capacity = store_.maximum_payload_size();
   uint8_t *encoded = encoded_buffer(encoded_capacity, &fallback);
   if (encoded == nullptr)
-    return {ServiceStatus::STORE_FAILED, StoreStatus::WRITE_FAILED};
+    return {ServiceStatus::ALLOCATION_FAILED, StoreStatus::ALLOCATION_FAILED};
   const LoadResult stored = store_.load(encoded, encoded_capacity);
   if (stored.ok()) {
     if (stored.payload_size < CONFIGURATION_DOCUMENT_HEADER_SIZE ||
@@ -221,7 +229,7 @@ ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
   }
 
   if (stored.status != StoreStatus::EMPTY) {
-    return {ServiceStatus::STORE_FAILED, stored.status};
+    return {store_failure(stored.status), stored.status};
   }
 
   fallback.reset();
@@ -258,9 +266,8 @@ ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
   const CommitResult imported = commit_document(
       legacy.document_version, output, legacy.document_size);
   if (!imported.ok()) {
-    return {ServiceStatus::STORE_FAILED, imported.status,
-            legacy.document_version, imported.generation,
-            legacy.document_size};
+    return {store_failure(imported.status), imported.status,
+            legacy.document_version, imported.generation, legacy.document_size};
   }
   return {ServiceStatus::IMPORTED_LEGACY, imported.status,
           legacy.document_version, imported.generation,
@@ -305,7 +312,7 @@ ServiceLoadResult ConfigurationService::refresh_legacy_shadow_unlocked(
   const size_t encoded_capacity = store_.maximum_payload_size();
   uint8_t *encoded = encoded_buffer(encoded_capacity, &fallback);
   if (encoded == nullptr) {
-    return {ServiceStatus::STORE_FAILED, StoreStatus::WRITE_FAILED,
+    return {ServiceStatus::ALLOCATION_FAILED, StoreStatus::ALLOCATION_FAILED,
             legacy.document_version, 0, legacy.document_size};
   }
   const LoadResult stored = store_.load(encoded, encoded_capacity);
@@ -324,7 +331,7 @@ ServiceLoadResult ConfigurationService::refresh_legacy_shadow_unlocked(
             stored.generation, legacy.document_size};
   }
   if (stored.status != StoreStatus::OK && stored.status != StoreStatus::EMPTY) {
-    return {ServiceStatus::STORE_FAILED, stored.status,
+    return {store_failure(stored.status), stored.status,
             legacy.document_version, stored.generation, legacy.document_size};
   }
 
@@ -332,7 +339,7 @@ ServiceLoadResult ConfigurationService::refresh_legacy_shadow_unlocked(
   const CommitResult committed = commit_document(
       legacy.document_version, output, legacy.document_size);
   if (!committed.ok()) {
-    return {ServiceStatus::STORE_FAILED, committed.status,
+    return {store_failure(committed.status), committed.status,
             legacy.document_version, committed.generation,
             legacy.document_size};
   }
@@ -359,7 +366,7 @@ ConfigurationService::synchronize_legacy_runtime(uint8_t *output,
   const auto capacity = store_.maximum_payload_size();
   auto *merged = encoded_buffer(capacity, &fallback);
   if (!merged)
-    return {ServiceStatus::STORE_FAILED, StoreStatus::WRITE_FAILED};
+    return {ServiceStatus::ALLOCATION_FAILED, StoreStatus::ALLOCATION_FAILED};
   const auto output_begin = reinterpret_cast<uintptr_t>(output);
   const auto merged_begin = reinterpret_cast<uintptr_t>(merged);
   if (output_capacity &&
@@ -422,7 +429,7 @@ ServiceSaveResult ConfigurationService::save_unlocked(
   const CommitResult committed =
       commit_document(document_version, document, document_size);
   if (!committed.ok()) {
-    return {ServiceStatus::STORE_FAILED, committed.status, document_version,
+    return {store_failure(committed.status), committed.status, document_version,
             committed.generation, document_size};
   }
   const bool applied = prepared.activate(committed.generation);
@@ -484,7 +491,7 @@ ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
             document_version, committed.generation, document_size};
   }
   if (!committed.ok()) {
-    return {ServiceStatus::STORE_FAILED, committed.status, document_version,
+    return {store_failure(committed.status), committed.status, document_version,
             committed.generation, document_size};
   }
   const bool applied = prepared.activate(committed.generation);

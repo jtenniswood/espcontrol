@@ -26,6 +26,7 @@ inline PanelConfigWriteResponse panel_config_write_response(
       return PanelConfigWriteResponse::BAD_REQUEST;
     case ServiceStatus::GENERATION_CONFLICT:
       return PanelConfigWriteResponse::GENERATION_CONFLICT;
+    case ServiceStatus::ALLOCATION_FAILED:
     case ServiceStatus::RUNTIME_PREPARE_FAILED:
       return PanelConfigWriteResponse::RUNTIME_UNAVAILABLE;
     default:
