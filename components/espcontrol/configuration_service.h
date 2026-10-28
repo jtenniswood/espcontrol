@@ -56,6 +56,8 @@ class LegacyConfigurationAdapter {
   // downgrade mirroring. This may allocate text storage and must not be part
   // of the prepared runtime's allocation-free generation swap.
   virtual bool publish(uint16_t, const uint8_t *, size_t) { return true; }
+  // Pure fixed-limit admission, distinct from fallible persistence I/O.
+  virtual CompatibilityStatus admit_write(uint16_t, const uint8_t *, size_t) { return CompatibilityStatus::OK; }
   virtual bool mirror(uint16_t document_version, const uint8_t *document,
                       size_t document_size) = 0;
   virtual CompatibilityStatus publish_status(uint16_t version, const uint8_t *document, size_t size) {
@@ -83,6 +85,10 @@ class ConfigurationRuntimeAdapter {
   // Only observed temporary allocation failures are retryable. Structural or
   // configured-capacity rejection must not be mistaken for memory pressure.
   virtual bool preparation_allocation_failed() const { return false; }
+  virtual bool prepare_write(uint16_t version, const uint8_t *document, size_t size) {
+    return prepare(version, document, size);
+  }
+  virtual bool preparation_capacity_exceeded() const { return false; }
   virtual void discard_prepared() {}
   virtual bool activate_prepared(uint32_t, uint16_t document_version,
                                  const uint8_t *document, size_t document_size) {
@@ -109,6 +115,7 @@ enum class ServiceStatus : uint8_t {
   RUNTIME_APPLY_FAILED,
   RUNTIME_PREPARE_FAILED,
   ALLOCATION_FAILED,
+  CAPACITY_EXCEEDED,
 };
 
 struct ServiceLoadResult {

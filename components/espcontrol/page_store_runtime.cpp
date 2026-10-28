@@ -15,7 +15,32 @@ PageStoreRuntime::~PageStoreRuntime() {
     allocator_.release(active_arena_, memory_.active_reserved_bytes);
 }
 
+bool PageStoreRuntime::prepared_within_limits() const {
+  const auto *root = staged_.page(0);
+  if (!root || root->runtime_card_count > limits_.slot_count) return false;
+  size_t child_pages = 0;
+  for (PageId id = 1; id < staged_.page_count(); ++id) {
+    const auto *page = staged_.page(id);
+    if (!page->navigable) continue;
+    if (++child_pages > limits_.max_first_level_subpages || page->parent != 0 ||
+        limits_.max_navigation_depth < 1 || page->runtime_card_count > limits_.cards_per_subpage) return false;
+    for (size_t index = 0; index < page->runtime_card_count; ++index) {
+      const auto *card = staged_.card(page->first_card + index);
+      const auto type = staged_.field(*card, CardField::TYPE);
+      for (size_t support = 0; support < limits_.card_type_count; ++support)
+        if (type == limits_.card_types[support].type && !limits_.card_types[support].allow_in_subpage) return false;
+    }
+  }
+  return true;
+}
+
 bool PageStoreRuntime::prepare(uint16_t version, const uint8_t *document, size_t size) {
+  return prepare_impl(version, document, size, false);
+}
+bool PageStoreRuntime::prepare_write(uint16_t version, const uint8_t *document, size_t size) {
+  return prepare_impl(version, document, size, true);
+}
+bool PageStoreRuntime::prepare_impl(uint16_t version, const uint8_t *document, size_t size, bool write) {
   preparation_allocation_failed_ = false;
   discard_prepared();
   const auto allocation_failures = allocator_.allocation_failure_count();
@@ -41,7 +66,8 @@ bool PageStoreRuntime::prepare(uint16_t version, const uint8_t *document, size_t
   if (version == configuration::PANEL_CONFIG_DOCUMENT_VERSION_2) {
     last_stage_status_ = PageStore::v2_workspace_bytes(document, size, &scratch_bytes);
     if (last_stage_status_ != PageStoreStatus::OK || scratch_bytes > arena_capacity_) {
-      if (last_stage_status_ == PageStoreStatus::OK) last_stage_status_ = PageStoreStatus::BUFFER_TOO_SMALL;
+      if (last_stage_status_ == PageStoreStatus::OK)
+        last_stage_status_ = write ? PageStoreStatus::CAPACITY_EXCEEDED : PageStoreStatus::BUFFER_TOO_SMALL;
       ++memory_.preparation_failures;
       return false;
     }
@@ -75,6 +101,10 @@ bool PageStoreRuntime::prepare(uint16_t version, const uint8_t *document, size_t
   };
   // Staged state is private until the service assigns the committed generation.
   last_stage_status_ = stage(document, staged_arena_, arena_capacity_, &staged_);
+  if (write && last_stage_status_ == PageStoreStatus::BUFFER_TOO_SMALL)
+    last_stage_status_ = PageStoreStatus::CAPACITY_EXCEEDED;
+  if (last_stage_status_ == PageStoreStatus::OK && write && !prepared_within_limits())
+    last_stage_status_ = PageStoreStatus::CAPACITY_EXCEEDED;
   if (last_stage_status_ == PageStoreStatus::OK) {
     // The configured capacity is an admission ceiling, not a retained reserve.
     // Build the final view before any resources can borrow its strings. Rebuild
@@ -108,10 +138,12 @@ bool PageStoreRuntime::prepare(uint16_t version, const uint8_t *document, size_t
   // before resource preparation and the later allocation-free activation.
   scratch.release();
   if (last_stage_status_ == PageStoreStatus::OK) {
-    if (resources_ == nullptr || resources_->prepare(staged_)) return true;
+    if (resources_ == nullptr || (write ? resources_->prepare_write(staged_) : resources_->prepare(staged_))) return true;
     preparation_allocation_failed_ =
         allocator_.allocation_failure_count() != allocation_failures;
-    last_stage_status_ = PageStoreStatus::RESOURCE_UNAVAILABLE;
+    last_stage_status_ = resources_->preparation_capacity_exceeded()
+        ? PageStoreStatus::CAPACITY_EXCEEDED : PageStoreStatus::RESOURCE_UNAVAILABLE;
+    if (last_stage_status_ == PageStoreStatus::CAPACITY_EXCEEDED) preparation_allocation_failed_ = false;
   }
   ++memory_.preparation_failures;
   discard_prepared();

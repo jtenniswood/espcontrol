@@ -186,6 +186,11 @@ class PanelConfigWriteHandler final
                   "Panel configuration changed on the device");
       return;
     }
+    if (response == PanelConfigWriteResponse::CAPACITY_EXCEEDED) {
+      send_status(raw_request, "413 Content Too Large",
+                  "Configuration exceeds this display's page, image or text limits; previous configuration remains active");
+      return;
+    }
     if (response == PanelConfigWriteResponse::BAD_REQUEST) {
       httpd_resp_send_err(raw_request, HTTPD_400_BAD_REQUEST,
                           "Invalid panel configuration document");

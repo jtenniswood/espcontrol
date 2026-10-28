@@ -331,13 +331,13 @@ public:
     return ready() && !running_ && !changing_ && page_native_command_ready();
   }
   bool prepare(uint16_t version, const uint8_t *data, size_t size) override {
-    preparation_allocation_failed_ = false;
-    if (!maintenance_ready())
-      return false;
-    Flag guard(changing_);
-    const bool prepared = store_.prepare(version, data, size);
-    preparation_allocation_failed_ = !prepared && store_.preparation_allocation_failed();
-    return prepared;
+    return prepare_configuration(version, data, size, false);
+  }
+  bool prepare_write(uint16_t version, const uint8_t *data, size_t size) override {
+    return prepare_configuration(version, data, size, true);
+  }
+  bool preparation_capacity_exceeded() const override {
+    return preparation_capacity_exceeded_;
   }
   bool preparation_allocation_failed() const override {
     return preparation_allocation_failed_;
@@ -712,6 +712,15 @@ public:
   }
 
 private:
+  bool prepare_configuration(uint16_t version, const uint8_t *data, size_t size, bool write) {
+    preparation_allocation_failed_ = preparation_capacity_exceeded_ = false;
+    if (!maintenance_ready()) return false;
+    Flag guard(changing_);
+    const bool prepared = write ? store_.prepare_write(version, data, size) : store_.prepare(version, data, size);
+    preparation_allocation_failed_ = !prepared && store_.preparation_allocation_failed();
+    preparation_capacity_exceeded_ = !prepared && store_.preparation_capacity_exceeded();
+    return prepared;
+  }
   void refresh_image_metadata(ConfigurationHandle card) {
     const auto* row = active().card(card);
     if (row && active().field(*row, CardField::TYPE) == "image")
@@ -1249,7 +1258,7 @@ private:
   } origin_;
   uint64_t chrome_binding_{1};
   uint8_t image_refresh_requested_{0};
-  bool preparation_allocation_failed_{false};
+  bool preparation_allocation_failed_{false}, preparation_capacity_exceeded_{false};
   bool configured_{false}, initialized_{false}, running_{false},
       changing_{false}, stopped_{false}, destroying_{false}, suspended_{false},
       covered_{false}, settings_{false}, chrome_dirty_{true},

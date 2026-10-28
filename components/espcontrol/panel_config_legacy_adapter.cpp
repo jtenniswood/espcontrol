@@ -81,6 +81,13 @@ CompatibilityStatus projection_status(PanelConfigRepresentationStatus status) {
 }
 } // namespace
 
+CompatibilityStatus PanelConfigLegacyAdapter::admit_write(uint16_t version, const uint8_t *document, size_t size) {
+  if (!bindings_.configured()) return CompatibilityStatus::NOT_REPRESENTABLE;
+  PanelConfigCompatibilityView view(allocate_, release_);
+  const auto status = projection_status(view.load(version, document, size));
+  return status == CompatibilityStatus::OK ? bindings_.persistence_admission(view.data(), view.size()) : status;
+}
+
 CompatibilityStatus PanelConfigLegacyAdapter::publish_status(uint16_t version, const uint8_t *document, size_t size) {
   if (!bindings_.configured()) return CompatibilityStatus::NOT_REPRESENTABLE;
   PanelConfigCompatibilityView view(allocate_, release_);

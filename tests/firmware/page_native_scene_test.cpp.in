@@ -1034,6 +1034,46 @@ void remote_selection_order() {
     assert(sends==sent+1 && sent_entity=="switch.nine");
   }
 }
+void selected_scene_write_admission() {
+  const auto& limits=DEVICE_UI_PROFILES[8];Document original(limits);Harness h;h.apply(original);
+  Document candidate(limits);PanelConfigWriter writer(candidate.bytes.data(),candidate.bytes.size());
+  assert(writer.begin()==PanelConfigStatus::OK);
+  assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),std::strlen(limits.device_profile))==PanelConfigStatus::OK);
+  const std::string folder=";Folder;Auto;Auto;;;subpage;;";
+  assert(writer.append_button(1,reinterpret_cast<const uint8_t*>(folder.data()),folder.size())==PanelConfigStatus::OK);
+  std::string children="~B";for(size_t i=1;i<=limits.cards_per_subpage+1;++i)children+=","+std::to_string(i);
+  for(size_t i=1;i<=limits.cards_per_subpage+1;++i)children+="|,switch.admission_"+std::to_string(i)+",Child,Auto,Auto,,,,";
+  assert(writer.append_subpage(1,reinterpret_cast<const uint8_t*>(children.data()),children.size())==PanelConfigStatus::OK);
+  const std::string order="1";assert(writer.append_setting(reinterpret_cast<const uint8_t*>("button_order"),12,reinterpret_cast<const uint8_t*>(order.data()),order.size())==PanelConfigStatus::OK);
+  assert(writer.finish(&candidate.size)==PanelConfigStatus::OK);
+  const auto reserved=h.counted.memory().reserved_bytes,subscriptions=coordinator.entries.size(),widgets=objects(h.root);
+  assert(!h.scene->prepare_write(1,candidate.bytes.data(),candidate.size)&&h.scene->preparation_capacity_exceeded());
+  assert(!h.scene->preparation_allocation_failed()&&h.scene->active().generation()==17);
+  assert(h.counted.memory().reserved_bytes==reserved&&coordinator.entries.size()==subscriptions&&objects(h.root)==widgets);
+  // Loading the same historical document remains possible, including its
+  // complete source bytes; write admission does not become a boot migration.
+  assert(h.scene->prepare(1,candidate.bytes.data(),candidate.size));
+  assert(!h.scene->preparation_capacity_exceeded());
+  assert(h.scene->activate_prepared(18,1,candidate.bytes.data(),candidate.size));
+  assert(h.scene->active().page(1)->card_count==limits.cards_per_subpage+1);
+  assert(h.scene->active().source_size()==candidate.size&&std::memcmp(h.scene->active().source_document(),candidate.bytes.data(),candidate.size)==0);
+  h.scene->loop();h.scene->loop();
+  // Image and cover-art cards share the declared two-slot pool, including
+  // across page layouts. No extra image definition can become executable.
+  PanelConfigWriter images(candidate.bytes.data(),candidate.bytes.size());assert(images.begin()==PanelConfigStatus::OK);
+  assert(images.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),std::strlen(limits.device_profile))==PanelConfigStatus::OK);
+  for(size_t slot=1;slot<=3;++slot) {
+    const std::string card=slot==2?"media_player.art;Art;Auto;Auto;cover_art;;media;;":"camera.one;Image;Auto;Auto;;;image;;";
+    assert(images.append_button(slot,reinterpret_cast<const uint8_t*>(card.data()),card.size())==PanelConfigStatus::OK);
+  }
+  const std::string image_order="1,2,3";
+  assert(images.append_setting(reinterpret_cast<const uint8_t*>("button_order"),12,reinterpret_cast<const uint8_t*>(image_order.data()),image_order.size())==PanelConfigStatus::OK);
+  assert(images.finish(&candidate.size)==PanelConfigStatus::OK);
+  const auto image_reserved=h.counted.memory().reserved_bytes,image_subscriptions=coordinator.entries.size();
+  assert(!h.scene->prepare_write(1,candidate.bytes.data(),candidate.size)&&h.scene->preparation_capacity_exceeded());
+  assert(h.scene->active().generation()==18&&h.counted.memory().reserved_bytes==image_reserved&&coordinator.entries.size()==image_subscriptions);
+}
+
 void qr_images_and_transactions() {
   Document doc(DEVICE_UI_PROFILES[8]);Harness h;h.apply(doc);
   // Three QR tiles coexist with a two-slot image pool. QR owns visible-slot leases.
@@ -1183,6 +1223,7 @@ int main(int argc,char** argv) {
     maximum_profile_disjoint_replacements<6>();
     maximum_p4_climate_cache_replacements();
   } else {
+    selected_scene_write_admission();
     queued_image_pool_admission();
     queued_image_refresh<8>();
     queued_producer_content_refresh<8>();queued_producer_forecast_refresh<8>();

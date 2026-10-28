@@ -47,7 +47,10 @@ add_executable(panel_config_http_versions_test panel_config_http_versions_test.c
   ../../components/espcontrol/configuration_service.cpp
   ../../components/espcontrol/configuration_store.cpp
   ../../components/espcontrol/page_store_runtime.cpp
-  ../../components/espcontrol/page_store.cpp)
+  ../../components/espcontrol/page_renderer_layout.cpp
+  ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/panel_config_legacy_adapter.cpp
+  ../../components/espcontrol/panel_config_text_bindings.cpp)
 target_compile_features(panel_config_http_versions_test PRIVATE cxx_std_17)
 target_compile_definitions(panel_config_http_versions_test PRIVATE USE_WEBSERVER USE_WEBSERVER_AUTH)
 target_compile_options(panel_config_http_versions_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)

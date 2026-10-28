@@ -209,7 +209,7 @@ bool PanelConfigTextBindings::persist_document(const uint8_t *document, size_t s
   return persist_document_status(document, size) == CompatibilityStatus::OK;
 }
 
-CompatibilityStatus PanelConfigTextBindings::persist_document_status(
+CompatibilityStatus PanelConfigTextBindings::persistence_admission(
     const uint8_t *document, size_t document_size) {
   if (!compatible_document(document, document_size)) return CompatibilityStatus::NOT_REPRESENTABLE;
   // Check the entire compatibility projection before touching preferences.
@@ -235,6 +235,13 @@ CompatibilityStatus PanelConfigTextBindings::persist_document_status(
   }
   if (!apply_document(document, document_size, ApplyMode::CHECK_PERSIST))
     return CompatibilityStatus::NOT_REPRESENTABLE;
+  return CompatibilityStatus::OK;
+}
+
+CompatibilityStatus PanelConfigTextBindings::persist_document_status(
+    const uint8_t *document, size_t document_size) {
+  const auto admission = persistence_admission(document, document_size);
+  if (admission != CompatibilityStatus::OK) return admission;
   // Free obsolete empty defaults before updating nonempty fields. A nearly
   // full NVS partition may otherwise fail on the first replacement blob even
   // though the desired compatibility projection is much smaller.

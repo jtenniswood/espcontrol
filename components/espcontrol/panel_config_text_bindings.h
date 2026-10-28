@@ -22,6 +22,7 @@ class PanelConfigTextValue {
   virtual const std::string &value() const = 0;
   virtual bool set_value(const char *value, size_t value_size) = 0;
   virtual bool publish_value(const char *value, size_t value_size) = 0;
+  // Pure fixed-capacity check: preference availability is an I/O outcome.
   virtual bool can_persist_value(size_t) const { return true; }
   // Reclaim storage for a wanted empty value when absence restores exactly
   // that value. Custom platforms/defaults retain the ordinary write path.
@@ -53,6 +54,8 @@ class PanelConfigTextBindings {
                       size_t *document_size) const;
   bool persist_document(const uint8_t *document, size_t document_size);
   bool publish_document(const uint8_t *document, size_t document_size);
+  // Fixed profile/field/chunk admission without preference reads or writes.
+  CompatibilityStatus persistence_admission(const uint8_t *document, size_t size);
   CompatibilityStatus persist_document_status(const uint8_t *document, size_t size);
   CompatibilityStatus publish_document_status(const uint8_t *document, size_t size);
 

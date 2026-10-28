@@ -68,54 +68,9 @@ class PageRendererRuntime final : public PageRuntimeResources {
   PageRendererRuntime(const PageRendererRuntime &)=delete;
   PageRendererRuntime &operator=(const PageRendererRuntime &)=delete;
 
-  bool prepare(const PageStore &store) override {
-    if(changing_)return false;
-    Guard guard(changing_);
-    discard_prepared();
-    auto fail=[this](){++memory_.preparation_failures;discard_prepared();return false;};
-    if(limits_.slot_count!=Slots || store.page_count()==0 || !store.page(0)->navigable || next_binding_==0)return fail();
-    staged_geometry_=port_.geometry(store);
-    if(staged_geometry_.visible_slots==0 || staged_geometry_.visible_slots>Slots ||
-       staged_geometry_.columns==0 || staged_geometry_.columns>staged_geometry_.visible_slots)return fail();
-    size_t label_bytes=0;
-    for(PageId page=0;page<store.page_count();++page) {
-      const auto *definition=store.page(page);
-      if(!definition->navigable)continue;
-      if(page!=0 && (definition->parent!=0 || limits_.max_navigation_depth<1))return fail();
-      if(!add(label_bytes,store.string(definition->order).size()))return fail();
-    }
-    size_t bytes=0;
-    if(!add(bytes,store.page_count(),sizeof(Layout)) || !align(bytes,alignof(PageCellLayout)))return fail();
-    const size_t cells_offset=bytes;
-    if(!add(bytes,store.page_count(),Slots*sizeof(PageCellLayout)))return fail();
-    const size_t labels_offset=bytes;
-    if(!add(bytes,label_bytes) || bytes>UINT32_MAX)return fail();
-    staged_arena_=allocator_.allocate(bytes);
-    if(staged_arena_==nullptr)return fail();
-    staged_bytes_=bytes;
-    memory_.peak_layout_bytes=std::max(memory_.peak_layout_bytes,active_bytes_+staged_bytes_);
-    auto *raw=static_cast<char *>(staged_arena_);
-    auto *layouts=reinterpret_cast<Layout *>(raw);
-    auto *cells=reinterpret_cast<PageCellLayout *>(raw+cells_offset);
-    size_t labels_used=0;
-    for(PageId page=0;page<store.page_count();++page) {
-      auto &layout=*new(layouts+page) Layout{};
-      layout.cells=cells+page*Slots;
-      for(size_t cell=0;cell<Slots;++cell)new(layout.cells+cell) PageCellLayout{};
-      if(!store.page(page)->navigable)continue;
-      PageBackAppearance back;
-      if(!compile_page_layout(store,page,staged_geometry_,layout.cells,Slots,&back) ||
-         back.custom_label.size()>label_bytes-labels_used)return fail();
-      layout.navigable=true;layout.back.background_color=back.background_color;
-      layout.back.custom_color=back.custom_color;
-      char *label=raw+labels_offset+labels_used;
-      if(!back.custom_label.empty())std::memcpy(label,back.custom_label.data(),back.custom_label.size());
-      layout.back.custom_label={label,back.custom_label.size()};labels_used+=back.custom_label.size();
-    }
-    if(!port_.prepare(store,Slots))return fail();
-    staged_binding_=next_binding_++;
-    return true;
-  }
+  bool prepare(const PageStore &store) override { return prepare_impl(store, false); }
+  bool prepare_write(const PageStore &store) override { return prepare_impl(store, true); }
+  bool preparation_capacity_exceeded() const override { return capacity_exceeded_; }
   void discard_prepared() override {
     port_.discard_prepared();
     if(staged_arena_!=nullptr)allocator_.release(staged_arena_,staged_bytes_);
@@ -204,6 +159,74 @@ class PageRendererRuntime final : public PageRuntimeResources {
     auto result=memory_;result.active_layout_bytes=active_bytes_;result.staged_layout_bytes=staged_bytes_;return result;
   }
  private:
+  bool prepare_impl(const PageStore &store, bool write) {
+    capacity_exceeded_=false;
+    if(changing_)return false;
+    Guard guard(changing_);
+    discard_prepared();
+    auto fail=[this](){++memory_.preparation_failures;discard_prepared();return false;};
+    if(limits_.slot_count!=Slots || store.page_count()==0 || !store.page(0)->navigable || next_binding_==0)return fail();
+    staged_geometry_=port_.geometry(store);
+    if(staged_geometry_.visible_slots==0 || staged_geometry_.visible_slots>Slots ||
+       staged_geometry_.columns==0 || staged_geometry_.columns>staged_geometry_.visible_slots)return fail();
+    size_t label_bytes=0;
+    for(PageId page=0;page<store.page_count();++page) {
+      const auto *definition=store.page(page);
+      if(!definition->navigable)continue;
+      if(page!=0 && (definition->parent!=0 || limits_.max_navigation_depth<1))return fail();
+      if(!add(label_bytes,store.string(definition->order).size()))return fail();
+    }
+    size_t bytes=0;
+    if(!add(bytes,store.page_count(),sizeof(Layout)) || !align(bytes,alignof(PageCellLayout)))return fail();
+    const size_t cells_offset=bytes;
+    if(!add(bytes,store.page_count(),Slots*sizeof(PageCellLayout)))return fail();
+    const size_t labels_offset=bytes;
+    if(!add(bytes,label_bytes) || bytes>UINT32_MAX)return fail();
+    staged_arena_=allocator_.allocate(bytes);
+    if(staged_arena_==nullptr)return fail();
+    staged_bytes_=bytes;
+    memory_.peak_layout_bytes=std::max(memory_.peak_layout_bytes,active_bytes_+staged_bytes_);
+    auto *raw=static_cast<char *>(staged_arena_);
+    auto *layouts=reinterpret_cast<Layout *>(raw);
+    auto *cells=reinterpret_cast<PageCellLayout *>(raw+cells_offset);
+    size_t labels_used=0;
+    for(PageId page=0;page<store.page_count();++page) {
+      auto &layout=*new(layouts+page) Layout{};
+      layout.cells=cells+page*Slots;
+      for(size_t cell=0;cell<Slots;++cell)new(layout.cells+cell) PageCellLayout{};
+      if(!store.page(page)->navigable)continue;
+      PageBackAppearance back;
+      if(!compile_page_layout(store,page,staged_geometry_,layout.cells,Slots,&back) ||
+         back.custom_label.size()>label_bytes-labels_used)return fail();
+      layout.navigable=true;layout.back.background_color=back.background_color;
+      layout.back.custom_color=back.custom_color;
+      char *label=raw+labels_offset+labels_used;
+      if(!back.custom_label.empty())std::memcpy(label,back.custom_label.data(),back.custom_label.size());
+      layout.back.custom_label={label,back.custom_label.size()};labels_used+=back.custom_label.size();
+    }
+    if(write) {
+      // Match the editor's shared Image/Media Cover Art budget across all
+      // executable page layouts. Hidden and retained definitions do not bind.
+      size_t images=0;
+      for(PageId page=0;page<store.page_count();++page) {
+        if(!layouts[page].navigable)continue;
+        const auto* layout=layouts[page].cells;
+        for(size_t cell=0;cell<Slots;++cell) {
+          if(!layout[cell].visible||layout[cell].back||layout[cell].card==NO_CARD)continue;
+          const auto* card=store.card(layout[cell].card);
+          const auto type=store.field(*card,CardField::TYPE);
+          if(type!="image" && !(type=="media"&&store.field(*card,CardField::SENSOR)=="cover_art"))continue;
+          bool repeated=false;
+          for(size_t previous=0;previous<cell;++previous)
+            if(layout[previous].visible&&layout[previous].card==layout[cell].card)repeated=true;
+          if(!repeated&&++images>limits_.image_slot_count){capacity_exceeded_=true;return fail();}
+        }
+      }
+    }
+    if(!port_.prepare(store,Slots))return fail();
+    staged_binding_=next_binding_++;
+    return true;
+  }
   struct Guard {bool &flag;explicit Guard(bool &f):flag(f){flag=true;}~Guard(){flag=false;}};
   struct Layout {PageCellLayout *cells{nullptr};PageBackStyleView back;bool navigable{false};};
   static bool add(size_t &total,size_t count,size_t unit=1) {
@@ -244,6 +267,7 @@ class PageRendererRuntime final : public PageRuntimeResources {
   PageViewGeometry staged_geometry_;
   std::array<PageBindingToken,Slots> bindings_{};
   uint32_t next_binding_{1},staged_binding_{0},view_binding_{0};PageId active_page_{NO_PAGE};
+  bool capacity_exceeded_{false};
   bool changing_{false},suspended_{false},refresh_{false};PageRendererMemory memory_;
 };
 }  // namespace espcontrol::pages

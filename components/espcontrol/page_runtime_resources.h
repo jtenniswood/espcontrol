@@ -21,6 +21,8 @@ class PageRuntimeResources {
  public:
   virtual ~PageRuntimeResources() = default;
   virtual bool prepare(const PageStore &store) = 0;
+  virtual bool prepare_write(const PageStore &store) { return prepare(store); }
+  virtual bool preparation_capacity_exceeded() const { return false; }
   virtual void discard_prepared() = 0;
   virtual void activate_prepared(const PageStore &active) = 0;
   virtual void retire_active() = 0;

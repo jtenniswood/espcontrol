@@ -255,14 +255,41 @@ void permanent_legacy_limit_does_not_retry_writes() {
   const auto card=std::string(";")+std::string(300,'x')+";Auto;Auto;;;;;";
   assert(writer.append_button(1,reinterpret_cast<const uint8_t *>(card.data()),card.size())==PanelConfigStatus::OK);
   size_t size=0;assert(writer.finish(&size)==PanelConfigStatus::OK);bytes.resize(size);
-  const auto saved=f.service.save_current(bytes.data(),bytes.size());
-  assert(saved.status==ServiceStatus::LEGACY_MIRROR_FAILED&&saved.durable());
+  // Historical native documents remain readable at boot even when a new
+  // write would exceed the current compatibility budget. Never truncate them.
+  Bytes encoded{'E','C','D','O',1,0,8,0};encoded.insert(encoded.end(),bytes.begin(),bytes.end());
+  assert(f.store.commit(encoded.data(),encoded.size()).ok());
+  const auto writes_before=f.backend.writes;
+  assert(f.service.load_and_apply_runtime(output.data(),output.size()).ok());
+  assert(f.service.save_current(bytes.data(),bytes.size()).status==ServiceStatus::CAPACITY_EXCEEDED);
+  assert(f.backend.writes==writes_before);
+  assert(f.service.retry_compatibility(output.data(),output.size()).status==ServiceStatus::LEGACY_MIRROR_FAILED);
   const auto state=f.service.compatibility_state();
   assert(state.publication==CompatibilityStatus::OK&&state.persistence==CompatibilityStatus::NOT_REPRESENTABLE&&!state.retry_pending());
   const auto persisted=f.buttons[0].persistent,writes=f.backend.writes,arena_calls=f.arena.calls;
   for(size_t i=0;i<20;++i)assert(f.service.retry_compatibility(output.data(),output.size()).status==ServiceStatus::LEGACY_MIRROR_FAILED);
   assert(f.buttons[0].persistent==persisted&&f.backend.writes==writes&&f.arena.calls==arena_calls);
   f.exact(bytes,1,1);
+}
+void rejected_legacy_edit_repairs_the_previous_copy() {
+  const auto& limits=DEVICE_UI_PROFILES[8];Fixture f(limits);const auto source=native(limits,false);f.seed(source);Bytes output(32768);
+  assert(f.service.load_and_apply_runtime(output.data(),output.size()).ok());
+  assert(f.service.retry_compatibility(output.data(),output.size()).ok());
+  std::string old;for(size_t c=0;c<limits.legacy_subpage_chunks;++c)old+=f.chunks[0][c].state;
+  std::string invalid="~B";for(size_t i=0;i<=limits.cards_per_subpage;++i)invalid+="|,switch.bad_"+std::to_string(i)+",Bad,Auto,Auto,,,,";
+  assert(invalid.size()<limits.legacy_subpage_byte_ceiling());
+  for(size_t c=0;c<limits.legacy_subpage_chunks;++c) {
+    const auto offset=std::min(c*255,invalid.size());f.chunks[0][c].state=invalid.substr(offset,std::min(size_t(255),invalid.size()-offset));
+  }
+  const auto writes=f.backend.writes;
+  assert(f.service.synchronize_legacy_runtime(output.data(),output.size()).status==ServiceStatus::CAPACITY_EXCEEDED);
+  assert(f.backend.writes==writes&&f.runtime.active().generation()==1&&f.service.compatibility_state().retry_pending());
+  assert(f.service.synchronize_legacy_runtime(output.data(),output.size()).status==ServiceStatus::LEGACY_MIRROR_FAILED);
+  const auto arena_calls=f.arena.calls;
+  assert(f.service.retry_compatibility(output.data(),output.size()).ok());
+  assert(f.backend.writes==writes&&f.arena.calls==arena_calls&&!f.service.compatibility_state().retry_pending());
+  std::string repaired;for(size_t c=0;c<limits.legacy_subpage_chunks;++c)repaired+=f.chunks[0][c].state;
+  assert(repaired==old);f.exact(source,1,2);
 }
 void imports_cannot_enable_v2_writes() {
   struct Import final:LegacyConfigurationAdapter {
@@ -283,6 +310,7 @@ void imports_cannot_enable_v2_writes() {
 }
 } // namespace
 int main() {
+  rejected_legacy_edit_repairs_the_previous_copy();
   compatibility_repair_keeps_generation_and_runtime();
   publication_repair_and_transient_buffers();
   permanent_legacy_limit_does_not_retry_writes();

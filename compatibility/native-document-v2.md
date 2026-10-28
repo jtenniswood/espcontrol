@@ -6,8 +6,9 @@ v2 while preserving durable v1, default v1 responses and generation checks.
 The bundled editor requests v2 when advertised and retains a lossless v1 editing
 model during the durable-v1 phase. Backups still use v1. PageStore and the
 service/compatibility boot path read both versions; durable writes remain v1.
-Complete profile/legacy admission, a released downgrade floor and physical
-qualification remain unfinished. This does not enable nested pages.
+New saves enforce profile and compatibility limits before publication. A
+released downgrade floor and physical qualification remain unfinished. This
+does not enable nested pages.
 
 ## Wire layout
 
@@ -61,6 +62,19 @@ identity, the maximum v2 record body is 4,097 bytes. Setting keys retain the
 63-byte boundary. Profile, total document, per-page/card admission and legacy
 byte/chunk limits remain separate checks; these codec bounds do not increase
 advertised device capacity.
+
+New v1 and v2 saves share profile admission: first-level page/card limits,
+root-only folder cards, and one Image/Media Cover Art budget across executable
+page layouts. While legacy dual-write is enabled, fixed text-field and UTF-8
+chunk limits are checked before runtime preparation or durable writes. Native-only
+settings and retained out-of-profile records keep their native limits. Actual
+preference I/O failures remain separately reported, retryable mirror failures
+after a successful durable commit.
+
+These authoring checks do not migrate, truncate or reject previously stored
+documents during reads or boot. Rejected legacy text edits are fenced and the
+compatibility copy is repaired from the unchanged durable generation; repair
+does not resave or reactivate the native document.
 
 ## Validation and memory ownership
 

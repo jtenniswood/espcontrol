@@ -40,6 +40,10 @@ class PageStoreRuntime final : public configuration::ConfigurationRuntimeAdapter
   PageStoreRuntime &operator=(const PageStoreRuntime &) = delete;
 
   bool prepare(uint16_t version, const uint8_t *document, size_t size) override;
+  bool prepare_write(uint16_t version, const uint8_t *document, size_t size) override;
+  bool preparation_capacity_exceeded() const override {
+    return last_stage_status_ == PageStoreStatus::CAPACITY_EXCEEDED;
+  }
   bool preparation_allocation_failed() const override {
     return preparation_allocation_failed_;
   }
@@ -55,6 +59,8 @@ class PageStoreRuntime final : public configuration::ConfigurationRuntimeAdapter
   PageStoreStatus last_stage_status() const { return last_stage_status_; }
 
  private:
+  bool prepare_impl(uint16_t version, const uint8_t *document, size_t size, bool write);
+  bool prepared_within_limits() const;
   const DeviceUiLimits &limits_;
   PageArenaAllocator &allocator_;
   size_t arena_capacity_;

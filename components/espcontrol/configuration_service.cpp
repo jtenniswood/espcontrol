@@ -51,16 +51,19 @@ ServiceStatus store_failure(StoreStatus status) {
 class RuntimePreparation {
  public:
   RuntimePreparation(ConfigurationRuntimeAdapter *runtime, uint16_t version,
-                     const uint8_t *document, size_t size)
+                     const uint8_t *document, size_t size, bool write = false)
       : runtime_(runtime), version_(version), document_(document), size_(size),
-        ready_(runtime == nullptr || runtime->prepare(version, document, size)) {}
+        ready_(runtime == nullptr || (write ? runtime->prepare_write(version, document, size)
+                                         : runtime->prepare(version, document, size))) {}
   ~RuntimePreparation() {
     if (runtime_ != nullptr) runtime_->discard_prepared();
   }
   bool ready() const { return ready_; }
   ServiceStatus failure_status() const {
     return runtime_ && runtime_->preparation_allocation_failed()
-        ? ServiceStatus::ALLOCATION_FAILED : ServiceStatus::RUNTIME_PREPARE_FAILED;
+        ? ServiceStatus::ALLOCATION_FAILED
+        : runtime_ && runtime_->preparation_capacity_exceeded()
+            ? ServiceStatus::CAPACITY_EXCEEDED : ServiceStatus::RUNTIME_PREPARE_FAILED;
   }
   bool activate(uint32_t generation) {
     return ready_ && (runtime_ == nullptr ||
@@ -455,6 +458,16 @@ ConfigurationService::synchronize_legacy_runtime(uint8_t *output,
   fallback.reset();
   const auto saved =
       save_unlocked(legacy.document_version, output, legacy.document_size);
+  if (saved.status == ServiceStatus::CAPACITY_EXCEEDED) {
+    // A legacy client may already have persisted individual text fields. A
+    // rejected native edit must not leave those fields as a false downgrade
+    // copy. Fence the partial view and repair it from the durable generation.
+    select_compatibility_generation(loaded.generation);
+    compatibility_state_.publication = CompatibilityStatus::RETRYABLE_FAILURE;
+    compatibility_state_.persistence = legacy_writes_enabled()
+        ? CompatibilityStatus::RETRYABLE_FAILURE : CompatibilityStatus::OK;
+    compatibility_publication_current_ = false;
+  }
   return {saved.status, saved.store_status, saved.document_version,
           saved.generation, saved.document_size};
 }
@@ -486,7 +499,14 @@ ServiceSaveResult ConfigurationService::save_unlocked(
     return {ServiceStatus::STORE_FAILED, StoreStatus::PAYLOAD_TOO_LARGE,
             document_version, 0, document_size};
   }
-  RuntimePreparation prepared(runtime_, document_version, document, document_size);
+  if (legacy_writes_enabled()) {
+    const auto admission = legacy_.admit_write(document_version, document, document_size);
+    if (admission != CompatibilityStatus::OK)
+      return {admission == CompatibilityStatus::RETRYABLE_FAILURE ? ServiceStatus::ALLOCATION_FAILED
+                                                                 : ServiceStatus::CAPACITY_EXCEEDED,
+              StoreStatus::EMPTY, document_version, 0, document_size};
+  }
+  RuntimePreparation prepared(runtime_, document_version, document, document_size, true);
   if (!prepared.ready()) {
     return {prepared.failure_status(), StoreStatus::EMPTY,
             document_version, 0, document_size};
@@ -547,7 +567,14 @@ ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
     return {ServiceStatus::STORE_FAILED, StoreStatus::PAYLOAD_TOO_LARGE,
             document_version, 0, document_size};
   }
-  RuntimePreparation prepared(runtime_, document_version, document, document_size);
+  if (legacy_writes_enabled()) {
+    const auto admission = legacy_.admit_write(document_version, document, document_size);
+    if (admission != CompatibilityStatus::OK)
+      return {admission == CompatibilityStatus::RETRYABLE_FAILURE ? ServiceStatus::ALLOCATION_FAILED
+                                                                 : ServiceStatus::CAPACITY_EXCEEDED,
+              StoreStatus::EMPTY, document_version, 0, document_size};
+  }
+  RuntimePreparation prepared(runtime_, document_version, document, document_size, true);
   if (!prepared.ready()) {
     return {prepared.failure_status(), StoreStatus::EMPTY,
             document_version, 0, document_size};

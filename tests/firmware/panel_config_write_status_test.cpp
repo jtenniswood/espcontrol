@@ -5,7 +5,8 @@ int main() {
   using espcontrol::configuration::ServiceStatus;
   using espcontrol::configuration::panel_config_write_response;
 
-  return panel_config_write_response(ServiceStatus::OK) ==
+  return panel_config_write_response(ServiceStatus::CAPACITY_EXCEEDED) == PanelConfigWriteResponse::CAPACITY_EXCEEDED &&
+         panel_config_write_response(ServiceStatus::OK) ==
                      PanelConfigWriteResponse::NO_CONTENT &&
                  panel_config_write_response(
                      ServiceStatus::LEGACY_MIRROR_FAILED) ==
