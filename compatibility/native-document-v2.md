@@ -1,7 +1,7 @@
 # Native document v2 codec
 
-Implementation stage: the structural reader and writer are available to host
-code. Firmware capabilities, HTTP handlers, the editor, backups and durable
+Implementation stage: matching structural readers and writers are available in
+C++ and TypeScript. Firmware capabilities, HTTP handlers, the editor, backups and durable
 storage still use v1. This does not enable nested pages or establish a supported
 downgrade floor. Lossless v1 conversions and service/runtime integration must
 pass before advertising v2.
@@ -83,3 +83,7 @@ wire golden and its semantic records, including forward references, inactive
 records, Unicode, embedded NUL and an opaque setting. Host checks compare the
 actual decoded fields and writer bytes with that fixture, exercise malformed
 graphs and buffer boundaries, and forbid allocations during validation/writing.
+The browser reader runs the same independent hostile-wire corpus as the C++
+reader. Browser decoding preserves leading Unicode BOMs as data, including in
+the existing v1 format, and both browser writers reject unpaired surrogates
+instead of silently replacing them during UTF-8 encoding.
