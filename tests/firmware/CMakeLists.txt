@@ -2052,7 +2052,7 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   set(PAGE_WEATHER_MODAL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_weather_modal_test.cpp)
   add_custom_command(OUTPUT ${PAGE_WEATHER_MODAL_SOURCE}
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_weather_modal_test.py --output ${PAGE_WEATHER_MODAL_SOURCE}
-    DEPENDS generate_page_weather_modal_test.py generate_climate_update_test.py page_weather_modal_test.cpp.in
+    DEPENDS generate_page_weather_modal_test.py generate_climate_update_test.py page_weather_modal_test.cpp.in ../../components/espcontrol/temperature_unit.h
       ../../components/espcontrol/button_grid_weather_daily_ui.h ../../components/espcontrol/button_grid_weather_modal.h
     VERBATIM)
   add_executable(page_weather_modal_test ${PAGE_WEATHER_MODAL_SOURCE}

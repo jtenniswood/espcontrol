@@ -113,6 +113,8 @@ class PageNativeModalBank : public PageRuntimeResources {
  public:
   inline static PageNativeModalBank* instance=nullptr;
   bool held_retirement{false};
+  size_t temperature_refreshes{0};
+  void refresh_temperature_unit() { ++temperature_refreshes; }
   struct Port : PageModalPort {
     PageNativeModalBank& owner;
     struct Context { ParsedCfg config; PageModalToken token; bool retired{false}; };
@@ -416,12 +418,14 @@ void live_temperature_policy() {
   h.scene->loop();
   assert(std::string_view(lv_label_get_text(h.widgets[2].unit)) == "°C");
   const auto token = h.scene->binding(2);
+  const auto modal_refreshes = PageNativeModalBank::instance->temperature_refreshes;
   const auto allocations = h.arena.calls, registrations = coordinator.entries.size();
   const auto count = objects(h.root);
   h.arena.fail = true;
   {
     ModalCallbackDispatchScope callback;
     h.scene->refresh_temperature_unit(true);
+    assert(PageNativeModalBank::instance->temperature_refreshes == modal_refreshes + 1);
     h.scene->loop();
     // Policy notifications do not paint inside native callback dispatch.
     assert(std::string_view(lv_label_get_text(h.widgets[2].unit)) == "°C");

@@ -112,7 +112,7 @@ struct BasicCardDefinition {
     return confirmation & (currently_on ? PAGE_CONFIRM_OFF : PAGE_CONFIRM_ON);
   }
   bool custom_off{false},custom_on{false},theme_active{false},active_color{false},large_numbers{false};
-  bool presence{false}, push_feedback{false}, explicit_large{false}, ha_input{false};
+  bool presence{false}, push_feedback{false}, explicit_large{false}, ha_input{false}, on_pattern{false};
 };
 // Decoded mapping labels/time units are copied once into preparation storage.
 class BasicCardTextSink {

@@ -562,6 +562,7 @@ public:
     // Both supported suffixes fit the already-prepared unit buffers. Change
     // only the borrowed policy snapshot; LVGL updates wait for the safe loop.
     theme_.temperature_unit = unit;
+    modals_.refresh_temperature_unit();
     renderer_.refresh();
   }
   bool grid_configured() const override {

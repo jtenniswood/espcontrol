@@ -494,6 +494,11 @@ using PageMediaControlModalFamily = TestModalFamily<ControlModalKind::MEDIA_CONT
 template <ControlModalKind Kind>
 class TestModalPort : public PageModalPort {
  public:
+  inline static size_t temperature_refreshes = 0;
+  void refresh_temperature_unit() {
+    static_assert(Kind == ControlModalKind::WEATHER_FORECAST);
+    ++temperature_refreshes;
+  }
   template <class... Args>
   explicit TestModalPort(Args&&...) {}
   template <class... Args>
@@ -599,6 +604,9 @@ void bank_composition() {
   fail_install = ControlModalKind::NONE;
   assert(bank.initialize(true) && bank.ready() && bank.maintenance_ready());
   assert(installed_families == 14 && bank.initialize(true) && installed_families == 14);
+  const auto unit_refreshes = TestModalPort<ControlModalKind::WEATHER_FORECAST>::temperature_refreshes;
+  bank.refresh_temperature_unit();
+  assert(TestModalPort<ControlModalKind::WEATHER_FORECAST>::temperature_refreshes == unit_refreshes + 1);
   // A retiring decoder may defer modal collection while configuration preflight
   // remains safe: every demanded context owns its copied configuration.
   qr_decoder_busy=true;

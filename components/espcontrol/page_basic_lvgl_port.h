@@ -249,6 +249,11 @@ class PageBasicLvglPort final:public PageRendererPort {
         lv_obj_set_style_text_color(w.button,lv_color_hex(theme_.text),selector);
         lv_obj_set_style_transition(w.button,page_basic_no_transition(),selector);
       }
+      for (const auto state : {LV_STATE_CHECKED, LV_STATE_PRESSED}) {
+        const auto selector = static_cast<lv_style_selector_t>(LV_PART_MAIN) | state;
+        lv_obj_set_style_bg_grad_dir(w.button, LV_GRAD_DIR_NONE, selector);
+        lv_obj_set_style_bg_grad_color(w.button, lv_color_hex(theme_.surface), selector);
+      }
       lv_obj_set_style_bg_color(
           w.button, lv_color_hex(theme_.surface),
           static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_PRESSED | LV_STATE_USER_1);
@@ -1264,6 +1269,15 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (alarm_card) {
       pressed_color(LV_STYLE_BG_COLOR, pressed_background);
       pressed_color(LV_STYLE_TEXT_COLOR, pressed_foreground);
+    }
+    // Both selectors were reserved at startup. Reset them on every bind so a
+    // plain card or Back never inherits the preceding card's active pattern.
+    for (const auto state : {LV_STATE_CHECKED, LV_STATE_PRESSED}) {
+      const auto selector = static_cast<lv_style_selector_t>(LV_PART_MAIN) | state;
+      const auto color = state == LV_STATE_PRESSED ? pressed_background : background;
+      lv_obj_set_style_bg_grad_color(w.button, lv_color_hex(card_pattern_highlight_color(color)), selector);
+      lv_obj_set_style_bg_grad_dir(w.button, definition.on_pattern ? LV_GRAD_DIR_HOR : LV_GRAD_DIR_NONE,
+                                   selector);
     }
     if (!s.painted || s.background != background || s.foreground != paint_foreground) {
       for(const auto selector:{static_cast<lv_style_selector_t>(LV_PART_MAIN),(static_cast<lv_style_selector_t>(LV_PART_MAIN)|static_cast<lv_style_selector_t>(LV_STATE_CHECKED))}) {

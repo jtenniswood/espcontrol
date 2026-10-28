@@ -7459,6 +7459,115 @@ void screen_lock_profile(const DeviceUiLimits& limits) {
               limits.device_profile);
 }
 
+template<size_t Slots>
+void on_pattern_profile(const DeviceUiLimits& limits) {
+  std::array<uint8_t, 8192> document{};
+  alignas(std::max_align_t) std::array<uint8_t, 65536> storage{};
+  PageStore store;
+  PanelConfigWriter writer(document.data(), document.size());
+  assert(writer.begin() == PanelConfigStatus::OK);
+  assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                      std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+  const char* cards[] = {
+      "switch.pattern;Pattern;Auto;Auto;;;;;on_pattern=stripes",
+      ";Pages;Auto;Auto;;;subpage;;",
+      "switch.plain;Plain;Auto;Auto;;;;;",
+      "switch.dark;Dark;Auto;Auto;;;;;card_active_color=custom,card_on_color=336699,on_pattern=stripes",
+      "switch.pale;Pale;Auto;Auto;;;;;card_active_color=custom,card_on_color=EEDDCC,on_pattern=stripes",
+      "switch.invalid;Plain;Auto;Auto;;;;;on_pattern=invalid"};
+  for (size_t i = 0; i < 6; ++i)
+    assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(cards[i]), std::strlen(cards[i])) ==
+           PanelConfigStatus::OK);
+  const char* child = "~B,1|S,,Value,Auto,Auto,sensor.pattern,C,1,";
+  assert(writer.append_subpage(2, reinterpret_cast<const uint8_t*>(child), std::strlen(child)) == PanelConfigStatus::OK);
+  assert(writer.append_setting(reinterpret_cast<const uint8_t*>("button_order"), 12,
+                               reinterpret_cast<const uint8_t*>("1,2,3,4,5,6"), 11) == PanelConfigStatus::OK);
+  size_t size = 0;
+  assert(writer.finish(&size) == PanelConfigStatus::OK);
+  assert(PageStore::stage_v1(document.data(), size, limits, 17, storage.data(), storage.size(), &store) == PageStoreStatus::OK);
+  Arena arena;
+  Subscriptions subscriptions;
+  PageCardDependencies dependencies;
+  PageEntityStateRuntime state(dependencies, arena, subscriptions, {128, 128, 8192});
+  auto* page = lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t, Slots + 1> columns{}, rows{};
+  const auto row_count = (Slots + limits.grid_columns - 1) / limits.grid_columns;
+  for (size_t i = 0; i < limits.grid_columns; ++i) columns[i] = LV_GRID_FR(1);
+  columns[limits.grid_columns] = LV_GRID_TEMPLATE_LAST;
+  for (size_t i = 0; i < row_count; ++i) rows[i] = LV_GRID_FR(1);
+  rows[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page, 480, 480);
+  lv_obj_set_grid_dsc_array(page, columns.data(), rows.data());
+  std::array<PageBasicWidgets, Slots> widgets{};
+  for (auto& w : widgets) {
+    w.button = lv_button_create(page);
+    w.fill = lv_obj_create(w.button);
+    w.icon = lv_label_create(w.button);
+    w.label = lv_label_create(w.button);
+    w.sensor_container = lv_obj_create(w.button);
+    w.value = lv_label_create(w.sensor_container);
+    w.unit = lv_label_create(w.sensor_container);
+  }
+  PageBasicTheme theme;
+  theme.red_percent = 80; theme.green_percent = 90; theme.blue_percent = 70;
+  Actions<Slots> actions;
+  {
+    PageBasicLvglPort<Slots> port(arena, state, widgets, {limits.slot_count, limits.grid_columns}, theme, actions.callbacks());
+    assert(port.initialize());
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    actions.renderer = &renderer;
+    assert(renderer.prepare(store) && state.prepare(store));
+    renderer.activate_prepared(store);
+    state.activate_prepared(store);
+    for (const auto* entity : {"switch.pattern", "switch.plain", "switch.dark", "switch.pale", "switch.invalid"})
+      subscriptions.send(entity, "", "on");
+    const auto verify = [&](size_t slot, bool pattern, uint32_t color) {
+      auto* button = widgets[slot].button;
+      assert(lv_obj_has_state(button, LV_STATE_CHECKED));
+      for (const bool pressed : {false, true}) {
+        if (pressed) lv_obj_add_state(button, LV_STATE_PRESSED);
+        assert(lv_obj_get_style_bg_grad_dir(button, LV_PART_MAIN) == (pattern ? LV_GRAD_DIR_HOR : LV_GRAD_DIR_NONE));
+        if (pattern)
+          assert(lv_color_to_u32(lv_obj_get_style_bg_grad_color(button, LV_PART_MAIN)) ==
+                 lv_color_to_u32(lv_color_hex(card_pattern_highlight_color(color))));
+        lv_obj_clear_state(button, LV_STATE_PRESSED);
+      }
+    };
+    const auto home = [&] {
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      verify(0, true, theme.active);
+      verify(2, false, theme.active);
+      verify(3, true, correct_display_color(0x336699, 80, 90, 70));
+      verify(4, true, correct_display_color(0xEEDDCC, 80, 90, 70));
+      verify(5, false, theme.active);
+    };
+    const auto cycle = [&] {
+      assert(renderer.open_page(store.card(1)->target));
+      renderer.update_visible();
+      lv_obj_update_layout(page);
+      auto* back = widgets[0].button;
+      lv_obj_add_state(back, static_cast<lv_state_t>(LV_STATE_CHECKED | LV_STATE_PRESSED));
+      assert(lv_obj_get_style_bg_grad_dir(back, LV_PART_MAIN) == LV_GRAD_DIR_NONE);
+      lv_obj_clear_state(back, static_cast<lv_state_t>(LV_STATE_CHECKED | LV_STATE_PRESSED));
+      assert(renderer.back());
+      home();
+    };
+    home();
+    cycle();
+    const auto cpp = cpp_allocations, metadata = arena.allocations, retained = arena.live,
+               widget_bytes = lv_live_bytes, registrations = subscriptions.bindings.size();
+    for (int i = 0; i < 1000; ++i) cycle();
+    assert(cpp == cpp_allocations && metadata == arena.allocations && retained == arena.live &&
+           widget_bytes == lv_live_bytes && registrations == subscriptions.bindings.size());
+    renderer.retire_active();
+    state.retire_active();
+  }
+  assert(arena.live == 0);
+  lv_obj_delete(page);
+  std::printf("%s: on-state patterns, corrected colours, plain/Back reuse, 1000 bounded navigation cycles\n", limits.device_profile);
+}
+
 int main() {
   std::setvbuf(stdout, nullptr, _IOLBF, 0);
   lv_init();
@@ -7481,6 +7590,16 @@ int main() {
     const char* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
     if (filter && std::strcmp(filter, limits.device_profile) != 0) continue;
     const char* family = std::getenv("ESPCONTROL_TEST_FAMILY");
+    if (!family || std::strcmp(family, "on_pattern") == 0) {
+      switch (limits.slot_count) {
+        case 6: on_pattern_profile<6>(limits); break;
+        case 9: on_pattern_profile<9>(limits); break;
+        case 15: on_pattern_profile<15>(limits); break;
+        case 20: on_pattern_profile<20>(limits); break;
+        default: assert(false);
+      }
+      if (family) continue;
+    }
     if (family && std::strcmp(family, "media_parity") == 0) {
       switch (limits.slot_count) {
         case 6:

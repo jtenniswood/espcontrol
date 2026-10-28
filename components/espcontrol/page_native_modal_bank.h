@@ -128,6 +128,7 @@ class PageNativeModalBank final : public PageRuntimeResources {
     return initialized_;
   }
   bool ready() const { return initialized_ && !stopped_; }
+  void refresh_temperature_unit() { weather_.refresh_temperature_unit(); }
   bool maintenance_ready() const {
     return ready() && !running_ && page_native_command_ready() && router_.ready();
   }
