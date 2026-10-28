@@ -9,10 +9,31 @@ add_executable(panel_config_document_v2_reader panel_config_document_v2_reader.c
 target_compile_features(panel_config_document_v2_reader PRIVATE cxx_std_17)
 target_compile_options(panel_config_document_v2_reader PRIVATE -Wall -Wextra -Werror -UNDEBUG)
 target_include_directories(panel_config_document_v2_reader PRIVATE ../../components/espcontrol)
+add_executable(panel_config_projection_cli panel_config_projection_cli.cpp)
+target_compile_features(panel_config_projection_cli PRIVATE cxx_std_17)
+target_compile_options(panel_config_projection_cli PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_projection_cli PRIVATE ../../components/espcontrol)
+
+set(ESPCONTROL_DOCUMENT_FLAGS_SAVED "${CMAKE_REQUIRED_FLAGS}")
+set(ESPCONTROL_DOCUMENT_LINK_SAVED "${CMAKE_REQUIRED_LINK_OPTIONS}")
+set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -fsanitize=address,undefined -fno-omit-frame-pointer")
+set(CMAKE_REQUIRED_LINK_OPTIONS "${CMAKE_REQUIRED_LINK_OPTIONS};-fsanitize=address,undefined")
+check_cxx_source_compiles("int main() { return 0; }" ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+set(CMAKE_REQUIRED_FLAGS "${ESPCONTROL_DOCUMENT_FLAGS_SAVED}")
+set(CMAKE_REQUIRED_LINK_OPTIONS "${ESPCONTROL_DOCUMENT_LINK_SAVED}")
+if(ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+  foreach(target panel_config_document_v2_reader panel_config_projection_cli)
+    target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_link_options(${target} PRIVATE -fsanitize=address,undefined)
+  endforeach()
+endif()
 
 add_test(NAME panel_config_document_v2_test
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/panel_config_document_v2_test.py
           $<TARGET_FILE:panel_config_document_v2_reader>)
+add_test(NAME panel_config_projection_test
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/panel_config_projection_test.py
+          $<TARGET_FILE:panel_config_projection_cli>)
 
 add_executable(page_modal_admission_test page_modal_admission_test.cpp)
 target_compile_features(page_modal_admission_test PRIVATE cxx_std_17)

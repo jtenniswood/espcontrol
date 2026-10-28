@@ -3109,6 +3109,7 @@ def gen_card_contract_h(data):
         "\n",
         "#include <cstdint>\n",
         "#include <string>\n",
+        "#include <string_view>\n",
         "\n",
         "// =============================================================================\n",
         "// GENERATED CARD CONFIG CONTRACT - do not edit by hand\n",
@@ -3436,6 +3437,14 @@ def gen_card_contract_h(data):
         "  return code;\n",
         "}\n",
     ])
+    for function, argument, mappings in (
+        ("card_contract_subpage_code_view", "type", codes.items()),
+        ("card_contract_subpage_type_view", "code", ((code, kind) for kind, code in codes.items())),
+    ):
+        lines.append(f"\ninline std::string_view {function}(std::string_view {argument}) {{\n")
+        for source, target in mappings:
+            lines.append(f'  if ({argument} == "{source}") return "{target}";\n')
+        lines.extend([f"  return {argument};\n", "}\n"])
     return "".join(lines)
 
 

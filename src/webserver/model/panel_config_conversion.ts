@@ -31,6 +31,12 @@ function childDefaults(fields: readonly string[]): string[] {
 function equalFields(a: readonly string[], b: readonly string[]): boolean {
   return a.length === 9 && b.length === 9 && a.every((value, i) => value === b[i]);
 }
+function trimmed(fields: readonly string[], separator: string): string {
+  const result = [...fields];
+  while (result.length > 1 && result.at(-1) === "") result.pop();
+  return result.join(separator);
+}
+function fits(value: string): boolean { return new TextEncoder().encode(value).length <= 4095; }
 
 /** Import exact v1 saved values into independent graph identities. */
 export function convertNativeV1ToV2(input: Uint8Array): Uint8Array {
@@ -130,7 +136,11 @@ export function convertNativeV2ToV1(input: Uint8Array): Uint8Array {
       check(equalFields(fieldsFromRaw(raw, false, false), saved), "stale raw owner-card fields");
       source.buttons[card.second] = raw;
     } else {
-      source.buttons[card.second] = "~" + saved.map(encodeConfigField).join(",");
+      const compact = "~" + trimmed(saved.map(encodeConfigField), ",");
+      const plain = trimmed(saved, ";");
+      check(fits(compact) || (!plain.startsWith("~") && !saved.some((s) => s.includes(";")) && fits(plain)),
+        "root card exceeds the v1 byte limit");
+      source.buttons[card.second] = fits(compact) ? compact : plain;
     }
   }
   for (const page of ownerPage.values()) {
@@ -164,15 +174,19 @@ export function convertNativeV2ToV1(input: Uint8Array): Uint8Array {
           tokens.push(text(card.rawSource));
         } else if (compact) {
           const typeCode = mapped(CARD_CONTRACT_SUBPAGE_TYPE_CODES, saved[6]!);
-          if (mapped(CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE, typeCode) !== saved[6]) return undefined;
-          tokens.push([typeCode, ...[0, 1, 2, 3, 4, 5, 7, 8].map((i) => encodeConfigField(saved[i]))].join(","));
+          if (/[,|]/.test(typeCode) || mapped(CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE, typeCode) !== saved[6]) return undefined;
+          saved[2] = saved[2] === "Auto" ? "" : saved[2]!;
+          saved[3] = saved[3] === "Auto" ? "" : saved[3]!;
+          tokens.push(trimmed([typeCode, ...[0, 1, 2, 3, 4, 5, 7, 8].map((i) => encodeConfigField(saved[i]))], ","));
         } else {
           if (saved.some((value) => /[:|]/.test(value))) return undefined;
-          tokens.push(saved.join(":"));
+          saved[2] = saved[2] === "Auto" ? "" : saved[2]!;
+          saved[3] = saved[3] === "Auto" ? "" : saved[3]!;
+          tokens.push(trimmed(saved, ":"));
         }
       }
       const value = (compact ? "~" : "") + tokens.join("|");
-      return new TextEncoder().encode(value).length <= 4095 ? value : undefined;
+      return fits(value) ? value : undefined;
     }
     const raw = serialize(originalCompact) ?? serialize(!originalCompact);
     check(raw !== undefined, "page cannot preserve raw imports in a v1 spelling");

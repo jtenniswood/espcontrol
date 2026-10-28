@@ -8,7 +8,7 @@
   ],
   "fast": [
     "wifi-setup",
-    "firmware-tests", "web-unit", "generated", "device-manifest", "device-manifest-output", "product-schema", "product-model-v2",
+    "firmware-tests", "web-unit", "native-document-projection", "generated", "device-manifest", "device-manifest-output", "product-schema", "product-model-v2",
     "product-snapshot", "local-artifacts", "local-esphome", "device-web-transport-tests", "ci-tooling", "pr-process",
     "pr-testing-guidance", "config", "backup-contract", "model-contract", "state-contract", "device-api",
     "preview-features", "memory-monitor", "camera-test-endpoint", "cover-art-contract",
@@ -19,7 +19,7 @@
   ],
   "ci": [
     "wifi-setup",
-    "firmware-tests", "web-unit", "generated", "device-manifest", "device-manifest-output", "product-schema", "product-model-v2",
+    "firmware-tests", "web-unit", "native-document-projection", "generated", "device-manifest", "device-manifest-output", "product-schema", "product-model-v2",
     "product-snapshot", "local-artifacts", "local-esphome", "device-web-transport-tests", "ci-tooling", "pr-process",
     "pr-testing-guidance", "config", "backup-contract", "model-contract", "state-contract", "device-api",
     "preview-features", "memory-monitor", "camera-test-endpoint", "cover-art-contract",
@@ -30,7 +30,7 @@
   ],
   "all": [
     "wifi-setup",
-    "firmware-tests", "web-unit", "generated", "device-manifest", "device-manifest-output", "product-schema", "product-model-v2",
+    "firmware-tests", "web-unit", "native-document-projection", "generated", "device-manifest", "device-manifest-output", "product-schema", "product-model-v2",
     "product-snapshot", "local-artifacts", "local-esphome", "device-web-transport-tests", "ci-tooling", "pr-process",
     "pr-testing-guidance", "config", "backup-contract", "model-contract", "state-contract", "device-api",
     "preview-features", "memory-monitor", "camera-test-endpoint", "cover-art-contract",
@@ -42,7 +42,7 @@
   ],
   "release": [
     "wifi-setup",
-    "firmware-tests", "web-unit", "generated", "device-manifest-output", "product-schema", "product-model-v2", "product-snapshot",
+    "firmware-tests", "web-unit", "native-document-projection", "generated", "device-manifest-output", "product-schema", "product-model-v2", "product-snapshot",
     "backup-contract", "model-contract", "state-contract", "device-api", "preview-features",
     "web-smoke", "web-asset-manifest", "saved-config-parity", "firmware-card-runtime",
     "firmware-release", "device-matrix", "device-profiles", "release-confidence", "release-changelog",

@@ -146,4 +146,20 @@ describe("Staged native v1/v2 conversion", () => {
     deep.push({ kind: 6, id: nestedOwner.id, first: 999 });
     error(() => down(v2.encodeNativeV2(deep)));
   });
+
+  test("chooses a lossless spelling for separator-like new type names and long root values", () => {
+    const input = up(v1.encodePanelConfig(doc({ buttons: { 1: root() }, subpages: { 1: "~B,1|S,sensor.one" } })));
+    const rows = v2.decodeNativeV2(input), child = rows.find((r) => r.kind === 5 && r.first !== 0);
+    child.flags = 0; child.rawSource = 0;
+    rows.find((r) => r.kind === 2 && r.id === child.fields[6]).text = "future,kind";
+    const reimported = v2.decodeNativeV2(up(down(v2.encodeNativeV2(rows))));
+    assert.equal(view(reimported).fields(reimported.find((r) => r.kind === 5 && r.first !== 0))[6], "future,kind");
+    const long = v2.decodeNativeV2(up(v1.encodePanelConfig(doc({ buttons: { 1: ":".repeat(4095) } }))));
+    const card = long.find((r) => r.kind === 5); card.flags = 0; card.rawSource = 0;
+    const projected = v1.decodePanelConfig(down(v2.encodeNativeV2(long)));
+    assert.equal(projected.buttons[1].split(";")[0], ":".repeat(4095));
+    const childLong = v2.decodeNativeV2(up(v1.encodePanelConfig(doc({ buttons: { 1: root() }, subpages: { 1: "B|" + "x".repeat(4093) } }))));
+    const childCard = childLong.find((r) => r.kind === 5 && r.first !== 0); childCard.flags = 0; childCard.rawSource = 0;
+    assert.equal(v1.decodePanelConfig(down(v2.encodeNativeV2(childLong))).subpages[1], "B|" + "x".repeat(4093));
+  });
 });

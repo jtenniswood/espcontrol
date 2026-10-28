@@ -2,8 +2,9 @@
 
 Implementation stage: matching structural readers and writers are available in
 C++ and TypeScript. A staged TypeScript bridge preserves v1 saved values through
-a v2 round trip. The matching firmware conversion, profile/legacy admission and
-service/runtime integration remain unfinished. Firmware capabilities, HTTP
+a v2 round trip. Allocation-free firmware v2-to-v1 projection is also available.
+Firmware v1-to-v2 import, profile/legacy admission and service/runtime integration
+remain unfinished. Firmware capabilities, HTTP
 handlers, the editor, backups and durable storage still use v1. This does not
 enable nested pages or establish a supported downgrade floor.
 
@@ -116,3 +117,21 @@ its page's spelling if that would lose its original source. Edited cards must
 clear their old raw hint. The bridge rejects an unrepresentable result rather
 than truncate it. Profile card/channel limits and preference byte/chunk limits
 remain separate admission work before this bridge can be used by live saves.
+
+`panel_config_projection.h` implements the firmware v2-to-v1 direction with
+caller-owned, disjoint input, output and aligned scratch. Scratch contains two
+4,095-byte text windows, fixed root/page metadata, the reader's eight-byte record
+index and an eight-byte-per-record upper bound for grouping cards. It constructs
+no complete decoded model and allocates no heap memory. Generated borrowed type
+lookups use the same compact-type contract without temporary owned strings.
+The output marker and size are usable only after successful conversion; argument
+alias failures leave input/output buffers untouched. Profile/channel admission
+and preference byte/chunk limits remain separate gates.
+
+Canonical export trims empty trailing fields and implicit child `Auto` icons.
+It falls back to a lossless plain spelling when compact encoding would exceed
+the v1 byte limit or reinterpret a separator-like unknown type. Imported raw
+values are still preserved exactly. `native-document-projection` runs actual
+C++/browser comparisons after their host/unit checks, and CMake enables address
+and undefined-behavior sanitizers for both native-v2 host executables when the
+compiler supports them. This remains host qualification, not a device result.
