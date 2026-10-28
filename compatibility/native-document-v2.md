@@ -1,12 +1,11 @@
 # Native document v2 codec
 
-Implementation stage: matching structural readers and writers are available in
-C++ and TypeScript. A staged TypeScript bridge preserves v1 saved values through
-a v2 round trip. Allocation-free firmware conversion components are available
-in both directions. Profile/legacy admission and service/runtime integration
-remain unfinished. Firmware capabilities, HTTP
-handlers, the editor, backups and durable storage still use v1. This does not
-enable nested pages or establish a supported downgrade floor.
+Implementation stage: matching C++/TypeScript structural codecs and bounded
+firmware conversion are implemented. HTTP handlers can explicitly import/export
+v2 while preserving durable v1, default v1 responses and generation checks.
+The bundled editor and backups still use v1. Direct v2 runtime/boot readers,
+profile/legacy admission, the supported downgrade floor and physical
+qualification remain unfinished. This does not enable nested pages.
 
 ## Wire layout
 
@@ -112,6 +111,52 @@ The base profile capacity stays admitted across display rotations. Navigable
 child pages retain their existing full child range, including state needed by
 parent summaries; inactive pages and unknown definitions remain saved.
 This changes neither the v1 document bytes nor the live document version.
+
+## Explicit HTTP representations
+
+The existing `/api/v1/config` endpoint and binary media type stay unchanged.
+Omitting `X-Panel-Config-Version` selects v1. Set that request header to `2`
+for a v2 GET response or PUT body. Unknown versions fail explicitly (406 for
+GET, 415 for PUT). The response version header identifies the representation;
+`X-Panel-Config-Durable-Version: 1` identifies the stored format. Capabilities
+advertise `[1,2]` only when native reads and writes are ready, with explicit
+default/durable version 1 and a v2 document-byte ceiling. An unavailable native
+backend retains its v1-only discovery contract and legacy editor fallback.
+
+Each GET loads one durable snapshot, then converts it privately. The generation
+header is identical for both representations of that snapshot. Their strong
+ETags distinguish different bytes: `"42"` for v1 and `"v2-42"` for v2. A PUT must
+supply its selected representation's ETag as `If-Match`. Both extract the same
+stored generation for the existing atomic compare-and-save. A save through
+either representation invalidates stale tokens from both. Requests without
+explicit v2 selection cannot accidentally submit v2 bytes as v1.
+
+V2 PUT conversion finishes before runtime preparation or storage writes. The
+projector checks graph/RAW/import-hint agreement and lossless v1 representation;
+currently unsupported nested graphs fail without flattening them. The existing
+runtime still performs profile and fallible resource preparation before commit.
+Invalid/unrepresentable documents fail with 400, conversion-budget exhaustion
+with 413 and allocation failure with 503. The old configuration stays active.
+A subsequent legacy-mirror failure remains a separate 202 warning after the
+native commit, including a new generation; it does not claim rollback.
+
+Input/output v2 documents and conversion scratch each have a 512 KiB hard
+ceiling. Buffers use the existing injected allocator (PSRAM-only in firmware),
+retain nothing between requests and release scratch before the service
+transaction. V1 output must also fit the existing device's durable slot; these
+ceilings do not enlarge partitions, runtime/card budgets or legacy text chunks.
+A failed v2 export leaves default v1 reads available. HTTP/body buffers and
+prepared-runtime/storage peaks still overlap in a save and require device
+measurements. Host allocation counters are not live heap measurements.
+
+The handler test compiles the actual read/write handlers against an HTTP port
+double and the real main-loop queue, service, atomic store and PageStore runtime.
+It covers all nine maximum profiles, retained unknown data, both stale-write
+paths, fragmented/incomplete bodies, authentication, version/size admission,
+conversion/prepare/storage failures, legacy warnings and durable v1 readback.
+It does not exercise ESP-IDF networking, reset interlocks or physical power loss.
+The editor's v2 selection/fallback and durable dual readers remain separate work;
+API representation support does not establish a durable-v2 downgrade floor.
 
 ## Staged compatibility conversion
 

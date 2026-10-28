@@ -18,6 +18,7 @@
 #include "panel_config_http_context.h"
 #include "panel_config_http_etag.h"
 #include "panel_config_upload.h"
+#include "panel_config_representation.h"
 #include "panel_config_write_status.h"
 
 namespace espcontrol::configuration {
@@ -42,7 +43,7 @@ class PanelConfigWriteHandler final
   }
   size_t maximumBodySize() const override {
     return panel_config_http_context_ready()
-               ? panel_config_http_context().document_capacity
+               ? PANEL_CONFIG_V2_HTTP_MAX_BYTES
                : 0;
   }
   bool canReceiveBody(esphome::web_server_idf::AsyncWebServerRequest *request) override {
@@ -66,16 +67,22 @@ class PanelConfigWriteHandler final
                   "Panel configuration must use its binary media type");
       return false;
     }
+    const auto requested = request->get_header(PANEL_CONFIG_VERSION_HEADER);
+    uint16_t representation = 1;
+    if (!panel_config_requested_version(requested ? requested->c_str() : nullptr, &representation)) {
+      send_status(raw_request, "415 Unsupported Media Type", "Unsupported panel configuration representation");
+      return false;
+    }
     const auto if_match = request->get_header("If-Match");
     uint32_t expected_generation = 0;
     if (!if_match.has_value() ||
-        !parse_panel_config_etag(if_match->c_str(), &expected_generation)) {
+        !parse_panel_config_etag(if_match->c_str(), &expected_generation, representation)) {
       send_status(raw_request, "428 Precondition Required",
                   "A quoted If-Match generation is required");
       return false;
     }
     const size_t total = request->contentLength();
-    if (!total || total > context.document_capacity) {
+    if (!total || total > (representation == 2 ? PANEL_CONFIG_V2_HTTP_MAX_BYTES : context.document_capacity)) {
       httpd_resp_send_err(raw_request, HTTPD_400_BAD_REQUEST,
                           "Invalid panel configuration body");
       return false;
@@ -129,18 +136,37 @@ class PanelConfigWriteHandler final
                           "Invalid panel configuration body");
       return;
     }
+    const auto requested = request->get_header(PANEL_CONFIG_VERSION_HEADER);
+    uint16_t representation = 1;
+    if (!panel_config_requested_version(requested ? requested->c_str() : nullptr, &representation)) {
+      send_status(raw_request, "415 Unsupported Media Type", "Unsupported panel configuration representation");
+      return;
+    }
     const auto if_match = request->get_header("If-Match");
     uint32_t expected_generation = 0;
     if (!if_match.has_value() ||
-        !parse_panel_config_etag(if_match->c_str(), &expected_generation)) {
+        !parse_panel_config_etag(if_match->c_str(), &expected_generation, representation)) {
       send_status(raw_request, "428 Precondition Required",
                   "A quoted If-Match generation is required");
       return;
     }
 
+    PanelConfigRepresentation converted(context.allocate, context.release);
+    const uint8_t *document = upload->body.data();
+    size_t document_size = upload->body.size();
+    if (representation == 2) {
+      const auto status = converted.convert(2, 1, document, document_size, context.document_capacity);
+      if (status != PanelConfigRepresentationStatus::OK) {
+        send_status(raw_request, status == PanelConfigRepresentationStatus::UNAVAILABLE
+            ? "503 Service Unavailable" : status == PanelConfigRepresentationStatus::TOO_LARGE
+            ? "413 Content Too Large" : "400 Bad Request",
+            "Configuration cannot be converted losslessly to the stored v1 format");
+        return;
+      }
+      document = converted.data(); document_size = converted.size();
+    }
     const auto transaction = context.transactions->save_if_generation(
-        expected_generation, PANEL_CONFIG_DOCUMENT_VERSION, upload->body.data(),
-        upload->body.size());
+        expected_generation, PANEL_CONFIG_DOCUMENT_VERSION, document, document_size);
     if (transaction.dispatch != ConfigurationDispatchStatus::COMPLETED) {
       send_status(raw_request, "503 Service Unavailable",
                   "Panel configuration is busy; retry the request");
@@ -155,7 +181,7 @@ class PanelConfigWriteHandler final
         panel_config_write_response(saved.status);
     if (response == PanelConfigWriteResponse::GENERATION_CONFLICT) {
       set_generation_headers(raw_request, saved.generation, generation_text,
-                             etag);
+                             etag, representation);
       send_status(raw_request, "409 Conflict",
                   "Panel configuration changed on the device");
       return;
@@ -180,7 +206,7 @@ class PanelConfigWriteHandler final
       return;
     }
     set_generation_headers(raw_request, saved.generation, generation_text,
-                           etag);
+                           etag, representation);
     if (response ==
         PanelConfigWriteResponse::ACCEPTED_WITH_LEGACY_WARNING) {
       httpd_resp_set_hdr(raw_request, "X-Panel-Config-Legacy-Mirror", "failed");
@@ -201,14 +227,15 @@ class PanelConfigWriteHandler final
 
   static void set_generation_headers(httpd_req_t *request, uint32_t generation,
                                      char (&generation_text)[16],
-                                     char (&etag)[20]) {
+                                     char (&etag)[20], uint16_t representation) {
     std::snprintf(generation_text, sizeof(generation_text), "%lu",
                   static_cast<unsigned long>(generation));
-    std::snprintf(etag, sizeof(etag), "\"%lu\"",
+    std::snprintf(etag, sizeof(etag), representation == 2 ? "\"v2-%lu\"" : "\"%lu\"",
                   static_cast<unsigned long>(generation));
     httpd_resp_set_hdr(request, "ETag", etag);
     httpd_resp_set_hdr(request, "X-Panel-Config-Generation", generation_text);
-    httpd_resp_set_hdr(request, "X-Panel-Config-Version", "1");
+    httpd_resp_set_hdr(request, "X-Panel-Config-Version", representation == 2 ? "2" : "1");
+    httpd_resp_set_hdr(request, "X-Panel-Config-Durable-Version", "1");
   }
 
 };

@@ -42,6 +42,23 @@ add_test(NAME panel_config_import_test
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/panel_config_import_test.py
           $<TARGET_FILE:panel_config_import_cli>)
 
+add_executable(panel_config_http_versions_test panel_config_http_versions_test.cpp
+  ../../components/espcontrol/configuration_main_loop.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(panel_config_http_versions_test PRIVATE cxx_std_17)
+target_compile_definitions(panel_config_http_versions_test PRIVATE USE_WEBSERVER USE_WEBSERVER_AUTH)
+target_compile_options(panel_config_http_versions_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_http_versions_test PRIVATE config_http_stubs stubs ../../components/espcontrol)
+target_link_libraries(panel_config_http_versions_test PRIVATE Threads::Threads)
+if(ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+  target_compile_options(panel_config_http_versions_test PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+  target_link_options(panel_config_http_versions_test PRIVATE -fsanitize=address,undefined)
+endif()
+add_test(NAME panel_config_http_versions_test COMMAND panel_config_http_versions_test)
+
 add_executable(page_modal_admission_test page_modal_admission_test.cpp)
 target_compile_features(page_modal_admission_test PRIVATE cxx_std_17)
 target_compile_options(page_modal_admission_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)

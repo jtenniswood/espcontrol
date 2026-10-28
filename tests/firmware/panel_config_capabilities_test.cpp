@@ -36,6 +36,10 @@ int main() {
       write_panel_config_capabilities_json(capabilities.data(),
                                            capabilities.size(),
                                            &capabilities_size) &&
+      std::strstr(capabilities.data(), "\"document_versions\":[1,2]") != nullptr &&
+      std::strstr(capabilities.data(), "\"default_document_version\":1") != nullptr &&
+      std::strstr(capabilities.data(), "\"durable_document_version\":1") != nullptr &&
+      std::strstr(capabilities.data(), "\"max_v2_document_bytes\":524288") != nullptr &&
       std::strstr(capabilities.data(), "\"read\":true") != nullptr &&
       std::strstr(capabilities.data(), "\"write\":true") != nullptr;
   set_panel_config_http_context_initialization_complete(false);
