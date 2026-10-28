@@ -239,7 +239,7 @@ bool PageCardDependencies::enumerate(const PageStore &store, PageDependencySink 
       parent=configuration(store,*owner);
     }
     const bool aggregate=parent.sensor=="indicator" && parent.entity.empty();
-    for (size_t i=0;i<page->card_count;++i) {
+    for (size_t i=0;i<page->runtime_card_count;++i) {
       const auto card_id=static_cast<CardId>(page->first_card+i);
       const auto *card=store.card(card_id);
       if (card==nullptr) return false;

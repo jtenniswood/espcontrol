@@ -62,7 +62,7 @@ struct PageConfirmationPolicy {
   }
 };
 inline PageConfirmationPolicy page_confirmation_policy(const PageStore& store, ConfigurationHandle handle) {
-  const auto* card = store.card(handle);
+  const auto* card = store.runtime_card(handle);
   if (!card) return {};
   return PageConfirmationPolicy::fields(
       store.field(*card, CardField::TYPE), store.field(*card, CardField::ENTITY),

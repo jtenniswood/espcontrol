@@ -29,7 +29,7 @@ bool cards(const PageStore& store, Emit emit) {
   for (PageId p = 0; p < store.page_count(); ++p) {
     const auto* page = store.page(p);
     if (!page->navigable) continue;
-    for (CardId id = page->first_card; id < page->first_card + page->card_count; ++id)
+    for (CardId id = page->first_card; id < page->first_card + page->runtime_card_count; ++id)
       if (PageTimerRuntime::supported(store, id) &&
           !emit(id, store.field(*store.card(id), CardField::ENTITY)))
         return false;
@@ -38,7 +38,7 @@ bool cards(const PageStore& store, Emit emit) {
 }
 }  // namespace
 bool PageTimerRuntime::supported(const PageStore& store, CardId id) {
-  const auto* card = store.card(id);
+  const auto* card = store.runtime_card(id);
   if (!card || store.field(*card, CardField::TYPE) != "timer") return false;
   const auto entity = store.field(*card, CardField::ENTITY);
   return entity.size() > 6 && entity.substr(0, 6) == "timer.";

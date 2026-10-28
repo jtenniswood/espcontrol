@@ -12,12 +12,16 @@
 using namespace espcontrol;using namespace espcontrol::pages;using namespace espcontrol::configuration;
 namespace {
 struct Fixture {
-  explicit Fixture(uint32_t generation=17) {
+  explicit Fixture(uint32_t generation=17, bool retained=false) {
     const auto &limits=DEVICE_UI_PROFILES[8];PanelConfigWriter writer(document.data(),document.size());assert(writer.begin()==PanelConfigStatus::OK);
     assert(writer.append_device_profile(reinterpret_cast<const uint8_t *>(limits.device_profile),std::strlen(limits.device_profile))==PanelConfigStatus::OK);
     for(uint8_t slot=1;slot<=3;++slot) {
       const std::string text=slot==3?";Room;Home;Auto;;;subpage;;":"climate."+std::string(96,'a'+slot)+";Room;Auto;Auto;;;climate;;";
       assert(writer.append_button(slot,reinterpret_cast<const uint8_t *>(text.data()),text.size())==PanelConfigStatus::OK);
+    }
+    if (retained) {
+      const std::string text="climate."+std::string(96,'b')+";Room;Auto;Auto;;;climate;;";
+      assert(writer.append_button(32,reinterpret_cast<const uint8_t *>(text.data()),text.size())==PanelConfigStatus::OK);
     }
     const std::string children="~B|HC,climate.child,Room,Auto,Auto,,,,";
     for(uint8_t slot=2;slot<=3;++slot)assert(writer.append_subpage(slot,reinterpret_cast<const uint8_t *>(children.data()),children.size())==PanelConfigStatus::OK);
@@ -636,7 +640,24 @@ void temporary_input_guard() {
   allowed=true;assert(runtime.interactive(token));
   runtime.stop();assert(!runtime.input_allowed() && !runtime.valid(token));runtime.loop();
 }
+void dormant_root_cannot_open() {
+  Fixture fixture(17, true);
+  Port port;
+  PageModalRuntime runtime(port);
+  port.runtime=&runtime;
+  activate(runtime,fixture.store);
+  assert(fixture.store.card(31) && !fixture.store.runtime_card(31));
+  assert(runtime.card_kind({17,31})==ControlModalKind::NONE);
+  assert(!runtime.request_card({17,31}));
+  assert(!runtime.request(origin(17,31)));
+  assert(!port.kind_queries && !port.creates);
+  assert(runtime.request(origin()));
+  runtime.loop();
+  assert(port.creates==1);
+  runtime.stop();runtime.loop();
+}
 int main() {
+  dormant_root_cannot_open();
   temporary_input_guard();
   terminal_stop_lifetime();
   deferred_close_edit_guard();

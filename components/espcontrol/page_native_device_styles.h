@@ -158,7 +158,7 @@ public:
     e.icon_font = display_icon_font(profile_.display);
     e.accent = palette(config).on_val;
     // Borrow immutable active configuration, never the temporary ParsedCfg.
-    const auto *card = store.card({token.configuration, token.card});
+    const auto *card = store.runtime_card({token.configuration, token.card});
     e.caption = store.field(*card, CardField::LABEL);
     if (e.caption.empty())
       e.caption = store.field(*card, CardField::ENTITY);
@@ -246,8 +246,8 @@ private:
     return definition && definition->navigable &&
            token.configuration == store.generation() &&
            token.card >= definition->first_card &&
-           token.card - definition->first_card < definition->card_count &&
-           store.card({token.configuration, token.card});
+           token.card - definition->first_card < definition->runtime_card_count &&
+           store.runtime_card({token.configuration, token.card});
   }
   PageNativeSourceFonts fonts(PageId page) const {
     return page == 0 ? profile_.root : profile_.child;

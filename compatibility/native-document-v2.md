@@ -101,6 +101,18 @@ reader. Browser decoding preserves leading Unicode BOMs as data, including in
 the existing v1 format, and both browser writers reject unpaired surrogates
 instead of silently replacing them during UTF-8 encoding.
 
+## Runtime admission of retained v1 data
+
+`PageStore` retains every saved root definition through the highest stored slot,
+including slots beyond the device profile. `card_count` describes that saved
+range; `runtime_card_count` describes the admitted prefix. Runtime sources,
+subscriptions, state reads, commands and card modals use the admitted range.
+Dormant roots cannot acquire state through an entity shared with an active card.
+The base profile capacity stays admitted across display rotations. Navigable
+child pages retain their existing full child range, including state needed by
+parent summaries; inactive pages and unknown definitions remain saved.
+This changes neither the v1 document bytes nor the live document version.
+
 ## Staged compatibility conversion
 
 `panel_config_conversion.ts` imports v1 into explicit graph records and projects

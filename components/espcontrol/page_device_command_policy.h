@@ -100,7 +100,7 @@ class PageDeviceCommandPolicy final : public PageCardControlPolicy {
     if (kind != PageCardCommandKind::DEVICE_ACTION) return false;
     const auto action = select(store, origin);
     value.integer = static_cast<int>(action);
-    if (const auto* card = store.card({origin.configuration, origin.card}))
+    if (const auto* card = store.runtime_card({origin.configuration, origin.card}))
       value.write_revision =
           graph_
               .read_attribute({origin.configuration, origin.card}, store.field(*card, CardField::ENTITY), {})
@@ -127,7 +127,7 @@ class PageDeviceCommandPolicy final : public PageCardControlPolicy {
   PageDeviceAction select(const PageStore& store, PageBindingToken origin) {
     using A = PageDeviceAction;
     const ConfigurationHandle handle{origin.configuration, origin.card};
-    const auto* card = store.card(handle);
+    const auto* card = store.runtime_card(handle);
     if (!card) return A::NONE;
     const auto type = store.field(*card, CardField::TYPE);
     const auto mode = store.field(*card, CardField::SENSOR);

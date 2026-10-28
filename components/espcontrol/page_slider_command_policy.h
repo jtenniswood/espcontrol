@@ -24,7 +24,7 @@ class PageSliderCommandPolicy final : public PageCardControlPolicy {
   bool valid(const PageStore& store, PageBindingToken origin, PageCardCommandKind kind,
              const PageCardCommandValue& value) override {
     const ConfigurationHandle handle{origin.configuration, origin.card};
-    const auto* card = store.card(handle);
+    const auto* card = store.runtime_card(handle);
     if (!card) return false;
     const auto entity = store.field(*card, CardField::ENTITY);
     if (entity.empty()) return false;

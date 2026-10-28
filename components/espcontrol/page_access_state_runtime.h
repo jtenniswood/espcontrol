@@ -30,7 +30,7 @@ class PageAccessStateRuntime final : public PageRuntimeResources, public PageEnt
   void loop();
   PageAccessSnapshot read(ConfigurationHandle) const;
   bool owns(ConfigurationHandle handle) const {
-    const auto* card = active_.store.card(handle.index);
+    const auto* card = active_.store.runtime_card(handle);
     if (!active_.store.source_document() || handle.generation != active_.store.generation() || !card)
       return false;
     const auto type = active_.store.field(*card, CardField::TYPE);

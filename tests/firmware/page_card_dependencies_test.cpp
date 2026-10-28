@@ -214,13 +214,22 @@ void maximum_live_sensor_dependencies() {
       }
       doc.child(parent,subpage);
     }
+    for (size_t slot = limits.slot_count + 1; slot <= 32; ++slot) {
+      const std::string entity = slot == size_t(limits.slot_count) + 1 ? "sensor.room_1_1" : "sensor.dormant_" + std::to_string(slot);
+      doc.button(slot, ";Dormant;Auto;Auto;" + entity + ";C;sensor;1;");
+    }
     const auto store=doc.finish();const auto channels=limits.max_child_cards();
+    assert(store.page(0)->card_count == 32 && store.page(0)->runtime_card_count == limits.slot_count);
     PageCardDependencies source;Arena arena;Native native;
     {
       PageEntityStateRuntime state(source,arena,native,{channels,channels,channels*8});
       assert(state.prepare(store));assert(native.live==channels);state.activate_prepared(1);
       assert(state.memory().active_channels==channels);assert(state.memory().active_dependencies==channels);
       assert(state.memory().active_state_bytes==0);assert(arena.live==1);
+      for (CardId id = limits.slot_count; id < 32; ++id) {
+        assert(!store.runtime_card(id));
+        assert(state.dependency_count({1, id}) == 0);
+      }
       for(PageId page=1;page<store.page_count();++page) {
         for(size_t child=0;child<store.page(page)->card_count;++child) {
           const auto id=static_cast<CardId>(store.page(page)->first_card+child);

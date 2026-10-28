@@ -97,7 +97,7 @@ class PageConfirmationRuntime final : public PageRuntimeResources {
         pending_.connection != graph_.connection_generation())
       return false;
     const ConfigurationHandle handle{token.configuration, token.card};
-    const auto* card = active_.card(handle);
+    const auto* card = active_.runtime_card(handle);
     if (!card || owned.entity != active_.field(*card, CardField::ENTITY) ||
         owned.type != active_.field(*card, CardField::TYPE) ||
         owned.sensor != active_.field(*card, CardField::SENSOR) ||
@@ -199,7 +199,7 @@ class PageConfirmationRuntime final : public PageRuntimeResources {
   }
   bool fresh(ConfigurationHandle handle, PageConfirmationPolicy policy) const {
     if (!policy.toggle) return true;  // Explicit garage direction/script requires no state subscription.
-    const auto* card = active_.card(handle);
+    const auto* card = active_.runtime_card(handle);
     if (!card) return false;
     const auto entity = active_.field(*card, CardField::ENTITY);
     const auto value = graph_.read_attribute(handle, entity, {});

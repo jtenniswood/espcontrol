@@ -105,6 +105,7 @@ class PageStoreBuilder {
                                   card_count * sizeof(CardDefinition);
     store_.memory_.source_bytes = size;
     pages[0].card_count = root_count;
+    pages[0].runtime_card_count = limits.slot_count;
     pages[0].navigable = true;
     pages[0].order = intern(order.text());
 
@@ -124,6 +125,7 @@ class PageStoreBuilder {
       page.order = intern(subpage_order(raw));
       const auto children = parse_subpage_config(raw);
       page.card_count = children.size();
+      page.runtime_card_count = page.navigable ? page.card_count : 0;
       for (size_t child = 0; child < children.size(); ++child) {
         // This is precisely the existing subpage-to-grid interpretation,
         // including generated card normalization and compact field decoding.

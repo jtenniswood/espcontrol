@@ -19,7 +19,7 @@ struct Document {
   std::array<uint8_t, 8192> bytes{};
   alignas(std::max_align_t) std::array<uint8_t, 32768> memory{};
   PageStore store;
-  explicit Document(uint32_t generation) {
+  explicit Document(uint32_t generation, bool dormant = false) {
     const auto& limits = DEVICE_UI_PROFILES[8];
     PanelConfigWriter writer(bytes.data(), bytes.size());
     assert(writer.begin() == PanelConfigStatus::OK);
@@ -37,6 +37,35 @@ struct Document {
     for (size_t i = 0; i < 9; ++i)
       assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(rows[i].data()), rows[i].size()) ==
              PanelConfigStatus::OK);
+    if (dormant) {
+      const std::string retained[] = {
+        "fan.room;Dormant;Auto;Auto;;;fan_switch;;",
+        "fan.room;Dormant;Auto;Auto;;;fan_speed;;",
+        "light.room;Dormant;Auto;Auto;;2000-6500;light_temperature;color;",
+        "number.room;Dormant;Auto;Auto;;;slider;;",
+        "sensor.date;Dormant;Auto;Auto;;;calendar;datetime;",
+        "local_value;Dormant;Auto;Auto;local;;sensor;1;",
+        "relay;Dormant;Auto;Auto;;;internal;;",
+        "alarm_control_panel.home;Dormant;Auto;Auto;;;alarm;;",
+        "media_player.room;Dormant;Auto;Auto;control_modal;;media;;",
+        "weather.dormant;Dormant;Auto;Auto;;;weather_forecast;;",
+        "UTC;Dormant;Auto;Auto;;;timezone;;",
+        "cover.dormant;Dormant;Auto;Auto;;;garage;;",
+        "lock.dormant;Dormant;Auto;Auto;;;lock;;",
+        "cover.dormant;Dormant;Auto;Auto;toggle;;cover;;",
+        "timer.dormant;Dormant;Auto;Auto;;;timer;;",
+        "fan.dormant;Dormant;Auto;Auto;;;fan_switch;;",
+        "number.dormant;Dormant;Auto;Auto;;;slider;;",
+        "missing_local;Dormant;Auto;Auto;local;;sensor;1;",
+        "relay_dormant;Dormant;Auto;Auto;;;internal;;",
+        "media_player.dormant;Dormant;Auto;Auto;play_pause;;media;;",
+        "sensor.dormant;Dormant;Auto;Auto;;;calendar;;",
+        "alarm_control_panel.dormant;Dormant;Auto;Auto;;;alarm;;",
+        "future.dormant;Opaque;Auto;Auto;;;future_card;;future=x"};
+      static_assert(std::size(retained) == 23);
+      for (size_t i = 0; i < std::size(retained); ++i)
+        assert(writer.append_button(i + 10, reinterpret_cast<const uint8_t*>(retained[i].data()), retained[i].size()) == PanelConfigStatus::OK);
+    }
     const std::string children =
         "~B,1,2|fan_switch,fan.room,Hidden fan,Auto,Auto,,,,|M,media_player.room,Hidden "
         "media,Auto,Auto,play_pause,,,";
@@ -115,8 +144,45 @@ void observations() {
   }
   assert(coordinator.entries.empty());
 }
+void dormant_families() {
+  Arena arena; Document baseline(101), retained(102, true);
+  assert(retained.store.page(0)->card_count == 32 && retained.store.page(0)->runtime_card_count == 9);
+  assert(retained.store.field(*retained.store.card(31), CardField::TYPE) == "future_card");
+  assert(!retained.store.runtime_card(31));
+  auto registrations = []() {
+    std::vector<std::string> keys;
+    for (const auto& entry : coordinator.entries) keys.push_back(entry.entity + "/" + entry.attribute);
+    std::sort(keys.begin(), keys.end()); return keys;
+  };
+  {
+    PageNativeSceneState state(arena, budget(), page_timezone_resolver(), {}, nullptr);
+    assert(state.initialize(true) && state.prepare(baseline.store)); state.activate_prepared(baseline.store);
+    const auto counts = [&]() {
+      return std::array<size_t, 13>{state.fans.memory().sources, state.percent.memory().sources,
+        state.temperature.memory().sources, state.number.memory().sources, state.calendar.memory().active_sources,
+        state.local.memory().live_bindings, state.relays.memory().active_sources, state.alarms.memory().active_sources,
+        state.media.memory().sources, state.forecasts.memory().sources, state.timezones.memory().active_cards,
+        state.timers.memory().sources, state.access.memory().histories};
+    };
+    const auto before = counts();
+    const auto keys = registrations();
+    coordinator.report("fan.room", "", "on");
+    assert(state.prepare(retained.store)); state.activate_prepared(retained.store);
+    baseline.memory.fill(0xDA);
+    assert(counts() == before && registrations() == keys);
+    const auto child = retained.store.page(1)->first_card;
+    assert(state.fans.read({102, 0}).on && state.fans.read({102, child}).on);
+    assert(!state.fans.read({102, 9}).on && !state.fans.read({101, 9}).on);
+    assert(state.percent.read({102, 10}).kind == PagePercentSliderKind::NONE);
+    assert(!state.number.read({102, 12}).ready && !state.calendar.read({102, 13}).date_valid);
+    assert(state.local.read({102, 14}, "local_value", false).status != PageEntityStatus::AVAILABLE);
+    state.stop();
+  }
+  assert(coordinator.entries.empty() && !page_local_sensor_feed().owner && !calendar_state_events().owner);
+}
 int main() {
   observations();
+  dormant_families();
   for (int cycle = 0; cycle < 1000; ++cycle) {
     Arena arena;
     Document document(17);

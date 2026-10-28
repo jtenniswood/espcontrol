@@ -10,7 +10,7 @@ bool cards(const PageStore& store, Emit emit) {
   for (PageId p = 0; p < store.page_count(); ++p) {
     const auto* page = store.page(p);
     if (!page->navigable) continue;
-    for (CardId id = page->first_card; id < page->first_card + page->card_count; ++id)
+    for (CardId id = page->first_card; id < page->first_card + page->runtime_card_count; ++id)
       if (PageAlarmStateRuntime::classify(store, id) != PageAlarmSourceKind::NONE && !emit(id)) return false;
   }
   return true;

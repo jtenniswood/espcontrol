@@ -86,7 +86,7 @@ bool PageForecastRuntime::prepare(const PageStore& store) {
   for (PageId id = 0; id < store.page_count(); ++id) {
     const auto* page = store.page(id);
     if (!page->navigable) continue;
-    for (CardId card = page->first_card; card < page->first_card + page->card_count; ++card) {
+    for (CardId card = page->first_card; card < page->first_card + page->runtime_card_count; ++card) {
       const auto* definition = store.card(card);
       const auto type = store.field(*definition, CardField::TYPE);
       if (type != "weather" && type != "weather_forecast") continue;
@@ -139,7 +139,7 @@ bool PageForecastRuntime::prepare(const PageStore& store) {
     for (PageId id = 0; id < store.page_count(); ++id) {
       const auto* page = store.page(id);
       if (!page->navigable) continue;
-      for (CardId card = page->first_card; card < page->first_card + page->card_count; ++card) {
+      for (CardId card = page->first_card; card < page->first_card + page->runtime_card_count; ++card) {
         const auto* definition = store.card(card);
         const auto type = store.field(*definition, CardField::TYPE);
         if ((type != "weather" && type != "weather_forecast") ||

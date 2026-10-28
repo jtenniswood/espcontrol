@@ -1114,12 +1114,12 @@ private:
   PageId source_page(PageModalToken token) const {
     const auto &store = active();
     if (token.configuration != store.generation() ||
-        !store.card({token.configuration, token.card}))
+        !store.runtime_card({token.configuration, token.card}))
       return NO_PAGE;
     for (PageId p = 0; p < store.page_count(); ++p) {
       const auto *page = store.page(p);
       if (page->navigable && token.card >= page->first_card &&
-          token.card - page->first_card < page->card_count)
+          token.card - page->first_card < page->runtime_card_count)
         return p;
     }
     return NO_PAGE;

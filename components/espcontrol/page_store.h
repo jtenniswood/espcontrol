@@ -35,6 +35,9 @@ struct PageDefinition {
   // Legacy documents can retain a subpage behind a non-folder card. Keep its
   // data without making it a navigable target.
   bool navigable{false};
+  // Retained root definitions may extend beyond this device's capacity.
+  // Runtime owners use this prefix; serialization keeps card_count unchanged.
+  uint16_t runtime_card_count{0};
 };
 
 struct ConfigurationHandle {
@@ -75,6 +78,18 @@ class PageStore {
   }
   const CardDefinition *card(ConfigurationHandle handle) const {
     return handle.generation == generation_ ? card(handle.index) : nullptr;
+  }
+  const CardDefinition *runtime_card(CardId id) const {
+    if (id >= card_count_) return nullptr;
+    for (PageId page = 0; page < page_count_; ++page) {
+      const auto &definition = pages_[page];
+      if (definition.navigable && id >= definition.first_card &&
+          id - definition.first_card < definition.runtime_card_count) return cards_ + id;
+    }
+    return nullptr;
+  }
+  const CardDefinition *runtime_card(ConfigurationHandle handle) const {
+    return handle.generation == generation_ ? runtime_card(handle.index) : nullptr;
   }
   const PageDefinition *page(ConfigurationHandle handle) const {
     return handle.generation == generation_ ? page(handle.index) : nullptr;

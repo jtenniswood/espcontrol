@@ -75,7 +75,7 @@ struct Document {
   PageStore store;
   std::string entity = "switch." + std::string(160, 's');
   Document(const DeviceUiLimits& limits, uint32_t generation = 0, bool confirmation = false,
-           bool cover = false) {
+           bool cover = false, bool retained = false) {
     if (cover) entity = "cover.door";
     PanelConfigWriter writer(bytes.data(), bytes.size());
     assert(writer.begin() == PanelConfigStatus::OK);
@@ -92,11 +92,20 @@ struct Document {
     for (size_t i = 0; i < 6; ++i)
       assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(rows[i].data()), rows[i].size()) ==
              PanelConfigStatus::OK);
+    if (retained) {
+      assert(writer.append_button(31, reinterpret_cast<const uint8_t*>(rows[0].data()), rows[0].size()) ==
+             PanelConfigStatus::OK);
+      assert(writer.append_button(32, reinterpret_cast<const uint8_t*>(rows[1].data()), rows[1].size()) ==
+             PanelConfigStatus::OK);
+    }
     const std::string children =
         "~B|P,,Push,,,,,,|A,local_key,Local,,,local,,,|WH,https://"
         "example.invalid,Hook,,,GET,,webhook,|SS,,,,,,,screensaver,|SL,,,,,,,screen_lock,";
     assert(writer.append_subpage(2, reinterpret_cast<const uint8_t*>(children.data()), children.size()) ==
            PanelConfigStatus::OK);
+    if (retained)
+      assert(writer.append_subpage(32, reinterpret_cast<const uint8_t*>(children.data()), children.size()) ==
+             PanelConfigStatus::OK);
     size_t size = 0;
     assert(writer.finish(&size) == PanelConfigStatus::OK);
     assert(PageStore::stage_v1(bytes.data(), size, limits, generation, memory.data(), memory.size(),
@@ -127,8 +136,8 @@ struct Harness {
   PageEntityStateRuntime graph{deps, arena, transport, {128, 128, 8192}};
   Port port;
   PageCardCommands commands{graph, port};
-  explicit Harness(const DeviceUiLimits& limits, bool confirmation = false, bool cover = false)
-      : doc(limits, 0, confirmation, cover) {
+  explicit Harness(const DeviceUiLimits& limits, bool confirmation = false, bool cover = false, bool retained = false)
+      : doc(limits, 0, confirmation, cover, retained) {
     assert(graph.prepare(doc.store) && commands.prepare(doc.store));
     graph.activate_prepared(doc.store);
     commands.activate_prepared(doc.store);
@@ -144,6 +153,18 @@ struct Harness {
     return accepted;
   }
 };
+void retained_definitions_do_not_dispatch(const DeviceUiLimits& limits) {
+  Harness h(limits, false, false, true);
+  assert(h.doc.store.page(0)->card_count == 32);
+  assert(h.request(0));
+  assert(h.commands.loop() == PageCardCommandResult::DISPATCHED);
+  assert(h.port.received.size() == 1);
+  assert(!h.request(30));  // Same entity and current binding as the working root card.
+  const auto* page = h.doc.store.page(2);
+  assert(page && !page->navigable && page->card_count);
+  assert(!h.request(page->first_card, 2));
+  assert(h.commands.memory().pending == 0 && h.port.received.size() == 1);
+}
 void cycles(const DeviceUiLimits& limits) {
   Harness h(limits);
   const auto subscriptions = h.transport.used, arenas = h.arena.live;
@@ -254,6 +275,9 @@ void confirmation_and_reentrant_replacement() {
 }
 }  // namespace
 int main() {
-  for (const auto& limits : DEVICE_UI_PROFILES) cycles(limits);
+  for (const auto& limits : DEVICE_UI_PROFILES) {
+    cycles(limits);
+    retained_definitions_do_not_dispatch(limits);
+  }
   confirmation_and_reentrant_replacement();
 }

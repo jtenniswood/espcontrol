@@ -97,6 +97,8 @@ struct Document {
     for (size_t i = 0; i < 6; ++i)
       assert(w.append_button(i + 1, reinterpret_cast<const uint8_t*>(rows[i].data()), rows[i].size()) ==
              PanelConfigStatus::OK);
+    assert(w.append_button(32, reinterpret_cast<const uint8_t*>(rows[0].data()), rows[0].size()) ==
+           PanelConfigStatus::OK);
     const std::string child =
         "~B|M,media_player.room,Progress,Auto,Auto,now_playing,,progress,|M,media_player.room,Play,Auto,Auto,"
         "now_playing,,play_pause,|M,media_player.room,Controls,Auto,Auto,control_modal,,,|M,media_player."
@@ -199,6 +201,9 @@ void cycles(const DeviceUiLimits& limits) {
            h.transport.reannouncements == reannouncements);
     ++h.port.binding;
   }
+  PageCardCommandValue dormant_value;
+  assert(!h.policy.admit(h.doc.store, h.token(31), PageCardCommandKind::MEDIA_ACTION, dormant_value));
+  assert(!h.action(31));
   const auto child = h.doc.store.page(1)->first_card;
   assert(h.seek(child, 1) && h.action(child + 1, 1));
   assert(h.commands.loop() == PageCardCommandResult::DISPATCHED &&
