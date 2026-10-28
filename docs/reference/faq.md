@@ -108,7 +108,7 @@ Yes. Use **System > Device Name > Save & Restart**. Entity IDs stay unchanged, b
 
 ### Can I Back Up My Setup?
 
-Yes. Use **Export** and **Import** under **System > Backup** to save cards and settings or copy a setup to another panel. Layouts adapt to different screen sizes. See [Backup and restore](/settings/system#backup) for exclusions.
+Yes. Use **Export** and **Import** under **System > Backup** to save cards and settings or copy a setup to another compatible panel. See [Backup and restore](/settings/system#backup) for compatibility checks and exclusions.
 
 ### Can I Copy Just a Few Cards to Another Panel?
 
