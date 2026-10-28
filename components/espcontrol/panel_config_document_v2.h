@@ -368,6 +368,9 @@ class PanelConfigV2Writer {
     return status_ = PanelConfigStatus::OK;
   }
   size_t workspace_bytes() const { return size_t(count_) * sizeof(panel_config_v2_detail::Entry); }
+  // Private-buffer progress only; these bytes are not a published document
+  // until finish succeeds. Borrowed dictionary indexes may refer to them.
+  size_t buffered_bytes() const { return offset_; }
   PanelConfigStatus append(const PanelConfigV2Record &input) {
     using namespace panel_config_v2_detail;
     if (!ready()) return status_ = PanelConfigStatus::INVALID_ARGUMENT;

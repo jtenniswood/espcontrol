@@ -2,8 +2,8 @@
 
 Implementation stage: matching structural readers and writers are available in
 C++ and TypeScript. A staged TypeScript bridge preserves v1 saved values through
-a v2 round trip. Allocation-free firmware v2-to-v1 projection is also available.
-Firmware v1-to-v2 import, profile/legacy admission and service/runtime integration
+a v2 round trip. Allocation-free firmware conversion components are available
+in both directions. Profile/legacy admission and service/runtime integration
 remain unfinished. Firmware capabilities, HTTP
 handlers, the editor, backups and durable storage still use v1. This does not
 enable nested pages or establish a supported downgrade floor.
@@ -133,5 +133,23 @@ It falls back to a lossless plain spelling when compact encoding would exceed
 the v1 byte limit or reinterpret a separator-like unknown type. Imported raw
 values are still preserved exactly. `native-document-projection` runs actual
 C++/browser comparisons after their host/unit checks, and CMake enables address
-and undefined-behavior sanitizers for both native-v2 host executables when the
+and undefined-behavior sanitizers for all three native conversion host executables when the
 compiler supports them. This remains host qualification, not a device result.
+
+`panel_config_import.h` implements firmware v1-to-v2 import. It borrows source
+views, decodes one record at a time, and interns text directly into the private
+output buffer. A caller-owned table stores byte hashes, output offsets and
+string/entity identities. Full-byte comparisons distinguish hash collisions,
+including embedded NUL and Unicode; equal values share dictionary records.
+After emission, the same table memory becomes the writer's validation index.
+It retains no complete decoded model and performs no internal heap allocation.
+
+`panel_config_v1_to_v2_bounds` reports conservative workspace/output bounds.
+Callers may use a smaller fixed scratch budget; exhausted dictionary/index space
+returns a failure with no usable output instead of allocating more memory or
+clipping records. These bounds describe the wire conversion, not device capacity
+or an admission decision. Profile and legacy byte/chunk checks are still needed
+before exposing either direction through the service. Settings may receive
+different dictionary IDs across implementations; their resolved graph and exact
+saved values must agree. The registered cross-language task checks both
+directions, fixed budgets, distinct-field fixtures and opaque identity ordering.

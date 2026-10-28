@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs"), path = require("node:path"), { spawnSync } = require("node:child_process");
 const { loadTypeScriptModule } = require("./load_typescript_module");
 const ROOT = path.resolve(__dirname, ".."), cli = process.argv[2] || path.join(ROOT, "build/tests/firmware/panel_config_projection_cli");
+const importCli = process.argv[3] || path.join(ROOT, "build/tests/firmware/panel_config_import_cli");
 const load = (name) => loadTypeScriptModule(path.join(ROOT, "src/webserver/model", name));
 const v1 = load("panel_config.ts"), v2 = load("panel_config_v2.ts"), bridge = load("panel_config_conversion.ts");
 const codes = loadTypeScriptModule(path.join(ROOT, "src/webserver/generated/card_contract.ts")).CARD_CONTRACT_SUBPAGE_TYPE_CODES;
@@ -17,6 +18,7 @@ for (const [type, code] of [...Object.entries(codes), ["__proto__", "__proto__"]
   cases.push(doc({ buttons: { 1: folder }, subpages: { 1: "~B,1|" + code + ",sensor.one,Label%3B%3A%7C" }, settings: { type } }));
 }
 const profiles = JSON.parse(fs.readFileSync(path.join(ROOT, "devices/manifest.json"), "utf8")).devices;
+const budgetCases = [];
 for (const [deviceProfile, limits] of Object.entries(profiles)) {
   const buttons = {}, subpages = {};
   for (let slot = 1; slot <= limits.slots; ++slot) {
@@ -24,11 +26,23 @@ for (const [deviceProfile, limits] of Object.entries(profiles)) {
     subpages[slot] = "~B=Return:ABCDEF," + Array.from({ length: limits.slots - 1 }, (_, i) => i + 1).join(",") + "|" +
       Array.from({ length: limits.slots - 1 }, (_, i) => "S,sensor." + slot + "_" + i + ",%EF%BB%BFLabel,,,sensor.shared,°C,1,unknown=x").join("|");
   }
-  cases.push({ deviceProfile, buttons, subpages, settings: { button_order: Object.keys(buttons).join(","), future: "kept" } });
+  const source = { deviceProfile, buttons, subpages, settings: { button_order: Object.keys(buttons).join(","), future: "kept" } };
+  cases.push(source); budgetCases.push(source);
 }
+const distinct = doc({ deviceProfile: "guition-esp32-p4-jc8012p4a1-v3" });
+for (let slot = 1; slot <= 20; ++slot) {
+  distinct.buttons[slot] = folder;
+  distinct.subpages[slot] = "~B," + Array.from({ length: 19 }, (_, i) => i + 1).join(",") + "|" +
+    Array.from({ length: 19 }, (_, child) => ["S", ...Array.from({ length: 8 }, (_, field) => (`f${field}_s${slot}_c${child}`).padEnd(18, "x"))].join(",")).join("|");
+}
+cases.push(distinct);
 cases.push(doc({ buttons: { 1: ":".repeat(4095) }, subpages: { 32: "B|" + "x".repeat(4093) }, settings: { x: "y".repeat(4094) } }));
 cases.push(doc({ buttons: { 1: folder }, subpages: { 1: "B|" + "x".repeat(4093) } }));
 cases.push(doc({ settings: JSON.parse('{"__proto__":"kept","constructor":"value","\\ufeffname":"\\ufeffvalue"}') }));
+cases.push(doc({ settings: { "\uE000": "private", "😀": "astral", "\ufeffname": "\ufeffvalue" } }));
+cases.push(doc({ buttons: { 1: "^Ur8>KPrf[;One", 2: "BJNQ*lxYGn;Two", 3: "sensor.a\0sensor.b;NUL" } }));
+function fnv(value) { let h = 2166136261; for (const byte of Buffer.from(value)) h = Math.imul(h ^ byte, 16777619) >>> 0; return h; }
+assert.equal(fnv("^Ur8>KPrf["), 145478724); assert.equal(fnv("BJNQ*lxYGn"), 145478724);
 let seed = 1825;
 const next = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0);
 const alphabet = ["a", ";", ":", ",", "|", "%", "~", "\0", "é", "😀", "\ufeff", " "];
@@ -54,7 +68,34 @@ function compare(input, expected) {
   if (expected) assert.deepEqual(actual, v1.decodePanelConfig(v1.encodePanelConfig(expected)));
   ++successes;
 }
-for (const source of cases) compare(bridge.convertNativeV1ToV2(v1.encodePanelConfig(source)), source);
+function semanticGraph(input) {
+  const rows = v2.decodeNativeV2(input), index = new Map(rows.map((r) => [r.kind + ":" + r.id, r]));
+  const get = (kind, id) => index.get(kind + ":" + id), text = (id) => id ? get(2, id).text : "";
+  const strings = rows.filter((r) => r.kind === 2).map((r) => r.text);
+  const entities = rows.filter((r) => r.kind === 3).map((r) => text(r.first));
+  assert.equal(strings.length, new Set(strings).size, "import must intern equal string values");
+  assert.equal(entities.length, new Set(entities).size, "import must intern equal entity tokens");
+  return {
+    profile: get(1, 0).text,
+    settings: Object.fromEntries(rows.filter((r) => r.kind === 7).map((r) => [text(r.id), text(r.first)])),
+    pages: rows.filter((r) => r.kind === 4).map((page) => ({
+      ownerSlot: page.id ? get(5, page.second).second : 0, order: text(page.third), flags: page.flags,
+      navigable: page.id === 0 || !!get(6, page.second),
+      cards: rows.filter((r) => r.kind === 5 && r.first === page.id).sort((a, b) => a.second - b.second).map((card) => ({
+        slot: card.second, flags: card.flags, raw: text(card.rawSource),
+        fields: card.fields.map((id, i) => text((i === 0 || i === 4) && id ? get(3, id).first : id)),
+      })),
+    })).sort((a, b) => a.ownerSlot - b.ownerSlot),
+  };
+}
+let imports = 0;
+for (const source of cases) {
+  const original = v1.encodePanelConfig(source), browser = bridge.convertNativeV1ToV2(original);
+  const result = spawnSync(importCli, [], { input: original, cwd: ROOT, maxBuffer: 16 * 1024 * 1024 });
+  assert.equal(result.status, 0, result.stderr.toString());
+  assert.deepEqual(semanticGraph(result.stdout), semanticGraph(browser));
+  compare(browser, source); compare(result.stdout, source); ++imports;
+}
 const basic = bridge.convertNativeV1ToV2(v1.encodePanelConfig(doc({ buttons: { 1: folder }, subpages: { 1: "~B,1|S,sensor.one,One" }, settings: { button_order: "1" } })));
 for (const value of ["future,kind", "G", "future|kind", "future:kind", "__proto__", "constructor", "", "sensor"]) {
   const rows = v2.decodeNativeV2(basic), child = rows.find((r) => r.kind === 5 && r.first !== 0);
@@ -84,4 +125,23 @@ for (const mode of ["short", "unaligned", "small-output", "input-output-alias", 
   const result = cpp(basic, mode); assert.equal(result.status, 2, mode + ": " + result.stderr.toString()); ++failures;
 }
 assert.ok(successes >= cases.length && failures >= 18);
-console.log(`Native v2→v1 projection parity: ${successes} successful C++/browser projections and ${failures} fail-closed/alias/bounds cases. C++ allocation guard enabled; live integration remains disabled.`);
+const basicV1 = v1.encodePanelConfig(doc({ buttons: { 1: folder }, subpages: { 1: "~B,1|S,sensor.one,One" }, settings: { button_order: "1" } }));
+let importFailures = 0;
+for (const mode of ["short", "table-full", "unaligned", "small-output", "input-output-alias", "input-workspace-alias", "output-workspace-alias", "result-input-alias", "result-output-alias", "result-workspace-alias", "null-result", "null-bounds", "bounds-input-alias"]) {
+  const result = spawnSync(importCli, [mode], { input: basicV1, cwd: ROOT });
+  assert.equal(result.status, 2, mode + ": " + result.stderr.toString()); ++importFailures;
+}
+const manyEmpty = v1.encodePanelConfig(doc({ buttons: { 1: folder }, subpages: { 1: "B" + "|".repeat(100) } }));
+const shortFinish = spawnSync(importCli, ["finish-short"], { input: manyEmpty, cwd: ROOT });
+assert.equal(shortFinish.status, 2, shortFinish.stderr.toString()); ++importFailures;
+for (const source of budgetCases) {
+  const result = spawnSync(importCli, ["budget"], { input: v1.encodePanelConfig(source), cwd: ROOT, maxBuffer: 16 * 1024 * 1024 });
+  assert.equal(result.status, 0, result.stderr.toString());
+  const browser = bridge.convertNativeV1ToV2(v1.encodePanelConfig(source));
+  assert.deepEqual(semanticGraph(result.stdout), semanticGraph(browser));
+}
+const constrained = spawnSync(importCli, ["budget"], { input: v1.encodePanelConfig(distinct), cwd: ROOT });
+assert.equal(constrained.status, 2, constrained.stderr.toString());
+assert.equal(constrained.stderr.toString().trim(), "4", "a small fixed budget must fail rather than allocate");
+importFailures++;
+console.log(`Native conversion parity: ${imports} C++/browser imports, ${successes} successful projections, ${failures} projection rejections and ${importFailures} import bounds/alias failures. C++ allocation guards enabled; live integration remains disabled.`);

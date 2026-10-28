@@ -66,7 +66,7 @@ inline void child_defaults(Fields *fields) {
   if ((*fields)[2].empty()) (*fields)[2] = "Auto";
   if ((*fields)[3].empty()) (*fields)[3] = "Auto";
 }
-inline bool raw_fields(View raw, bool child, bool compact, State *state, Fields *fields) {
+inline bool raw_fields(View raw, bool child, bool compact, char *decoded, size_t capacity, Fields *fields) {
   *fields = {};
   if (!child) { compact = !raw.empty() && raw.front() == '~'; if (compact) raw.remove_prefix(1); }
   constexpr size_t CHILD_ORDER[9] = {6, 0, 1, 2, 3, 4, 5, 7, 8};
@@ -82,11 +82,14 @@ inline bool raw_fields(View raw, bool child, bool compact, State *state, Fields 
     const size_t field = child && compact ? CHILD_ORDER[i] : i;
     if (child && compact && i == 0) (*fields)[field] = card_contract_subpage_type_view(token);
     else if (compact) {
-      if (!decode(token, state->decoded.data(), state->decoded.size(), &used, &(*fields)[field])) return false;
+      if (!decode(token, decoded, capacity, &used, &(*fields)[field])) return false;
     } else (*fields)[field] = token;
   }
   if (child) child_defaults(fields);
   return true;
+}
+inline bool raw_fields(View raw, bool child, bool compact, State *state, Fields *fields) {
+  return raw_fields(raw, child, compact, state->decoded.data(), state->decoded.size(), fields);
 }
 inline Fields saved_fields(const PanelConfigV2Reader &reader, const Row &card, bool child = false) {
   Fields fields;
