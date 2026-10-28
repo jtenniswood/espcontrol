@@ -9,6 +9,9 @@ namespace espcontrol::configuration {
 constexpr uint8_t CONFIGURATION_SLOT_COUNT = 2;
 constexpr size_t CONFIGURATION_ENVELOPE_HEADER_SIZE = 20;
 constexpr uint16_t CONFIGURATION_ENVELOPE_VERSION = 1;
+// Maximum read/write request at the store/backend boundary. Whole-blob ports
+// may still need one operation-scoped slot image below that boundary.
+constexpr size_t CONFIGURATION_IO_WINDOW_BYTES = 1024;
 
 enum class StoreStatus : uint8_t {
   OK,

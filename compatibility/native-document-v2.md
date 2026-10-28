@@ -175,6 +175,22 @@ refusal, no-op generation stability, compatibility edit preservation, failed
 publication fencing and allocation failure/retry. These host checks do not
 establish physical persistence, a released downgrade floor or live heap savings.
 
+## Storage I/O windows
+
+The atomic store limits backend payload reads and writes, as well as checksum
+reads, to 1,024 bytes per call. It transfers directly between the caller's
+document and backend, without another payload copy. Invalidation, payload sync
+after all chunks, metadata sync and final publication retain their existing
+order and bytes. The raw-flash path retains no slot buffer. NVS still requires
+whole-blob platform calls and one slot buffer scoped to each operation; the
+window limit does not change its keys or imply range I/O in NVS.
+
+Host tests compare independently frozen envelope/CRC bytes, load legacy bytes
+and read new bytes through the existing whole-blob port. They interrupt every
+payload chunk and real storage mutation on both backends, inject read failures
+and check that scratch is released. These simulated interruptions supplement,
+and do not replace, physical power-loss qualification.
+
 ## Explicit HTTP representations
 
 The existing `/api/v1/config` endpoint and binary media type stay unchanged.
