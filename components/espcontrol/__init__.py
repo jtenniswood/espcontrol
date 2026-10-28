@@ -6,7 +6,7 @@ EspControlApp owns long-lived firmware services while YAML continues to supply
 device-specific wiring.
 """
 import esphome.codegen as cg
-from esphome.components.esp32 import VARIANT_ESP32S3, get_esp32_variant
+from esphome.components.esp32 import VARIANT_ESP32P4, VARIANT_ESP32S3, get_esp32_variant
 from esphome.components import text
 import esphome.config_validation as cv
 from esphome.const import CONF_ID
@@ -99,6 +99,9 @@ async def to_code(config):
     if CORE.config.get("preferences", {}).get("rtc_storage", False):
         raise cv.Invalid("EspControl reset requires flash preferences; remove preferences.rtc_storage")
     cg.add_define("USE_OTA_STATE_LISTENER")
+    if get_esp32_variant() == VARIANT_ESP32P4:
+        cg.add_define("ESPCONTROL_P4_RESTART_WORKAROUND")
+        cg.add_build_flag("-Wl,--wrap=esp_restart_noos")
     # Pooled labels can retain the pinned LVGL refresh descriptors. With no
     # selected bank these wrappers forward every call unchanged.
     for operation in ("lv_display_add_event_cb", "lv_display_remove_event_cb_with_user_data"):
