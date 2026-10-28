@@ -99,18 +99,19 @@ class PanelConfigReadHandler final
     PanelConfigRepresentation converted(context.allocate, context.release);
     const uint8_t *response_document = document;
     size_t response_size = loaded.document_size;
-    if (loaded.document_version != 1) {
+    if (loaded.document_version != 1 && loaded.document_version != 2) {
       httpd_resp_send_err(raw_request, HTTPD_500_INTERNAL_SERVER_ERROR,
                          "Stored configuration version is unavailable");
       return;
     }
-    if (representation == 2) {
-      const auto status = converted.convert(1, 2, document, loaded.document_size, PANEL_CONFIG_V2_HTTP_MAX_BYTES);
+    if (representation != loaded.document_version) {
+      const auto status = converted.convert(loaded.document_version, representation, document,
+          loaded.document_size, PANEL_CONFIG_V2_HTTP_MAX_BYTES);
       if (status != PanelConfigRepresentationStatus::OK) {
         httpd_resp_set_status(raw_request, status == PanelConfigRepresentationStatus::UNAVAILABLE
             ? "503 Service Unavailable" : "422 Unprocessable Content");
         httpd_resp_set_type(raw_request, "text/plain");
-        httpd_resp_send(raw_request, "Cannot export this configuration as v2; retry or request v1", HTTPD_RESP_USE_STRLEN);
+        httpd_resp_send(raw_request, "Cannot export the requested representation without loss; retry or request the stored version", HTTPD_RESP_USE_STRLEN);
         return;
       }
       response_document = converted.data(); response_size = converted.size();
@@ -129,7 +130,7 @@ class PanelConfigReadHandler final
                         "application/vnd.espcontrol.panel-config");
     httpd_resp_set_hdr(raw_request, "Cache-Control", "no-store");
     httpd_resp_set_hdr(raw_request, "Vary", PANEL_CONFIG_VERSION_HEADER);
-    httpd_resp_set_hdr(raw_request, "X-Panel-Config-Durable-Version", "1");
+    httpd_resp_set_hdr(raw_request, "X-Panel-Config-Durable-Version", loaded.document_version == 2 ? "2" : "1");
     httpd_resp_set_hdr(raw_request, "ETag", etag);
     httpd_resp_set_hdr(raw_request, "X-Panel-Config-Generation", generation);
     httpd_resp_set_hdr(raw_request, "X-Panel-Config-Version", version);

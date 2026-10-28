@@ -112,7 +112,7 @@ struct Arena:PageArenaAllocator {
   void release(void *p,size_t)override{std::free(p);}
 };
 struct Fixture {
-  Backend backend;ConfigurationStore store{backend};Legacy legacy;PanelConfigDocumentValidator validator;
+  Backend backend;ConfigurationStore store{backend};Legacy legacy;PanelConfigDocumentValidator validator{allocate,release};
   ConfigurationService service{store,legacy,&validator};ConfigurationMainLoop queue;Arena arena;
   PageStoreRuntime runtime;PanelConfigReadHandler reader;PanelConfigWriteHandler writer;
   explicit Fixture(const DeviceUiLimits &limits):runtime(limits,arena,128*1024) {
@@ -145,6 +145,10 @@ struct Fixture {
       run(writer,request);
     }
     return raw;
+  }
+  void seed_v2(const Bytes &document) {
+    Bytes encoded{'E','C','D','O',2,0,8,0};encoded.insert(encoded.end(),document.begin(),document.end());
+    assert(store.commit(encoded.data(),encoded.size()).ok());
   }
 };
 int status(const httpd_req_t &request){return std::stoi(request.status);}
@@ -230,8 +234,81 @@ void rejection_and_failure() {
   Bytes loaded(40*1024);const auto boot=f.service.load(loaded.data(),loaded.size());
   assert(boot.ok()&&boot.document_version==1&&boot.generation==2);
 }
+void stored_v2_reads_and_replacements() {
+  for(const auto &limits:DEVICE_UI_PROFILES) {
+    Fixture fixture(limits);const auto original=fixture.get().response;
+    Bytes source;
+    {
+      PanelConfigRepresentation imported(allocate,release);
+      assert(imported.convert(1,2,original.data(),original.size(),PANEL_CONFIG_V2_HTTP_MAX_BYTES)==PanelConfigRepresentationStatus::OK);
+      source.assign(imported.data(),imported.data()+imported.size());
+    }
+    fixture.seed_v2(source);
+    const auto v2=fixture.get("2");assert(status(v2)==200&&v2.response==source);
+    assert(v2.sent_headers.at("X-Panel-Config-Durable-Version")=="2"&&v2.sent_headers.at("ETag")=="\"v2-2\"");
+    const auto v1=fixture.get();assert(status(v1)==200&&records(v1.response)==records(original));
+    assert(v1.sent_headers.at("X-Panel-Config-Durable-Version")=="2"&&v1.sent_headers.at(PANEL_CONFIG_VERSION_HEADER)=="1");
+    assert(v1.sent_headers.at("ETag")=="\"2\"");
+    const auto stale=fixture.put(source,"2","\"v2-1\"");
+    assert(status(stale)==409&&!stale.sent_headers.count("X-Panel-Config-Durable-Version"));
+    assert(fixture.get("2").response==source);
+    Bytes output(40*1024);const auto boot=fixture.service.load_and_apply_runtime(output.data(),output.size());
+    assert(boot.ok()&&boot.document_version==2&&boot.generation==2&&fixture.runtime.active().source_version()==2);
+    for(size_t failed=1;failed<=4;++failed) {
+      fail_at=allocation_calls+failed;assert(status(fixture.get("1"))==503);fail_at=0;
+      assert(allocations.empty()&&fixture.get("2").response==source);
+    }
+    const auto saved=fixture.put(source,"2","\"v2-2\"");assert(status(saved)==204);
+    assert(saved.sent_headers.at("X-Panel-Config-Durable-Version")=="1");
+    assert(fixture.runtime.active().source_version()==1&&fixture.runtime.active().generation()==3);
+    assert(status(fixture.put(v1.response,"1","\"2\""))==409);
+    assert(status(fixture.put(source,"2","\"v2-2\""))==409);
+  }
+  Fixture future(DEVICE_UI_PROFILES[8]);const auto source=nested_document();future.seed_v2(source);
+  assert(future.get("2").response==source&&status(future.get("1"))==422);
+  Bytes output(40*1024);assert(future.service.load_and_apply_runtime(output.data(),output.size()).status==ServiceStatus::RUNTIME_PREPARE_FAILED);
+  assert(future.runtime.active().generation()==1&&future.get("2").response==source);
+}
+void compressed_compatibility_growth() {
+  Bytes input(32768);PanelConfigV2Writer writer(input.data(),input.size());assert(writer.begin()==PanelConfigStatus::OK);
+  auto append=[&](const PanelConfigV2Record &row){assert(writer.append(row)==PanelConfigStatus::OK);};
+  PanelConfigV2Record row;row.kind=PanelConfigV2Kind::DEVICE_PROFILE;row.text=DEVICE_UI_PROFILES[6].device_profile;append(row);
+  for(auto value:std::array<std::pair<uint16_t,const char *>,4>{{
+      {1,"subpage"},{2,"sensor"},{3,"A shared label with Unicode 温度 and repeated descriptive text"},{4,"sensor.shared"}}}) {
+    row={};row.kind=PanelConfigV2Kind::STRING;row.id=value.first;row.text=value.second;append(row);
+  }
+  row={};row.kind=PanelConfigV2Kind::ENTITY;row.id=1;row.first=4;append(row);
+  row={};row.kind=PanelConfigV2Kind::PAGE;row.first=row.second=65535;append(row);
+  for(uint16_t page=1;page<=20;++page) {
+    row={};row.kind=PanelConfigV2Kind::CARD;row.id=page;row.second=page;row.field_mask=1<<6;row.fields[6]=1;append(row);
+    row={};row.kind=PanelConfigV2Kind::PAGE;row.id=page;row.second=page;append(row);
+    row={};row.kind=PanelConfigV2Kind::NAVIGATION;row.id=page;row.first=page;append(row);
+    for(uint16_t child=1;child<=19;++child) {
+      row={};row.kind=PanelConfigV2Kind::CARD;row.id=100+page*20+child;row.first=page;row.second=child;
+      row.field_mask=(1<<0)|(1<<1)|(1<<6);row.fields[0]=1;row.fields[1]=3;row.fields[6]=2;append(row);
+    }
+  }
+  std::vector<uint64_t> workspace((writer.workspace_bytes()+7)/8);size_t used=0;
+  assert(writer.finish(workspace.data(),workspace.size()*8,&used)==PanelConfigStatus::OK);input.resize(used);
+  const auto before=allocation_calls;size_t total=0;
+  {
+    PanelConfigRepresentation converted(allocate,release);
+    assert(converted.convert(2,1,input.data(),input.size(),65536)==PanelConfigRepresentationStatus::OK);
+    assert(converted.size()>input.size()*2&&converted.size()<65536);
+    PanelConfigReader reader(converted.data(),converted.size());assert(reader.validate()==PanelConfigStatus::OK);
+    total=allocation_calls-before;assert(total>=3&&allocations.size()==1);
+  }
+  assert(allocations.empty());
+  const auto original=input;
+  for(size_t failure=1;failure<=total;++failure) {
+    PanelConfigRepresentation converted(allocate,release);fail_at=allocation_calls+failure;
+    assert(converted.convert(2,1,input.data(),input.size(),65536)==PanelConfigRepresentationStatus::UNAVAILABLE);fail_at=0;
+    assert(!converted.data()&&!converted.size()&&allocations.empty()&&input==original);
+  }
+}
 }
 int main() {
+  stored_v2_reads_and_replacements();compressed_compatibility_growth();
   profiles_and_cas();rejection_and_failure();authentication_and_request_limits();converted_owner_boundaries();
   assert(allocations.empty()&&live_bytes==0&&peak_bytes<3*PANEL_CONFIG_V2_HTTP_MAX_BYTES);
   std::printf("HTTP v1/v2: all nine maximum profiles, shared-generation CAS, request/allocator/storage/runtime rejection; host HTTP allocation peak=%zu bytes; retained=%zu bytes\n",peak_bytes,live_bytes);

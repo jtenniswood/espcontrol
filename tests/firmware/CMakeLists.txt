@@ -122,6 +122,23 @@ if(ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
 endif()
 add_test(NAME page_store_v2_test COMMAND page_store_v2_test)
 
+add_executable(panel_config_dual_boot_test panel_config_dual_boot_test.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp
+  ../../components/espcontrol/panel_config_legacy_adapter.cpp
+  ../../components/espcontrol/panel_config_runtime_adapter.cpp
+  ../../components/espcontrol/panel_config_text_bindings.cpp
+  ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(panel_config_dual_boot_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_dual_boot_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_dual_boot_test PRIVATE stubs ../../components/espcontrol)
+if(ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+  target_compile_options(panel_config_dual_boot_test PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+  target_link_options(panel_config_dual_boot_test PRIVATE -fsanitize=address,undefined)
+endif()
+add_test(NAME panel_config_dual_boot_test COMMAND panel_config_dual_boot_test)
+
 add_executable(panel_config_esphome_text_test panel_config_esphome_text_test.cpp)
 target_compile_features(panel_config_esphome_text_test PRIVATE cxx_std_17)
 target_compile_definitions(panel_config_esphome_text_test PRIVATE USE_ESP32)

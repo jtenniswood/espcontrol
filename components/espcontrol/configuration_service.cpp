@@ -78,11 +78,15 @@ bool ConfigurationService::supports_version(uint16_t document_version) const {
                                : supported_version(document_version);
 }
 
-bool ConfigurationService::document_is_valid(uint16_t document_version,
-                                             const uint8_t *document,
-                                             size_t document_size) const {
-  return validator_ == nullptr ||
-         validator_->validate(document_version, document, document_size);
+bool ConfigurationService::supports_write_version(uint16_t document_version) const {
+  return validator_ ? validator_->supports_write_version(document_version)
+                    : supported_version(document_version);
+}
+
+ServiceStatus ConfigurationService::document_validation_status(
+    uint16_t document_version, const uint8_t *document, size_t document_size) const {
+  return validator_ ? validator_->validation_status(document_version, document, document_size)
+                    : ServiceStatus::OK;
 }
 
 uint8_t *
@@ -209,8 +213,9 @@ ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
     }
     const uint8_t *document =
         encoded + CONFIGURATION_DOCUMENT_HEADER_SIZE;
-    if (!document_is_valid(version, document, document_size)) {
-      return {ServiceStatus::INVALID_DOCUMENT, stored.status, version,
+    const auto validation = document_validation_status(version, document, document_size);
+    if (validation != ServiceStatus::OK) {
+      return {validation, stored.status, version,
               stored.generation, document_size};
     }
     if (document_size > output_capacity) {
@@ -241,11 +246,14 @@ ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
     return {ServiceStatus::BUFFER_TOO_SMALL, stored.status,
             legacy.document_version, 0, legacy.document_size};
   }
+  if (legacy.status == LegacyStatus::ALLOCATION_FAILED)
+    return {ServiceStatus::ALLOCATION_FAILED, stored.status,
+            legacy.document_version, 0, legacy.document_size};
   if (legacy.status != LegacyStatus::OK) {
     return {ServiceStatus::LEGACY_READ_FAILED, stored.status,
             legacy.document_version, 0, legacy.document_size};
   }
-  if (!supports_version(legacy.document_version)) {
+  if (!supports_write_version(legacy.document_version)) {
     return {ServiceStatus::UNSUPPORTED_VERSION, stored.status,
             legacy.document_version, 0, legacy.document_size};
   }
@@ -257,9 +265,9 @@ ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
             stored.status, legacy.document_version, 0,
             legacy.document_size};
   }
-  if (!document_is_valid(legacy.document_version, output,
-                         legacy.document_size)) {
-    return {ServiceStatus::INVALID_DOCUMENT, stored.status,
+  const auto validation = document_validation_status(legacy.document_version, output, legacy.document_size);
+  if (validation != ServiceStatus::OK) {
+    return {validation, stored.status,
             legacy.document_version, 0, legacy.document_size};
   }
 
@@ -294,16 +302,18 @@ ServiceLoadResult ConfigurationService::refresh_legacy_shadow_unlocked(
     return {ServiceStatus::BUFFER_TOO_SMALL, StoreStatus::EMPTY,
             legacy.document_version, 0, legacy.document_size};
   }
+  if (legacy.status == LegacyStatus::ALLOCATION_FAILED)
+    return {ServiceStatus::ALLOCATION_FAILED, StoreStatus::EMPTY,
+            legacy.document_version, 0, legacy.document_size};
   if (legacy.status != LegacyStatus::OK) {
     return {ServiceStatus::LEGACY_READ_FAILED, StoreStatus::EMPTY,
             legacy.document_version, 0, legacy.document_size};
   }
-  if (!supports_version(legacy.document_version) ||
-      !document_is_valid(legacy.document_version, output,
-                         legacy.document_size)) {
-    return {supports_version(legacy.document_version)
-                ? ServiceStatus::INVALID_DOCUMENT
-                : ServiceStatus::UNSUPPORTED_VERSION,
+  const auto validation = supports_write_version(legacy.document_version)
+      ? document_validation_status(legacy.document_version, output, legacy.document_size)
+      : ServiceStatus::UNSUPPORTED_VERSION;
+  if (validation != ServiceStatus::OK) {
+    return {validation,
             StoreStatus::EMPTY, legacy.document_version, 0,
             legacy.document_size};
   }
@@ -316,6 +326,16 @@ ServiceLoadResult ConfigurationService::refresh_legacy_shadow_unlocked(
             legacy.document_version, 0, legacy.document_size};
   }
   const LoadResult stored = store_.load(encoded, encoded_capacity);
+  // This legacy-only utility must not roll a newer native document back to
+  // stale preference fields. Live edits use the lossless merge path instead.
+  if (stored.ok() && stored.payload_size >= CONFIGURATION_DOCUMENT_HEADER_SIZE &&
+      read_u32(encoded + DOCUMENT_MAGIC_OFFSET) == DOCUMENT_MAGIC &&
+      read_u16(encoded + DOCUMENT_HEADER_SIZE_OFFSET) == CONFIGURATION_DOCUMENT_HEADER_SIZE &&
+      read_u16(encoded + DOCUMENT_VERSION_OFFSET) != legacy.document_version) {
+    return {ServiceStatus::UNSUPPORTED_VERSION, stored.status,
+            read_u16(encoded + DOCUMENT_VERSION_OFFSET), stored.generation,
+            stored.payload_size - CONFIGURATION_DOCUMENT_HEADER_SIZE};
+  }
   const bool matches_native =
       stored.ok() &&
       stored.payload_size ==
@@ -378,6 +398,9 @@ ConfigurationService::synchronize_legacy_runtime(uint8_t *output,
   const auto legacy =
       legacy_.merge(loaded.document_version, output, loaded.document_size,
                     merged, capacity, &changed);
+  if (legacy.status == LegacyStatus::ALLOCATION_FAILED)
+    return {ServiceStatus::ALLOCATION_FAILED, loaded.store_status,
+            loaded.document_version, loaded.generation, loaded.document_size};
   if (legacy.status != LegacyStatus::OK || legacy.document_size > capacity)
     return {ServiceStatus::LEGACY_READ_FAILED, loaded.store_status,
             loaded.document_version, loaded.generation, loaded.document_size};
@@ -407,12 +430,13 @@ ServiceSaveResult ConfigurationService::save_unlocked(
     return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT,
             document_version, 0, document_size};
   }
-  if (!supports_version(document_version)) {
+  if (!supports_write_version(document_version)) {
     return {ServiceStatus::UNSUPPORTED_VERSION, StoreStatus::INVALID_ARGUMENT,
             document_version, 0, document_size};
   }
-  if (!document_is_valid(document_version, document, document_size)) {
-    return {ServiceStatus::INVALID_DOCUMENT, StoreStatus::INVALID_ARGUMENT,
+  const auto validation = document_validation_status(document_version, document, document_size);
+  if (validation != ServiceStatus::OK) {
+    return {validation, StoreStatus::INVALID_ARGUMENT,
             document_version, 0, document_size};
   }
 
@@ -465,12 +489,13 @@ ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
     return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT,
             document_version, 0, document_size};
   }
-  if (!supports_version(document_version)) {
+  if (!supports_write_version(document_version)) {
     return {ServiceStatus::UNSUPPORTED_VERSION, StoreStatus::INVALID_ARGUMENT,
             document_version, 0, document_size};
   }
-  if (!document_is_valid(document_version, document, document_size)) {
-    return {ServiceStatus::INVALID_DOCUMENT, StoreStatus::INVALID_ARGUMENT,
+  const auto validation = document_validation_status(document_version, document, document_size);
+  if (validation != ServiceStatus::OK) {
+    return {validation, StoreStatus::INVALID_ARGUMENT,
             document_version, 0, document_size};
   }
 

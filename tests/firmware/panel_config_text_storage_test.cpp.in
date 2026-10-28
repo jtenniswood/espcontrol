@@ -105,8 +105,16 @@ int main() {
    if(record.type==PanelConfigRecordType::SETTING&&record.key_size==11&&std::memcmp(record.key,"badge_row_0",11)==0)extra_setting=record.value_size==4&&std::memcmp(record.value,"keep",4)==0;
   }
   assert(inactive_button&&inactive_child&&extra_setting);
+  // Preferences are deliberately unavailable in this adapter-layout fixture.
+  // That separate failure must preserve the current live field values.
   assert(!bindings.persist_document(native_document.data(),native_size));
-  assert(!bindings.publish_document(native_document.data(),native_size));
+  assert(values.back().button.value()=="updated");
+  // Publication owns only configured fields. Native inactive slots stay in
+  // the source document; their absence from this projection clears live fields.
+  assert(bindings.publish_document(native_document.data(),native_size));
+  assert(values.back().button.value().empty()&&order_value.value().empty());
+  for(auto&value:values.back().subpages)assert(value.value().empty());
+  assert(PanelConfigReader(native_document.data(),native_size).validate()==PanelConfigStatus::OK);
  }
  esphome::text::Text custom_button;
  std::array<esphome::text::Text,PANEL_CONFIG_TEXT_CHUNK_COUNT> custom_chunks;

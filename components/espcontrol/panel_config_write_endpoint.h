@@ -207,6 +207,7 @@ class PanelConfigWriteHandler final
     }
     set_generation_headers(raw_request, saved.generation, generation_text,
                            etag, representation);
+    httpd_resp_set_hdr(raw_request, "X-Panel-Config-Durable-Version", saved.document_version == 2 ? "2" : "1");
     if (response ==
         PanelConfigWriteResponse::ACCEPTED_WITH_LEGACY_WARNING) {
       httpd_resp_set_hdr(raw_request, "X-Panel-Config-Legacy-Mirror", "failed");
@@ -235,7 +236,6 @@ class PanelConfigWriteHandler final
     httpd_resp_set_hdr(request, "ETag", etag);
     httpd_resp_set_hdr(request, "X-Panel-Config-Generation", generation_text);
     httpd_resp_set_hdr(request, "X-Panel-Config-Version", representation == 2 ? "2" : "1");
-    httpd_resp_set_hdr(request, "X-Panel-Config-Durable-Version", "1");
   }
 
 };

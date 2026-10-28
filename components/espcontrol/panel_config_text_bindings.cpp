@@ -103,9 +103,27 @@ bool PanelConfigTextBindings::write_document(const uint8_t *native,
     return false;
   }
 
+  // Publication can trigger a debounced compatibility callback. Preserve the
+  // distinction between an absent record and an existing explicitly empty one
+  // when its live value has not changed, rather than manufacturing an edit.
+  auto keep_empty = [&](PanelConfigRecordType type, uint8_t slot,
+                        const char *key, size_t key_size) {
+    if (!native) return false;
+    PanelConfigReader original(native, native_size);
+    if (original.begin() != PanelConfigStatus::OK) return false;
+    PanelConfigRecord record;
+    while (original.next(&record) == PanelConfigStatus::OK) {
+      if (record.type == type && record.slot == slot && record.key_size == key_size &&
+          (!key_size || std::memcmp(record.key, key, key_size) == 0))
+        return record.value_size == 0;
+    }
+    return false;
+  };
+
   for (size_t index = 0; index < buttons_.size(); ++index) {
     const ButtonSources &sources = buttons_[index];
-    if (sources.button != nullptr && !sources.button->value().empty() &&
+    if (sources.button != nullptr && (!sources.button->value().empty() ||
+        keep_empty(PanelConfigRecordType::BUTTON, index + 1, nullptr, 0)) &&
         writer.append_button(
             static_cast<uint8_t>(index + 1),
             reinterpret_cast<const uint8_t *>(sources.button->value().data()),
@@ -120,7 +138,7 @@ bool PanelConfigTextBindings::write_document(const uint8_t *native,
           PANEL_CONFIG_MAX_RECORD_BODY_BYTES - 1 - subpage.size()) return false;
       subpage.append(chunk->value());
     }
-    if (!subpage.empty() &&
+    if ((!subpage.empty() || keep_empty(PanelConfigRecordType::SUBPAGE, index + 1, nullptr, 0)) &&
         writer.append_subpage(static_cast<uint8_t>(index + 1),
                               reinterpret_cast<const uint8_t *>(subpage.data()),
                               subpage.size()) != PanelConfigStatus::OK) {
@@ -128,7 +146,8 @@ bool PanelConfigTextBindings::write_document(const uint8_t *native,
     }
   }
 
-  if (!button_order_->value().empty() &&
+  if ((!button_order_->value().empty() || keep_empty(PanelConfigRecordType::SETTING,
+      0, BUTTON_ORDER_KEY, sizeof(BUTTON_ORDER_KEY) - 1)) &&
       writer.append_setting(
           reinterpret_cast<const uint8_t *>(BUTTON_ORDER_KEY),
           sizeof(BUTTON_ORDER_KEY) - 1,
@@ -136,7 +155,8 @@ bool PanelConfigTextBindings::write_document(const uint8_t *native,
           button_order_->value().size()) != PanelConfigStatus::OK) {
     return false;
   }
-  if (button_on_color_ != nullptr && !button_on_color_->value().empty() &&
+  if (button_on_color_ != nullptr && (!button_on_color_->value().empty() ||
+      keep_empty(PanelConfigRecordType::SETTING, 0, BUTTON_ON_COLOR_KEY, sizeof(BUTTON_ON_COLOR_KEY) - 1)) &&
       writer.append_setting(
           reinterpret_cast<const uint8_t *>(BUTTON_ON_COLOR_KEY),
           sizeof(BUTTON_ON_COLOR_KEY) - 1,
@@ -181,6 +201,7 @@ bool PanelConfigTextBindings::persist_document(const uint8_t *document,
       reader.begin() != PanelConfigStatus::OK) return false;
   PanelConfigRecord record;
   while (reader.next(&record) == PanelConfigStatus::OK) {
+    if (!owns_record(record)) continue;
     if ((record.type == PanelConfigRecordType::BUTTON ||
          (record.type == PanelConfigRecordType::SETTING && owns_record(record))) &&
         record.value_size > 255)
@@ -247,6 +268,9 @@ bool PanelConfigTextBindings::apply_document(const uint8_t *document,
   PanelConfigRecord record;
   PanelConfigStatus status = PanelConfigStatus::OK;
   while ((status = reader.next(&record)) == PanelConfigStatus::OK) {
+    // Stored slots outside this profile are retained by the native document;
+    // they are not compatibility text fields and consume no preference budget.
+    if (!owns_record(record)) continue;
     if ((record.type == PanelConfigRecordType::BUTTON ||
          record.type == PanelConfigRecordType::SUBPAGE) &&
         (record.slot == 0 || record.slot > buttons_.size()))

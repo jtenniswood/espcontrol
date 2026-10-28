@@ -10,8 +10,10 @@ namespace espcontrol::configuration {
 // still promises downgrade compatibility.
 class PanelConfigLegacyAdapter final : public LegacyConfigurationAdapter {
  public:
-  explicit PanelConfigLegacyAdapter(PanelConfigTextBindings &bindings)
-      : bindings_(bindings) {}
+  explicit PanelConfigLegacyAdapter(PanelConfigTextBindings &bindings,
+      ConfigurationBuffer::Allocate allocate = ConfigurationBuffer::allocate_host,
+      ConfigurationBuffer::Release release = ConfigurationBuffer::release_host)
+      : bindings_(bindings), allocate_(allocate), release_(release) {}
 
   bool configured() const { return bindings_.configured(); }
   LegacyLoadResult load(uint8_t *output, size_t output_capacity) override;
@@ -25,6 +27,8 @@ class PanelConfigLegacyAdapter final : public LegacyConfigurationAdapter {
 
  private:
   PanelConfigTextBindings &bindings_;
+  ConfigurationBuffer::Allocate allocate_;
+  ConfigurationBuffer::Release release_;
 };
 
 }  // namespace espcontrol::configuration

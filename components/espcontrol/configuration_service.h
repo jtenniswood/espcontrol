@@ -25,6 +25,7 @@ enum class LegacyStatus : uint8_t {
   EMPTY,
   BUFFER_TOO_SMALL,
   READ_FAILED,
+  ALLOCATION_FAILED,
 };
 
 struct LegacyLoadResult {
@@ -137,8 +138,18 @@ class ConfigurationDocumentValidator {
   virtual ~ConfigurationDocumentValidator() = default;
 
   virtual bool supports_version(uint16_t document_version) const = 0;
+  // Reading an existing format does not grant permission to publish it. A
+  // release can ship dual readers before raising its supported downgrade floor.
+  virtual bool supports_write_version(uint16_t document_version) const {
+    return supports_version(document_version);
+  }
   virtual bool validate(uint16_t document_version, const uint8_t *document,
                         size_t document_size) const = 0;
+  virtual ServiceStatus validation_status(uint16_t document_version,
+      const uint8_t *document, size_t document_size) const {
+    return validate(document_version, document, document_size)
+        ? ServiceStatus::OK : ServiceStatus::INVALID_DOCUMENT;
+  }
 };
 
 // Owns the transition between legacy preference fields and the versioned,
@@ -219,8 +230,9 @@ class ConfigurationService {
                                              const uint8_t *document,
                                              size_t document_size);
   bool supports_version(uint16_t document_version) const;
-  bool document_is_valid(uint16_t document_version, const uint8_t *document,
-                         size_t document_size) const;
+  bool supports_write_version(uint16_t document_version) const;
+  ServiceStatus document_validation_status(uint16_t document_version,
+      const uint8_t *document, size_t document_size) const;
   uint8_t *encoded_buffer(size_t required_size,
                           ConfigurationBuffer *fallback) const;
 

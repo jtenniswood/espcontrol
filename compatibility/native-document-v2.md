@@ -4,9 +4,9 @@ Implementation stage: matching C++/TypeScript structural codecs and bounded
 firmware conversion are implemented. HTTP handlers can explicitly import/export
 v2 while preserving durable v1, default v1 responses and generation checks.
 The bundled editor requests v2 when advertised and retains a lossless v1 editing
-model during the durable-v1 phase. Backups still use v1. PageStore reads v1/v2 directly;
-service/compatibility boot integration,
-profile/legacy admission, the supported downgrade floor and physical
+model during the durable-v1 phase. Backups still use v1. PageStore and the
+service/compatibility boot path read both versions; durable writes remain v1.
+Complete profile/legacy admission, a released downgrade floor and physical
 qualification remain unfinished. This does not enable nested pages.
 
 ## Wire layout
@@ -143,11 +143,37 @@ directions of v1/v2 replacement. Supported host builds run this test with addres
 and undefined-behavior sanitizers. These are runtime-reader tests, not physical
 or durable-v2 qualification.
 
-The production service validator, compatibility text publication/mirroring and
-boot restore are still v1. HTTP v2 saves continue to project losslessly to v1;
-this runtime reader alone does not enable durable v2 or change the downgrade
-floor. Those service readers must ship and pass persistence/backup testing
-before the durable default changes.
+The production service validator and boot restore read both versions. Validation
+uses a temporary, bounded index from the injected PSRAM allocator. Allocation
+failure is distinct from invalid data so boot can retry without importing stale
+legacy settings. Compatibility publication, mirroring, standalone text-runtime
+application and debounced edits use a scoped lossless v1 view. Out-of-profile
+records remain native data and do not acquire preference fields or their byte
+budgets. Existing explicitly empty records survive no-op compatibility callbacks.
+
+An unchanged v2 document is not rewritten at boot or during a no-op text refresh.
+An actual compatibility edit still writes v1 after successful lossless projection,
+preserving unknown settings and inactive definitions. Failed publication fences
+later compatibility edits until a complete publication succeeds. The legacy-only
+shadow utility cannot replace a stored v2 document with stale v1 preferences.
+
+Read permission and durable write permission are separate service policies.
+Direct saves, compare-and-save and legacy import/shadow paths cannot write v2
+in this release. HTTP v2 saves still project to v1. The release contract declares
+stored readers `[1,2]`, writer/default 1 and no minimum dual-reader release yet.
+Enabling durable v2 requires an explicit stable downgrade floor proven against
+published immutable release manifests; missing manifests or readers fail that
+gate. Compatibility retirement additionally requires two distinct consecutive
+stable dual-write releases after the durable-v2 rollout, followed by the retained
+import-only phase. The release-contract checks run in ordinary CI as well as
+release validation, with negative controls isolated from source files.
+
+Real service/store tests seed the actual ECDO v2 envelope and restore ordinary
+and maximum fixtures for all nine profiles, including UTF-8 text, inactive
+records and explicit empty values. They verify no boot write, direct-writer
+refusal, no-op generation stability, compatibility edit preservation, failed
+publication fencing and allocation failure/retry. These host checks do not
+establish physical persistence, a released downgrade floor or live heap savings.
 
 ## Explicit HTTP representations
 
@@ -155,9 +181,14 @@ The existing `/api/v1/config` endpoint and binary media type stay unchanged.
 Omitting `X-Panel-Config-Version` selects v1. Set that request header to `2`
 for a v2 GET response or PUT body. Unknown versions fail explicitly (406 for
 GET, 415 for PUT). The response version header identifies the representation;
-`X-Panel-Config-Durable-Version: 1` identifies the stored format. Capabilities
+`X-Panel-Config-Durable-Version` identifies the actual stored format on reads
+and successful writes. A conflict does not assert an unknown stored format.
+Capabilities
 advertise `[1,2]` only when native reads and writes are ready, with explicit
-default/durable version 1 and a v2 document-byte ceiling. An unavailable native
+default representation/durable writer 1 and a v2 document-byte ceiling. A stored
+v2 document is returned exactly to negotiated readers and projected losslessly
+for v1 readers; failed projection returns 422 without a partial response or write.
+An unavailable native
 backend retains its v1-only discovery contract and legacy editor fallback.
 
 Each GET loads one durable snapshot, then converts it privately. The generation
@@ -208,8 +239,8 @@ produce a falsely compatible backup. The controller still serializes snapshot
 reads with preceding and subsequent edits. Browser checks exercise negotiated
 edit/reconnect/reload/restore and exact v1 backup export on 6/9/15/20-slot layouts;
 protocol tests separately exercise old firmware, refusal and fallback paths.
-Durable dual readers and versioned backup rollout remain separate work; this
-negotiation does not establish a durable-v2 downgrade floor.
+Physical dual-reader qualification and versioned backup rollout remain separate
+work; negotiation does not establish a released durable-v2 downgrade floor.
 
 ## Staged compatibility conversion
 

@@ -1,4 +1,5 @@
 #include "panel_config_legacy_adapter.h"
+#include "panel_config_compatibility_view.h"
 
 namespace espcontrol::configuration {
 
@@ -20,8 +21,14 @@ PanelConfigLegacyAdapter::merge(uint16_t version, const uint8_t *native,
                                 size_t output_capacity, bool *changed) {
   if (changed)
     *changed = false;
-  if (version != PANEL_CONFIG_DOCUMENT_VERSION || !bindings_.configured())
+  if (!bindings_.configured())
     return {LegacyStatus::READ_FAILED, version, 0};
+  PanelConfigCompatibilityView view(allocate_, release_);
+  const auto projected = view.load(version, native, native_size, output_capacity);
+  if (projected != PanelConfigRepresentationStatus::OK)
+    return {projected == PanelConfigRepresentationStatus::UNAVAILABLE
+                ? LegacyStatus::ALLOCATION_FAILED : LegacyStatus::READ_FAILED, version, 0};
+  native = view.data(); native_size = view.size();
   size_t size = 0;
   if (!bindings_.merge_document(native, native_size, output, output_capacity,
                                 &size))
@@ -53,23 +60,27 @@ PanelConfigLegacyAdapter::merge(uint16_t version, const uint8_t *native,
     ++replacements;
   if (changed)
     *changed = matches != originals || matches != replacements;
-  return {LegacyStatus::OK, version, size};
+  // Actual compatibility edits remain durable v1 during the dual-reader
+  // release. An unchanged v2 view returns changed=false and is never rewritten.
+  return {LegacyStatus::OK, PANEL_CONFIG_DOCUMENT_VERSION, size};
 }
 
 bool PanelConfigLegacyAdapter::publish(uint16_t document_version,
                                        const uint8_t *document,
                                        size_t document_size) {
-  return document_version == PANEL_CONFIG_DOCUMENT_VERSION &&
-         bindings_.configured() &&
-         bindings_.publish_document(document, document_size);
+  if (!bindings_.configured()) return false;
+  PanelConfigCompatibilityView view(allocate_, release_);
+  return view.load(document_version, document, document_size) == PanelConfigRepresentationStatus::OK &&
+         bindings_.publish_document(view.data(), view.size());
 }
 
 bool PanelConfigLegacyAdapter::mirror(uint16_t document_version,
                                       const uint8_t *document,
                                       size_t document_size) {
-  return document_version == PANEL_CONFIG_DOCUMENT_VERSION &&
-         bindings_.configured() &&
-         bindings_.persist_document(document, document_size);
+  if (!bindings_.configured()) return false;
+  PanelConfigCompatibilityView view(allocate_, release_);
+  return view.load(document_version, document, document_size) == PanelConfigRepresentationStatus::OK &&
+         bindings_.persist_document(view.data(), view.size());
 }
 
 }  // namespace espcontrol::configuration

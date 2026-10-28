@@ -62,19 +62,30 @@ class PanelConfigRepresentation {
     }
     ConfigurationBuffer scratch(allocate_, release_);
     auto *workspace = scratch.allocate(workspace_bytes);
-    auto *output = workspace ? output_.allocate(output_bytes) : nullptr;
-    if (!output) { output_.reset(); return S::UNAVAILABLE; }
-    size_t written = 0;
-    const auto status = from == 1
-        ? panel_config_v1_to_v2(document, size, output, output_bytes, workspace, workspace_bytes, &written)
-        : panel_config_v2_to_v1(document, size, output, output_bytes, workspace, workspace_bytes, &written);
-    if (status == PanelConfigProjectionStatus::OK) {
-      data_ = output; size_ = written; return S::OK;
+    if (!workspace) return S::UNAVAILABLE;
+    // A dictionary-compressed v2 input can expand, but ordinary compatibility
+    // reads should not reserve the entire 512 KiB ceiling. Grow private output
+    // geometrically only when needed, releasing each failed attempt first.
+    size_t attempt_bytes = from == 2 ? std::min(output_bytes, size) : output_bytes;
+    while (true) {
+      auto *output = output_.allocate(attempt_bytes);
+      if (!output) return S::UNAVAILABLE;
+      size_t written = 0;
+      const auto status = from == 1
+          ? panel_config_v1_to_v2(document, size, output, attempt_bytes, workspace, workspace_bytes, &written)
+          : panel_config_v2_to_v1(document, size, output, attempt_bytes, workspace, workspace_bytes, &written);
+      if (status == PanelConfigProjectionStatus::OK) {
+        data_ = output; size_ = written; return S::OK;
+      }
+      output_.reset();
+      if (status == PanelConfigProjectionStatus::BUFFER_TOO_SMALL && attempt_bytes < output_bytes) {
+        attempt_bytes = std::min(output_bytes, attempt_bytes * 2);
+        continue;
+      }
+      if (status == PanelConfigProjectionStatus::BUFFER_TOO_SMALL) return S::TOO_LARGE;
+      if (status == PanelConfigProjectionStatus::NOT_REPRESENTABLE) return S::NOT_REPRESENTABLE;
+      return S::INVALID_DOCUMENT;
     }
-    output_.reset();
-    if (status == PanelConfigProjectionStatus::BUFFER_TOO_SMALL) return S::TOO_LARGE;
-    if (status == PanelConfigProjectionStatus::NOT_REPRESENTABLE) return S::NOT_REPRESENTABLE;
-    return S::INVALID_DOCUMENT;
   }
 
  private:

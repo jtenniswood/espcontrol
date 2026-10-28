@@ -104,7 +104,9 @@ class EspControlApp::NativeConfigurationRuntime {
    }
 
    NativeConfigurationRuntime()
-       : legacy_config(text_bindings), runtime_config(text_bindings),
+       : legacy_config(text_bindings, allocate_configuration_slot, release_configuration_slot),
+         runtime_config(text_bindings, allocate_configuration_slot, release_configuration_slot),
+         validator(allocate_configuration_slot, release_configuration_slot),
          backend(blobs, allocate_configuration_slot,
                  release_configuration_slot),
          store(backend) {}
