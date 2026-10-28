@@ -531,10 +531,14 @@ inline void normalize_saved_config_media_fields(ParsedCfg &p) {
 inline bool weather_wind_uses_sensors(const ParsedCfg &config) {
   return config.precision == "wind" && cfg_option_value(config.options, "wind_source") == "sensors";
 }
-
+inline bool rainfall_uses_forecast(const ParsedCfg &config) {
+  return config.precision == "rainfall" && card_runtime_weather_forecast_supported() &&
+    cfg_option_value(config.options, "rainfall_source") == "forecast";
+}
 inline std::string weather_card_options_normalized(const std::string &options, const ParsedCfg &config) {
-  return config.precision == "wind" && cfg_option_value(options, "wind_source") == "sensors"
-    ? "wind_source=sensors" : "";
+  if (config.precision == "wind" && cfg_option_value(options, "wind_source") == "sensors") return "wind_source=sensors";
+  return config.precision == "rainfall" && card_runtime_weather_forecast_supported() &&
+    cfg_option_value(options, "rainfall_source") == "forecast" ? "rainfall_source=forecast" : "";
 }
 
 inline std::string normalize_image_modal_mode(const std::string &value) {
@@ -1274,7 +1278,7 @@ inline std::string normalize_saved_config_security_options(
 
 inline void normalize_saved_config_weather_fields(ParsedCfg &p, bool was_legacy_forecast) {
   if (was_legacy_forecast && p.label == "Weather") p.label.clear();
-  if (p.precision != "wind" && !card_runtime_weather_forecast_precision(p.precision)) p.precision.clear();
+  if (p.precision != "wind" && p.precision != "rainfall" && !card_runtime_weather_forecast_precision(p.precision)) p.precision.clear();
   if (!weather_wind_uses_sensors(p)) p.sensor.clear();
 }
 

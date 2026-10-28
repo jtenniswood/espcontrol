@@ -31,6 +31,8 @@ export function registerWeatherCardTypes(
         weatherModeOptions,
         normalizeWeatherCardMode,
         weatherWindUsesSensors,
+        rainfallUsesForecast,
+        weatherForecastCardsSupported,
     } = weatherOptions;
     // Current conditions or a shared forecast layout for one or several days.
     const WEATHER_CARD_METADATA: any = {
@@ -50,6 +52,12 @@ export function registerWeatherCardTypes(
                     helpers.saveField("sensor", b.sensor);
                     helpers.saveField("options", b.options);
                 }
+                if (b.precision === "rainfall" && !rainfallUsesForecast(b) && this.value !== "rainfall") {
+                    b.entity = "";
+                    helpers.saveField("entity", b.entity);
+                }
+                b.options = setConfigOptionValue(b.options, "rainfall_source", "");
+                helpers.saveField("options", b.options);
                 b.precision = this.value;
                 helpers.saveField("precision", b.precision);
                 renderButtonSettings();
@@ -128,6 +136,32 @@ export function registerWeatherCardTypes(
                 });
                 return;
             }
+            if (b.precision === "rainfall") {
+                const group = document.createElement("div");
+                helpers.markCardPrimaryField(group, "entity");
+                panel.appendChild(group);
+                const sources = [["sensor", "Rainfall Sensor"]];
+                if (weatherForecastCardsSupported()) sources.push(["forecast", "Today's Forecast"]);
+                const source = helpers.selectField("Rainfall Source", helpers.idPrefix + "rainfall-source",
+                    sources, rainfallUsesForecast(b) ? "forecast" : "sensor", function (this: HTMLSelectElement) {
+                        b.options = setConfigOptionValue(b.options, "rainfall_source", this.value === "forecast" ? "forecast" : "");
+                        b.entity = "";
+                        helpers.saveField("entity", b.entity);
+                        helpers.saveField("options", b.options);
+                        renderButtonSettings();
+                    });
+                group.appendChild(source.field);
+                const forecast = rainfallUsesForecast(b);
+                helpers.renderCardEntityField(group, b, helpers, {
+                    entity: {
+                        ...WEATHER_CARD_METADATA.entity,
+                        label: forecast ? "Weather Entity" : "Rainfall Sensor",
+                        placeholder: forecast ? "e.g. weather.forecast_home" : "e.g. sensor.rainfall_today",
+                        domains: forecast ? ["weather"] : ["sensor", "input_number"],
+                    },
+                });
+                return;
+            }
             helpers.renderCardEntityField(panel, b, helpers, {
                 entity: { ...WEATHER_CARD_METADATA.entity, domains: ["weather"] },
             });
@@ -138,6 +172,14 @@ export function registerWeatherCardTypes(
                     buttonClass: "sp-weather-wind-card",
                     iconHtml: '<span class="sp-btn-icon mdi mdi-arrow-top-right"></span>',
                     labelHtml: '<span class="sp-btn-label">North East<span class="sp-weather-wind-speed">12.5 km/h</span></span>',
+                    labelEditable: false,
+                };
+            }
+            if (b.precision === "rainfall") {
+                return {
+                    buttonClass: "sp-rainfall-card",
+                    iconHtml: '<span class="sp-btn-icon mdi mdi-weather-rainy"></span>',
+                    labelHtml: '<span class="sp-btn-label">Rainfall<span class="sp-rainfall-value">2.4 mm</span></span>',
                     labelEditable: false,
                 };
             }

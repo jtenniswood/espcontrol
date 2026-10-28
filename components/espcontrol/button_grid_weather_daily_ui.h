@@ -1,10 +1,11 @@
 #pragma once
 
 #include <cstdint>
+#include "rainfall_display.h"
 
 // Forecast widgets exist only on configured forecast cards. The modal allocates
 // only visible forecast columns and a stale-status label, sharing the owner's source.
-enum class WeatherForecastView : uint8_t { DAILY, TODAY, TOMORROW };
+enum class WeatherForecastView : uint8_t { DAILY, TODAY, TOMORROW, RAINFALL };
 struct WeatherDailyColumn { lv_obj_t *icon, *day, *high; };
 struct WeatherDailyCard {
   lv_obj_t *owner = nullptr, *root = nullptr, *caption = nullptr, *placeholder_icon = nullptr;
@@ -44,7 +45,7 @@ inline std::string weather_daily_date_label(const espcontrol::weather::Day &day,
 inline size_t weather_daily_selected_day(const WeatherDailyCard &card) {
   const auto &forecast = card.source->forecast;
   if (card.view == WeatherForecastView::DAILY) return 0;
-  const char *date = card.view == WeatherForecastView::TODAY ? forecast.today : forecast.tomorrow;
+  const char *date = (card.view == WeatherForecastView::TODAY || card.view == WeatherForecastView::RAINFALL) ? forecast.today : forecast.tomorrow;
   for (size_t i = 0; i < forecast.count; ++i)
     if (std::strcmp(forecast.days[i].date, date) == 0) return i;
   return forecast.count;
@@ -179,9 +180,12 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     const auto foreground = lv_obj_get_style_text_color(card->owner, LV_PART_MAIN);
     lv_obj_set_style_text_color(col.day, foreground, LV_PART_MAIN);
     lv_obj_set_style_text_color(col.icon, foreground, LV_PART_MAIN);
+    if (card->view == WeatherForecastView::RAINFALL) date = espcontrol_i18n("Rainfall");
     lv_label_set_display_text(col.day, date.c_str());
-    lv_label_set_display_text(col.icon, weather_icon_for_state(day.condition));
-    const auto high = weather_daily_temperature_range(day, forecast.temperature_unit);
+    lv_label_set_display_text(col.icon, card->view == WeatherForecastView::RAINFALL ? find_icon("Weather Rainy") : weather_icon_for_state(day.condition));
+    const auto high = card->view == WeatherForecastView::RAINFALL
+      ? espcontrol::rainfall::amount(day.precipitation, forecast.precipitation_unit)
+      : weather_daily_temperature_range(day, forecast.temperature_unit);
     // Blend secondary text with the card surface instead of painting opaque grey.
     lv_obj_set_style_text_color(col.high, foreground, LV_PART_MAIN);
     lv_obj_set_style_text_opa(col.high, LV_OPA_70, LV_PART_MAIN);
@@ -235,7 +239,8 @@ inline void weather_daily_setup(BtnSlot &slot, const ParsedCfg &config,
   auto *card = new (std::nothrow) WeatherDailyCard;
   if (!card) { weather_daily_release_source(source); weather_daily_unavailable_slot(slot); return; }
   card->owner = slot.btn; card->source = source; card->caption = slot.text_lbl;
-  card->view = config.precision == "today" ? WeatherForecastView::TODAY
+  card->view = config.precision == "rainfall" ? WeatherForecastView::RAINFALL
+    : config.precision == "today" ? WeatherForecastView::TODAY
     : config.precision == "tomorrow" || config.type == "weather_forecast"
       ? WeatherForecastView::TOMORROW : WeatherForecastView::DAILY;
   card->placeholder_icon = slot.icon_lbl;

@@ -837,7 +837,7 @@ def test_weather_card_visual_matches_preview() -> None:
     assert "return sentence_cap_text(trim_display_unit(state));" in weather_forecast, (
         "current weather device cards should retain provider-specific condition text in their labels"
     )
-    assert 'if (b.type == "weather" && b.precision != "wind" && !card_runtime_weather_forecast_precision(b.precision))' in subpages, (
+    assert 'if (b.type == "weather" && b.precision != "wind" && b.precision != "rainfall" && !card_runtime_weather_forecast_precision(b.precision))' in subpages, (
         "subpage weather cards must normalize invalid weather modes like main grid cards"
     )
     for alias, state in (

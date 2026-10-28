@@ -6101,7 +6101,8 @@
               "today",
               "tomorrow",
               "daily",
-              "wind"
+              "wind",
+              "rainfall"
             ],
             "defaultValue": "",
             "storageField": "precision",
@@ -6128,6 +6129,30 @@
             "supportedWhen": {
               "precision": [
                 "wind"
+              ]
+            }
+          },
+          {
+            "name": "rainfall_source",
+            "label": "Rainfall Source",
+            "kind": "choice",
+            "values": [
+              "sensor",
+              "forecast"
+            ],
+            "defaultValue": "sensor",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "precision",
+                "operator": "equals",
+                "value": "rainfall"
+              }
+            ],
+            "supportedWhen": {
+              "precision": [
+                "rainfall"
               ]
             }
           }
@@ -6169,7 +6194,8 @@
           },
           "unknownOptions": "drop",
           "canonicalOptionOrder": [
-            "wind_source"
+            "wind_source",
+            "rainfall_source"
           ],
           "migrationActions": [
             "legacy_weather_forecast"
