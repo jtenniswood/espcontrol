@@ -1,4 +1,4 @@
-/** Lossless compatibility bridge; not connected to live saves or backups yet. */
+/** Lossless bridge for negotiated editor saves and staged firmware compatibility. */
 import { decodePanelConfig, encodePanelConfig, PanelConfigError, type PanelConfigDocument } from "./panel_config";
 import { decodeNativeV2, encodeNativeV2, NativeV2Kind as K, type NativeV2Record, type NativeV2DecodedRecord } from "./panel_config_v2";
 import { decodeConfigField, encodeConfigField } from "./config_primitives";

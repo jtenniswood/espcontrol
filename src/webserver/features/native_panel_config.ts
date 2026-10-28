@@ -5,6 +5,10 @@ import {
   encodePanelConfig,
   type PanelConfigDocument,
 } from "../model";
+import { convertNativeV1ToV2, convertNativeV2ToV1 } from "../model/panel_config_conversion";
+
+const V2_DOCUMENT_VERSION = 2;
+const MAX_V2_DOCUMENT_BYTES = 512 * 1024;
 
 export interface NativePanelConfigResponse {
   readonly ok: boolean;
@@ -36,6 +40,7 @@ interface Capabilities {
     write?: unknown;
     document_versions?: unknown;
     max_record_body_bytes?: unknown;
+    max_v2_document_bytes?: unknown;
   };
 }
 
@@ -69,7 +74,7 @@ function supportedCapabilities(value: unknown): boolean | null {
   if (!configuration.document_versions.every((version) =>
     Number.isInteger(version) && Number(version) > 0)) return null;
   return configuration.read && configuration.write &&
-    configuration.document_versions.includes(PANEL_CONFIG_DOCUMENT_VERSION);
+    configuration.document_versions.some((version) => version === PANEL_CONFIG_DOCUMENT_VERSION || version === V2_DOCUMENT_VERSION);
 }
 
 export class NativePanelConfigClient {
@@ -80,6 +85,9 @@ export class NativePanelConfigClient {
   private confirmedUnsupported_ = false;
   private discovery_: Promise<boolean> | null = null;
   private maxRecordBodyBytes_: number | null = null;
+  private documentVersion_ = PANEL_CONFIG_DOCUMENT_VERSION;
+  private v1Available_ = false;
+  private maxV2DocumentBytes_ = MAX_V2_DOCUMENT_BYTES;
 
   constructor(private readonly fetch_: NativePanelConfigFetch) {}
 
@@ -121,6 +129,12 @@ export class NativePanelConfigClient {
         // A readable/readonly/newer native contract must not be mistaken for
         // firmware that only stores legacy text entities.
         const versions = Array.isArray(configuration?.document_versions) ? configuration.document_versions : [];
+        this.v1Available_ = supported === true && versions.includes(PANEL_CONFIG_DOCUMENT_VERSION);
+        this.documentVersion_ = supported === true && versions.includes(V2_DOCUMENT_VERSION)
+          ? V2_DOCUMENT_VERSION : PANEL_CONFIG_DOCUMENT_VERSION;
+        const v2Limit = configuration?.max_v2_document_bytes;
+        this.maxV2DocumentBytes_ = Number.isInteger(v2Limit) && Number(v2Limit) > 0
+          ? Math.min(Number(v2Limit), MAX_V2_DOCUMENT_BYTES) : MAX_V2_DOCUMENT_BYTES;
         if (supported !== null && (configuration?.read || configuration?.write || versions.some((version) => version !== PANEL_CONFIG_DOCUMENT_VERSION))) this.knownNative_ = true;
         this.confirmedUnsupported_ = supported === false && configuration?.read === false && configuration?.write === false &&
           versions.every((version) => version === PANEL_CONFIG_DOCUMENT_VERSION);
@@ -143,14 +157,35 @@ export class NativePanelConfigClient {
     return this.discovery_;
   }
 
+  private representationHeaders(version: number): Record<string, string> {
+    // Keep old firmware's default-v1 request contract unchanged.
+    return version === V2_DOCUMENT_VERSION ? { "X-Panel-Config-Version": String(version) } : {};
+  }
+
+  private fallbackToV1(version: number): boolean {
+    if (version !== V2_DOCUMENT_VERSION || !this.v1Available_) return false;
+    this.documentVersion_ = PANEL_CONFIG_DOCUMENT_VERSION;
+    return true;
+  }
+
   /** Backups must retain records that this editor does not understand. */
   async readForBackup(deviceProfile: string): Promise<Uint8Array | null> {
     if (!await this.discover()) {
       if (this.confirmedUnsupported_) return null;
       throw new Error("Configuration discovery is unavailable.");
     }
-    const response = await this.fetch_("/api/v1/config", { cache: "no-store" });
+    // Backups keep the deployed v1 payload contract until the versioned backup
+    // rollout is qualified. Never synthesize a partial v1 backup from a graph
+    // that this editor cannot represent losslessly.
+    if (!this.v1Available_) throw new Error("A compatible backup representation is unavailable.");
+    const response = await this.fetch_("/api/v1/config", {
+      cache: "no-store", headers: { "X-Panel-Config-Version": String(PANEL_CONFIG_DOCUMENT_VERSION) },
+    });
     if (!response.ok) throw new Error("Could not read the saved configuration.");
+    const version = response.headers.get("X-Panel-Config-Version");
+    if (version !== null && version !== String(PANEL_CONFIG_DOCUMENT_VERSION)) {
+      throw new Error("The backup configuration version is unavailable.");
+    }
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (decodePanelConfig(bytes).deviceProfile !== deviceProfile) {
       throw new Error("The device configuration profile changed.");
@@ -160,10 +195,16 @@ export class NativePanelConfigClient {
 
   async save(update: (document: PanelConfigDocument) => PanelConfigDocument): Promise<NativePanelConfigSaveResult> {
     if (!await this.discover()) return "unsupported";
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    let conflicts = 0;
+    while (conflicts < 2) {
       try {
-        const current = await this.fetch_("/api/v1/config", { cache: "no-store" });
+        const version = this.documentVersion_;
+        const representationHeaders = this.representationHeaders(version);
+        const current = await this.fetch_("/api/v1/config", { cache: "no-store", headers: representationHeaders });
         if (!current.ok) {
+          // Only an explicit pre-write version rejection permits a negotiated
+          // fallback. Corrupt data, capacity and transaction failures do not.
+          if (current.status === 406 && this.fallbackToV1(version)) continue;
           if (current.status === 401 || current.status === 403) return "authentication-required";
           if (current.status === 404 || current.status === 503) {
             this.retryDiscovery();
@@ -173,7 +214,12 @@ export class NativePanelConfigClient {
         }
         const generation = current.headers.get("ETag");
         if (!generation) return "failed";
-        const currentDocument = decodePanelConfig(new Uint8Array(await current.arrayBuffer()));
+        const responseVersion = current.headers.get("X-Panel-Config-Version");
+        if ((version === V2_DOCUMENT_VERSION && responseVersion !== String(version)) ||
+            (responseVersion !== null && responseVersion !== String(version))) return "failed";
+        const input = new Uint8Array(await current.arrayBuffer());
+        if (version === V2_DOCUMENT_VERSION && input.length > this.maxV2DocumentBytes_) return "too-large";
+        const currentDocument = decodePanelConfig(version === V2_DOCUMENT_VERSION ? convertNativeV2ToV1(input) : input);
         const updated = update(currentDocument);
         const limit = this.maxRecordBodyBytes_ ?? 2048;
         const byteLength = (value: string) => new TextEncoder().encode(value).length;
@@ -182,15 +228,22 @@ export class NativePanelConfigClient {
             Object.entries(updated.settings).some(([key, value]) => byteLength(key) + byteLength(value) + 1 > limit)) {
           return "too-large";
         }
+        const v1 = encodePanelConfig(updated);
+        const body = version === V2_DOCUMENT_VERSION ? convertNativeV1ToV2(v1) : v1;
+        if (version === V2_DOCUMENT_VERSION && body.length > this.maxV2DocumentBytes_) return "too-large";
         const next = await this.fetch_("/api/v1/config", {
           method: "PUT",
           cache: "no-store",
           headers: {
+            ...representationHeaders,
             "Content-Type": "application/vnd.espcontrol.panel-config",
             "If-Match": generation,
           },
-          body: encodePanelConfig(updated),
+          body,
         });
+        // Reload before applying the edit through v1, so the fallback never
+        // reuses a v2 ETag or overwrites a concurrent change from an old read.
+        if (next.status === 415 && this.fallbackToV1(version)) continue;
         // A 202 means the document itself is safe, but firmware could not
         // update its legacy entity mirror. Treat it as a failed compatibility
         // save so callers do not claim that an older firmware can restore it.
@@ -203,6 +256,7 @@ export class NativePanelConfigClient {
           return "unsupported";
         }
         if (next.status !== 409) return "failed";
+        conflicts += 1;
       } catch {
         return "failed";
       }

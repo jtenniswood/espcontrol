@@ -18,6 +18,9 @@ const {
   activeCardColor,
   decodeConfigField,
 } = loadTypeScriptModule(path.join(ROOT, "src", "webserver", "model", "index.ts"));
+const { convertNativeV1ToV2, convertNativeV2ToV1 } = loadTypeScriptModule(
+  path.join(ROOT, "src", "webserver", "model", "panel_config_conversion.ts"),
+);
 const MANIFEST_PATH = path.join(ROOT, "devices", "manifest.json");
 const WEB_OUTPUT_DIR = freshWebOutputDir();
 const FAILURE_DIR = path.join(ROOT, ".cache", "web-browser-smoke");
@@ -371,8 +374,8 @@ async function installRoutes(context, slug, options = {}) {
           reset: options.resetState ? { modes: ["customization", "factory"], status: "/api/v1/reset" } : undefined,
           identity: options.identityState ? { version: 1 } : undefined,
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
-          configuration: { read: true, write: true, document_versions: [1],
-            max_record_body_bytes: nativeState.maxRecordBodyBytes },
+          configuration: { read: true, write: true, document_versions: nativeState.documentVersions || [1],
+            max_record_body_bytes: nativeState.maxRecordBodyBytes, max_v2_document_bytes: 524288 },
           web_assets: { versions: [1] },
         }),
       });
@@ -401,8 +404,15 @@ async function installRoutes(context, slug, options = {}) {
       requestUrl.hostname === "espcontrol.test" &&
       requestUrl.pathname === "/api/v1/config"
     ) {
+      const version = Number(route.request().headers()["x-panel-config-version"] || 1);
+      const versions = nativeState.documentVersions || [1];
+      if (!versions.includes(version)) {
+        await route.fulfill({ status: route.request().method() === "PUT" ? 415 : 406, body: "unsupported version" });
+        return;
+      }
+      const etag = () => `"${version === 2 ? "v2-" : ""}${nativeState.generation}"`;
       if (route.request().method() === "PUT") {
-        const expected = `"${nativeState.generation}"`;
+        const expected = etag();
         const supplied = route.request().headers()["if-match"];
         if (supplied !== expected) {
           await route.fulfill({ status: 409, body: "generation conflict" });
@@ -410,23 +420,25 @@ async function installRoutes(context, slug, options = {}) {
         }
         const body = route.request().postDataBuffer();
         assert(body, `${slug}: native configuration PUT has a binary body`);
-        nativeState.document = decodePanelConfig(new Uint8Array(body));
+        const input = new Uint8Array(body);
+        nativeState.document = decodePanelConfig(version === 2 ? convertNativeV2ToV1(input) : input);
         nativeState.generation += 1;
         nativeState.puts.push({
           generation: nativeState.generation,
+          version,
           document: JSON.parse(JSON.stringify(nativeState.document)),
         });
         await route.fulfill({
           status: 204,
-          headers: { ETag: `"${nativeState.generation}"` },
+          headers: { ETag: etag(), "X-Panel-Config-Version": String(version) },
         });
         return;
       }
       await route.fulfill({
         status: 200,
         contentType: "application/vnd.espcontrol.panel-config",
-        headers: { ETag: `"${nativeState.generation}"` },
-        body: Buffer.from(encodePanelConfig(nativeState.document)),
+        headers: { ETag: etag(), "X-Panel-Config-Version": String(version) },
+        body: Buffer.from(version === 2 ? convertNativeV1ToV2(encodePanelConfig(nativeState.document)) : encodePanelConfig(nativeState.document)),
       });
       return;
     }
@@ -6292,8 +6304,9 @@ async function assertGuestWifiSettings(page, label) {
   await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
 }
 
-async function assertNativeProfileJourney(browser, testCase) {
+async function assertNativeProfileJourney(browser, testCase, documentVersions = [1]) {
   const nativeState = nativeConfigState(testCase.slug);
+  nativeState.documentVersions = documentVersions;
   const context = await browser.newContext({ viewport: testCase.viewport });
   await installRoutes(context, testCase.slug, { nativeState });
   const page = await context.newPage();
@@ -6428,13 +6441,16 @@ async function assertNativeProfileJourney(browser, testCase) {
       `${testCase.name}: restored backup survives a reload`,
     );
     assert.deepStrictEqual(errors, [], `${testCase.name}: native journey has no browser errors`);
+    assert(nativeState.puts.length > 0 && nativeState.puts.every(put => put.version === (documentVersions.includes(2) ? 2 : 1)),
+      `${testCase.name}: every editor save and backup restore uses the negotiated representation`);
   } finally {
     await context.close();
   }
 }
 
-async function assertNativeBackupPreservation(browser, testCase) {
+async function assertNativeBackupPreservation(browser, testCase, documentVersions = [1]) {
   const nativeState = nativeConfigState(testCase.slug);
+  nativeState.documentVersions = documentVersions;
   const context = await browser.newContext({ viewport: testCase.viewport });
   await installRoutes(context, testCase.slug, { nativeState });
   const page = await context.newPage();
@@ -7930,6 +7946,20 @@ async function assertCameraScreensaverDimming(browser, testCase) {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_NATIVE_V2_ONLY === "1") {
+      const representatives = ACTIVE_CASES.filter(testCase => new Set([
+        "guition-esp32-s3-4848s040", "guition-esp32-p4-jc4880p443",
+        "guition-esp32-p4-jc1060p470", "guition-esp32-p4-jc8012p4a1-v3",
+      ]).has(testCase.slug));
+      assert(representatives.length > 0, "v2 browser checks require a representative supported profile");
+      for (const testCase of representatives) {
+        await assertNativeProfileJourney(browser, testCase, [1, 2]);
+        await assertNativeBackupPreservation(browser, testCase, [1, 2]);
+      }
+      await assertNativeProfileJourney(browser, representatives.find(testCase => testCase.slug === "guition-esp32-s3-4848s040") || representatives[0], [1]);
+      console.log(`Negotiated v2 editing/restore and exact v1 backup checks passed for ${representatives.length} representative layouts, plus a v1-only firmware journey.`);
+      return;
+    }
     if (process.env.ESPCONTROL_BACKUP_SNAPSHOT_ONLY === "1") {
       for (const testCase of ACTIVE_CASES) await assertNativeBackupPreservation(browser, testCase);
       await assertNamingOfflineBackups(browser);
@@ -8022,14 +8052,15 @@ async function assertCameraScreensaverDimming(browser, testCase) {
     await assertHostedCompatibility(browser);
     await assertFirmwareRetryFeedback(browser);
     await assertResetControls(browser);
+    await assertNativeProfileJourney(browser, ACTIVE_CASES[0], [1]);
     for (const testCase of ACTIVE_CASES) {
       await assertCameraScreensaverDimming(browser, testCase);
       if (!acceptanceOnly) {
         await runCase(browser, testCase);
         await assertMediaModalSettingsJourney(browser, testCase);
       }
-      await assertNativeProfileJourney(browser, testCase);
-      await assertNativeBackupPreservation(browser, testCase);
+      await assertNativeProfileJourney(browser, testCase, [1, 2]);
+      await assertNativeBackupPreservation(browser, testCase, [1, 2]);
       await assertLegacyProfileFallback(browser, testCase);
       if (testCase.exerciseInteractions) await assertLegacyRestoreVerificationFailure(browser, testCase);
       await assertOfflineProfileFallback(browser, testCase);

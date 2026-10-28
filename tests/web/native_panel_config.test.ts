@@ -568,7 +568,7 @@ export async function runNativeReadinessTests(): Promise<void> {
   }
 
   for (const configuration of [
-    { read: true, write: true, document_versions: [2] },
+    { read: true, write: true, document_versions: [3] },
     { read: true, write: false, document_versions: [1] },
     { read: false, write: false, document_versions: [2] },
     { read: false, write: false, document_versions: [1, 2] },

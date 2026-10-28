@@ -3,7 +3,8 @@
 Implementation stage: matching C++/TypeScript structural codecs and bounded
 firmware conversion are implemented. HTTP handlers can explicitly import/export
 v2 while preserving durable v1, default v1 responses and generation checks.
-The bundled editor and backups still use v1. PageStore reads v1/v2 directly;
+The bundled editor requests v2 when advertised and retains a lossless v1 editing
+model during the durable-v1 phase. Backups still use v1. PageStore reads v1/v2 directly;
 service/compatibility boot integration,
 profile/legacy admission, the supported downgrade floor and physical
 qualification remain unfinished. This does not enable nested pages.
@@ -191,8 +192,24 @@ It covers all nine maximum profiles, retained unknown data, both stale-write
 paths, fragmented/incomplete bodies, authentication, version/size admission,
 conversion/prepare/storage failures, legacy warnings and durable v1 readback.
 It does not exercise ESP-IDF networking, reset interlocks or physical power loss.
-The editor's v2 selection/fallback and durable dual readers remain separate work;
-API representation support does not establish a durable-v2 downgrade floor.
+The editor selects v2 when advertised, uses the returned representation's ETag
+and reloads on a generation conflict. A 406 read or 415 write can select v1 only
+when capabilities also advertise v1; fallback reloads a fresh v1 snapshot and
+token before applying the edit. Authentication, capacity, committed-mirror and
+transaction errors never select a different write path. V2 input and output
+respect the advertised byte ceiling, capped at 512 KiB. A missing/mismatched
+response-version header or an unprojectable graph rejects the edit without a
+write or silent downgrade. Old v1-only firmware retains its default requests.
+
+The current editor still edits through the lossless v1 model, preserving opaque
+settings and inactive records during both conversions. Its existing backup
+format explicitly retains the exact default-v1 response; v2-only firmware cannot
+produce a falsely compatible backup. The controller still serializes snapshot
+reads with preceding and subsequent edits. Browser checks exercise negotiated
+edit/reconnect/reload/restore and exact v1 backup export on 6/9/15/20-slot layouts;
+protocol tests separately exercise old firmware, refusal and fallback paths.
+Durable dual readers and versioned backup rollout remain separate work; this
+negotiation does not establish a durable-v2 downgrade floor.
 
 ## Staged compatibility conversion
 

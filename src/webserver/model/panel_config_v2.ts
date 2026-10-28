@@ -1,4 +1,4 @@
-/** Structural native-v2 codec. Not yet advertised or used for saves/backups. */
+/** Structural native-v2 codec for explicitly negotiated configuration requests. */
 import { PanelConfigError } from "./panel_config";
 
 export enum NativeV2Kind {
@@ -34,16 +34,16 @@ export interface NativeV2DecodedRecord extends NativeV2Record {
 const NO_ID = 65535;
 const HEADER = 16;
 const MAX_BODY = 4097;
-const encoder = new TextEncoder();
+let encoder: TextEncoder | undefined;
 // UTF-8 BOM is configuration data, not a transport prefix.
-const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+let decoder: TextDecoder | undefined;
 const K = NativeV2Kind;
 function fail(): never { throw new PanelConfigError("Invalid native-v2 document"); }
 function requireValid(value: unknown): asserts value { if (!value) fail(); }
 function identity(value: number): boolean { return value > 0 && value < NO_ID; }
 function u16(view: DataView, offset: number): number { return view.getUint16(offset, true); }
 function utf8(bytes: Uint8Array): string {
-  try { return decoder.decode(bytes); } catch { return fail(); }
+  try { return (decoder ??= new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })).decode(bytes); } catch { return fail(); }
 }
 function popcount(value: number): number {
   let count = 0;
@@ -148,7 +148,7 @@ function validateGraph(records: readonly NativeV2DecodedRecord[]): void {
       }
       case K.Setting: {
         const name = get(K.String, r.id);
-        requireValid(name && encoder.encode(name.text).length <= 63 && optionalString(r.first));
+        requireValid(name && (encoder ??= new TextEncoder()).encode(name.text).length <= 63 && optionalString(r.first));
         requireValid(!settings.has(name.text)); settings.add(name.text);
         break;
       }
@@ -190,7 +190,7 @@ function encodeRecord(input: NativeV2Record): Uint8Array {
   requireValid(Array.isArray(fields) && fields.length === 9 && fields.every((v) => Number.isInteger(v) && v >= 0 && v <= NO_ID));
   const text = input.text ?? "";
   requireValid(typeof text === "string");
-  const bytes = encoder.encode(text);
+  const bytes = (encoder ??= new TextEncoder()).encode(text);
   // TextEncoder otherwise replaces lone surrogates and silently loses input.
   requireValid(utf8(bytes) === text);
   let size = 0;
