@@ -5,6 +5,7 @@
 #include <mutex>
 
 #include "configuration_buffer.h"
+#include "compatibility_status.h"
 #include "configuration_store.h"
 
 namespace espcontrol::configuration {
@@ -57,6 +58,14 @@ class LegacyConfigurationAdapter {
   virtual bool publish(uint16_t, const uint8_t *, size_t) { return true; }
   virtual bool mirror(uint16_t document_version, const uint8_t *document,
                       size_t document_size) = 0;
+  virtual CompatibilityStatus publish_status(uint16_t version, const uint8_t *document, size_t size) {
+    return publish(version, document, size) ? CompatibilityStatus::OK
+                                         : CompatibilityStatus::RETRYABLE_FAILURE;
+  }
+  virtual CompatibilityStatus mirror_status(uint16_t version, const uint8_t *document, size_t size) {
+    return mirror(version, document, size) ? CompatibilityStatus::OK
+                                        : CompatibilityStatus::RETRYABLE_FAILURE;
+  }
 };
 
 // Applies a validated native document to the currently running panel. This is
@@ -180,6 +189,11 @@ class ConfigurationService {
   // document at boot; live compatibility edits use the prepared path below.
   ServiceLoadResult refresh_legacy_shadow(uint8_t *output,
                                           size_t output_capacity);
+  // Repair only compatibility copies of the latest durable snapshot. Never
+  // imports legacy data, commits native storage or prepares/activates runtime.
+  ServiceLoadResult retry_compatibility(uint8_t *output, size_t output_capacity);
+  ConfigurationCompatibilityState compatibility_state() const;
+
   // Merge debounced compatibility edits into the latest durable document.
   // output must be separate from the service scratch buffer. Unchanged
   // projections do not rebuild the scene or create a new storage generation.
@@ -216,7 +230,9 @@ class ConfigurationService {
   }
 
  private:
-  ServiceLoadResult load_unlocked(uint8_t *output, size_t output_capacity);
+  ServiceLoadResult load_unlocked(uint8_t *output, size_t output_capacity,
+                                  bool import_legacy = true);
+  void select_compatibility_generation(uint32_t generation);
   ServiceLoadResult refresh_legacy_shadow_unlocked(uint8_t *output,
                                                    size_t output_capacity);
   ServiceSaveResult save_unlocked(uint16_t document_version,
@@ -250,11 +266,12 @@ class ConfigurationService {
   LegacyConfigurationMode legacy_mode_{LegacyConfigurationMode::DUAL_WRITE};
   // A partially published compatibility view must not be re-imported as an
   // edit of the authoritative native document. A later successful publication
-  // (boot restore or native save) reopens compatibility editing.
+  // (boot restore, native save or separate repair) reopens compatibility editing.
   bool compatibility_publication_current_{true};
+  ConfigurationCompatibilityState compatibility_state_{};
   // The service scratch buffer is shared by load and commit paths. Keep the
   // complete operations mutually exclusive across ESPHome and HTTP tasks.
-  std::mutex operation_mutex_{};
+  mutable std::mutex operation_mutex_{};
 };
 
 }  // namespace espcontrol::configuration

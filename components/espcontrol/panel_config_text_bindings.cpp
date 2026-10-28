@@ -192,48 +192,71 @@ bool PanelConfigTextBindings::write_document(const uint8_t *native,
   return writer.finish(document_size) == PanelConfigStatus::OK;
 }
 
-bool PanelConfigTextBindings::persist_document(const uint8_t *document,
-                                               size_t document_size) {
+bool PanelConfigTextBindings::compatible_document(const uint8_t *document, size_t size) const {
+  if (!configured()) return false;
+  PanelConfigReader reader(document, size);
+  if (reader.validate() != PanelConfigStatus::OK || reader.begin() != PanelConfigStatus::OK) return false;
+  PanelConfigRecord record;
+  while (reader.next(&record) == PanelConfigStatus::OK) {
+    if (record.type == PanelConfigRecordType::DEVICE_PROFILE)
+      return record.value_size == device_profile_.size() &&
+          std::memcmp(record.value, device_profile_.data(), record.value_size) == 0;
+  }
+  return false;
+}
+
+bool PanelConfigTextBindings::persist_document(const uint8_t *document, size_t size) {
+  return persist_document_status(document, size) == CompatibilityStatus::OK;
+}
+
+CompatibilityStatus PanelConfigTextBindings::persist_document_status(
+    const uint8_t *document, size_t document_size) {
+  if (!compatible_document(document, document_size)) return CompatibilityStatus::NOT_REPRESENTABLE;
   // Check the entire compatibility projection before touching preferences.
   // Native-only settings are not text entities and keep their native limits.
   PanelConfigReader reader(document, document_size);
-  if (reader.validate() != PanelConfigStatus::OK ||
-      reader.begin() != PanelConfigStatus::OK) return false;
+  if (reader.begin() != PanelConfigStatus::OK) return CompatibilityStatus::NOT_REPRESENTABLE;
   PanelConfigRecord record;
   while (reader.next(&record) == PanelConfigStatus::OK) {
     if (!owns_record(record)) continue;
     if ((record.type == PanelConfigRecordType::BUTTON ||
          (record.type == PanelConfigRecordType::SETTING && owns_record(record))) &&
         record.value_size > 255)
-      return false;
+      return CompatibilityStatus::NOT_REPRESENTABLE;
     if (record.type != PanelConfigRecordType::SUBPAGE) continue;
     if (record.slot == 0 || record.slot > buttons_.size())
-      return false;
+      return CompatibilityStatus::NOT_REPRESENTABLE;
     size_t offset = 0;
     for (PanelConfigTextValue *chunk : buttons_[record.slot - 1].subpage_chunks) {
       if (chunk != nullptr)
         offset += legacy_chunk_size(record.value + offset, record.value_size - offset);
     }
-    if (offset != record.value_size) return false;
+    if (offset != record.value_size) return CompatibilityStatus::NOT_REPRESENTABLE;
   }
   if (!apply_document(document, document_size, ApplyMode::CHECK_PERSIST))
-    return false;
+    return CompatibilityStatus::NOT_REPRESENTABLE;
   // Free obsolete empty defaults before updating nonempty fields. A nearly
   // full NVS partition may otherwise fail on the first replacement blob even
   // though the desired compatibility projection is much smaller.
   if (!apply_document(document, document_size, ApplyMode::PREPARE_EMPTY)) {
     legacy_mirror_current_ = false;
-    return false;
+    return CompatibilityStatus::RETRYABLE_FAILURE;
   }
   const bool mirrored =
       apply_document(document, document_size, ApplyMode::PERSIST);
   legacy_mirror_current_ = mirrored;
-  return mirrored;
+  return mirrored ? CompatibilityStatus::OK : CompatibilityStatus::RETRYABLE_FAILURE;
 }
 
 bool PanelConfigTextBindings::publish_document(const uint8_t *document,
                                                size_t document_size) {
-  return apply_document(document, document_size, ApplyMode::PUBLISH);
+  return publish_document_status(document, document_size) == CompatibilityStatus::OK;
+}
+
+CompatibilityStatus PanelConfigTextBindings::publish_document_status(const uint8_t *document, size_t size) {
+  if (!compatible_document(document, size)) return CompatibilityStatus::NOT_REPRESENTABLE;
+  return apply_document(document, size, ApplyMode::PUBLISH) ? CompatibilityStatus::OK
+                                                          : CompatibilityStatus::RETRYABLE_FAILURE;
 }
 
 bool PanelConfigTextBindings::write_value(PanelConfigTextValue *target,

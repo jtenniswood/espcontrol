@@ -61,4 +61,28 @@ private:
   bool pending_{false};
 };
 
+// A failed compatibility copy must not generate a tight preference-write
+// loop. New generations wait one second; retries back off to once a minute.
+class ConfigurationCompatibilityRetry {
+public:
+  bool ready(uint32_t now, uint32_t generation) {
+    if (!known_ || generation_ != generation) {
+      generation_ = generation;
+      known_ = true;
+      failed_at_ = now;
+      delay_ = 1000;
+      return false;
+    }
+    return static_cast<uint32_t>(now - failed_at_) >= delay_;
+  }
+  void failed(uint32_t now) {
+    failed_at_ = now;
+    delay_ = delay_ < 30000 ? delay_ * 2 : 60000;
+  }
+  void clear() { known_ = false; }
+private:
+  uint32_t generation_{0}, failed_at_{0}, delay_{1000};
+  bool known_{false};
+};
+
 } // namespace espcontrol::configuration

@@ -25,6 +25,9 @@ class PanelConfigLegacyAdapter final : public LegacyConfigurationAdapter {
   bool mirror(uint16_t document_version, const uint8_t *document,
               size_t document_size) override;
 
+  CompatibilityStatus publish_status(uint16_t version, const uint8_t *document, size_t size) override;
+  CompatibilityStatus mirror_status(uint16_t version, const uint8_t *document, size_t size) override;
+
  private:
   PanelConfigTextBindings &bindings_;
   ConfigurationBuffer::Allocate allocate_;

@@ -121,6 +121,7 @@ class EspControlApp::NativeConfigurationRuntime {
        backend;
    configuration::ConfigurationStore store;
    configuration::ConfigurationMainLoop transactions;
+   configuration::ConfigurationCompatibilityRetry compatibility_retry;
    bool document_available{false};
    bool service_configured{false};
    bool storage_ready{false};
@@ -403,6 +404,43 @@ void EspControlApp::apply_configuration_text_refresh() {
              static_cast<unsigned>(synchronized.status));
 }
 
+void EspControlApp::retry_configuration_compatibility() {
+  if (shutting_down_ || configuration_text_refresh_pending_ ||
+      !reset::ready() || reset::pending()) return;
+  auto *runtime = native_configuration_runtime_.get();
+  auto *service = core_.configuration_service();
+  if (!runtime || !service || !runtime->slot_capacity || runtime->boot_configuration_pending ||
+      (application_scene_ && !application_scene_->maintenance_ready())) return;
+  const auto state = service->compatibility_state();
+  if (!state.retry_pending()) {
+    runtime->compatibility_retry.clear();
+    return;
+  }
+  if (!runtime->compatibility_retry.ready(esphome::millis(), state.generation)) return;
+  reset::ConfigurationWriteLease lease;
+  if (!lease.ready()) {
+    runtime->compatibility_retry.failed(esphome::millis());
+    return;
+  }
+  configuration::ConfigurationBuffer buffer(allocate_configuration_slot, release_configuration_slot);
+  auto *document = buffer.allocate(runtime->slot_capacity);
+  if (!document) {
+    runtime->compatibility_retry.failed(esphome::millis());
+    return;
+  }
+  const auto repaired = service->retry_compatibility(document, runtime->slot_capacity);
+  if (service->compatibility_state().retry_pending()) {
+    runtime->compatibility_retry.failed(esphome::millis());
+    ESP_LOGW(TAG, "Compatibility copy remains incomplete; retry deferred (%u)",
+             static_cast<unsigned>(repaired.status));
+  } else {
+    runtime->compatibility_retry.clear();
+    if (!repaired.ok())
+      ESP_LOGW(TAG, "Compatibility copy cannot represent this native configuration (%u)",
+               static_cast<unsigned>(repaired.status));
+  }
+}
+
 void EspControlApp::setup() {
   screensaver_pin().setup();
   home_assistant_endpoint_.setup();
@@ -566,6 +604,7 @@ void EspControlApp::loop() {
     native_configuration_runtime_->transactions.process(*core_.configuration_service());
     if (native_configuration_runtime_->boot_configuration_due) apply_boot_configuration();
     apply_configuration_text_refresh();
+    retry_configuration_compatibility();
   }
   if (shutting_down_) return;
   home_assistant_endpoint_.loop();

@@ -65,22 +65,34 @@ PanelConfigLegacyAdapter::merge(uint16_t version, const uint8_t *native,
   return {LegacyStatus::OK, PANEL_CONFIG_DOCUMENT_VERSION, size};
 }
 
-bool PanelConfigLegacyAdapter::publish(uint16_t document_version,
-                                       const uint8_t *document,
-                                       size_t document_size) {
-  if (!bindings_.configured()) return false;
-  PanelConfigCompatibilityView view(allocate_, release_);
-  return view.load(document_version, document, document_size) == PanelConfigRepresentationStatus::OK &&
-         bindings_.publish_document(view.data(), view.size());
+bool PanelConfigLegacyAdapter::publish(uint16_t version, const uint8_t *document, size_t size) {
+  return publish_status(version, document, size) == CompatibilityStatus::OK;
 }
 
-bool PanelConfigLegacyAdapter::mirror(uint16_t document_version,
-                                      const uint8_t *document,
-                                      size_t document_size) {
-  if (!bindings_.configured()) return false;
-  PanelConfigCompatibilityView view(allocate_, release_);
-  return view.load(document_version, document, document_size) == PanelConfigRepresentationStatus::OK &&
-         bindings_.persist_document(view.data(), view.size());
+bool PanelConfigLegacyAdapter::mirror(uint16_t version, const uint8_t *document, size_t size) {
+  return mirror_status(version, document, size) == CompatibilityStatus::OK;
 }
 
-}  // namespace espcontrol::configuration
+namespace {
+CompatibilityStatus projection_status(PanelConfigRepresentationStatus status) {
+  return status == PanelConfigRepresentationStatus::OK ? CompatibilityStatus::OK
+      : (status == PanelConfigRepresentationStatus::UNAVAILABLE ? CompatibilityStatus::RETRYABLE_FAILURE
+                                                               : CompatibilityStatus::NOT_REPRESENTABLE);
+}
+} // namespace
+
+CompatibilityStatus PanelConfigLegacyAdapter::publish_status(uint16_t version, const uint8_t *document, size_t size) {
+  if (!bindings_.configured()) return CompatibilityStatus::NOT_REPRESENTABLE;
+  PanelConfigCompatibilityView view(allocate_, release_);
+  const auto status = projection_status(view.load(version, document, size));
+  return status == CompatibilityStatus::OK ? bindings_.publish_document_status(view.data(), view.size()) : status;
+}
+
+CompatibilityStatus PanelConfigLegacyAdapter::mirror_status(uint16_t version, const uint8_t *document, size_t size) {
+  if (!bindings_.configured()) return CompatibilityStatus::NOT_REPRESENTABLE;
+  PanelConfigCompatibilityView view(allocate_, release_);
+  const auto status = projection_status(view.load(version, document, size));
+  return status == CompatibilityStatus::OK ? bindings_.persist_document_status(view.data(), view.size()) : status;
+}
+
+} // namespace espcontrol::configuration

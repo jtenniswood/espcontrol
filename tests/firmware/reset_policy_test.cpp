@@ -160,7 +160,31 @@ void installations_and_resets_are_exclusive() {
   proceed.set_value();
   assert(resetting.get() == Result::ACCEPTED && !installing.get());
 }
+void compatibility_writes_exclude_resets_and_installations() {
+  for(int attempt=0;attempt<30;++attempt) {
+    MemoryStorage storage;Journal journal;OperationInterlock gate;
+    std::promise<void> start;auto ready=start.get_future().share();
+    auto repair=std::async(std::launch::async,[&]{ready.wait();return gate.begin_configuration_write();});
+    auto reset=std::async(std::launch::async,[&]{ready.wait();return gate.record(storage,journal,Mode::FACTORY);});
+    start.set_value();const bool held=repair.get();const auto reset_result=reset.get();
+    assert(held?(reset_result==Result::CONFLICT&&!gate.pending()):(reset_result==Result::ACCEPTED&&gate.pending()));
+    if(held) {
+      assert(gate.busy()&&!gate.begin_configuration_write()&&!gate.begin_installation(false)&&!gate.begin_installation(true));
+      gate.finish_configuration_write();assert(!gate.busy());
+      assert(gate.record(storage,journal,Mode::FACTORY)==Result::ACCEPTED);
+    }
+    assert(!gate.begin_configuration_write());
+  }
+  for(bool coprocessor:{false,true}) {
+    OperationInterlock gate;
+    assert(gate.begin_installation(coprocessor)&&!gate.begin_configuration_write());
+    gate.finish_begin(coprocessor,false);
+    assert(gate.begin_configuration_write());gate.finish_configuration_write();
+    assert(!gate.busy());
+  }
+}
 int main() {
+  compatibility_writes_exclude_resets_and_installations();
   overlapping_ota_preserves_the_active_writer();
   installations_and_resets_are_exclusive();
   interrupted_resets_resume(Mode::CUSTOMIZATION);

@@ -177,8 +177,11 @@ ServiceLoadResult ConfigurationService::load_and_apply_runtime(
     failed.status = ServiceStatus::RUNTIME_APPLY_FAILED;
     return failed;
   }
+  select_compatibility_generation(loaded.generation);
+  compatibility_state_.publication =
+      legacy_.publish_status(loaded.document_version, output, loaded.document_size);
   compatibility_publication_current_ =
-      legacy_.publish(loaded.document_version, output, loaded.document_size);
+      compatibility_state_.publication == CompatibilityStatus::OK;
   if (!compatibility_publication_current_) {
     ServiceLoadResult failed = loaded;
     failed.status = ServiceStatus::LEGACY_MIRROR_FAILED;
@@ -187,8 +190,42 @@ ServiceLoadResult ConfigurationService::load_and_apply_runtime(
   return loaded;
 }
 
+void ConfigurationService::select_compatibility_generation(uint32_t generation) {
+  if (compatibility_state_.known && compatibility_state_.generation == generation) return;
+  compatibility_state_ = {generation, true, CompatibilityStatus::RETRYABLE_FAILURE,
+      legacy_writes_enabled() ? CompatibilityStatus::RETRYABLE_FAILURE : CompatibilityStatus::OK};
+}
+
+ConfigurationCompatibilityState ConfigurationService::compatibility_state() const {
+  std::lock_guard<std::mutex> lock(operation_mutex_);
+  return compatibility_state_;
+}
+
+ServiceLoadResult ConfigurationService::retry_compatibility(uint8_t *output, size_t capacity) {
+  std::lock_guard<std::mutex> lock(operation_mutex_);
+  auto loaded = load_unlocked(output, capacity, false);
+  if (!loaded.ok()) {
+    if (loaded.status == ServiceStatus::EMPTY || loaded.status == ServiceStatus::INVALID_DOCUMENT ||
+        loaded.status == ServiceStatus::UNSUPPORTED_VERSION) {
+      compatibility_state_.publication = compatibility_state_.persistence = CompatibilityStatus::NOT_REPRESENTABLE;
+      compatibility_publication_current_ = false;
+    }
+    return loaded;
+  }
+  select_compatibility_generation(loaded.generation);
+  if (compatibility_state_.publication == CompatibilityStatus::RETRYABLE_FAILURE)
+    compatibility_state_.publication = legacy_.publish_status(loaded.document_version, output, loaded.document_size);
+  compatibility_publication_current_ = compatibility_state_.publication == CompatibilityStatus::OK;
+  if (compatibility_state_.persistence == CompatibilityStatus::RETRYABLE_FAILURE)
+    compatibility_state_.persistence = legacy_.mirror_status(loaded.document_version, output, loaded.document_size);
+  if (!compatibility_publication_current_ || compatibility_state_.persistence != CompatibilityStatus::OK)
+    loaded.status = ServiceStatus::LEGACY_MIRROR_FAILED;
+  return loaded;
+}
+
 ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
-                                                      size_t output_capacity) {
+                                                      size_t output_capacity,
+                                                      bool import_legacy) {
   if (output == nullptr && output_capacity > 0) {
     return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT};
   }
@@ -241,6 +278,7 @@ ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
     return {store_failure(stored.status), stored.status};
   }
 
+  if (!import_legacy) return {ServiceStatus::EMPTY, stored.status};
   fallback.reset();
   const LegacyLoadResult legacy = legacy_.load(output, output_capacity);
   if (legacy.status == LegacyStatus::EMPTY) {
@@ -461,11 +499,13 @@ ServiceSaveResult ConfigurationService::save_unlocked(
             committed.generation, document_size};
   }
   const bool applied = prepared.activate(committed.generation);
-  const bool published =
-      legacy_.publish(document_version, document, document_size);
-  compatibility_publication_current_ = published;
-  const bool mirrored = !legacy_writes_enabled() ||
-                        legacy_.mirror(document_version, document, document_size);
+  select_compatibility_generation(committed.generation);
+  compatibility_state_.publication = legacy_.publish_status(document_version, document, document_size);
+  compatibility_publication_current_ = compatibility_state_.publication == CompatibilityStatus::OK;
+  compatibility_state_.persistence = legacy_writes_enabled()
+      ? legacy_.mirror_status(document_version, document, document_size) : CompatibilityStatus::OK;
+  const bool published = compatibility_publication_current_;
+  const bool mirrored = compatibility_state_.persistence == CompatibilityStatus::OK;
   if (!applied) {
     return {ServiceStatus::RUNTIME_APPLY_FAILED, committed.status,
             document_version, committed.generation, document_size};
@@ -524,11 +564,13 @@ ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
             committed.generation, document_size};
   }
   const bool applied = prepared.activate(committed.generation);
-  const bool published =
-      legacy_.publish(document_version, document, document_size);
-  compatibility_publication_current_ = published;
-  const bool mirrored = !legacy_writes_enabled() ||
-                        legacy_.mirror(document_version, document, document_size);
+  select_compatibility_generation(committed.generation);
+  compatibility_state_.publication = legacy_.publish_status(document_version, document, document_size);
+  compatibility_publication_current_ = compatibility_state_.publication == CompatibilityStatus::OK;
+  compatibility_state_.persistence = legacy_writes_enabled()
+      ? legacy_.mirror_status(document_version, document, document_size) : CompatibilityStatus::OK;
+  const bool published = compatibility_publication_current_;
+  const bool mirrored = compatibility_state_.persistence == CompatibilityStatus::OK;
   if (!applied) {
     return {ServiceStatus::RUNTIME_APPLY_FAILED, committed.status,
             document_version, committed.generation, document_size};

@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "application_scene_runtime.h"
+#include "reset_write_lease.h"
 #include "configuration_main_loop.h"
 #include "configuration_release_policy.h"
 #include "panel_config_storage_selection.h"
@@ -45,6 +46,17 @@ struct TransferObserver {
 };
 }  // namespace esphome::artwork_image
 namespace espcontrol {
+namespace reset {
+static bool initialized=true, resetting=false, lease_held=false, other_busy=false;
+static size_t acquired=0,released=0;
+bool begin_configuration_write(){
+  if(!initialized||resetting||lease_held||other_busy)return false;
+  lease_held=true;++acquired;return true;
+}
+void finish_configuration_write(){assert(lease_held);lease_held=false;++released;}
+bool ready(){return initialized;}
+bool pending(){return resetting;}
+}
 static constexpr const char* TAG = "test";
 static uint8_t *allocate_configuration_slot(size_t size) {
   if (++ConfigAllocations::calls == ConfigAllocations::fail_at) return nullptr;
@@ -103,6 +115,7 @@ struct Transactions {
 struct NativeRuntime {
   LegacyRuntime runtime_config;
   Transactions transactions;
+  ConfigurationCompatibilityRetry compatibility_retry;
   struct Sources { bool configured() const { return true; } } legacy_config;
   struct Blobs {
     size_t opens{0}; bool ready{true};
@@ -158,6 +171,7 @@ class EspControlApp {
   ConfigurationRuntimeAdapter* selected_configuration_runtime();
   void apply_boot_configuration();
   void apply_configuration_text_refresh();
+  void retry_configuration_compatibility();
   void loop();
   void on_shutdown();
   void register_panel_config_endpoints() { trace += 'R'; }
@@ -167,6 +181,7 @@ class EspControlApp {
 // @production-app-method selected_configuration_runtime
 // @production-app-method initialize_native_configuration
 // @production-app-method defer_native_configuration_initialization
+// @production-app-method retry_configuration_compatibility
 // @production-app-method apply_configuration_text_refresh
 // @production-app-method apply_boot_configuration
 // @production-app-method loop
@@ -192,12 +207,13 @@ class MemoryBackend final : public StorageBackend {
       return false;
     }
     if (size > 0) std::memcpy(slots_[slot].data() + offset, data, size);
-    return true;
+    ++writes;return true;
   }
   bool sync() override { return true; }
   bool begin_operation() override { return !memory_unavailable; }
   StoreStatus operation_failure() const override { return StoreStatus::ALLOCATION_FAILED; }
   bool memory_unavailable{false};
+  size_t writes{0};
   void fail_writes(bool value) { fail_writes_ = value; }
 
  private:
@@ -234,6 +250,7 @@ class FakeLegacy final : public LegacyConfigurationAdapter {
 
   bool mirror(uint16_t document_version, const uint8_t* document, size_t document_size) override {
     ++mirror_calls;
+    if(on_mirror)on_mirror();
     mirrored_version = document_version;
     mirrored.assign(document, document + document_size);
     return !mirror_failed;
@@ -246,6 +263,7 @@ class FakeLegacy final : public LegacyConfigurationAdapter {
   size_t load_calls{0}, publish_calls{0};
   bool publish_failed{false};
   size_t mirror_calls{0};
+  std::function<void()> on_mirror;
   bool read_failed{false};
   bool mirror_failed{false};
 };
@@ -477,6 +495,57 @@ void boot_output_is_scoped_and_retry_preserves_latest() {
   }
 }
 
+void compatibility_retry_policy_and_app_gates() {
+  ConfigurationCompatibilityRetry clock;
+  assert(!clock.ready(UINT32_MAX-500,0));
+  assert(!clock.ready(498,0)&&clock.ready(499,0));
+  uint32_t now=499;uint32_t delay=1000;
+  for(size_t i=0;i<10;++i) {
+    clock.failed(now);delay=std::min<uint32_t>(60000,delay*2);
+    assert(!clock.ready(now+delay-1,0)&&clock.ready(now+delay,0));now+=delay;
+  }
+  assert(!clock.ready(now,1)&&!clock.ready(now+999,1)&&clock.ready(now+1000,1));
+  Harness h;h.configure();h.app.apply_boot_configuration();
+  auto& native=*h.app.native_configuration_runtime_;
+  assert(h.service.compatibility_state().retry_pending());
+  h.app.retry_configuration_compatibility();fake_time_ms=1000;
+  const auto prepares=h.scene.prepares,activates=h.scene.activates,writes=h.backend.writes;
+  auto blocked=[&] {
+    const auto allocations=ConfigAllocations::calls,mirrors=h.legacy.mirror_calls,leases=reset::acquired;
+    h.app.retry_configuration_compatibility();
+    assert(ConfigAllocations::calls==allocations&&h.legacy.mirror_calls==mirrors&&reset::acquired==leases&&!reset::lease_held);
+  };
+  reset::initialized=false;blocked();reset::initialized=true;
+  reset::resetting=true;blocked();reset::resetting=false;
+  h.app.shutting_down_=true;blocked();h.app.shutting_down_=false;
+  h.scene.busy=true;blocked();h.scene.busy=false;
+  native.boot_configuration_pending=true;blocked();native.boot_configuration_pending=false;
+  h.app.configuration_text_refresh_pending_=true;blocked();h.app.configuration_text_refresh_pending_=false;
+  reset::other_busy=true;blocked();reset::other_busy=false;
+  // A busy writer delays the next attempt without reserving a document.
+  fake_time_ms=2999;blocked();fake_time_ms=3000;
+  ConfigAllocations::fail_at=ConfigAllocations::calls+1;
+  h.app.retry_configuration_compatibility();ConfigAllocations::fail_at=0;
+  assert(ConfigAllocations::live.empty()&&!reset::lease_held&&reset::acquired==reset::released);
+  h.legacy.mirror_failed=true;
+  h.legacy.on_mirror=[] {assert(reset::lease_held);};
+  fake_time_ms=6999;blocked();fake_time_ms=7000;h.app.retry_configuration_compatibility();
+  assert(h.legacy.mirror_calls==1&&h.service.compatibility_state().retry_pending());
+  assert(h.scene.prepares==prepares&&h.scene.activates==activates&&h.backend.writes==writes);
+  h.legacy.on_mirror={};
+  const std::array<uint8_t,3> latest{{9,8,7}};
+  const auto saved=h.service.save_current(latest.data(),latest.size());
+  assert(saved.status==ServiceStatus::LEGACY_MIRROR_FAILED);
+  const auto current_prepares=h.scene.prepares,current_activates=h.scene.activates,current_writes=h.backend.writes;
+  h.legacy.mirror_failed=false;
+  h.app.retry_configuration_compatibility(); // New generation starts a fresh delay.
+  fake_time_ms=8000;h.legacy.on_mirror=[] {assert(reset::lease_held);};
+  h.app.retry_configuration_compatibility();h.legacy.on_mirror={};
+  assert(!h.service.compatibility_state().retry_pending()&&h.legacy.mirrored==std::vector<uint8_t>(latest.begin(),latest.end()));
+  assert(h.scene.prepares==current_prepares&&h.scene.activates==current_activates&&h.backend.writes==current_writes);
+  assert(!reset::lease_held&&reset::acquired==reset::released&&ConfigAllocations::live.empty());
+}
+
 void runtime_allocation_retries_preserve_latest() {
   for(bool compatibility : {false,true}) {
     Harness h;h.configure();auto& native=*h.app.native_configuration_runtime_;
@@ -611,6 +680,7 @@ void shutdown() {
 }
 int main() {
   buffer_retry_clock_wrap();
+  compatibility_retry_policy_and_app_gates();
   runtime_allocation_retries_preserve_latest();
   boot_output_is_scoped_and_retry_preserves_latest();
   compatibility_output_retries_all_temporary_stages();

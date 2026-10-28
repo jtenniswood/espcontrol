@@ -144,6 +144,7 @@ class EspControlApp : public esphome::Component {
   void defer_native_configuration_initialization();
   void apply_boot_configuration();
   void apply_configuration_text_refresh();
+  void retry_configuration_compatibility();
   bool native_configuration_requested() const;
   bool create_native_configuration_runtime();
 

@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <functional>
+#include <future>
 #include <string>
 #include <vector>
 
@@ -90,6 +91,7 @@ class FakeLegacy final : public LegacyConfigurationAdapter {
   bool mirror(uint16_t document_version, const uint8_t *document,
               size_t document_size) override {
     ++mirror_calls;
+    if(on_mirror)on_mirror();
     mirrored_version = document_version;
     mirrored.assign(document, document + document_size);
     return !mirror_failed;
@@ -97,7 +99,7 @@ class FakeLegacy final : public LegacyConfigurationAdapter {
 
   std::vector<uint8_t> value;
   std::vector<uint8_t> mirrored, published;
-  std::function<void()> on_publish;
+  std::function<void()> on_publish,on_mirror;
   size_t publish_calls{0};
   uint16_t published_version{0};
   bool publish_failed{false};
@@ -840,8 +842,38 @@ bool transient_service_buffers_release_and_fail_before_publication() {
 
 }  // namespace
 
+bool compatibility_retry_cannot_import_or_race_a_new_save() {
+  MemoryBackend empty(1024);ConfigurationStore empty_store(empty);FakeLegacy stale;
+  stale.value=bytes("stale legacy");ConfigurationService empty_service(empty_store,stale);
+  std::array<uint8_t,512> output{};
+  if(empty_service.retry_compatibility(output.data(),output.size()).status!=ServiceStatus::EMPTY||stale.load_calls||empty.write_calls)return false;
+  {
+    MemoryBackend imported(1024);ConfigurationStore imported_store(imported);FakeLegacy legacy;FakeRuntime runtime;
+    ConfigurationService service(imported_store,legacy,nullptr,nullptr,0,LegacyConfigurationMode::READ_IMPORT_ONLY);
+    service.set_runtime_adapter(&runtime);const auto value=bytes("import-only");legacy.publish_failed=true;
+    if(service.save_current(value.data(),value.size()).status!=ServiceStatus::LEGACY_MIRROR_FAILED)return false;
+    const auto writes=imported.write_calls;legacy.publish_failed=false;
+    if(!service.retry_compatibility(output.data(),output.size()).ok()||legacy.mirror_calls||imported.write_calls!=writes||runtime.apply_calls!=1)return false;
+  }
+  MemoryBackend backend(1024);ConfigurationStore store(backend);FakeLegacy legacy;FakeRuntime runtime;
+  ConfigurationService service(store,legacy);service.set_runtime_adapter(&runtime);
+  const auto original=bytes("original"),latest=bytes("newest");
+  legacy.mirror_failed=true;
+  if(service.save_current(original.data(),original.size()).status!=ServiceStatus::LEGACY_MIRROR_FAILED)return false;
+  legacy.mirror_failed=false;
+  std::promise<void> entered,proceed;auto proceed_future=proceed.get_future().share();bool first=true;
+  legacy.on_mirror=[&]{if(first){first=false;entered.set_value();proceed_future.wait();}};
+  auto repair=std::async(std::launch::async,[&]{return service.retry_compatibility(output.data(),output.size());});
+  entered.get_future().wait();
+  auto save=std::async(std::launch::async,[&]{return service.save_if_generation(1,1,latest.data(),latest.size());});
+  proceed.set_value();const auto repaired=repair.get();const auto saved=save.get();
+  return repaired.ok()&&repaired.generation==1&&saved.ok()&&saved.generation==2&&legacy.mirrored==latest&&
+      runtime.apply_calls==2&&runtime.prepare_calls==2&&runtime.applied==latest&&!service.compatibility_state().retry_pending();
+}
+
 int main() {
   const bool passed =
+      compatibility_retry_cannot_import_or_race_a_new_save() &&
       transient_service_buffers_release_and_fail_before_publication() &&
       compatibility_publication_is_separate_from_runtime_activation() &&
       import_only_still_publishes_live_compatibility_values() &&

@@ -6,6 +6,7 @@
 #include <string>
 
 #include "panel_config_document.h"
+#include "compatibility_status.h"
 #include "panel_config_text_storage.h"
 
 namespace espcontrol::configuration {
@@ -52,6 +53,8 @@ class PanelConfigTextBindings {
                       size_t *document_size) const;
   bool persist_document(const uint8_t *document, size_t document_size);
   bool publish_document(const uint8_t *document, size_t document_size);
+  CompatibilityStatus persist_document_status(const uint8_t *document, size_t size);
+  CompatibilityStatus publish_document_status(const uint8_t *document, size_t size);
 
  private:
    enum class ApplyMode { PUBLISH, CHECK_PERSIST, PREPARE_EMPTY, PERSIST };
@@ -62,6 +65,7 @@ class PanelConfigTextBindings {
    };
 
   bool owns_record(const PanelConfigRecord &record) const;
+  bool compatible_document(const uint8_t *document, size_t size) const;
   bool write_document(const uint8_t *native, size_t native_size,
                       uint8_t *output, size_t output_capacity,
                       size_t *document_size) const;
@@ -72,7 +76,9 @@ class PanelConfigTextBindings {
 
   // Runtime-only overflow can leave the preference copy behind. The next
   // compatible mirror must rewrite even values that already match live state.
-  bool legacy_mirror_current_{true};
+  // Restored live fields are not proof of a complete persistent copy. The
+  // first repair after boot must verify/write every configured field.
+  bool legacy_mirror_current_{false};
   std::string device_profile_;
   PanelConfigTextValue *button_order_{nullptr};
   PanelConfigTextValue *button_on_color_{nullptr};

@@ -83,11 +83,11 @@ struct Arena final:PageArenaAllocator {
   void release(void *value,size_t)override{std::free(value);}
 };
 struct Text final:PanelConfigTextValue {
-  std::string state;size_t persistent=0,published=0;bool fail=false;
+  std::string state;size_t persistent=0,published=0;bool fail=false,persist_fail=false;
   const std::string &value()const override{return state;}
-  bool set_value(const char *value,size_t size)override {if(fail||size>255)return false;state.assign(value,size);++persistent;return true;}
+  bool set_value(const char *value,size_t size)override {if(fail||persist_fail||size>255)return false;state.assign(value,size);++persistent;return true;}
   bool publish_value(const char *value,size_t size)override {if(fail)return false;state.assign(value,size);++published;return true;}
-  bool can_persist_value(size_t size)const override{return !fail&&size<=255;}
+  bool can_persist_value(size_t size)const override{return size<=255;}
 };
 struct Fixture {
   Backend backend;ConfigurationStore store{backend};Text order,color;
@@ -197,6 +197,73 @@ void unavailable_and_publication() {
   assert(fixture.backend.writes==writes);fixture.exact(source,1,2);
   assert(fixture.service.synchronize_legacy_runtime(restored.data(),restored.size()).ok());
 }
+void compatibility_repair_keeps_generation_and_runtime() {
+  const auto &limits=DEVICE_UI_PROFILES[8];
+  Fixture f(limits);const auto source=native(limits,false);f.seed(source);Bytes output(32768);
+  assert(f.service.load_and_apply_runtime(output.data(),output.size()).ok());
+  auto state=f.service.compatibility_state();
+  assert(state.known&&state.generation==1&&state.publication==CompatibilityStatus::OK&&state.retry_pending());
+  const auto writes=f.backend.writes,arena_calls=f.arena.calls;
+  // A preference I/O failure is retryable; live publication is already valid.
+  f.order.persist_fail=true;const auto publications=f.order.published;
+  assert(f.service.retry_compatibility(output.data(),output.size()).status==ServiceStatus::LEGACY_MIRROR_FAILED);
+  state=f.service.compatibility_state();
+  assert(state.publication==CompatibilityStatus::OK&&state.persistence==CompatibilityStatus::RETRYABLE_FAILURE);
+  assert(f.order.published==publications&&f.backend.writes==writes&&f.arena.calls==arena_calls&&allocations.empty());
+  // A newer actual compatibility edit supersedes the failed generation.
+  f.order.state="1w";
+  const auto edited=f.service.synchronize_legacy_runtime(output.data(),output.size());
+  assert(edited.status==ServiceStatus::LEGACY_MIRROR_FAILED&&edited.generation==2&&edited.document_version==1);
+  const auto newer=Bytes(output.begin(),output.begin()+edited.document_size);
+  const auto final_writes=f.backend.writes,final_arena_calls=f.arena.calls;
+  f.order.persist_fail=false;
+  assert(f.service.retry_compatibility(output.data(),output.size()).ok());
+  state=f.service.compatibility_state();
+  assert(state.generation==2&&!state.retry_pending()&&state.persistence==CompatibilityStatus::OK);
+  assert(f.order.state=="1w"&&f.order.persistent>0&&f.backend.writes==final_writes&&f.arena.calls==final_arena_calls);
+  f.exact(newer,2,1);assert(allocations.empty());
+  // Even an explicitly requested repeat does not rewrite a complete mirror.
+  const auto persisted=f.order.persistent;
+  assert(f.service.retry_compatibility(output.data(),output.size()).ok());
+  assert(f.order.persistent==persisted&&f.backend.writes==final_writes&&f.arena.calls==final_arena_calls);
+}
+void publication_repair_and_transient_buffers() {
+  const auto &limits=DEVICE_UI_PROFILES[8];
+  Fixture f(limits);const auto source=native(limits,false);f.seed(source);Bytes output(32768);
+  f.order.fail=true;
+  assert(f.service.load_and_apply_runtime(output.data(),output.size()).status==ServiceStatus::LEGACY_MIRROR_FAILED);
+  const auto writes=f.backend.writes,arena_calls=f.arena.calls;
+  assert(f.service.synchronize_legacy_runtime(output.data(),output.size()).status==ServiceStatus::LEGACY_MIRROR_FAILED);
+  // Both load scratch and the v2 graph index can fail without another native
+  // save, runtime preparation, or import of a partially published text view.
+  for(size_t failure=1;failure<=2;++failure) {
+    fail_at=calls+failure;
+    assert(f.service.retry_compatibility(output.data(),output.size()).status==ServiceStatus::ALLOCATION_FAILED);
+    fail_at=0;assert(allocations.empty()&&f.service.compatibility_state().retry_pending());
+  }
+  f.order.fail=false;
+  assert(f.service.retry_compatibility(output.data(),output.size()).ok());
+  assert(!f.service.compatibility_state().retry_pending()&&f.order.state=="1");
+  assert(f.backend.writes==writes&&f.arena.calls==arena_calls&&f.runtime.active().generation()==1);
+  f.exact(source,1,2);
+  f.order.state="1w";assert(f.service.synchronize_legacy_runtime(output.data(),output.size()).ok());
+}
+void permanent_legacy_limit_does_not_retry_writes() {
+  const auto &limits=DEVICE_UI_PROFILES[8];Fixture f(limits);Bytes bytes(4096),output(32768);
+  PanelConfigWriter writer(bytes.data(),bytes.size());assert(writer.begin()==PanelConfigStatus::OK);
+  assert(writer.append_device_profile(reinterpret_cast<const uint8_t *>(limits.device_profile),std::strlen(limits.device_profile))==PanelConfigStatus::OK);
+  const auto card=std::string(";")+std::string(300,'x')+";Auto;Auto;;;;;";
+  assert(writer.append_button(1,reinterpret_cast<const uint8_t *>(card.data()),card.size())==PanelConfigStatus::OK);
+  size_t size=0;assert(writer.finish(&size)==PanelConfigStatus::OK);bytes.resize(size);
+  const auto saved=f.service.save_current(bytes.data(),bytes.size());
+  assert(saved.status==ServiceStatus::LEGACY_MIRROR_FAILED&&saved.durable());
+  const auto state=f.service.compatibility_state();
+  assert(state.publication==CompatibilityStatus::OK&&state.persistence==CompatibilityStatus::NOT_REPRESENTABLE&&!state.retry_pending());
+  const auto persisted=f.buttons[0].persistent,writes=f.backend.writes,arena_calls=f.arena.calls;
+  for(size_t i=0;i<20;++i)assert(f.service.retry_compatibility(output.data(),output.size()).status==ServiceStatus::LEGACY_MIRROR_FAILED);
+  assert(f.buttons[0].persistent==persisted&&f.backend.writes==writes&&f.arena.calls==arena_calls);
+  f.exact(bytes,1,1);
+}
 void imports_cannot_enable_v2_writes() {
   struct Import final:LegacyConfigurationAdapter {
     Bytes document;
@@ -216,6 +283,9 @@ void imports_cannot_enable_v2_writes() {
 }
 } // namespace
 int main() {
+  compatibility_repair_keeps_generation_and_runtime();
+  publication_repair_and_transient_buffers();
+  permanent_legacy_limit_does_not_retry_writes();
   profiles();unavailable_and_publication();imports_cannot_enable_v2_writes();assert(allocations.empty());
   std::cout<<"PASS actual ECDO v2 boot, v1 write policy, all nine ordinary/maximum profiles, inactive/empty preservation, compatibility fencing and allocation failures; transient service/compatibility peak="<<peak<<" bytes (host, excludes runtime arenas)\n";
 }

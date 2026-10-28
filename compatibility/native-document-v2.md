@@ -201,6 +201,34 @@ payload chunk and real storage mutation on both backends, inject read failures
 and check that scratch is released. These simulated interruptions supplement,
 and do not replace, physical power-loss qualification.
 
+## Compatibility repair
+
+The service tracks live text publication and persistent legacy mirroring as
+separate outcomes for the durable generation. A repair reloads that latest
+snapshot under the transaction lock. It never imports legacy text, commits a
+native document, prepares resources or activates the runtime. A newer save
+supersedes pending repair work. Successful publication reopens compatibility
+editing; a persistent-copy failure does not invalidate an already complete
+live view. Initial boot treats the persistent copy as unverified, including
+when live text happens to match the native document.
+
+Invalid projections, profile mismatches and fixed preference byte/chunk limits
+stop before preference writes and do not schedule automatic retries. Temporary
+conversion allocation and preference I/O failures retry after one second,
+backing off to at most one attempt per minute. Each attempt borrows and releases
+its PSRAM buffers. Pending text edits, boot restoration, unsafe scene dispatch,
+shutdown and pending reset block repair. A shared reset/OTA reservation covers
+the complete repair, preventing reset intent or firmware installation from
+starting between the initial check and the last preference write.
+
+Host tests use real service/store/bindings, independently decoded legacy
+preferences and the production application-loop methods. They cover unchanged
+generations and runtime reservations, newer concurrent saves, partial
+publication, temporary allocation and preference failures, fixed limits,
+import-only releases, retry timing/wraparound and reset/OTA races. HTTP retains
+its separate committed-with-compatibility-warning response. These repairs do
+not establish full legacy admission, downgrade safety or physical durability.
+
 ## Explicit HTTP representations
 
 The existing `/api/v1/config` endpoint and binary media type stay unchanged.

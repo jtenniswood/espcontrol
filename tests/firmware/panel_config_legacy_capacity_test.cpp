@@ -172,13 +172,24 @@ void erase_failures_are_reported_and_retryable() {
   prefs.nvs_handle = 0;
   assert(!value.prepare_empty_value() && prefs.durable.count(key));
 }
+void unavailable_preference_storage_retries_separately() {
+  Fixture fixture;const auto bytes=document();auto& prefs=fixture.prefs;
+  assert(fixture.bindings.publish_document(bytes.data(),bytes.size()));
+  prefs.capacity_entries=0;
+  assert(fixture.bindings.persist_document_status(bytes.data(),bytes.size())==CompatibilityStatus::RETRYABLE_FAILURE);
+  assert(prefs.pending.empty());
+  prefs.capacity_entries=SIZE_MAX;
+  assert(fixture.bindings.persist_document_status(bytes.data(),bytes.size())==CompatibilityStatus::OK);
+  for(size_t i=0;i<20;++i)
+    assert(old_reader(prefs,golden_key(2+i),255,"")==fixture.texts[2+i].state);
+}
 void invalid_projection_does_not_clear_preferences() {
   Fixture fixture;
   auto &prefs = fixture.prefs;
   prefs.durable[golden_key(22)] = blob(255, "preserve");
   const auto previous = prefs.durable;
   for (const auto &bytes : {document("wrong"), document("p4", std::string(121, 'x'))}) {
-    assert(!fixture.bindings.persist_document(bytes.data(), bytes.size()));
+    assert(fixture.bindings.persist_document_status(bytes.data(), bytes.size())==CompatibilityStatus::NOT_REPRESENTABLE);
     assert(prefs.durable == previous && prefs.erases == 0 && prefs.saves == 0);
   }
 }
@@ -188,4 +199,5 @@ int main() {
   sparse_defaults_and_explicit_empty_overrides();
   erase_failures_are_reported_and_retryable();
   invalid_projection_does_not_clear_preferences();
+  unavailable_preference_storage_retries_separately();
 }

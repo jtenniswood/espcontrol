@@ -200,7 +200,7 @@ class ResetHandler : public esphome::web_server_idf::AsyncWebHandler {
         !(journal.pending() && journal.mode == mode && supplied == std::to_string(epoch() - 1))) {
       respond(raw, "409 Conflict", "{\"error\":\"Reload before resetting\"}"); return;
     }
-    if (update_busy()) { respond(raw, "409 Conflict", "{\"error\":\"Firmware installation in progress\"}"); return; }
+    if (update_busy()) { respond(raw, "409 Conflict", "{\"error\":\"Another device operation is in progress\"}"); return; }
     const bool was_pending = journal.pending();
     auto result = interlock.record(storage, journal, mode);
     if (result != Result::ACCEPTED) {
@@ -229,6 +229,8 @@ uint32_t epoch() { return current_epoch.load(); }
 bool pending() { return interlock.pending(); }
 bool ready() { return initialized.load(); }
 bool update_busy() { return interlock.busy(); }
+bool begin_configuration_write() { return ready() && interlock.begin_configuration_write(); }
+void finish_configuration_write() { interlock.finish_configuration_write(); }
 void watch_update(esphome::update::UpdateEntity *entity) {
 #ifdef USE_UPDATE
   update_entities.push_back(entity);
