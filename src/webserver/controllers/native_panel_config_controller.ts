@@ -1,6 +1,9 @@
 import {
   createNativePanelConfigClient,
   updateNativePanelConfigDocument,
+  NativePanelConfigCompatibilityError,
+  NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE,
+  nativeBackupHasInactiveRecords,
   type NativePanelConfigClient,
   type NativePanelConfigFetch,
   type NativePanelConfigSaveResult,
@@ -72,6 +75,8 @@ export class NativePanelConfigController {
       this.dependencies.showBanner("This firmware requires web authentication for Wifi Sharing passwords. Sign in, enable web_server_auth, or update the panel firmware.", "error");
     } else if (result === "too-large") {
       this.dependencies.showBanner("Configuration exceeds this panel's storage capacity. Update the panel firmware for more space, or reduce the saved settings.", "error");
+    } else if (result === "firmware-update-required") {
+      this.dependencies.showBanner(NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE, "error");
     } else if (result === "failed") {
       this.dependencies.showBanner("Could not save the configuration. Check the connection and try again.", "error");
     }
@@ -186,6 +191,10 @@ export class NativePanelConfigController {
     return this.schedule((current) => {
       if (current.deviceProfile !== document.deviceProfile) {
         throw new Error("The backup targets a different device profile.");
+      }
+      if (!this.client_?.preservesInactiveRecords() &&
+          nativeBackupHasInactiveRecords(document, this.dependencies.slotCount())) {
+        throw new NativePanelConfigCompatibilityError(NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE);
       }
       return document;
     });

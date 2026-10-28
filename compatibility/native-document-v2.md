@@ -10,6 +10,22 @@ New saves enforce profile and compatibility limits before publication. A
 released downgrade floor and physical qualification remain unfinished. This
 does not enable nested pages.
 
+Backup JSON version 2 is separate from native document v2. Exports retain a
+native-v1 payload alongside the readable layout. File-format interoperability
+does not establish that every older runtime can apply retained records: the
+released v2.13.0 text adapter rejects even empty native records outside its
+configured grid, after committing the document.
+
+Ready firmware therefore advertises `configuration.preserves_inactive_records`.
+The editor requires an explicit `true` before restoring a native backup with
+button or subpage records outside the target grid. Missing, false or malformed
+support refuses the restore before PUT, with an update message. It preserves
+the complete backup and does not switch to legacy writes. This check is
+independent of negotiated document version; ordinary in-profile backups still
+work with v1-only firmware. Legacy-only recovery restores owned text fields;
+backups with native-only settings are also refused before legacy posts when
+the target has no native document support.
+
 ## Wire layout
 
 Integers are little-endian. The 16-byte `EPCF` envelope retains the v1 header

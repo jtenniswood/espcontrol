@@ -24,6 +24,7 @@ int main() {
                           nullptr &&
                       std::strstr(capabilities.data(), "\"read\":false") != nullptr &&
                       std::strstr(capabilities.data(), "\"write\":false") != nullptr &&
+                      std::strstr(capabilities.data(), "\"preserves_inactive_records\":false") != nullptr &&
                       std::strstr(capabilities.data(), "\"web_assets\"") != nullptr &&
                       std::strstr(capabilities.data(), "\"delivery\":\"manifest\"") !=
                           nullptr &&
@@ -40,6 +41,7 @@ int main() {
       std::strstr(capabilities.data(), "\"default_document_version\":1") != nullptr &&
       std::strstr(capabilities.data(), "\"durable_document_version\":1") != nullptr &&
       std::strstr(capabilities.data(), "\"max_v2_document_bytes\":524288") != nullptr &&
+      std::strstr(capabilities.data(), "\"preserves_inactive_records\":true") != nullptr &&
       std::strstr(capabilities.data(), "\"read\":true") != nullptr &&
       std::strstr(capabilities.data(), "\"write\":true") != nullptr;
   set_panel_config_http_context_initialization_complete(false);

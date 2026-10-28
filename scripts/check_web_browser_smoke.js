@@ -111,6 +111,7 @@ function nativeConfigState(slug) {
       settings: { button_order: "1,2,3w,4,5,6" },
     },
     generation: 1,
+    preservesInactiveRecords: true,
     puts: [],
     requests: [],
   };
@@ -375,6 +376,7 @@ async function installRoutes(context, slug, options = {}) {
           identity: options.identityState ? { version: 1 } : undefined,
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
           configuration: { read: true, write: true, document_versions: nativeState.documentVersions || [1],
+            preserves_inactive_records: nativeState.preservesInactiveRecords,
             max_record_body_bytes: nativeState.maxRecordBodyBytes, max_v2_document_bytes: 524288 },
           web_assets: { versions: [1] },
         }),
@@ -6506,6 +6508,55 @@ async function assertNativeBackupPreservation(browser, testCase, documentVersion
   } finally { await context.close(); }
 }
 
+async function assertRetainedBackupAdmission(browser, testCase) {
+  const message = "This backup needs newer panel firmware to restore all saved cards and settings. Update the panel before importing it. No backup settings were changed.";
+  for (const mode of ["missing", "false", "malformed", "missing-portable", "current-v1", "current-v2", "legacy", "legacy-native-setting"]) {
+    const nativeState = nativeConfigState(testCase.slug);
+    nativeState.documentVersions = mode === "current-v2" ? [1, 2] : [1];
+    nativeState.preservesInactiveRecords = mode.startsWith("current") ? true
+      : mode === "false" ? false : mode === "malformed" ? "true" : undefined;
+    const legacy = mode.startsWith("legacy");
+    const accepted = mode.startsWith("current") || mode === "missing-portable";
+    const context = await browser.newContext({ viewport: testCase.viewport });
+    await installRoutes(context, testCase.slug, legacy ? {} : { nativeState });
+    const page = await context.newPage();const errors = [], posts = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await installFakeEventSource(page);
+    try {
+      await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+      await page.waitForSelector("#sp-app");
+      await page.waitForFunction(() => window.__eventSources?.length > 0);
+      if (!legacy) await seedNativeDocument(page, nativeState);
+      const backup = backupFixture(testCase.slug, testCase.slots, testCase.slug);
+      delete backup.settings;delete backup.screen;
+      const document = decodePanelConfig(decodePanelConfigBackupPayload(backup.native_config));
+      document.settings.future_retained = "温度 🌡️";
+      if (mode !== "legacy-native-setting" && mode !== "missing-portable") {
+        document.buttons[31] = "";
+        document.buttons[32] = "sensor.hidden;Retained;Auto;Auto;;;sensor;;";
+        document.subpages[32] = "B|sensor.hidden:Retained:Auto:Auto:::sensor::";
+      }
+      backup.native_config = createPanelConfigBackupPayload(encodePanelConfig(document));
+      const before = JSON.stringify(nativeState.document), generation = nativeState.generation;
+      page.on("request", request => { if (request.method() === "POST") posts.push(request.url()); });
+      await importBackup(page, backup, `retained-backup-${mode}`);
+      if (accepted) {
+        await waitForNativeState(nativeState, () => nativeState.document.settings.future_retained === "温度 🌡️", "supported retained backup");
+        if (mode !== "missing-portable") assert.strictEqual(nativeState.document.buttons[31], "", "explicit empty records survive supported restores");
+        assert.strictEqual(nativeState.document.subpages[32], document.subpages[32]);
+        assert.strictEqual(nativeState.document.settings.future_retained, "温度 🌡️");
+      } else {
+        await page.getByText(message, { exact: true }).waitFor();
+        assert.strictEqual(nativeState.puts.length, 0, `${mode}: no native PUT`);
+        assert.deepStrictEqual(posts, [], `${mode}: no legacy or unrelated setting POST`);
+        assert.strictEqual(nativeState.generation, generation);
+        assert.strictEqual(JSON.stringify(nativeState.document), before);
+      }
+      assert.deepStrictEqual(errors, [], `${mode}: no browser exceptions`);
+    } finally { await context.close(); }
+  }
+}
+
 async function assertLegacyProfileFallback(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
   await installRoutes(context, testCase.slug);
@@ -7946,12 +7997,18 @@ async function assertCameraScreensaverDimming(browser, testCase) {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_BACKUP_ADMISSION_ONLY === "1") {
+      await assertRetainedBackupAdmission(browser, ACTIVE_CASES.find(testCase => testCase.slug === "guition-esp32-s3-4848s040") || ACTIVE_CASES[0]);
+      console.log("Retained backup browser admission checks passed for missing/false/malformed/current-v1/current-v2/legacy capabilities.");
+      return;
+    }
     if (process.env.ESPCONTROL_NATIVE_V2_ONLY === "1") {
       const representatives = ACTIVE_CASES.filter(testCase => new Set([
         "guition-esp32-s3-4848s040", "guition-esp32-p4-jc4880p443",
         "guition-esp32-p4-jc1060p470", "guition-esp32-p4-jc8012p4a1-v3",
       ]).has(testCase.slug));
       assert(representatives.length > 0, "v2 browser checks require a representative supported profile");
+      await assertRetainedBackupAdmission(browser, representatives.find(testCase => testCase.slug === "guition-esp32-s3-4848s040") || representatives[0]);
       for (const testCase of representatives) {
         await assertNativeProfileJourney(browser, testCase, [1, 2]);
         await assertNativeBackupPreservation(browser, testCase, [1, 2]);
@@ -8052,6 +8109,7 @@ async function assertCameraScreensaverDimming(browser, testCase) {
     await assertHostedCompatibility(browser);
     await assertFirmwareRetryFeedback(browser);
     await assertResetControls(browser);
+    await assertRetainedBackupAdmission(browser, ACTIVE_CASES.find(testCase => testCase.slug === "guition-esp32-s3-4848s040") || ACTIVE_CASES[0]);
     await assertNativeProfileJourney(browser, ACTIVE_CASES[0], [1]);
     for (const testCase of ACTIVE_CASES) {
       await assertCameraScreensaverDimming(browser, testCase);

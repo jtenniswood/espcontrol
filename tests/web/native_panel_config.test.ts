@@ -1,6 +1,7 @@
 import {
   createNativePanelConfigClient,
   updateNativePanelConfigDocument,
+  NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE,
   type NativePanelConfigRequest,
   type NativePanelConfigResponse,
 } from "../../src/webserver/features/native_panel_config";
@@ -44,6 +45,47 @@ const document = encodePanelConfig({
 });
 
 export async function runNativePanelConfigBackupTests(): Promise<void> {
+  for (const slots of [6, 9, 15, 20]) for (const support of [undefined, false, "true", true]) {
+    for (const collection of ["buttons", "subpages"] as const) for (const value of ["", "retained"]) {
+      const original = decodePanelConfig(document);
+      const incoming: PanelConfigDocument = {
+        ...original, [collection]: { ...original[collection], [slots + 1]: value },
+      };
+      const before = JSON.stringify(incoming);
+      let current = original, puts = 0;
+      const banners: string[] = [];
+      const target = new NativePanelConfigController({
+        fetch: async (path, request) => {
+          if (path.endsWith("capabilities")) return {
+            ...response(200), json: async () => ({ configuration: {
+              read: true, write: true, document_versions: [1], preserves_inactive_records: support,
+            } }),
+          };
+          if (request?.method === "PUT") {
+            ++puts;current = decodePanelConfig(request.body!);return response(204);
+          }
+          return response(200, encodePanelConfig(current), '"1"');
+        },
+        deviceProfile: () => "panel-a", slotCount: () => slots,
+        entityName: name => name, entityNameForSlot: (name, slot) => `${name}_${slot}`,
+        normalizeHexColor: value => value, showBanner: message => { banners.push(message); },
+        delay: callback => { callback(); },
+      });
+      equal(await target.writeDocument(incoming), support === true ? "saved" : "firmware-update-required",
+        "retained backup records require explicit target support, independently of wire version");
+      equal(puts, support === true ? 1 : 0, "unsupported backups never reach PUT, including empty records");
+      deepEqual(current, support === true ? incoming : original, "rejection preserves the target's saved document");
+      equal(JSON.stringify(incoming), before, "admission never trims the backup");
+      if (support !== true) {
+        deepEqual(banners, [NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE], "restore refusal explains the required update");
+        equal(await target.writeText("button_order", "1d"), "saved", "a refused restore does not block later ordinary edits");
+        equal(puts, 1, "ordinary in-profile edits retain v1 support");
+        const withinProfile = { ...current, buttons: { ...current.buttons, [slots]: "" } };
+        equal(await target.writeDocument(withinProfile), "saved", "in-profile backups remain supported without the new capability");
+        deepEqual(current, withinProfile, "the final configured slot, including an empty record, remains writable");
+      }
+    }
+  }
   const completeBytes = encodePanelConfig({
     deviceProfile: "panel-a", buttons: { 9: "inactive" }, subpages: { 9: "folder" },
     settings: { future_setting: "温度🌡️".repeat(100) },

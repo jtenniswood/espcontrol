@@ -31,7 +31,12 @@ export type NativePanelConfigFetch = (
   request?: NativePanelConfigRequest,
 ) => Promise<NativePanelConfigResponse>;
 
-export type NativePanelConfigSaveResult = "saved" | "unsupported" | "conflict" | "mirror-failed" | "authentication-required" | "too-large" | "failed";
+export type NativePanelConfigSaveResult = "saved" | "unsupported" | "conflict" | "mirror-failed" | "authentication-required" | "too-large" | "firmware-update-required" | "failed";
+export const NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE = "This backup needs newer panel firmware to restore all saved cards and settings. Update the panel before importing it. No backup settings were changed.";
+export class NativePanelConfigCompatibilityError extends Error {}
+export function nativeBackupHasInactiveRecords(document: PanelConfigDocument, slotCount: number): boolean {
+  return [...Object.keys(document.buttons), ...Object.keys(document.subpages)].some(slot => Number(slot) > slotCount);
+}
 export type NativePanelConfigCollection = "buttons" | "subpages" | "settings";
 
 interface Capabilities {
@@ -41,6 +46,7 @@ interface Capabilities {
     document_versions?: unknown;
     max_record_body_bytes?: unknown;
     max_v2_document_bytes?: unknown;
+    preserves_inactive_records?: unknown;
   };
 }
 
@@ -88,10 +94,12 @@ export class NativePanelConfigClient {
   private documentVersion_ = PANEL_CONFIG_DOCUMENT_VERSION;
   private v1Available_ = false;
   private maxV2DocumentBytes_ = MAX_V2_DOCUMENT_BYTES;
+  private preservesInactiveRecords_ = false;
 
   constructor(private readonly fetch_: NativePanelConfigFetch) {}
 
   supported(): boolean { return this.supported_; }
+  preservesInactiveRecords(): boolean { return this.supported_ && this.preservesInactiveRecords_; }
   maxConfigValueBytes(): number | null {
     return this.supported_ && this.maxRecordBodyBytes_ !== null
       ? this.maxRecordBodyBytes_ - 1 : null;
@@ -126,6 +134,7 @@ export class NativePanelConfigClient {
         this.maxRecordBodyBytes_ = supported && Number.isInteger(limit) && Number(limit) > 1
           ? Math.min(Number(limit), PANEL_CONFIG_MAX_RECORD_BODY_BYTES) : null;
         const configuration = (capabilities as Capabilities | null)?.configuration;
+        this.preservesInactiveRecords_ = supported === true && configuration?.preserves_inactive_records === true;
         // A readable/readonly/newer native contract must not be mistaken for
         // firmware that only stores legacy text entities.
         const versions = Array.isArray(configuration?.document_versions) ? configuration.document_versions : [];
@@ -257,7 +266,8 @@ export class NativePanelConfigClient {
         }
         if (next.status !== 409) return "failed";
         conflicts += 1;
-      } catch {
+      } catch (error) {
+        if (error instanceof NativePanelConfigCompatibilityError) return "firmware-update-required";
         return "failed";
       }
     }

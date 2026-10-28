@@ -64,6 +64,7 @@ import type { PreviewRenderFeature } from "./preview_render";
 import type { ButtonSettingsFeature } from "./button_settings";
 import { legacyRestoreFailureMessage, restoreLegacyLayoutDocument } from "../features/legacy_layout_restore";
 import { panelConfigDocumentContainsWifiSharing } from "../features/wifi_sharing_config";
+import { NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE, nativeBackupHasInactiveRecords } from "../features/native_panel_config";
 
 export interface AppBackupControllers {
     readonly identity?: PanelIdentityFeature;
@@ -461,6 +462,12 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 if (nativeAvailability === "failed") {
                     rejectBackup("Could not confirm that this device can safely restore the layout. Check the connection and try again.");
                 }
+                if ((nativeBackupHasInactiveRecords(nativeDocument, controllers.layout.numSlots) &&
+                     nativeController?.client?.preservesInactiveRecords() !== true) ||
+                    (nativeAvailability === "legacy-fallback" && Object.keys(nativeDocument.settings)
+                      .some(key => key !== "button_order" && key !== "button_on_color"))) {
+                    rejectBackup(NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE);
+                }
                 var layoutRestoreResult: any;
                 if (nativeAvailability === "legacy-fallback") {
                     layoutRestoreResult = await queueLegacyLayoutRestore();
@@ -470,6 +477,9 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     layoutRestoreResult = nativeRestore ? await nativeRestore : "failed";
                     if (layoutRestoreResult === "legacy-fallback") {
                         layoutRestoreResult = await queueLegacyLayoutRestore();
+                    }
+                    else if (layoutRestoreResult === "firmware-update-required") {
+                        rejectBackup(NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE);
                     }
                     else if (layoutRestoreResult === "mirror-failed") {
                         // The native document is durable, but the controller has
