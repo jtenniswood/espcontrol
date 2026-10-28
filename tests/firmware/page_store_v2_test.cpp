@@ -180,13 +180,16 @@ void replacement_and_failures() {
       const size_t retained = allocator.live;
       allocator.fail_at = allocator.attempts + failure;
       assert(!runtime.prepare(2, replacement.data(), replacement.size()));
+      assert(runtime.preparation_allocation_failed());
       assert(runtime.active().generation() == 1 && allocator.live == retained && allocator.allocations.size() == 1);
       assert(runtime.memory().preparation_scratch_bytes == 0 && runtime.memory().staged_reserved_bytes == 0);
       allocator.fail_at = 0; resources.fail = true;
       assert(!runtime.prepare(2, replacement.data(), replacement.size()));
       assert(runtime.last_stage_status() == PageStoreStatus::RESOURCE_UNAVAILABLE && allocator.live == retained);
+      assert(!runtime.preparation_allocation_failed());
       resources.fail = false;
       assert(runtime.prepare(2, replacement.data(), replacement.size()));
+      assert(!runtime.preparation_allocation_failed());
       assert(runtime.memory().preparation_scratch_bytes == 0 && allocator.allocations.size() == 2);
       assert(!runtime.activate_prepared(2, 1, replacement.data(), replacement.size()));
       auto wrong = replacement; wrong.back() ^= 1;

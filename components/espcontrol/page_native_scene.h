@@ -331,10 +331,16 @@ public:
     return ready() && !running_ && !changing_ && page_native_command_ready();
   }
   bool prepare(uint16_t version, const uint8_t *data, size_t size) override {
+    preparation_allocation_failed_ = false;
     if (!maintenance_ready())
       return false;
     Flag guard(changing_);
-    return store_.prepare(version, data, size);
+    const bool prepared = store_.prepare(version, data, size);
+    preparation_allocation_failed_ = !prepared && store_.preparation_allocation_failed();
+    return prepared;
+  }
+  bool preparation_allocation_failed() const override {
+    return preparation_allocation_failed_;
   }
   void discard_prepared() override { store_.discard_prepared(); }
   bool activate_prepared(uint32_t generation, uint16_t version,
@@ -1243,6 +1249,7 @@ private:
   } origin_;
   uint64_t chrome_binding_{1};
   uint8_t image_refresh_requested_{0};
+  bool preparation_allocation_failed_{false};
   bool configured_{false}, initialized_{false}, running_{false},
       changing_{false}, stopped_{false}, destroying_{false}, suspended_{false},
       covered_{false}, settings_{false}, chrome_dirty_{true},

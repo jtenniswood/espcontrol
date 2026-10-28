@@ -57,6 +57,9 @@ public:
   }
 
   PageArenaMemory memory() const { return memory_; }
+  size_t allocation_failure_count() const override {
+    return memory_.allocation_failures;
+  }
 
 private:
   PageArenaAllocator &backing_;

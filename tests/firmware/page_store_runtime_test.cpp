@@ -107,7 +107,7 @@ void staged_service_lifecycle() {
     const auto replacement = document(limits, "Replacement");
     allocator.fail = true;
     assert(service.save_current(replacement.data(), replacement.size()).status ==
-        ServiceStatus::RUNTIME_PREPARE_FAILED);
+        ServiceStatus::ALLOCATION_FAILED);
     allocator.fail = false;
     assert(runtime.active().generation() == 1 && legacy.mirrors == 1);
     assert(service.save_if_generation(0, 1, replacement.data(), replacement.size()).status ==
@@ -285,6 +285,7 @@ void bounded_replacements_and_validation() {
     PageStoreRuntime too_small(limits, allocator, 4);
     assert(!too_small.prepare(1, a.data(), a.size()));
     assert(too_small.last_stage_status() == PageStoreStatus::BUFFER_TOO_SMALL);
+    assert(!too_small.preparation_allocation_failed());
     assert(allocator.allocations.empty());
     assert(too_small.active().generation() == 0);
   }

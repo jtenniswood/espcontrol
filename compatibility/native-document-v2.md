@@ -175,6 +175,16 @@ refusal, no-op generation stability, compatibility edit preservation, failed
 publication fencing and allocation failure/retry. These host checks do not
 establish physical persistence, a released downgrade floor or live heap savings.
 
+Runtime scratch, staging, compaction and shared scene-resource allocation
+failures also report temporary memory pressure through the service. Boot and
+debounced compatibility edits keep their existing one-second retry delay and
+reload the latest durable generation. Each preparation resets its failure
+classification; invalid layouts, configured capacity limits and non-allocation
+resource rejection stop explicitly instead of retrying as memory pressure.
+Failed preparation neither publishes text nor commits a new document. Host
+coverage includes the production boot lifecycle and the real-LVGL scene with
+failure injection across its measured preparation allocations.
+
 ## Storage I/O windows
 
 The atomic store limits backend payload reads and writes, as well as checksum

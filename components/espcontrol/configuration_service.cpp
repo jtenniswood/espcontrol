@@ -58,6 +58,10 @@ class RuntimePreparation {
     if (runtime_ != nullptr) runtime_->discard_prepared();
   }
   bool ready() const { return ready_; }
+  ServiceStatus failure_status() const {
+    return runtime_ && runtime_->preparation_allocation_failed()
+        ? ServiceStatus::ALLOCATION_FAILED : ServiceStatus::RUNTIME_PREPARE_FAILED;
+  }
   bool activate(uint32_t generation) {
     return ready_ && (runtime_ == nullptr ||
       runtime_->activate_prepared(generation, version_, document_, size_));
@@ -165,7 +169,7 @@ ServiceLoadResult ConfigurationService::load_and_apply_runtime(
                                loaded.document_size);
   if (!prepared.ready()) {
     ServiceLoadResult failed = loaded;
-    failed.status = ServiceStatus::RUNTIME_PREPARE_FAILED;
+    failed.status = prepared.failure_status();
     return failed;
   }
   if (!prepared.activate(loaded.generation)) {
@@ -446,7 +450,7 @@ ServiceSaveResult ConfigurationService::save_unlocked(
   }
   RuntimePreparation prepared(runtime_, document_version, document, document_size);
   if (!prepared.ready()) {
-    return {ServiceStatus::RUNTIME_PREPARE_FAILED, StoreStatus::EMPTY,
+    return {prepared.failure_status(), StoreStatus::EMPTY,
             document_version, 0, document_size};
   }
 
@@ -505,7 +509,7 @@ ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
   }
   RuntimePreparation prepared(runtime_, document_version, document, document_size);
   if (!prepared.ready()) {
-    return {ServiceStatus::RUNTIME_PREPARE_FAILED, StoreStatus::EMPTY,
+    return {prepared.failure_status(), StoreStatus::EMPTY,
             document_version, 0, document_size};
   }
 

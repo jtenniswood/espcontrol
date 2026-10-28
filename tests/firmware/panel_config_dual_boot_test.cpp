@@ -78,8 +78,8 @@ struct Backend final:StorageBackend {
   bool sync()override{return !fail;}
 };
 struct Arena final:PageArenaAllocator {
-  bool fail=false;
-  void *allocate(size_t size)override{return fail?nullptr:std::malloc(size);}
+  bool fail=false;size_t calls=0,fail_at=0;
+  void *allocate(size_t size)override{return (++calls==fail_at||fail)?nullptr:std::malloc(size);}
   void release(void *value,size_t)override{std::free(value);}
 };
 struct Text final:PanelConfigTextValue {
@@ -168,6 +168,18 @@ void unavailable_and_publication() {
     const auto loaded=fixture.service.load_and_apply_runtime(restored.data(),restored.size());fail_at=0;
     assert(loaded.status==ServiceStatus::ALLOCATION_FAILED&&fixture.backend.writes==writes&&fixture.runtime.active().source_size()==0&&allocations.empty());
     assert(fixture.service.load_and_apply_runtime(restored.data(),restored.size()).ok());fixture.exact(source,1,2);
+  }
+  // The real v2 runtime's scratch, staging and compact arena reservations
+  // must report retryable memory pressure through the service, not bad data.
+  for(size_t failure=1;failure<=3;++failure) {
+    Fixture f(limits);const auto doc=native(limits,false);f.seed(doc);
+    const auto writes=f.backend.writes;Bytes output(32768);
+    f.arena.fail_at=f.arena.calls+failure;
+    assert(f.service.load_and_apply_runtime(output.data(),output.size()).status==ServiceStatus::ALLOCATION_FAILED);
+    assert(f.runtime.preparation_allocation_failed()&&f.runtime.active().source_size()==0&&f.backend.writes==writes&&allocations.empty());
+    f.arena.fail_at=0;
+    assert(f.service.load_and_apply_runtime(output.data(),output.size()).ok());
+    assert(!f.runtime.preparation_allocation_failed()&&f.runtime.active().generation()==1&&f.backend.writes==writes);f.exact(doc,1,2);
   }
   Fixture fixture(limits);const auto source=native(limits,false);fixture.seed(source);Bytes restored(32768);
   fixture.order.fail=true;

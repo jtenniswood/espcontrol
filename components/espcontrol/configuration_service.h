@@ -71,6 +71,9 @@ class ConfigurationRuntimeAdapter {
   // PageStore renderer takes over; prepared adapters must do all fallible
   // resource work here, leaving activation as a generation swap.
   virtual bool prepare(uint16_t, const uint8_t *, size_t) { return true; }
+  // Only observed temporary allocation failures are retryable. Structural or
+  // configured-capacity rejection must not be mistaken for memory pressure.
+  virtual bool preparation_allocation_failed() const { return false; }
   virtual void discard_prepared() {}
   virtual bool activate_prepared(uint32_t, uint16_t document_version,
                                  const uint8_t *document, size_t document_size) {

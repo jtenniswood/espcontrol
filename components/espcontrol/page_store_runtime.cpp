@@ -16,7 +16,9 @@ PageStoreRuntime::~PageStoreRuntime() {
 }
 
 bool PageStoreRuntime::prepare(uint16_t version, const uint8_t *document, size_t size) {
+  preparation_allocation_failed_ = false;
   discard_prepared();
+  const auto allocation_failures = allocator_.allocation_failure_count();
   last_stage_status_ = PageStoreStatus::INVALID_ARGUMENT;
   if ((version != configuration::PANEL_CONFIG_DOCUMENT_VERSION &&
        version != configuration::PANEL_CONFIG_DOCUMENT_VERSION_2) ||
@@ -45,6 +47,7 @@ bool PageStoreRuntime::prepare(uint16_t version, const uint8_t *document, size_t
     }
     scratch.data = allocator_.allocate(scratch_bytes);
     if (!scratch.data) {
+      preparation_allocation_failed_ = true;
       last_stage_status_ = PageStoreStatus::BUFFER_TOO_SMALL;
       ++memory_.preparation_failures;
       return false;
@@ -56,6 +59,7 @@ bool PageStoreRuntime::prepare(uint16_t version, const uint8_t *document, size_t
   }
   staged_arena_ = allocator_.allocate(arena_capacity_);
   if (staged_arena_ == nullptr) {
+    preparation_allocation_failed_ = true;
     last_stage_status_ = PageStoreStatus::BUFFER_TOO_SMALL;
     ++memory_.preparation_failures;
     return false;
@@ -79,6 +83,7 @@ bool PageStoreRuntime::prepare(uint16_t version, const uint8_t *document, size_t
     if (used < arena_capacity_) {
       void *compact_arena = allocator_.allocate(used);
       if (compact_arena == nullptr) {
+        preparation_allocation_failed_ = true;
         last_stage_status_ = PageStoreStatus::BUFFER_TOO_SMALL;
       } else {
         memory_.peak_reserved_bytes =
@@ -104,6 +109,8 @@ bool PageStoreRuntime::prepare(uint16_t version, const uint8_t *document, size_t
   scratch.release();
   if (last_stage_status_ == PageStoreStatus::OK) {
     if (resources_ == nullptr || resources_->prepare(staged_)) return true;
+    preparation_allocation_failed_ =
+        allocator_.allocation_failure_count() != allocation_failures;
     last_stage_status_ = PageStoreStatus::RESOURCE_UNAVAILABLE;
   }
   ++memory_.preparation_failures;

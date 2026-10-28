@@ -225,8 +225,8 @@ using namespace espcontrol;
 using namespace espcontrol::pages;
 using namespace espcontrol::configuration;
 struct Arena : PageArenaAllocator {
-  size_t live{0}, calls{0}; bool fail{false};
-  void* allocate(size_t n) override { if(fail) return nullptr; ++live; ++calls; return std::malloc(n); }
+  size_t live{0}, calls{0}, attempts{0}, fail_at{0}; bool fail{false};
+  void* allocate(size_t n) override { if(++attempts==fail_at||fail) return nullptr; ++live; ++calls; return std::malloc(n); }
   void release(void* p,size_t) override { assert(live); --live; std::free(p); }
   ~Arena() { assert(!live); }
 };
@@ -1054,12 +1054,26 @@ void qr_images_and_transactions() {
   assert(h.scene->memory().image_leases==0);
   h.platform.shown=true;h.scene->loop();h.scene->loop();
   const auto registrations=coordinator.entries.size();
+  const auto before=h.arena.attempts;
+  assert(h.scene->prepare(PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
+  const auto preparation_allocations=h.arena.attempts-before;
+  h.scene->discard_prepared();assert(preparation_allocations>2);
+  const auto retained=h.counted.memory().reserved_bytes;
+  for(size_t failure=1;failure<=preparation_allocations;++failure) {
+    h.arena.fail_at=h.arena.attempts+failure;
+    assert(!h.scene->prepare(PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
+    assert(h.scene->preparation_allocation_failed());
+    assert(h.scene->active().generation()==17&&h.counted.memory().reserved_bytes==retained&&coordinator.entries.size()==registrations);
+    h.arena.fail_at=0;
+  }
   h.arena.fail=true;
   assert(!h.scene->prepare(PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
+  assert(h.scene->preparation_allocation_failed());
   h.arena.fail=false;
   assert(h.scene->active().generation()==17 && h.scene->active_page()==0 && coordinator.entries.size()==registrations);
   h.apply(doc,18);
   assert(h.scene->active().generation()==18 && coordinator.entries.size()==registrations && objects(h.root)==count);
+  assert(!h.scene->preparation_allocation_failed());
   const auto origin=h.scene->chrome_origin();
   assert(h.scene->request_settings(origin));h.scene->loop();assert(h.platform.settings);
   PageNativeModalBank::instance->runtime().dismiss();h.scene->loop();assert(!h.platform.settings);
@@ -1067,6 +1081,7 @@ void qr_images_and_transactions() {
   const auto token=PageNativeModalBank::instance->runtime().token();
   { ModalCallbackDispatchScope callback; h.scene->stop(); assert(!h.scene->ready() && !PageNativeModalBank::instance->runtime().valid(token)); }
   assert(!h.scene->prepare(PANEL_CONFIG_DOCUMENT_VERSION,doc.bytes.data(),doc.size));
+  assert(!h.scene->preparation_allocation_failed());
 }
 
 void maximum_p4_climate_cache_replacements() {

@@ -13,6 +13,9 @@ class PageArenaAllocator {
   virtual ~PageArenaAllocator() = default;
   virtual void *allocate(size_t bytes) = 0;
   virtual void release(void *arena, size_t bytes) = 0;
+  // Shared scene allocators can also observe downstream resource preparation.
+  // Implementations without counters still classify direct arena failures.
+  virtual size_t allocation_failure_count() const { return 0; }
 };
 
 struct PageRuntimeMemory {
@@ -37,6 +40,9 @@ class PageStoreRuntime final : public configuration::ConfigurationRuntimeAdapter
   PageStoreRuntime &operator=(const PageStoreRuntime &) = delete;
 
   bool prepare(uint16_t version, const uint8_t *document, size_t size) override;
+  bool preparation_allocation_failed() const override {
+    return preparation_allocation_failed_;
+  }
   void discard_prepared() override;
   bool activate_prepared(uint32_t generation, uint16_t version,
                          const uint8_t *document, size_t size) override;
@@ -59,6 +65,7 @@ class PageStoreRuntime final : public configuration::ConfigurationRuntimeAdapter
   PageStore staged_;
   PageRuntimeMemory memory_;
   PageStoreStatus last_stage_status_{PageStoreStatus::OK};
+  bool preparation_allocation_failed_{false};
 };
 
 }  // namespace espcontrol::pages

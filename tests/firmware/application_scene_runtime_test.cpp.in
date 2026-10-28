@@ -251,7 +251,7 @@ class FakeLegacy final : public LegacyConfigurationAdapter {
 };
 
 struct Scene : ApplicationSceneRuntime {
-  bool initialized{true}, busy{false}, prepare_ok{true};
+  bool initialized{true}, busy{false}, prepare_ok{true}, allocation_failed{false};
   size_t loops{0}, stops{0}, prepares{0}, activates{0};
   uint32_t generation{0};
   std::vector<uint8_t> current;
@@ -262,6 +262,7 @@ struct Scene : ApplicationSceneRuntime {
     trace += 'P';
     return prepare_ok;
   }
+  bool preparation_allocation_failed() const override { return !prepare_ok && allocation_failed; }
   void discard_prepared() override {}
   bool activate_prepared(uint32_t g, uint16_t, const uint8_t* data, size_t size) override {
     ++activates;
@@ -476,6 +477,35 @@ void boot_output_is_scoped_and_retry_preserves_latest() {
   }
 }
 
+void runtime_allocation_retries_preserve_latest() {
+  for(bool compatibility : {false,true}) {
+    Harness h;h.configure();auto& native=*h.app.native_configuration_runtime_;
+    if(compatibility) {h.app.apply_boot_configuration();h.legacy.value={4,5,6};h.app.configuration_text_refresh_pending_=true;}
+    h.scene.prepare_ok=false;h.scene.allocation_failed=true;
+    if(compatibility)h.app.apply_configuration_text_refresh();else h.app.apply_boot_configuration();
+    assert(compatibility?h.app.configuration_text_refresh_pending_:native.boot_configuration_pending);
+    const auto prepares=h.scene.prepares,activates=h.scene.activates,publishes=h.legacy.publish_calls;
+    for(size_t i=0;i<20;++i)h.app.loop();
+    fake_time_ms=999;h.app.loop();
+    assert(h.scene.prepares==prepares&&h.scene.activates==activates&&h.legacy.publish_calls==publishes&&ConfigAllocations::live.empty());
+    h.scene.prepare_ok=true;h.scene.allocation_failed=false;
+    if(!compatibility) {
+      // A browser save can supersede the boot document while its retry waits.
+      const std::array<uint8_t,3> newer{{9,8,7}};
+      const auto saved=h.service.save_current(newer.data(),newer.size());assert(saved.ok());
+      fake_time_ms=1000;h.app.loop();
+      assert(!native.boot_configuration_pending&&h.scene.generation==saved.generation&&h.scene.current==std::vector<uint8_t>(newer.begin(),newer.end()));
+    } else {
+      fake_time_ms=1000;h.app.loop();assert(!h.app.configuration_text_refresh_pending_&&h.scene.current==h.legacy.value);
+    }
+    assert(ConfigAllocations::live.empty());
+    // A later deterministic rejection must stop, despite the earlier OOM.
+    h.scene.prepare_ok=false;h.scene.allocation_failed=false;
+    native.boot_configuration_pending=true;h.app.apply_boot_configuration();
+    assert(!native.boot_configuration_pending);
+  }
+}
+
 void compatibility_output_retries_all_temporary_stages() {
   // Caller, durable-load scratch, merge scratch, then commit encoding.
   for (size_t failed_buffer : {size_t(1), size_t(2), size_t(3), size_t(4)}) {
@@ -581,6 +611,7 @@ void shutdown() {
 }
 int main() {
   buffer_retry_clock_wrap();
+  runtime_allocation_retries_preserve_latest();
   boot_output_is_scoped_and_retry_preserves_latest();
   compatibility_output_retries_all_temporary_stages();
   initialization_retries_without_reopening_resources();
