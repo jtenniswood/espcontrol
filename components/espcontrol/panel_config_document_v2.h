@@ -53,6 +53,9 @@ struct PanelConfigV2Record {
 // Neither flag is a navigation permission or a runtime-layout description.
 constexpr uint8_t PANEL_CONFIG_V2_COMPACT_IMPORT = 1;
 constexpr uint8_t PANEL_CONFIG_V2_RAW_SOURCE = 1;
+// A synthesized v1 owner card or empty folder target had no stored record.
+// Conversion validates this provenance before omitting its v1 projection.
+constexpr uint8_t PANEL_CONFIG_V2_ABSENT_IMPORT = 2;
 
 namespace panel_config_v2_detail {
 inline uint16_t u16(const uint8_t *p) {
@@ -211,15 +214,20 @@ class PanelConfigV2Reader {
       if (length != 9 || out->id == PANEL_CONFIG_V2_NO_ID) return false;
       out->first = u16(p + 2); out->second = u16(p + 4); out->third = u16(p + 6);
       out->flags = p[8];
-      return !(out->flags & ~PANEL_CONFIG_V2_COMPACT_IMPORT) && out->third != PANEL_CONFIG_V2_NO_ID;
+      return out->flags <= PANEL_CONFIG_V2_ABSENT_IMPORT &&
+          out->third != PANEL_CONFIG_V2_NO_ID &&
+          (out->flags != PANEL_CONFIG_V2_ABSENT_IMPORT ||
+           (out->id && !out->first && !out->third));
     }
     if (kind != Kind::CARD || length < 9 || !identity(out->id)) return false;
     out->first = u16(p + 2); out->second = u16(p + 4); out->field_mask = u16(p + 6);
     out->flags = p[8];
     if (out->first == PANEL_CONFIG_V2_NO_ID || !out->second ||
-        (out->field_mask & ~FIELD_MASK) || (out->flags & ~PANEL_CONFIG_V2_RAW_SOURCE) ||
+        (out->field_mask & ~FIELD_MASK) || out->flags > PANEL_CONFIG_V2_ABSENT_IMPORT ||
         length != 9 + bits(out->field_mask) * 2 + ((out->flags & PANEL_CONFIG_V2_RAW_SOURCE) ? 2 : 0))
       return false;
+    if (out->flags == PANEL_CONFIG_V2_ABSENT_IMPORT &&
+        (out->first || out->field_mask)) return false;
     size_t cursor = 9;
     for (size_t i = 0; i < out->fields.size(); ++i) {
       if (!(out->field_mask & (uint16_t{1} << i))) continue;

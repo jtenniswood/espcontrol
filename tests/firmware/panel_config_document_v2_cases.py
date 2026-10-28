@@ -48,12 +48,14 @@ for mode in ['writer-dangling','writer-duplicate','writer-field-mask','writer-sm
  reject(mode,canonical,mode)
 # Every record's reserved shape bits/IDs are exercised with a correct envelope.
 for kind,ident,offset,value,name in [
- (4,50,8,2,'unknown page flags'),(5,90,8,2,'unknown card flags'),
+ (4,50,8,4,'unknown page flags'),(5,90,8,4,'unknown card flags'),
+ (4,50,8,3,'conflicting page provenance'),(5,90,8,3,'conflicting card provenance'),
+ (4,50,8,2,'absent page cannot have an order'),(5,90,8,2,'absent card cannot have fields'),
  (5,90,6,0x8000,'unknown card field'),(3,20,2,0,'empty entity reference'),
  (4,50,6,65535,'reserved order reference'),(5,90,11,20,'wrong field reference kind')]:
  rows=copy.deepcopy(records);row=next(r for r in rows if r['kind']==kind and r.get('id',0)==ident)
  body=bytearray.fromhex(row['body_hex'])
- if name.endswith('flags'):body[offset]=value
+ if kind in (4,5) and offset==8:body[offset]=value
  else:struct.pack_into('<H',body,offset,value)
  row['body_hex']=body.hex();reject(name,wire(rows))
 for missing in [1,4]:
@@ -65,6 +67,15 @@ accept('large dictionary uses a supplied index',wire(bulk))
 change(bulk,5,90,21,65534);reject('late broken reference in a large dictionary',wire(bulk))
 sparse=copy.deepcopy(records);change(sparse,5,11,4,65535);accept('slot values are positions, not reserved identities',wire(sparse))
 rootflags=copy.deepcopy(records);row=next(r for r in rootflags if r['kind']==4 and r['id']==0);body=bytearray.fromhex(row['body_hex']);body[8]=1;row['body_hex']=body.hex();reject('root cannot claim child import spelling',wire(rootflags))
+presence=[{'kind':1,'body_hex':b'a'.hex()},
+ {'kind':2,'id':1,'body_hex':(struct.pack('<H',1)+b'subpage').hex()},
+ {'kind':4,'id':0,'body_hex':struct.pack('<HHHHB',0,65535,65535,0,0).hex()},
+ {'kind':5,'id':10,'body_hex':struct.pack('<HHHHBH',10,0,1,64,0,1).hex()},
+ {'kind':4,'id':50,'body_hex':struct.pack('<HHHHB',50,0,10,0,2).hex()},
+ {'kind':6,'id':10,'body_hex':struct.pack('<HH',10,50).hex()},
+ {'kind':5,'id':11,'body_hex':struct.pack('<HHHHB',11,0,2,0,2).hex()},
+ {'kind':4,'id':51,'body_hex':struct.pack('<HHHHB',51,0,11,0,0).hex()}]
+accept('missing stored owner and implicit empty target have distinct provenance',wire(presence))
 
 if __name__ == '__main__':
  print(json.dumps([{'name':n,'hex':d.hex(),'valid':v} for n,d,v,m in cases if not m]))

@@ -66,7 +66,7 @@ describe("Staged native-v2 browser codec", () => {
       { kind: 2, id: 1, text: "a", first: 1 },
       { kind: 5, id: 90, first: 50, second: 2, fieldMask: 512 },
       { kind: 5, id: 90, first: 50, second: 2, rawSource: 1 },
-      { kind: 5, id: 90, first: 50, second: 2, flags: 2 },
+      { kind: 5, id: 90, first: 50, second: 2, flags: 4 },
       { kind: 5, id: 90, first: 50, second: 2, fields: [1] },
       { kind: 5, id: 90, first: 50, second: 2, fields: Array(9).fill(1) },
       { kind: 5, id: 90, first: 50, second: 2, firstTypo: 1 },

@@ -76,12 +76,14 @@ function decodeRecord(kind: number, body: Uint8Array): NativeV2DecodedRecord {
   } else if (kind === K.Page) {
     requireValid(n === 9 && r.id !== NO_ID);
     r.first = u16(view, 2); r.second = u16(view, 4); r.third = u16(view, 6); r.flags = body[8]!;
-    requireValid((r.flags & ~1) === 0 && r.third !== NO_ID);
+    requireValid(r.flags <= 2 && r.third !== NO_ID);
+    requireValid(r.flags !== 2 || (r.id && r.first === 0 && r.third === 0));
   } else {
     requireValid(kind === K.Card && n >= 9 && identity(r.id));
     r.first = u16(view, 2); r.second = u16(view, 4); r.fieldMask = u16(view, 6); r.flags = body[8]!;
-    requireValid(r.first !== NO_ID && r.second > 0 && (r.fieldMask & ~511) === 0 && (r.flags & ~1) === 0);
-    requireValid(n === 9 + 2 * popcount(r.fieldMask) + (r.flags ? 2 : 0));
+    requireValid(r.first !== NO_ID && r.second > 0 && (r.fieldMask & ~511) === 0 && r.flags <= 2);
+    requireValid(n === 9 + 2 * popcount(r.fieldMask) + (r.flags & 1 ? 2 : 0));
+    requireValid(r.flags !== 2 || (r.first === 0 && r.fieldMask === 0));
     let offset = 9;
     const fields = [...r.fields];
     for (let i = 0; i < 9; ++i) {
@@ -90,7 +92,7 @@ function decodeRecord(kind: number, body: Uint8Array): NativeV2DecodedRecord {
       requireValid(identity(fields[i]!));
     }
     r.fields = fields;
-    if (r.flags) { r.rawSource = u16(view, offset); requireValid(r.rawSource !== NO_ID); }
+    if (r.flags & 1) { r.rawSource = u16(view, offset); requireValid(r.rawSource !== NO_ID); }
   }
   return r;
 }
@@ -196,7 +198,7 @@ function encodeRecord(input: NativeV2Record): Uint8Array {
   else if (kind === K.String) size = 2 + bytes.length;
   else if (kind === K.Entity || kind === K.Navigation || kind === K.Setting) size = 4;
   else if (kind === K.Page) size = 9;
-  else if (kind === K.Card) size = 9 + 2 * popcount(mask) + (flags ? 2 : 0);
+  else if (kind === K.Card) size = 9 + 2 * popcount(mask) + (flags & 1 ? 2 : 0);
   else fail();
   requireValid(size <= MAX_BODY);
   const body = new Uint8Array(size), view = new DataView(body.buffer);
@@ -215,7 +217,7 @@ function encodeRecord(input: NativeV2Record): Uint8Array {
             if (!(mask & (1 << i))) continue;
             put(offset, fields[i]!); offset += 2;
           }
-          if (flags) put(offset, raw);
+          if (flags & 1) put(offset, raw);
         }
       }
     }

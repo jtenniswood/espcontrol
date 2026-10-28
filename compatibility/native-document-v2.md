@@ -1,10 +1,11 @@
 # Native document v2 codec
 
 Implementation stage: matching structural readers and writers are available in
-C++ and TypeScript. Firmware capabilities, HTTP handlers, the editor, backups and durable
-storage still use v1. This does not enable nested pages or establish a supported
-downgrade floor. Lossless v1 conversions and service/runtime integration must
-pass before advertising v2.
+C++ and TypeScript. A staged TypeScript bridge preserves v1 saved values through
+a v2 round trip. The matching firmware conversion, profile/legacy admission and
+service/runtime integration remain unfinished. Firmware capabilities, HTTP
+handlers, the editor, backups and durable storage still use v1. This does not
+enable nested pages or establish a supported downgrade floor.
 
 ## Wire layout
 
@@ -36,11 +37,22 @@ A present field must have a nonzero reference. Slots are nonzero uint16 values,
 so inactive definitions are not clipped to the current visible grid.
 
 Page flag 1 records compact legacy-import spelling on child pages; the root's
-flags must be zero. Card flag 1 adds a
-raw-source string reference for noncanonical imports. These are preservation
-hints for the conversion layer, not alternate executable definitions. That
-layer must verify a raw import agrees with its semantic fields before
-accepting or projecting it. Other flag and mask bits are rejected.
+flags must be zero. Card flag 1 adds a raw-source string reference, preserving
+exact imported spelling, extra fields and explicitly empty values. Page/card
+flag 2 marks an absent v1 record: an implicit empty folder target or a synthesized
+empty root owner for retained inactive subpage data. Flags 1 and 2 cannot be
+combined. Absent owner cards have no fields; absent pages have no order and are
+children of the root. Conversion additionally verifies ownership, navigation
+and empty contents before omitting these synthesized records from v1.
+
+These are preservation hints, not alternate executable definitions. Conversion
+must verify raw import fields agree with the referenced saved fields before
+projection. Saved fields precede existing card-family normalization; they must
+not discard unknown options or silently migrate legacy types during conversion.
+The child parser's empty-icon defaults are `Auto`. Entity/sensor references
+retain existing saved tokens, including auxiliary modes; runtime dependency
+construction still interprets those tokens using the card contract. Other flag
+and mask bits are rejected.
 
 Strings retain the deployed 4,095-byte value boundary. Including their two-byte
 identity, the maximum v2 record body is 4,097 bytes. Setting keys retain the
@@ -87,3 +99,20 @@ The browser reader runs the same independent hostile-wire corpus as the C++
 reader. Browser decoding preserves leading Unicode BOMs as data, including in
 the existing v1 format, and both browser writers reject unpaired surrogates
 instead of silently replacing them during UTF-8 encoding.
+
+## Staged compatibility conversion
+
+`panel_config_conversion.ts` imports v1 into explicit graph records and projects
+v2 back through the deployed v1 encoder and its byte/count limits. The bridge
+retains order/spans/Back labels and colours as exact order text, all panel
+settings, inactive definitions, missing versus empty records, malformed escape
+spellings and unknown extra imported fields. It uses the generated compact type
+tables with own-key lookups, so prototype-like unknown names remain data.
+
+Projection rejects stale raw hints, inconsistent root-order/settings, sparse
+child positions, invalid absence provenance and nested pages. New fields use a
+representable plain or compact spelling; an imported raw child cannot change
+its page's spelling if that would lose its original source. Edited cards must
+clear their old raw hint. The bridge rejects an unrepresentable result rather
+than truncate it. Profile card/channel limits and preference byte/chunk limits
+remain separate admission work before this bridge can be used by live saves.
