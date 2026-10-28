@@ -125,6 +125,8 @@ TASKS = (
              "components/espcontrol/espcontrol_app.*",
              "components/espcontrol/configuration_store.*",
              "components/espcontrol/panel_config_document.h",
+             "components/espcontrol/panel_config_document_v2.h",
+             "compatibility/fixtures/panel_config_v2.json",
              "components/espcontrol/page_store.*",
              "components/espcontrol/page_store_runtime.*",
              "components/espcontrol/page_entity*.h",

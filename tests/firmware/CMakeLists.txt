@@ -5,6 +5,15 @@ enable_testing()
 include(CheckCXXSourceCompiles)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+add_executable(panel_config_document_v2_reader panel_config_document_v2_reader.cpp)
+target_compile_features(panel_config_document_v2_reader PRIVATE cxx_std_17)
+target_compile_options(panel_config_document_v2_reader PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_document_v2_reader PRIVATE ../../components/espcontrol)
+
+add_test(NAME panel_config_document_v2_test
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/panel_config_document_v2_test.py
+          $<TARGET_FILE:panel_config_document_v2_reader>)
+
 add_executable(page_modal_admission_test page_modal_admission_test.cpp)
 target_compile_features(page_modal_admission_test PRIVATE cxx_std_17)
 target_compile_options(page_modal_admission_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
