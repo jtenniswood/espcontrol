@@ -97,13 +97,14 @@ export function registerWeatherCardTypes(
         renderSettings: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
             helpers.renderCardModeSelector(panel, b, helpers, WEATHER_CARD_METADATA);
             if (b.precision === "wind") {
-                const sourceFields = document.createElement("div");
-                helpers.markCardPrimaryField(sourceFields, "entity");
-                panel.appendChild(sourceFields);
-                const source = helpers.selectField("Wind Source", helpers.idPrefix + "wind-source",
+                const sourceGroup = helpers.disclosureSection("Source", helpers.idPrefix + "wind-source-settings", true);
+                helpers.markCardPrimaryField(sourceGroup.panel, "entity");
+                panel.appendChild(sourceGroup.panel);
+                const sourceFields = sourceGroup.section;
+                const source = helpers.segmentControl(
                     [["weather", "Weather Entity"], ["sensors", "Separate Sensors"]],
-                    weatherWindUsesSensors(b) ? "sensors" : "weather", function (this: HTMLSelectElement) {
-                        b.options = setConfigOptionValue(b.options, "wind_source", this.value === "sensors" ? "sensors" : "");
+                    weatherWindUsesSensors(b) ? "sensors" : "weather", function (value: string) {
+                        b.options = setConfigOptionValue(b.options, "wind_source", value === "sensors" ? "sensors" : "");
                         b.entity = "";
                         b.sensor = "";
                         helpers.saveField("entity", b.entity);
@@ -111,7 +112,8 @@ export function registerWeatherCardTypes(
                         helpers.saveField("options", b.options);
                         renderButtonSettings();
                     });
-                sourceFields.appendChild(source.field);
+                source.segment.id = helpers.idPrefix + "wind-source";
+                sourceFields.appendChild(helpers.fieldWithControl("Wind Source", source.segment.id, source.segment));
                 if (weatherWindUsesSensors(b)) {
                     helpers.renderCardEntityField(sourceFields, b, helpers, {
                         entity: {
