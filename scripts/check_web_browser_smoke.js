@@ -7330,13 +7330,14 @@ async function assertCardCurveSettings(browser, testCase) {
     const base = Number(substitutions.radius.replace("px", ""));
     const small = Number((substitutions.card_curve_small_radius || '').replace('px', '')) || Math.round(base * .6);
     const medium = Number((substitutions.card_curve_medium_radius || '').replace('px', '')) || Math.round(base * .8);
-    for (const [preset, expected] of [["Small", small], ["Medium", medium], ["Large", base]]) {
+    for (const [preset, firmwareRadius] of [["Small", small], ["Medium", medium], ["Large", base]]) {
+      const expected = profile.web.cardCurveRadii?.[preset] ?? firmwareRadius;
       const posted = page.waitForResponse(response => response.url().includes(`/select/screen__card_curve/set?option=${preset}`));
       await page.locator("#sp-set-card-curve").getByRole("button", { name: preset, exact: true }).click();
       await posted;
       assert.strictEqual(savedPreset, preset, "curve changes must reach the saved firmware select");
       const radius = await page.evaluate(logicalWidth => parseFloat(document.documentElement.style.getPropertyValue("--btn-r")) * logicalWidth / 100, width);
-      assert(Math.abs(radius - expected) < .001, `${testCase.slug}: ${preset} must match the firmware radius ${expected}`);
+      assert(Math.abs(radius - expected) < .001, `${testCase.slug}: ${preset} must match the configured preview radius ${expected}`);
       await page.getByRole("tab", { name: "Layout", exact: true }).click();
       const checkCards = async surface => {
         await page.waitForFunction(() => [...document.querySelectorAll(".sp-main .sp-btn")].every(card => getComputedStyle(card).clipPath.startsWith("path(")));
