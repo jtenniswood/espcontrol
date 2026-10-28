@@ -195,7 +195,7 @@ inline PanelConfigProjectionStatus panel_config_v2_to_v1_workspace_bytes(
 
 // Caller owns disjoint immutable input, private output and aligned scratch.
 // The result is published only on success; failed conversion clears its marker.
-// Invalid/aliased arguments leave buffers untouched rather than corrupt input.
+// Aliased buffers are rejected before any writes, rather than corrupting input.
 // Profile/channel and legacy preference byte/chunk admission are separate gates.
 inline PanelConfigProjectionStatus panel_config_v2_to_v1(
     const uint8_t *document, size_t size, uint8_t *output, size_t capacity,
