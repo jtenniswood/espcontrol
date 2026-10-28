@@ -61,6 +61,11 @@
           "gap": 0.976562,
           "fr": "1fr"
         },
+        "cardCurveRadii": {
+          "Small": 8,
+          "Medium": 20,
+          "Large": 24
+        },
         "btn": {
           "radius": 3.125,
           "padding": 1.37,
@@ -262,6 +267,11 @@
           "bottom": 0.49,
           "gap": 0.976562,
           "fr": "1fr"
+        },
+        "cardCurveRadii": {
+          "Small": 8,
+          "Medium": 20,
+          "Large": 24
         },
         "btn": {
           "radius": 3.125,
