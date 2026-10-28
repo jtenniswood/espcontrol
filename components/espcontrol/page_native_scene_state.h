@@ -31,12 +31,13 @@ struct PageNativeStateBudget {
 
 class PageNativeSceneState final : public PageRuntimeResources {
 public:
+  static constexpr uint32_t SUBSCRIPTION_SCOPE = 1u << 4;
   PageNativeSceneState(PageArenaAllocator &allocator,
                        PageNativeStateBudget budget,
                        PageTimezoneResolver timezone_resolver,
                        PageStatusCaptions captions,
                        PageAlarmStateRuntime::Translate translate)
-      : subscriptions(ha_read_coordinator(), 1u << 4),
+      : subscriptions(ha_read_coordinator(), SUBSCRIPTION_SCOPE),
         graph(dependencies, allocator, subscriptions, budget.ha, &observers),
         media(allocator, media_transport),
         forecasts(allocator, forecast_requests),

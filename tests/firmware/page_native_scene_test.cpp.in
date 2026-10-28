@@ -250,6 +250,12 @@ struct Styles : PageNativeSceneStyles {
   bool resolve(const PageStore&,PageLocalModalOrigin p,PageModalToken,PageNetworkStatusEnvironment&) const override { page=p.page; return true; }
 };
 struct Platform : PageNativeScenePlatform {
+  std::array<std::string_view,64> metadata_entities{};
+  size_t metadata_calls{0};
+  void refresh_camera_metadata(std::string_view entity) override {
+    assert(!modal_callback_dispatching()&&!page_lvgl_dispatching()&&!busy);
+    assert(metadata_calls<metadata_entities.size());metadata_entities[metadata_calls++]=entity;
+  }
   const ThemePalette *active_palette{nullptr};
   const ThemePalette *palette() const override { return active_palette; }
   lv_obj_t *grid{nullptr};
@@ -273,10 +279,10 @@ struct Platform : PageNativeScenePlatform {
 struct Document {
   std::array<uint8_t,65536> bytes{}; size_t size{0};
   explicit Document(const DeviceUiLimits& profile, const char* last="number.room;Level;Auto;Auto;;;slider;;",
-                    const char* root_order="1,2,3,4,5,6,7,8,9") {
+                    const char* root_order="1,2,3,4,5,6,7,8,9", const char* first=nullptr) {
     PanelConfigWriter writer(bytes.data(),bytes.size()); assert(writer.begin()==PanelConfigStatus::OK);
     assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(profile.device_profile),std::strlen(profile.device_profile))==PanelConfigStatus::OK);
-    const std::string rows[]={
+    std::string rows[]={
       "switch.one;Toggle;Auto;Auto;;;;;",
       ";Rooms;Auto;Auto;;;subpage;;",
       "climate.root;Climate;Auto;Auto;;;climate;;",
@@ -286,10 +292,15 @@ struct Document {
       ";QR 2;Auto;Auto;;;wifi_qr_card;;ssid64=R3Vlc3Q,security=open",
       ";QR 3;Auto;Auto;;;wifi_qr_card;;ssid64=R3Vlc3Q,security=open",
       last};
-    for(size_t i=0;i<9;++i) assert(writer.append_button(i+1,reinterpret_cast<const uint8_t*>(rows[i].data()),rows[i].size())==PanelConfigStatus::OK);
+    if(first)rows[0]=first;
+    const size_t count=std::min(size_t{9},size_t{profile.slot_count});
+    for(size_t i=0;i<count;++i) {
+      const std::string row=i+1==count?last:rows[i];
+      assert(writer.append_button(i+1,reinterpret_cast<const uint8_t*>(row.data()),row.size())==PanelConfigStatus::OK);
+    }
     const std::string child="~B,1,2,3|,switch.child,Child toggle,Auto,Auto,,,,|HC,climate.child,Child climate,Auto,Auto,,,,|S,local_value,Local,Auto,Auto,local,,1,";
     assert(writer.append_subpage(2,reinterpret_cast<const uint8_t*>(child.data()),child.size())==PanelConfigStatus::OK);
-    const std::string order=root_order;
+    const std::string order=profile.slot_count<9?"1,2,3,4,5,6":root_order;
     assert(writer.append_setting(reinterpret_cast<const uint8_t*>("button_order"),12,reinterpret_cast<const uint8_t*>(order.data()),order.size())==PanelConfigStatus::OK);
     assert(writer.finish(&size)==PanelConfigStatus::OK);
   }
@@ -304,7 +315,7 @@ template<size_t ProfileIndex>
 struct ProfileHarness {
   static constexpr const auto& limits=DEVICE_UI_PROFILES[ProfileIndex];
   static constexpr size_t slots=limits.slot_count, image_slots=limits.image_slot_count;
-  static_assert(ProfileIndex==8||ProfileIndex==6,"Qualified S3 and P4 V3 test budgets");
+  static_assert(ProfileIndex==0||ProfileIndex==2||ProfileIndex==6||ProfileIndex==8,"All grid sizes with actual profile budgets");
   static constexpr bool constrained=ProfileIndex==8;
   Arena arena; Styles styles; Platform platform; PageNetworkStatusSource network;
   PageCountedArena counted{arena};
@@ -319,13 +330,13 @@ struct ProfileHarness {
   using Scene=PageNativeScene<slots,image_slots>;
   alignas(Scene) std::array<uint8_t,sizeof(Scene)> memory{};
   Scene* scene{nullptr};
-  explicit ProfileHarness(bool elastic_state=false, bool production_budget=false) {
+  explicit ProfileHarness(bool elastic_state=false, bool production_budget=false, PageCardTranslate translate=nullptr) {
     static_assert(image_slots<=6);
     columns.fill(LV_GRID_FR(1));columns.back()=LV_GRID_TEMPLATE_LAST;
     rows.fill(LV_GRID_FR(1));rows.back()=LV_GRID_TEMPLATE_LAST;
     root=lv_obj_create(lv_screen_active());
     platform.grid=root;
-    lv_obj_set_size(root,constrained?480:1280,constrained?480:800);
+    lv_obj_set_size(root,lv_display_get_horizontal_resolution(nullptr),lv_display_get_vertical_resolution(nullptr));
     lv_obj_set_grid_dsc_array(root,columns.data(),rows.data());
     std::array<BtnSlot,slots> source{};
     for(size_t i=0;i<widgets.size();++i) {
@@ -338,6 +349,7 @@ struct ProfileHarness {
     theme.sensor_font=theme.large_sensor_font=theme.media_title_font=theme.icon_font=theme.label_font=
       theme.media_control_title_font=theme.media_control_artist_font=theme.cover_title_font=theme.cover_artist_font=
       theme.option_select_font=&lv_font_montserrat_14;
+    theme.translate=translate;
     const auto cards=limits.max_cards();
     const PageNativeSceneBudget budget = production_budget
       ? PageNativeSceneBudget{{cards,cards*512,
@@ -429,6 +441,107 @@ void live_temperature_policy() {
   assert(h.arena.calls == allocations && objects(h.root) == count);
   h.arena.fail = false;
 }
+
+
+template<size_t ProfileIndex>
+void queued_image_refresh() {
+  Document doc(DEVICE_UI_PROFILES[ProfileIndex],"camera.root;Front;Auto;Auto;;;image;;");
+  ProfileHarness<ProfileIndex> h;h.apply(doc);
+  const auto allocations=h.arena.calls, registrations=coordinator.entries.size();
+  h.arena.fail=true;
+  {
+    ModalCallbackDispatchScope callback;
+    for(int i=0;i<4;++i)h.scene->refresh_images(false);
+    h.scene->loop();assert(h.platform.metadata_calls==0);
+  }
+  h.scene->loop();assert(h.platform.metadata_calls==2);
+  assert(h.platform.metadata_entities[0]=="image.front"&&h.platform.metadata_entities[1]=="camera.root");
+  h.scene->loop();assert(h.platform.metadata_calls==2);
+  h.scene->refresh_images(true);h.scene->loop();assert(h.platform.metadata_calls==2);
+  // A hidden display consumes this request without replaying it on wake.
+  h.platform.shown=false;h.scene->refresh_images(false);h.scene->loop();
+  h.platform.shown=true;h.scene->loop();assert(h.platform.metadata_calls==2);
+  assert(h.arena.calls==allocations&&coordinator.entries.size()==registrations);
+  // The child has no images. Refreshing it must not touch hidden Home cards.
+  assert(h.scene->navigate("slot:2"));h.scene->loop();
+  h.scene->refresh_images(false);h.scene->loop();assert(h.platform.metadata_calls==2);
+  assert(h.scene->home());h.scene->loop();
+  h.arena.fail=false;
+  h.scene->refresh_images(false);h.apply(doc,18);assert(h.platform.metadata_calls==2);
+  h.scene->stop();h.scene->refresh_images(false);h.scene->loop();assert(h.platform.metadata_calls==2);
+}
+
+
+void queued_image_pool_admission() {
+  Document doc(DEVICE_UI_PROFILES[8],"camera.unleased;Not admitted;Auto;Auto;;;image;;",
+               "1,2,3,4,5,6,7,8,9","camera.first;First;Auto;Auto;;;image;;");
+  Harness h;h.apply(doc);assert(h.scene->memory().image_leases==2);
+  h.scene->refresh_images(false);h.scene->loop();
+  // Three visible image cards compete for two admitted downloaders. Metadata
+  // work follows those two leases, never an unleased card or a hidden page.
+  assert(h.platform.metadata_calls==2);
+  assert(h.platform.metadata_entities[0]=="camera.first"&&h.platform.metadata_entities[1]=="image.front");
+}
+
+static bool prototype_calendar_translation=false;
+const char* prototype_translate(const char* key) {
+  return prototype_calendar_translation&&std::string_view(key)=="August"?"Localized August":key;
+}
+template<size_t ProfileIndex>
+void queued_producer_content_refresh() {
+  const auto previous_calendar=calendar_base;
+  {
+    calendar_base.date_valid=true;calendar_base.day=19;calendar_base.month=8;
+    calendar_base.time_valid=false;calendar_base.hour=calendar_base.minute=0;calendar_base.use_12h=false;
+    prototype_calendar_translation=false;
+    Document doc(DEVICE_UI_PROFILES[ProfileIndex],"sensor.date;;Auto;Auto;;;calendar;;");
+    ProfileHarness<ProfileIndex> h(false,false,prototype_translate);h.apply(doc);
+    constexpr size_t index=std::min(size_t{9},size_t{DEVICE_UI_PROFILES[ProfileIndex].slot_count})-1;
+    assert(std::string_view(lv_label_get_text(h.widgets[index].label))=="August");
+    const auto token=h.scene->binding(index);const auto generation=h.scene->active().generation();
+    const auto allocations=h.arena.calls, registrations=coordinator.entries.size(), count=objects(h.root);
+    h.arena.fail=true;
+    {
+      ModalCallbackDispatchScope callback;prototype_calendar_translation=true;
+      for(int i=0;i<4;++i)h.scene->refresh_content();
+      h.scene->loop();
+      assert(std::string_view(lv_label_get_text(h.widgets[index].label))=="August");
+    }
+    h.scene->loop();
+    assert(std::string_view(lv_label_get_text(h.widgets[index].label))=="Localized August");
+    assert(h.scene->valid(token)&&h.scene->active().generation()==generation);
+    assert(h.arena.calls==allocations&&coordinator.entries.size()==registrations&&objects(h.root)==count);
+    assert(calendar_base.day==19&&calendar_base.month==8);h.arena.fail=false;
+  }
+  prototype_calendar_translation=false;calendar_base=previous_calendar;
+}
+template<size_t ProfileIndex>
+void queued_producer_forecast_refresh() {
+  const auto previous_tick=tick;
+  {
+    Document doc(DEVICE_UI_PROFILES[ProfileIndex],"weather.house;Forecast;Auto;Auto;;;weather_forecast;daily;");
+    ProfileHarness<ProfileIndex> h;h.apply(doc);
+    const auto initial=native_forecast_start_calls;
+    tick+=PageForecastRuntime::READY_DELAY_MS+1;h.scene->loop();
+    assert(native_forecast_start_calls==initial+1);
+    const auto allocations=h.arena.calls, registrations=coordinator.entries.size(), count=objects(h.root);
+    const auto generation=h.scene->active().generation();h.arena.fail=true;
+    {
+      ModalCallbackDispatchScope callback;
+      for(int i=0;i<4;++i)h.scene->refresh_weather_forecasts();
+      assert(native_forecast_start_calls==initial+1);h.scene->loop();
+      assert(native_forecast_start_calls==initial+1);
+    }
+    h.scene->loop();assert(native_forecast_start_calls==initial+2);
+    h.scene->loop();assert(native_forecast_start_calls==initial+2); // Requests coalesce, retry deadline stays intact.
+    assert(h.scene->active().generation()==generation&&h.arena.calls==allocations);
+    assert(coordinator.entries.size()==registrations&&objects(h.root)==count);
+    h.scene->stop();h.scene->refresh_weather_forecasts();h.scene->loop();
+    assert(native_forecast_start_calls==initial+2);h.arena.fail=false;
+  }
+  tick=previous_tick;
+}
+
 void elastic_state_scene_transactions() {
   Document doc(DEVICE_UI_PROFILES[8]); Harness h(true); h.apply(doc);
   assert(h.scene->memory().state.active_state_capacity_bytes == 1024);
@@ -498,7 +611,7 @@ Document maximum_profile_document(char variant,const DeviceUiLimits& limits, boo
 }
 template<size_t ProfileIndex>
 void maximum_profile_disjoint_replacements() {
-  // Actual device budgets: 81 S3 cards or 400 P4 V3 cards. Sensor sources
+  // Actual device budgets for each grid size. Sensor sources
   // belong to SENSOR. Each disjoint replacement retires all previous reports.
   constexpr const auto& limits=DEVICE_UI_PROFILES[ProfileIndex];
   const auto channels=limits.max_child_cards();
@@ -1031,18 +1144,33 @@ void maximum_p4_climate_cache_replacements() {
 
 int main(int argc,char** argv) {
   const bool maximum_p4=argc==2&&std::string_view(argv[1])=="--maximum-p4";
-  assert(argc==1||maximum_p4);
-  lv_init();auto* display=lv_display_create(maximum_p4?1280:480,maximum_p4?800:480);assert(display);
+  const bool six=argc==2&&std::string_view(argv[1])=="--six-slot";
+  const bool fifteen=argc==2&&std::string_view(argv[1])=="--fifteen-slot";
+  assert(argc==1||maximum_p4||six||fifteen);
+  lv_init();auto* display=lv_display_create(six?480:fifteen?1024:maximum_p4?1280:480,six?800:fifteen?600:maximum_p4?800:480);assert(display);
   lv_timer_pause(lv_display_get_refr_timer(display));
   static std::array<uint16_t,1280*32> pixels{};
   lv_display_set_buffers(display,pixels.data(),nullptr,sizeof(pixels),LV_DISPLAY_RENDER_MODE_PARTIAL);
   lv_display_set_flush_cb(display,[](lv_display_t* d,const lv_area_t*,uint8_t*) { lv_display_flush_ready(d); });
   native_dispatch_safe=[] { return lv_is_initialized() && !page_lvgl_dispatching() && !modal_callback_dispatching(); };
-  if(maximum_p4) {
+  if(six) {
+    queued_image_refresh<2>();
+    queued_producer_content_refresh<2>();queued_producer_forecast_refresh<2>();
+    maximum_profile_disjoint_replacements<2>();
+  } else if(fifteen) {
+    queued_image_refresh<0>();
+    queued_producer_content_refresh<0>();queued_producer_forecast_refresh<0>();
+    maximum_profile_disjoint_replacements<0>();
+  } else if(maximum_p4) {
+    queued_image_refresh<6>();
+    queued_producer_content_refresh<6>();queued_producer_forecast_refresh<6>();
     live_palette_policy<6>();
     maximum_profile_disjoint_replacements<6>();
     maximum_p4_climate_cache_replacements();
   } else {
+    queued_image_pool_admission();
+    queued_image_refresh<8>();
+    queued_producer_content_refresh<8>();queued_producer_forecast_refresh<8>();
     navigation_and_state();live_temperature_policy();elastic_state_scene_transactions();maximum_profile_disjoint_replacements<8>();panels_and_retirement();mode_and_feedback();source_styles();slider_input();slider_background_hit_testing();appearance_transactions();live_palette_policy<8>();initial_appearance();appearance_wake_without_intermediate_maintenance();remote_navigation();
     assert(!application_scene_navigation());
     remote_selection_order();qr_images_and_transactions();

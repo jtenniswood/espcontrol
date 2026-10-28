@@ -403,7 +403,20 @@ void limits_and_auth() {
   assert(!f.cover.snapshot(f.token()).ready);
 }
 }  // namespace
+
+void explicit_cover_refresh() {
+  Fixture<2> f(DEVICE_UI_PROFILES[8]);f.preload();assert(f.bind(f.token())==0);f.tick();f.tick(75);
+  f.requests.deliveries[0].reply();f.tick();
+  const auto starts=f.requests.starts,count=allocations;
+  for(int i=0;i<4;++i)f.cover.refresh();
+  assert(f.requests.starts==starts&&allocations==count);
+  f.tick();assert(f.requests.starts==starts);f.tick(75);assert(f.requests.starts==starts+1);
+  f.requests.deliveries[0].reply();f.tick();
+  f.cover.retire();f.cover.refresh();f.tick();assert(f.requests.starts==starts+1);
+}
+
 int main() {
+  explicit_cover_refresh();
   for (const auto& limits : DEVICE_UI_PROFILES) {
     lifecycle<2>(limits);
     lifecycle<6>(limits);

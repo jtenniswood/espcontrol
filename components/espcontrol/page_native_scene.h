@@ -73,6 +73,9 @@ public:
   // A null source leaves explicitly supplied host/embedded themes unchanged.
   virtual const ThemePalette *palette() const { return nullptr; }
   virtual void apply_palette(const ThemePalette &) {}
+  // Queue shared-channel metadata work outside callbacks. This owns no
+  // per-widget reads or callbacks and may fail safely under memory pressure.
+  virtual void refresh_camera_metadata(std::string_view) {}
 };
 
 struct PageNativeSceneBudget {
@@ -342,6 +345,7 @@ public:
     const bool activated =
         store_.activate_prepared(generation, version, data, size);
     if (activated) {
+      image_refresh_requested_ = 0;
       ui_request_ = {};
       close_requested_ = takeover_requested_ = false;
       origin_ = {};
@@ -388,6 +392,7 @@ public:
     commands_.cancel();
     modals_.activate_prepared(store_.active());
     image_resources_.retire_active();
+    image_refresh_requested_ = 0;
     renderer_.activate_prepared(store_.active());
     if (ui_request_.kind == UiKind::ACTIVATE)
       ui_request_ = {};
@@ -401,6 +406,7 @@ public:
   }
   void stop() override {
     stopped_ = true;
+    image_refresh_requested_ = 0;
     ui_request_ = {};
     close_requested_ = takeover_requested_ = false;
     input_.cover(true);
@@ -414,6 +420,10 @@ public:
       return;
     Flag guard(running_);
     refresh_palette();
+    if (forecast_refresh_requested_) {
+      forecast_refresh_requested_ = false;
+      state_.forecasts.refresh();
+    }
     state_.loop();
     if (stopped_)
       return;
@@ -451,6 +461,7 @@ public:
       view_.settle_layout();
       renderer_.refresh();
     }
+    process_image_refresh();
     images_.loop();
     modal_images_.loop();
     qr_.loop();
@@ -684,8 +695,44 @@ public:
     cover_for_request();
   }
   void refresh_chrome() override { chrome_dirty_ = true; }
+  void refresh_content() override {
+    if (!stopped_) layout_dirty_ = true;
+  }
+  void refresh_weather_forecasts() override {
+    if (!stopped_) forecast_refresh_requested_ = true;
+  }
+  void refresh_images(bool include_cover_art) override {
+    if (!stopped_) image_refresh_requested_ |= include_cover_art ? 2u : 1u;
+  }
 
 private:
+  void refresh_image_metadata(ConfigurationHandle card) {
+    const auto* row = active().card(card);
+    if (row && active().field(*row, CardField::TYPE) == "image")
+      platform_.refresh_camera_metadata(active().field(*row, CardField::ENTITY));
+  }
+  void process_image_refresh() {
+    const auto requested = image_refresh_requested_;
+    image_refresh_requested_ = 0;
+    if (!requested || stopped_ || suspended_ || !platform_.grid_active()) return;
+    const auto modal = modals_.runtime().token();
+    if (modal.kind == ControlModalKind::IMAGE_CARD && modals_.runtime().valid(modal)) {
+      expanded_.refresh();
+      if (requested & 1u) refresh_image_metadata({modal.configuration, modal.card});
+      return;
+    }
+    if (covered_) return;
+    tiles_.refresh();
+    if (requested & 2u) cover_.refresh();
+    if (requested & 1u) {
+      for (size_t slot = 0; slot < Slots; ++slot) {
+        const auto token = renderer_.binding(slot);
+        if (!token.back && visible(token) &&
+            tiles_.has_tile({token.configuration, token.card}))
+          refresh_image_metadata({token.configuration, token.card});
+      }
+    }
+  }
   void refresh_palette() {
     const auto *next = platform_.palette();
     if (next == nullptr || next == palette_)
@@ -1195,9 +1242,10 @@ private:
     PageBindingToken binding;
   } origin_;
   uint64_t chrome_binding_{1};
+  uint8_t image_refresh_requested_{0};
   bool configured_{false}, initialized_{false}, running_{false},
       changing_{false}, stopped_{false}, destroying_{false}, suspended_{false},
       covered_{false}, settings_{false}, chrome_dirty_{true},
-      layout_dirty_{true};
+      layout_dirty_{true}, forecast_refresh_requested_{false};
 };
 } // namespace espcontrol::pages

@@ -73,7 +73,7 @@ constexpr uint32_t IMAGE_CARD_MODAL_REFRESH_DELAY_MS = 1000;
 constexpr uint32_t IMAGE_CARD_RETRY_INTERVAL_MS = 2000;
 FakeImage tile, modal;
 ImageCardCtx contexts[2];
-constexpr uint32_t IMAGE_CARD_API_RETRY_INTERVAL_MS = 250;
+[[maybe_unused]] constexpr uint32_t IMAGE_CARD_API_RETRY_INTERVAL_MS = 250;
 constexpr int IMAGE_CARD_STARTUP_DOWNLOAD_RETRIES = 3;
 bool enough_memory = true;
 ImageCardCtx *active_download = nullptr;
@@ -142,6 +142,7 @@ bool image_card_queue_modal_source_request(ImageCardCtx *ctx) {
 void image_card_cancel_modal_request_timer() {}
 void image_card_apply_downloaded(ImageCardCtx *) {}
 void image_card_request_current_picture(ImageCardCtx *) {}
+#include "page_scene_selection.h"
 #include "camera_refresh_runtime_functions.h"
 
 void reset() {

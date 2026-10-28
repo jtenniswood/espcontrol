@@ -34,7 +34,8 @@ def generate() -> str:
     context = definition(r"^constexpr int CLIMATE_DEFAULT_TARGET_TENTHS.*?(?=^constexpr uint32_t CLIMATE_TEMP_DEBOUNCE_MS)")
     context += definition(r"^struct ClimateControlCtx \{.*?^\};")
     for name in (
-        "climate_control_refs", "climate_control_ref_count", "reset_climate_control_refs",
+        "climate_control_ref_capacity", "climate_control_refs",
+        "climate_control_ref_count", "reset_climate_control_refs",
         "climate_lower", "climate_trim", "climate_unavailable_value",
         "climate_tenths_from_float", "climate_parse_tenths", "climate_parse_supported_features",
         "climate_target_kind", "climate_target_values_complete",

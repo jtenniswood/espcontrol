@@ -49,8 +49,10 @@ void lv_mem_monitor_core(lv_mem_monitor_t *out){*out={};}lv_result_t lv_mem_test
 // @production-environment
 const char *find_icon(const char *){return "i";}
 int normalize_width_compensation_percent(int value){return value;}
+// @production-function climate_control_ref_capacity
 // @production-function climate_control_refs
 // @production-function climate_control_ref_count
+// @production-function reset_climate_control_refs
 // @production-function climate_lower
 // @production-function climate_trim
 // @production-function climate_unavailable_value
@@ -69,7 +71,8 @@ int normalize_width_compensation_percent(int value){return value;}
 // @production-function climate_hvac_service_value
 // @production-function climate_parse_options
 // @production-function climate_select_target_for_mode
-const char *display_temperature_unit_symbol(){return "°C";}
+static const char* active_temperature_unit="°C";
+const char *display_temperature_unit_symbol(){return active_temperature_unit;}
 // @production-function climate_format_tenths
 // @production-function climate_target_display_precision
 // @production-function climate_option_label
@@ -105,7 +108,7 @@ bool ha_subscribe_attribute(const std::string &entity,const std::string &attribu
 void ha_release_callbacks_for_owner(void *owner){coordinator.release_owner(owner);}
 size_t reannouncements=0;
 void ha_reannounce_state_subscriptions(){++reannouncements;}
-struct ClimateControlModalUi{ClimateControlCtx *active{nullptr};lv_obj_t *overlay{nullptr},*menu_overlay{nullptr},*button{nullptr};};
+struct ClimateControlModalUi{ClimateControlCtx *active{nullptr};lv_obj_t *overlay{nullptr},*menu_overlay{nullptr},*button{nullptr},*unit_lbl{nullptr};};
 ClimateControlModalUi ui;
 ClimateControlModalUi &climate_control_modal_ui(){return ui;}
 ControlModalStateService<lv_obj_t> modal_service;
@@ -116,7 +119,12 @@ std::string clock_label;
 void set_clock_bar_modal_label(const std::string &label){clock_label=label;}
 std::function<void(ClimateControlCtx *)> after_refresh;
 void climate_update_card(ClimateControlCtx *ctx){assert(!ctx->btn&&!ctx->icon_lbl&&!ctx->label_lbl&&!ctx->value_lbl&&!ctx->unit_lbl&&!ctx->sensor_container);if(after_refresh)after_refresh(ctx);}
-void climate_control_set_modal_value(ClimateControlCtx *){}
+static size_t modal_unit_refreshes=0;
+void climate_control_set_modal_value(ClimateControlCtx* ctx){
+  if(!ctx||ui.active!=ctx)return;
+  ++modal_unit_refreshes;
+  if(ui.unit_lbl)lv_label_set_text(ui.unit_lbl,display_temperature_unit_symbol());
+}
 void climate_hide_option_menu(){if(ui.menu_overlay)lv_obj_delete(ui.menu_overlay);ui.menu_overlay=nullptr;modal_service.reset_nested_menu();}
 void control_modal_delete_overlay(ControlModalKind kind,lv_obj_t *&overlay){auto *old=overlay;overlay=nullptr;if(old)lv_obj_delete(old);modal_service.clear_active(kind);}
 // @production-function climate_control_hide_modal
@@ -137,7 +145,7 @@ bool climate_send_action(const std::string &entity,const char *service,const std
 // @production-function climate_control_can_open_modal
 void climate_control_open_modal(ClimateControlCtx *ctx) {
   if(!climate_control_can_open_modal(ctx))return;
-  assert(!ui.active);ui.active=ctx;ui.overlay=lv_obj_create(lv_layer_top());ui.button=lv_button_create(ui.overlay);
+  assert(!ui.active);ui.active=ctx;ui.overlay=lv_obj_create(lv_layer_top());ui.button=lv_button_create(ui.overlay);ui.unit_lbl=lv_label_create(ui.overlay);climate_control_set_modal_value(ctx);
   lv_obj_add_event_cb(ui.button,[](lv_event_t *){climate_schedule_temperature_send(ui.active);},LV_EVENT_CLICKED,nullptr);
   modal_service.set_active(ControlModalKind::CLIMATE,ui.overlay,climate_control_hide_modal,ControlModalDismissPolicy::DISMISS);
   if(!climate_modal_widgets_ready(ui.overlay))climate_control_hide_modal();
@@ -160,6 +168,51 @@ struct Fixture {
 };
 void values(){auto &t=coordinator.transport();t.send("climate.room","","heat");t.send("climate.room","supported_features","1");t.send("climate.room","temperature","21.5");t.send("climate.room","current_temperature","20");t.send("climate.room","hvac_modes","['off','heat','cool']");t.send("climate.room","fan_modes","['auto','low']");t.send("climate.room","fan_mode","auto");}
 static PageModalToken last_style_token{};
+void registry_lifetime() {
+#ifdef ESPCONTROL_DEVICE_UI_SLOT_COUNT
+  static_assert(climate_control_ref_capacity()==1);
+#else
+  static_assert(climate_control_ref_capacity()==MAX_GRID_SLOTS+MAX_SUBPAGE_ITEMS);
+#endif
+  ClimateControlCtx first,second;
+  assert(climate_control_ref_count()==0);
+  auto **refs=climate_control_refs();refs[0]=&first;climate_control_ref_count()=1;
+#ifndef ESPCONTROL_DEVICE_UI_SLOT_COUNT
+  static_assert(climate_control_ref_capacity()>=2);
+  refs[1]=&second;climate_control_ref_count()=2;
+  unregister_climate_control_context(&first);
+  assert(climate_control_ref_count()==1&&refs[0]==&second&&refs[1]==nullptr);
+  unregister_climate_control_context(&second);
+#else
+  unregister_climate_control_context(&first);
+#endif
+  assert(climate_control_ref_count()==0&&refs[0]==nullptr);
+  unregister_climate_control_context(&first);assert(climate_control_ref_count()==0);
+  refs[0]=&second;climate_control_ref_count()=1;reset_climate_control_refs();
+  assert(climate_control_ref_count()==0&&refs[0]==nullptr);
+}
+void registry_registration_bound() {
+  assert(climate_control_ref_count()==0);
+  ParsedCfg config;config.entity="climate.one";config.type="climate_control";
+  cards::ClimateControlDriverEnvironment env;
+  const auto create=[&] {
+    return create_climate_control_context(nullptr,nullptr,nullptr,config,
+        env.accent_color,env.secondary_color,env.tertiary_color,env.number_font,env.range_number_font,
+        env.unit_font,env.label_font,env.option_title_font,env.option_value_font,env.option_menu_font,
+        env.card_icon_font,env.icon_font,env.width_compensation_percent,nullptr,nullptr,nullptr);
+  };
+  auto* first=create();assert(first&&climate_control_ref_count()==1&&climate_control_refs()[0]==first);
+  auto* second=create();assert(second);
+#ifdef ESPCONTROL_DEVICE_UI_SLOT_COUNT
+  // Even a direct shared-helper call cannot write beyond the demanded bank.
+  assert(climate_control_ref_count()==1&&climate_control_refs()[0]==first);
+#else
+  assert(climate_control_ref_count()==2&&climate_control_refs()[1]==second);
+#endif
+  delete_climate_control_context(second);assert(climate_control_ref_count()==1&&climate_control_refs()[0]==first);
+  delete_climate_control_context(first);assert(climate_control_ref_count()==0&&climate_control_refs()[0]==nullptr);
+  coordinator.reclaim_unused_channels();
+}
 void test_adapter() {
   assert(climate_format_tenths(std::numeric_limits<int>::min(),0)=="-214748365");
   assert(climate_format_tenths(std::numeric_limits<int>::max(),1)=="214748364.7");
@@ -186,6 +239,9 @@ void test_adapter() {
       assert(runtime.request_card({17,0}));runtime.loop();assert(ui.active&&runtime.interactive(runtime.token())&&clock_label=="Den");
       auto *ctx=ui.active;assert(ctx->has_target&&ctx->target_tenths==215&&ctx->fan_mode=="auto");
       const auto token=runtime.token();
+      assert(climate_control_ref_count()==1&&climate_control_refs()[0]==ctx);
+      assert(port.create(fixture.store,{17,0},token)==nullptr);
+      assert(climate_control_ref_count()==1&&climate_control_refs()[0]==ctx);
       assert(last_style_token.configuration == 17 && last_style_token.card == 0 &&
              last_style_token.opening == token.opening && last_style_token.kind == ControlModalKind::CLIMATE);
 
@@ -193,6 +249,47 @@ void test_adapter() {
       lv_obj_send_event(ui.button,LV_EVENT_CLICKED,nullptr);assert(!ctx->pending_temp_send);
       lv_obj_send_event(ui.button,LV_EVENT_PRESSED,nullptr);lv_obj_send_event(ui.button,LV_EVENT_CLICKED,nullptr);assert(ctx->pending_temp_send);
       ctx->target_tenths=230;runtime.loop();assert(ctx->target_tenths==230); // Initial replay must not reset edits.
+      if(cycle==0) {
+        const auto changes=modal_unit_refreshes,sends=commands.size();const auto revision=state.revision();
+        const auto requests=coordinator.transport().requests;
+        assert(std::string_view(lv_label_get_text(ui.unit_lbl))=="°C");
+        struct RefreshEvent {PageModalRuntime* runtime;size_t changes;};
+        RefreshEvent event{&runtime,changes};
+        auto callback=+[](lv_event_t* e) {
+          auto& request=*static_cast<RefreshEvent*>(lv_event_get_user_data(e));
+          active_temperature_unit="°F";request.runtime->loop();
+          assert(modal_unit_refreshes==request.changes); // No paint during LVGL dispatch.
+        };
+        auto* descriptor=lv_obj_add_event_cb(ui.unit_lbl,callback,LV_EVENT_VALUE_CHANGED,&event);
+        lv_obj_send_event(ui.unit_lbl,LV_EVENT_VALUE_CHANGED,nullptr);
+        assert(std::string_view(lv_label_get_text(ui.unit_lbl))=="°C");
+        assert(lv_obj_remove_event_dsc(ui.unit_lbl,descriptor));
+        runtime.loop();
+        // No new climate report may be needed to refresh an active modal.
+        assert(modal_unit_refreshes==changes+1);
+        assert(std::string_view(lv_label_get_text(ui.unit_lbl))=="°F");
+        assert(state.revision()==revision&&commands.size()==sends&&coordinator.transport().requests==requests);
+        assert(ctx->target_tenths==230&&ctx->pending_temp_send&&runtime.valid(token));
+        runtime.loop();assert(modal_unit_refreshes==changes+1);
+        active_temperature_unit="°C";runtime.loop();
+        assert(modal_unit_refreshes==changes+2&&std::string_view(lv_label_get_text(ui.unit_lbl))=="°C");
+        // A shared panel refresh can paint a transient policy before the next
+        // adapter tick. The final policy must still win if it coalesces back.
+        active_temperature_unit="°F";climate_control_set_modal_value(ctx);
+        assert(std::string_view(lv_label_get_text(ui.unit_lbl))=="°F");
+        active_temperature_unit="°C";runtime.loop();
+        assert(std::string_view(lv_label_get_text(ui.unit_lbl))=="°C");
+
+        assert(ctx->target_tenths==230&&ctx->pending_temp_send&&runtime.valid(token));
+        const auto before_hidden=modal_unit_refreshes;
+        lv_obj_add_flag(ui.unit_lbl,LV_OBJ_FLAG_HIDDEN);active_temperature_unit="°F";
+        runtime.loop();assert(modal_unit_refreshes==before_hidden);
+        lv_obj_remove_flag(ui.unit_lbl,LV_OBJ_FLAG_HIDDEN);runtime.loop();
+        assert(modal_unit_refreshes==before_hidden+1&&std::string_view(lv_label_get_text(ui.unit_lbl))=="°F");
+        active_temperature_unit="°C";runtime.loop();
+        assert(modal_unit_refreshes==before_hidden+2&&std::string_view(lv_label_get_text(ui.unit_lbl))=="°C");
+      }
+
       const auto before=commands.size();climate_control_hide_modal();
       assert(!runtime.valid(token)&&runtime.memory().retired_contexts==1&&ctx->entity_id=="climate.room");
       assert(commands.size() == before);
@@ -201,7 +298,7 @@ void test_adapter() {
       runtime.loop();
       assert(commands.size() == before + 1 && commands.back().data[0].second == "23.0");
       coordinator.reclaim_unused_channels();
-      assert(!ui.active && climate_control_ref_count() == 0);
+      assert(!ui.active && climate_control_ref_count() == 0 && climate_control_refs()[0]==nullptr);
       assert(coordinator.subscription_count()==graph_refs&&coordinator.transport().bindings.size()==native&&arena.live.size()==arena_count);
       assert(lv_live_bytes==baseline_lv&&climate_optional_subscription_timer()==nullptr&&reannouncements==0);
     }
@@ -294,4 +391,4 @@ void test_adapter() {
   }
   coordinator.reclaim_unused_channels();assert(arena.live.empty()&&coordinator.transport().bindings.empty());
 }
-int main(){lv_init();auto *display=lv_display_create(480,480);assert(display);lv_timer_pause(lv_display_get_refr_timer(display));test_adapter();lv_display_delete(display);lv_deinit();assert(lv_live_bytes==0);}
+int main(){lv_init();auto *display=lv_display_create(480,480);assert(display);lv_timer_pause(lv_display_get_refr_timer(display));registry_lifetime();registry_registration_bound();test_adapter();lv_display_delete(display);lv_deinit();assert(lv_live_bytes==0);}

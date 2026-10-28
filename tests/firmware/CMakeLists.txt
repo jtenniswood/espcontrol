@@ -1979,3 +1979,63 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
 endif()
 
 add_test(NAME weather_condition_parity_test COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/weather_condition_parity_test.py)
+
+# Exercise the real scene with production compile-time renderer selection.
+if(ESPCONTROL_LVGL_SOURCE_DIR)
+  get_target_property(PROTOTYPE_NATIVE_SOURCES page_native_scene_test SOURCES)
+  get_target_property(PROTOTYPE_NATIVE_OPTIONS page_native_scene_test COMPILE_OPTIONS)
+  get_target_property(PROTOTYPE_NATIVE_DEFINES page_native_scene_test COMPILE_DEFINITIONS)
+  get_target_property(PROTOTYPE_NATIVE_INCLUDES page_native_scene_test INCLUDE_DIRECTORIES)
+  foreach(mode s3 p4 six fifteen)
+    add_executable(page_native_selected_${mode}_test ${PROTOTYPE_NATIVE_SOURCES})
+    target_compile_features(page_native_selected_${mode}_test PRIVATE cxx_std_17)
+    target_compile_options(page_native_selected_${mode}_test PRIVATE ${PROTOTYPE_NATIVE_OPTIONS})
+    target_compile_definitions(page_native_selected_${mode}_test PRIVATE ${PROTOTYPE_NATIVE_DEFINES})
+    target_include_directories(page_native_selected_${mode}_test PRIVATE ${PROTOTYPE_NATIVE_INCLUDES})
+    target_link_libraries(page_native_selected_${mode}_test PRIVATE lvgl::lvgl)
+  endforeach()
+  target_compile_definitions(page_native_selected_s3_test PRIVATE ESPCONTROL_UI_PROFILE_GUITION_ESP32_S3_4848S040)
+  target_compile_definitions(page_native_selected_p4_test PRIVATE ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC8012P4A1_V3)
+  target_compile_definitions(page_native_selected_six_test PRIVATE ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC4880P443)
+  target_compile_definitions(page_native_selected_fifteen_test PRIVATE ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC1060P470)
+  add_test(NAME page_native_selected_six_test COMMAND page_native_selected_six_test --six-slot)
+  add_test(NAME page_native_selected_fifteen_test COMMAND page_native_selected_fifteen_test --fifteen-slot)
+  add_test(NAME page_native_selected_s3_test COMMAND page_native_selected_s3_test)
+  add_test(NAME page_native_selected_p4_test COMMAND page_native_selected_p4_test --maximum-p4)
+  set_tests_properties(page_native_selected_s3_test page_native_selected_p4_test page_native_selected_six_test page_native_selected_fifteen_test PROPERTIES TIMEOUT 180)
+endif()
+
+add_test(NAME pooled_producer_routing_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/pooled_producer_routing_test.py)
+
+# The demanded climate adapter keeps one context for every generated device
+# profile. Standalone mode above retains the historical multi-context registry.
+if(ESPCONTROL_LVGL_SOURCE_DIR)
+  get_target_property(CLIMATE_MODAL_SOURCES page_climate_modal_test SOURCES)
+  get_target_property(CLIMATE_MODAL_OPTIONS page_climate_modal_test COMPILE_OPTIONS)
+  get_target_property(CLIMATE_MODAL_INCLUDES page_climate_modal_test INCLUDE_DIRECTORIES)
+  set(CLIMATE_MODAL_PROFILES
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC1060P470
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC1060P470_V2
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC4880P443
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC4880P443_V3
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC8012P4A1
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC8012P4A1_V2
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC8012P4A1_V3
+    ESPCONTROL_UI_PROFILE_ESP32_P4_86
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_S3_4848S040)
+  set(CLIMATE_PROFILE_INDEX 0)
+  foreach(profile IN LISTS CLIMATE_MODAL_PROFILES)
+    set(target page_climate_modal_profile_${CLIMATE_PROFILE_INDEX}_test)
+    add_executable(${target} ${CLIMATE_MODAL_SOURCES})
+    target_compile_features(${target} PRIVATE cxx_std_17)
+    target_compile_options(${target} PRIVATE ${CLIMATE_MODAL_OPTIONS})
+    target_compile_definitions(${target} PRIVATE ${profile})
+    target_include_directories(${target} PRIVATE ${CLIMATE_MODAL_INCLUDES})
+    target_link_libraries(${target} PRIVATE lvgl::lvgl)
+    add_test(NAME ${target} COMMAND ${target})
+    set_tests_properties(${target} PROPERTIES TIMEOUT 60)
+    math(EXPR CLIMATE_PROFILE_INDEX "${CLIMATE_PROFILE_INDEX}+1")
+  endforeach()
+endif()

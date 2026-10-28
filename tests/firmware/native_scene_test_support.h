@@ -65,12 +65,13 @@ void ha_reannounce_state_subscriptions() {}
 namespace espcontrol::pages {
 inline bool (*native_dispatch_safe)() = nullptr;
 inline bool page_native_command_ready() { return !busy && (!native_dispatch_safe || native_dispatch_safe()); }
+inline size_t native_forecast_start_calls = 0;
 class PageHaForecastRequests : public PageForecastRequests {
  public:
   bool connected() const override { return online; }
   uint32_t connection_generation() const override { return connection; }
   uint32_t now_ms() const override { return tick; }
-  bool start(void*, PageForecastToken, std::string_view, Receive) override { return false; }
+  bool start(void*, PageForecastToken, std::string_view, Receive) override { ++native_forecast_start_calls; return false; }
   void cancel(void*, PageForecastToken) override {}
 };
 constexpr size_t LOCAL_NUMERIC_PRODUCERS = 1, LOCAL_TEXT_PRODUCERS = 0;

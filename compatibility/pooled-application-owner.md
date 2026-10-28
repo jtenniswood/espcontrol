@@ -3,8 +3,10 @@
 This #1825 stage connects the existing pooled card, state, command, artwork, QR
 and modal owners in `PageNativeScene<Slots, ImageSlots>`. Device startup now
 selects this scene through a PSRAM-backed `PageNativeDevice` and one fixed widget
-bank. This stage neither enables nested pages nor establishes physical memory
-savings; selected firmware builds and physical qualification remain gates.
+bank. Generated profiles select it at compile time, including allocation or
+startup failure; standalone consumers retain explicit boot selection. This
+stage neither enables nested pages nor establishes physical memory savings.
+Physical maximum-load, memory and parity qualification remains required.
 
 Configuration text wiring and bound compatibility values use the actual slot
 and chunk counts emitted by ESPHome code generation. The compatibility lookup uses the same bounds; merging preserves unowned
@@ -27,6 +29,21 @@ suffix snapshot and repaint on the safe scene loop. They retain bindings,
 subscriptions and configuration generations, including across display sleep.
 The prepared text buffers fit both supported suffixes. Card-curve changes use
 scene-aware readiness so a running native bank refreshes without a reboot.
+
+An active climate modal compares its displayed C/F suffix with the current
+policy during safe maintenance. This also handles a change without new HA data
+or an intervening shared-panel repaint, while preserving a pending edit. The
+native context registry has one reference, matching the single demanded modal
+record; standalone legacy capacity is preserved. Retired and reset references
+are cleared, and the shared climate UI retains its existing ownership.
+
+Clock/date/forecast producers queue scene work instead of walking eager page
+registries. Explicit camera refresh queues fresh shared-channel metadata for
+admitted visible images. Reconnect and endpoint maintenance also refresh cover
+art through the native owners. Configuration activation, appearance rebuilds
+and stop discard pending image refreshes, so work from an old configuration
+cannot refresh its replacement. Hidden/takeover policy and downloader limits
+remain unchanged.
 
 The page-definition arena capacity remains the admission ceiling, while each
 generation retains only its used bytes. Preparation first validates privately

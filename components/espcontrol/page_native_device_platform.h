@@ -71,6 +71,10 @@ public:
   std::string_view base_url() const override {
     return app_.home_assistant_endpoint().origin();
   }
+  void refresh_camera_metadata(std::string_view entity) override {
+    ha_schedule_metadata_refresh(std::string(entity), {"access_token", "entity_picture"},
+                                 PageNativeSceneState::SUBSCRIPTION_SCOPE);
+  }
   uint32_t endpoint_generation() const override {
     return app_.home_assistant_endpoint().generation();
   }

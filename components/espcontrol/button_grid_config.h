@@ -75,6 +75,7 @@ inline void refresh_temperature_unit_labels() {
     auto *scene = espcontrol::application_scene_navigation();
     if (scene)
       scene->refresh_temperature_unit(display_temperature_uses_fahrenheit());
+    return;
   }
   ClimateControlCtx **climate_refs = climate_control_refs();
   int climate_count = climate_control_ref_count();

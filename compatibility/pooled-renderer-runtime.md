@@ -1,11 +1,13 @@
 # Prepared page layouts and reusable bindings
 
 `PageRendererRuntime<slotCount>` is the main-loop-only navigation/binding owner
-for the pooled renderer migration. It is not selected by production firmware.
-The existing LVGL grid remains active while real widget/driver ports are built
-and physically qualified. No nesting or capacity change is enabled here.
+used by the concrete [pooled application](pooled-application-owner.md).
+Generated device profiles select that application at compile time, including
+startup or allocation failure. Standalone consumers without a generated
+profile retain their explicit boot selection. No nesting or capacity change
+is enabled here. Physical qualification remains a cutover requirement.
 
-The first real widget port is described in [pooled-basic-cards.md](pooled-basic-cards.md); it remains unselected while the remaining drivers are ported.
+The real widget port is described in [pooled-basic-cards.md](pooled-basic-cards.md).
 
 The owner stores exactly the profile's number of binding slots. Preparation
 compiles immutable root/subpage layouts using the same order/span/Back parsers
@@ -16,8 +18,9 @@ the 20-slot configuration retains its inactive records.
 The device port must reserve its bounded widget, driver and text resources in
 `prepare`. `bind`, `unbind` and `update` reuse those resources. Text inputs are
 length-delimited views; ports must use their reserved buffers and preserve the
-existing UTF-8/formatting rules. This interface does not yet implement those
-ports or prove that real LVGL/card code satisfies its allocation contract.
+existing UTF-8/formatting rules. Concrete card and modal ports implement these
+operations; host counters and real-LVGL tests check their reservation and
+retirement paths. Whole-device allocation peaks require physical tests.
 
 Each binding token includes the committed configuration, binding revision,
 page, card and shell. Tokens become invalid before any unbind work. Delayed
@@ -37,8 +40,8 @@ modal-unbind owners before shared state owners: activation invalidates/unbinds
 old views before the old graph/model storage is released. Participants receive
 the published PageStore view, including its committed generation. Binding must
 defer state reads until the first update after every participant activates.
-The application must serialize preparation, commit and activation with the
-main render loop; this host model is not production task/thread wiring.
+The application scene serializes preparation, commit and activation with the
+main render loop, and defers maintenance during native or LVGL callbacks.
 
 Host coverage checks all nine profiles, 1,000 page cycles per profile,
 configuration replacement, failed reservation, folder removal/ID changes,
@@ -47,15 +50,21 @@ integration uses the real dependency source, coordinator adapter and state owner
 through one PageStore transaction. It checks 1,000 allocation-free navigation/
 update cycles with stable subscriptions, hidden-page retained values,
 reconnect invalidation and release ordering. Allocation counters and sanitizers
-cover these model paths, not network dispatch, real widget drivers or device
-memory/visual/touch behaviour.
+cover model paths and the concrete LVGL/card drivers. Device network timing,
+whole-device memory, visuals and touch behaviour still require physical tests.
 
-Before production cutover, implement every card's real bind/update/unbind port,
-profile-bounded child/context pools, persistent display buffers, native action
-routes, modal/forecast/local-value ownership and main-loop transaction wiring.
-Physically qualify S3, then a 20-slot P4 and the remaining grid sizes. Record
-whole-device and owner-level steady/peak memory, navigation latency and image
-peaks. Ship one selected renderer implementation per production build.
+Device builds route shared clock, date, temperature and forecast events into
+coalesced scene maintenance. Camera/image refreshes use the admitted native
+image owners and preserve metadata refresh, downloader priority and display
+suspension policy. The obsolete eager weather/timezone/calendar/image context
+registries are excluded from generated-profile binaries; shared modal UI
+storage remains in use.
+
+Before shared production cutover, physically qualify S3, then a 20-slot P4 and
+the remaining grid sizes. Record whole-device and owner-level steady/peak
+memory, navigation latency and image peaks. Host tests and all-profile compile
+checks do not establish these physical results. Ship one selected renderer
+implementation per production build.
 
 Normal overlay input cancellation while retaining feedback origins is described
 in [covered grid input](pooled-covered-input.md).
