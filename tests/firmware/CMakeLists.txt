@@ -109,6 +109,19 @@ target_include_directories(page_store_test PRIVATE stubs ../../components/espcon
   ${CMAKE_CURRENT_BINARY_DIR})
 add_test(NAME page_store_test COMMAND page_store_test)
 
+add_executable(page_store_v2_test page_store_v2_test.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/page_store_goldens.h
+  ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(page_store_v2_test PRIVATE cxx_std_17)
+target_compile_options(page_store_v2_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_store_v2_test PRIVATE stubs ../../components/espcontrol ${CMAKE_CURRENT_BINARY_DIR})
+if(ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+  target_compile_options(page_store_v2_test PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+  target_link_options(page_store_v2_test PRIVATE -fsanitize=address,undefined)
+endif()
+add_test(NAME page_store_v2_test COMMAND page_store_v2_test)
+
 add_executable(panel_config_esphome_text_test panel_config_esphome_text_test.cpp)
 target_compile_features(panel_config_esphome_text_test PRIVATE cxx_std_17)
 target_compile_definitions(panel_config_esphome_text_test PRIVATE USE_ESP32)

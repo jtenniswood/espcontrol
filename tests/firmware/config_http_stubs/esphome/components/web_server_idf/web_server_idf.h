@@ -20,7 +20,8 @@ class AsyncWebServerRequest {
   StringRef url_to(char *buffer) const {std::strcpy(buffer,raw_.path.c_str());return StringRef(buffer);}
   std::optional<std::string> get_header(const char *key) const {
     auto it=raw_.headers.find(key);
-    if(it==raw_.headers.end())return {}; return it->second;
+    if (it == raw_.headers.end()) return {};
+    return it->second;
   }
   size_t contentLength() const {return raw_.length;}
   bool authenticate(const char *,const char *) const {return raw_.authenticated;}

@@ -3,7 +3,8 @@
 Implementation stage: matching C++/TypeScript structural codecs and bounded
 firmware conversion are implemented. HTTP handlers can explicitly import/export
 v2 while preserving durable v1, default v1 responses and generation checks.
-The bundled editor and backups still use v1. Direct v2 runtime/boot readers,
+The bundled editor and backups still use v1. PageStore reads v1/v2 directly;
+service/compatibility boot integration,
 profile/legacy admission, the supported downgrade floor and physical
 qualification remain unfinished. This does not enable nested pages.
 
@@ -111,6 +112,41 @@ The base profile capacity stays admitted across display rotations. Navigable
 child pages retain their existing full child range, including state needed by
 parent summaries; inactive pages and unknown definitions remain saved.
 This changes neither the v1 document bytes nor the live document version.
+
+## Direct runtime reading
+
+`PageStore::stage_v2` reads the validated graph into the same immutable runtime
+records as v1, without serializing a temporary v1 document. Wire identities and
+record order remain independent of runtime indices. Root slots determine the
+runtime page order; retained roots through slot 32 and inactive child pages use
+the same admission as v1. Existing root/child normalization, order/spans/Back
+text, unknown fields and exact source bytes are preserved. Inconsistent raw
+import hints, sparse children, profile mismatches and nested pages fail before
+publication. This reader retains the existing first-level page model.
+
+The caller supplies aligned, disjoint scratch for a bounded record index,
+card grouping and one 4,095-byte decode window. PageStore retains no scratch or
+input pointers. `PageStoreRuntime` accepts either version, uses its injected
+arena allocator for scratch, limits scratch to its configured admission ceiling,
+and releases it before resource preparation. Peak accounting includes the active
+arena, private staged arena, compact arena and scratch while they overlap.
+Activation verifies the prepared version and exact source bytes and makes no
+arena allocation. Preparation failures preserve the active generation.
+
+Host tests cover 3,365 cases across all nine profiles, including imported
+maximum folders, every supported root/child card family and authored
+normalization goldens. Independently authored graphs use forward references and
+large, reordered IDs. Failure tests cover scratch/staging/compaction/resource
+allocation, stale inputs, inactive records, aliasing, byte bounds and both
+directions of v1/v2 replacement. Supported host builds run this test with address
+and undefined-behavior sanitizers. These are runtime-reader tests, not physical
+or durable-v2 qualification.
+
+The production service validator, compatibility text publication/mirroring and
+boot restore are still v1. HTTP v2 saves continue to project losslessly to v1;
+this runtime reader alone does not enable durable v2 or change the downgrade
+floor. Those service readers must ship and pass persistence/backup testing
+before the durable default changes.
 
 ## Explicit HTTP representations
 

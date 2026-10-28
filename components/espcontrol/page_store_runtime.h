@@ -19,6 +19,8 @@ struct PageRuntimeMemory {
   size_t active_reserved_bytes{0};
   size_t staged_reserved_bytes{0};
   size_t peak_reserved_bytes{0};
+  size_t preparation_scratch_bytes{0};
+  size_t peak_preparation_scratch_bytes{0};
   size_t preparation_failures{0};
 };
 

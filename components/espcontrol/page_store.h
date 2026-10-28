@@ -66,6 +66,15 @@ class PageStore {
   static PageStoreStatus stage_v1(const uint8_t *document, size_t document_size,
       const DeviceUiLimits &limits, uint32_t generation,
       void *arena, size_t arena_capacity, PageStore *output);
+  // V2 is read directly, without building an intermediate v1 document. The
+  // caller owns disjoint, aligned scratch, released after staging. The current
+  // runtime still admits only root -> child navigation, including inactive data.
+  static PageStoreStatus v2_workspace_bytes(const uint8_t *document,
+      size_t document_size, size_t *bytes);
+  static PageStoreStatus stage_v2(const uint8_t *document, size_t document_size,
+      const DeviceUiLimits &limits, uint32_t generation,
+      void *arena, size_t arena_capacity, void *workspace,
+      size_t workspace_capacity, PageStore *output);
 
   uint32_t generation() const { return generation_; }
   size_t page_count() const { return page_count_; }
@@ -99,10 +108,11 @@ class PageStore {
     const size_t index = static_cast<size_t>(field);
     return index < card.fields.size() ? string(card.fields[index]) : std::string_view{};
   }
-  // Exact v1 bytes preserve settings, unsupported/inactive configuration and
-  // source encodings during the shadow migration. This source copy goes away
-  // at the v2 cutover; production still uses the existing renderer for now.
+  // Exact source bytes preserve settings, unsupported/inactive configuration
+  // and import encodings until persistence and compatibility readers can borrow
+  // the durable source directly. They also bind activation to the prepared input.
   const uint8_t *source_document() const { return source_; }
+  uint16_t source_version() const { return source_version_; }
   size_t source_size() const { return memory_.source_bytes; }
   const PageStoreMemory &memory() const { return memory_; }
 
@@ -117,6 +127,7 @@ class PageStore {
   uint32_t generation_{0};
   uint16_t page_count_{0};
   uint16_t card_count_{0};
+  uint16_t source_version_{1};
   size_t strings_begin_{0};
   PageStoreMemory memory_{};
 };
