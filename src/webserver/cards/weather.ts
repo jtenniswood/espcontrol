@@ -106,6 +106,7 @@ export function registerWeatherCardTypes(
                 const source = helpers.segmentControl(
                     [["weather", "Forecast"], ["sensors", "Sensor"]],
                     weatherWindUsesSensors(b) ? "sensors" : "weather", function (value: string) {
+                        if (value === (weatherWindUsesSensors(b) ? "sensors" : "weather")) return;
                         b.options = setConfigOptionValue(b.options, "wind_source", value === "sensors" ? "sensors" : "");
                         b.entity = "";
                         b.sensor = "";
@@ -151,6 +152,7 @@ export function registerWeatherCardTypes(
                 sources.push(["sensor", "Sensor"]);
                 const source = helpers.segmentControl(
                     sources, rainfallUsesForecast(b) ? "forecast" : "sensor", function (value: string) {
+                        if (value === (rainfallUsesForecast(b) ? "forecast" : "sensor")) return;
                         b.options = setConfigOptionValue(b.options, "rainfall_source", value === "forecast" ? "forecast" : "");
                         b.entity = "";
                         helpers.saveField("entity", b.entity);

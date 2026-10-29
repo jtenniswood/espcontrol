@@ -7889,6 +7889,8 @@ async function assertWindSensorEditor(browser) {
     await page.waitForSelector('#sp-app');
     await seedNativeDocument(page, nativeState);
     await openWind();
+    await page.locator('[id$="wind-source"]').getByRole("button", {name:"Forecast",exact:true}).click();
+    assert.strictEqual(await page.locator('.sp-settings-modal input[id$="entity"]').inputValue(), "weather.home", "Active Wind Forecast preserves its entity");
     const sourceGroup = page.locator('.sp-disclosure').filter({ has: page.locator('[id$="wind-source-settings"]') });
     assert.strictEqual(await sourceGroup.locator('.sp-disclosure-button').innerText(), "Source");
     assert.strictEqual(await sourceGroup.locator('.sp-disclosure-body input[id$="entity"]').count(), 1);
@@ -7930,7 +7932,9 @@ async function assertWindSensorEditor(browser) {
     await openWind();
     assert(await page.locator('[id$="wind-source"]').getByRole("button", { name: "Sensor", exact: true }).evaluate(button => button.classList.contains("active")));
     assert.strictEqual(await page.locator('input[id$="wind-direction"]').inputValue(), "sensor.wind_direction");
-    assert.strictEqual(await page.locator('input[id$="wind-speed"]').inputValue(), "sensor.wind_speed");
+    await page.locator('[id$="wind-source"]').getByRole("button", {name:"Sensor",exact:true}).click();
+    assert.strictEqual(await page.locator('input[id$="wind-direction"]').inputValue(), "sensor.wind_direction", "Active Wind Sensor preserves direction");
+    assert.strictEqual(await page.locator('input[id$="wind-speed"]').inputValue(), "sensor.wind_speed", "Active Wind Sensor preserves speed");
     await page.locator('[id$="wind-source"]').getByRole("button", { name: "Forecast", exact: true }).click();
     assert.strictEqual(await page.locator('input[id$="wind-speed"]').count(), 0);
     await page.locator('.sp-settings-modal input[id$="entity"]').fill("weather.home");
@@ -7965,6 +7969,7 @@ async function assertRainfallEditor(browser) {
     await page.goto('http://espcontrol.test/'+slug+'?events=1');
     await page.waitForSelector('#sp-app'); await seedNativeDocument(page,nativeState);
     await open();
+    await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Sensor",exact:true}).click();
     const sourceGroup = page.locator('.sp-disclosure').filter({ has: page.locator('[id$="rainfall-source-settings"]') });
     assert.strictEqual(await sourceGroup.locator('.sp-disclosure-button').innerText(), "Source");
     assert(await sourceGroup.locator('.sp-disclosure-body').evaluate(body =>
@@ -7983,7 +7988,8 @@ async function assertRainfallEditor(browser) {
     await page.reload(); await page.waitForSelector('#sp-app'); await seedNativeDocument(page,nativeState);
     await open();
     assert(await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Forecast",exact:true}).evaluate(button=>button.classList.contains("active")));
-    assert.strictEqual(await page.locator('.sp-settings-modal input[id$="entity"]').inputValue(),"weather.home");
+    await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Forecast",exact:true}).click();
+    assert.strictEqual(await page.locator('.sp-settings-modal input[id$="entity"]').inputValue(),"weather.home", "Active Rainfall Forecast preserves its entity");
     await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Sensor",exact:true}).click();
     await page.locator('.sp-settings-modal input[id$="entity"]').fill("sensor.rainfall_today");
     await page.locator('.sp-settings-modal input[id$="entity"]').press("Tab");
