@@ -103,7 +103,7 @@ export function registerWeatherCardTypes(
                 const sourceFields = sourceGroup.section;
                 sourceFields.className += " sp-weather-source-fields";
                 const source = helpers.segmentControl(
-                    [["weather", "Weather Entity"], ["sensors", "Separate Sensors"]],
+                    [["weather", "Forecast"], ["sensors", "Sensor"]],
                     weatherWindUsesSensors(b) ? "sensors" : "weather", function (value: string) {
                         b.options = setConfigOptionValue(b.options, "wind_source", value === "sensors" ? "sensors" : "");
                         b.entity = "";
@@ -145,8 +145,9 @@ export function registerWeatherCardTypes(
                 panel.appendChild(sourceGroup.panel);
                 const group = sourceGroup.section;
                 group.className += " sp-weather-source-fields";
-                const sources = [["sensor", "Rainfall Sensor"]];
-                if (weatherForecastCardsSupported()) sources.push(["forecast", "Today's Forecast"]);
+                const sources = [];
+                if (weatherForecastCardsSupported()) sources.push(["forecast", "Forecast"]);
+                sources.push(["sensor", "Sensor"]);
                 const source = helpers.segmentControl(
                     sources, rainfallUsesForecast(b) ? "forecast" : "sensor", function (value: string) {
                         b.options = setConfigOptionValue(b.options, "rainfall_source", value === "forecast" ? "forecast" : "");

@@ -7895,7 +7895,7 @@ async function assertWindSensorEditor(browser) {
     assert(await sourceGroup.locator('.sp-disclosure-body').evaluate(body =>
       body.getBoundingClientRect().bottom - body.lastElementChild.getBoundingClientRect().bottom >= 28),
       "Wind Source retains extra bottom spacing");
-    await page.locator('[id$="wind-source"]').getByRole("button", { name: "Separate Sensors", exact: true }).click();
+    await page.locator('[id$="wind-source"]').getByRole("button", { name: "Sensor", exact: true }).click();
     assert.strictEqual(await sourceGroup.locator('.sp-disclosure-body input[id$="wind-direction"]').count(), 1);
     assert.strictEqual(await sourceGroup.locator('.sp-disclosure-body input[id$="wind-speed"]').count(), 1);
     await page.locator('[id$="wind-source-settings"]').click();
@@ -7928,10 +7928,10 @@ async function assertWindSensorEditor(browser) {
     await page.waitForSelector('#sp-app');
     await seedNativeDocument(page, nativeState);
     await openWind();
-    assert(await page.locator('[id$="wind-source"]').getByRole("button", { name: "Separate Sensors", exact: true }).evaluate(button => button.classList.contains("active")));
+    assert(await page.locator('[id$="wind-source"]').getByRole("button", { name: "Sensor", exact: true }).evaluate(button => button.classList.contains("active")));
     assert.strictEqual(await page.locator('input[id$="wind-direction"]').inputValue(), "sensor.wind_direction");
     assert.strictEqual(await page.locator('input[id$="wind-speed"]').inputValue(), "sensor.wind_speed");
-    await page.locator('[id$="wind-source"]').getByRole("button", { name: "Weather Entity", exact: true }).click();
+    await page.locator('[id$="wind-source"]').getByRole("button", { name: "Forecast", exact: true }).click();
     assert.strictEqual(await page.locator('input[id$="wind-speed"]').count(), 0);
     await page.locator('.sp-settings-modal input[id$="entity"]').fill("weather.home");
     await page.locator('.sp-settings-modal input[id$="entity"]').press("Tab");
@@ -7970,21 +7970,21 @@ async function assertRainfallEditor(browser) {
     assert(await sourceGroup.locator('.sp-disclosure-body').evaluate(body =>
       body.getBoundingClientRect().bottom - body.lastElementChild.getBoundingClientRect().bottom >= 28),
       "Rainfall Source retains extra bottom spacing");
-    assert(await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Rainfall Sensor",exact:true}).evaluate(button=>button.classList.contains("active")));
+    assert(await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Sensor",exact:true}).evaluate(button=>button.classList.contains("active")));
     await page.locator('[id$="rainfall-source-settings"]').click();
     assert(!(await page.locator('.sp-settings-modal input[id$="entity"]').isVisible()), "Rainfall Source collapses like Custom Colours");
     await page.locator('[id$="rainfall-source-settings"]').click();
     assert.strictEqual(await page.locator('.sp-settings-modal input[id$="entity"]').inputValue(),"sensor.rainfall_today");
-    await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Today's Forecast",exact:true}).click();
+    await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Forecast",exact:true}).click();
     await page.locator('.sp-settings-modal input[id$="entity"]').fill("weather.home");
     await page.locator('.sp-settings-modal input[id$="entity"]').press("Tab");
     await save();
     await waitForNativeState(nativeState,()=>nativeState.document.buttons[1].includes("rainfall_source"),"Forecast rainfall saved");
     await page.reload(); await page.waitForSelector('#sp-app'); await seedNativeDocument(page,nativeState);
     await open();
-    assert(await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Today's Forecast",exact:true}).evaluate(button=>button.classList.contains("active")));
+    assert(await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Forecast",exact:true}).evaluate(button=>button.classList.contains("active")));
     assert.strictEqual(await page.locator('.sp-settings-modal input[id$="entity"]').inputValue(),"weather.home");
-    await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Rainfall Sensor",exact:true}).click();
+    await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Sensor",exact:true}).click();
     await page.locator('.sp-settings-modal input[id$="entity"]').fill("sensor.rainfall_today");
     await page.locator('.sp-settings-modal input[id$="entity"]').press("Tab");
     await save();
