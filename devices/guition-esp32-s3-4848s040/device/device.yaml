@@ -429,6 +429,9 @@ display:
     # the visibly shimmery 8MHz setting. Higher clocks have caused screen shifts
     # and pixel breakup when WiFi, flash, and web traffic compete for PSRAM.
     pclk_frequency: 10MHz
+    # Allow longer PSRAM stalls during pooled-grid redraws. The two internal
+    # DMA buffers use 18.75 KiB more than the default 20-row pair.
+    bounce_buffer_rows: 30
     update_interval: never
     auto_clear_enabled: False
     # Keep the ST7701S panel init sequence on the non-mirrored path. The
