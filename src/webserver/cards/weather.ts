@@ -101,6 +101,7 @@ export function registerWeatherCardTypes(
                 helpers.markCardPrimaryField(sourceGroup.panel, "entity");
                 panel.appendChild(sourceGroup.panel);
                 const sourceFields = sourceGroup.section;
+                sourceFields.className += " sp-weather-source-fields";
                 const source = helpers.segmentControl(
                     [["weather", "Weather Entity"], ["sensors", "Separate Sensors"]],
                     weatherWindUsesSensors(b) ? "sensors" : "weather", function (value: string) {
@@ -139,20 +140,23 @@ export function registerWeatherCardTypes(
                 return;
             }
             if (b.precision === "rainfall") {
-                const group = document.createElement("div");
-                helpers.markCardPrimaryField(group, "entity");
-                panel.appendChild(group);
+                const sourceGroup = helpers.disclosureSection("Source", helpers.idPrefix + "rainfall-source-settings", true);
+                helpers.markCardPrimaryField(sourceGroup.panel, "entity");
+                panel.appendChild(sourceGroup.panel);
+                const group = sourceGroup.section;
+                group.className += " sp-weather-source-fields";
                 const sources = [["sensor", "Rainfall Sensor"]];
                 if (weatherForecastCardsSupported()) sources.push(["forecast", "Today's Forecast"]);
-                const source = helpers.selectField("Rainfall Source", helpers.idPrefix + "rainfall-source",
-                    sources, rainfallUsesForecast(b) ? "forecast" : "sensor", function (this: HTMLSelectElement) {
-                        b.options = setConfigOptionValue(b.options, "rainfall_source", this.value === "forecast" ? "forecast" : "");
+                const source = helpers.segmentControl(
+                    sources, rainfallUsesForecast(b) ? "forecast" : "sensor", function (value: string) {
+                        b.options = setConfigOptionValue(b.options, "rainfall_source", value === "forecast" ? "forecast" : "");
                         b.entity = "";
                         helpers.saveField("entity", b.entity);
                         helpers.saveField("options", b.options);
                         renderButtonSettings();
                     });
-                group.appendChild(source.field);
+                source.segment.id = helpers.idPrefix + "rainfall-source";
+                group.appendChild(helpers.fieldWithControl("Rainfall Source", source.segment.id, source.segment));
                 const forecast = rainfallUsesForecast(b);
                 helpers.renderCardEntityField(group, b, helpers, {
                     entity: {
