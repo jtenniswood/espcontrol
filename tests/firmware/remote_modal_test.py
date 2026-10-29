@@ -36,7 +36,10 @@ def function(file, name):
 
 
 source = (ROOT / 'tests/firmware/remote_modal_test.cpp.in').read_text()
-helpers = ''
+parser = (HEADERS / 'button_grid_config_parser.h').read_text()
+helpers = parser[parser.index('inline int hex_digit('):parser.index('inline char compact_hex_char(')]
+helpers += function('button_grid_config_parser.h', 'cfg_option_value')
+helpers += function('button_grid_config_parser.h', 'rainfall_uses_forecast')
 for file, name in [
     ('button_grid_actions.h', 'media_card_mode'),
     ('button_grid_media.h', 'media_control_modal_mode'),

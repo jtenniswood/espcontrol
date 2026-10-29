@@ -350,6 +350,7 @@ int main() {
     [&](Config &config, bool was_legacy) {
       weather_fields_called = was_legacy;
       config.label.clear();
+      config.sensor.clear();
     },
     [&](const std::string &, const Config &config) {
       weather_options_called = config.sensor.empty() && config.precision == "tomorrow";
@@ -742,7 +743,7 @@ function main() {
   let weatherOptionsCalled = false;
   assert.strictEqual(generatedWeather.normalizeSavedConfigWeather(
     legacyWeather, true,
-    (config, wasLegacy) => { weatherFieldsCalled = wasLegacy; config.label = ""; },
+    (config, wasLegacy) => { weatherFieldsCalled = wasLegacy; config.label = ""; config.sensor = ""; },
     (_options, config) => { weatherOptionsCalled = config.sensor === "" && config.precision === "tomorrow"; return "large_numbers"; },
   ), true);
   assert(weatherFieldsCalled && weatherOptionsCalled);

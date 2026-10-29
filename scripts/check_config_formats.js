@@ -297,7 +297,7 @@ assert.strictEqual(hooks.normalizeDateTimeCardMode("timezone"), "timezone", "dat
 assert.strictEqual(hooks.normalizeDateTimeCardMode("bad"), "", "date/time invalid mode falls back to date mode");
 assert.deepStrictEqual(
   Array.from(hooks.weatherModeOptionValues()),
-  ["", "today", "tomorrow", "daily"],
+  ["", "today", "tomorrow", "daily", "wind", "rainfall"],
   "weather mode options are spec-backed"
 );
 assert.strictEqual(hooks.normalizeWeatherCardMode("today"), "today", "weather today mode is allowed by spec");
