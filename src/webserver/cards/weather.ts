@@ -52,7 +52,8 @@ export function registerWeatherCardTypes(
                     helpers.saveField("sensor", b.sensor);
                     helpers.saveField("options", b.options);
                 }
-                if (b.precision === "rainfall" && !rainfallUsesForecast(b) && this.value !== "rainfall") {
+                if ((b.precision === "rainfall" && !rainfallUsesForecast(b) && this.value !== "rainfall") ||
+                    (b.precision !== "rainfall" && this.value === "rainfall")) {
                     b.entity = "";
                     helpers.saveField("entity", b.entity);
                 }

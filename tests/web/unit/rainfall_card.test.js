@@ -28,3 +28,19 @@ test("rainfall supports sensors and daily forecast data without making sensor ca
   }
  }
 });
+
+
+test("changing existing weather modes to Rainfall clears incompatible entities", () => {
+ const options = createConfigWeatherOptionsFeature({});
+ let card;
+ registerWeatherCardTypes({register: (_, definition) => card = definition}, options, {}, {}, {renderButtonSettings: () => {}});
+ for (const precision of ["", "today", "tomorrow", "daily", "wind"]) {
+  const config = {precision, entity: "weather.home", sensor: "", options: ""};
+  const saved = {};
+  card.cardMetadata.mode.onChange.call({value: "rainfall"}, config, {saveField: (key, value) => saved[key] = value});
+  assert.equal(config.entity, "");
+  assert.equal(saved.entity, "");
+  assert.equal(config.precision, "rainfall");
+  assert.equal(options.rainfallUsesForecast(config), false);
+ }
+});
