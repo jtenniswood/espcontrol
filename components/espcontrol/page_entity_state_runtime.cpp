@@ -1,4 +1,5 @@
 #include "page_entity_state_runtime.h"
+#include "bounded_percent_state.h"
 
 #include <algorithm>
 #include <cstring>
@@ -234,6 +235,10 @@ void PageEntityStateRuntime::receive(Slot &slot, uint32_t revision, uint32_t cha
   }
   synchronize_connection();
   auto &entry = slot.channels[channel];
+  const std::string_view attribute(slot.names+entry.attribute_offset,entry.attribute_size);
+  if(attribute=="current_position"||attribute=="current_tilt_position") {
+    uint8_t percent;if(parse_bounded_percent(value,percent)){entry.percent=percent;entry.percent_known=true;}
+  }
   if (entry.status == PageEntityStatus::AVAILABLE && entry.value_size == value.size() &&
       std::string_view(slot.values + entry.value_offset, entry.value_size) == value) return;
   if (entry.status == PageEntityStatus::AVAILABLE && entry.value_size == value.size()) {
@@ -265,6 +270,7 @@ void PageEntityStateRuntime::invalidate_disconnected_state() {
       auto &entry = slot.channels[i];
       entry.value_offset = entry.value_size = 0;
       entry.status = PageEntityStatus::UNKNOWN;
+      entry.percent_known=false;
       ++entry.revision;
     }
   }
@@ -289,6 +295,15 @@ PageEntityValue PageEntityStateRuntime::dependency(ConfigurationHandle card, siz
   return {entry.status, {slot.names + entry.entity_offset, entry.entity_size},
       {slot.names + entry.attribute_offset, entry.attribute_size},
       {slot.values + entry.value_offset, entry.value_size}, entry.revision};
+}
+std::optional<uint8_t> PageEntityStateRuntime::last_percent(ConfigurationHandle card,size_t ordinal) {
+  synchronize_connection();
+  if(active_<0||slots_[active_].generation!=card.generation)return std::nullopt;
+  const auto &slot=slots_[active_];if(card.index>=slot.card_count||slot.edge_count==0)return std::nullopt;
+  const auto begin=slot.card_offsets[card.index],end=slot.card_offsets[card.index+1];
+  if(ordinal>=end-begin)return std::nullopt;
+  const auto &entry=slot.channels[slot.edges[begin+ordinal].channel];
+  return entry.percent_known?std::optional<uint8_t>(entry.percent):std::nullopt;
 }
 PageEntityMemory PageEntityStateRuntime::memory() const {
   auto result = memory_;

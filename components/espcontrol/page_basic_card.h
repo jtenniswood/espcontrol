@@ -5,7 +5,7 @@
 #include "page_renderer_runtime.h"
 
 namespace espcontrol::pages {
-enum class BasicCardKind:uint8_t { EMPTY, TOGGLE, NUMBER, ICON, FOLDER, TEXT, DURATION, CLIMATE, STATUS, ACTION };
+enum class BasicCardKind:uint8_t { EMPTY, TOGGLE, NUMBER, ICON, FOLDER, TEXT, DURATION, CLIMATE, STATUS, ACTION, LIGHT, COVER };
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode:uint8_t { NONE, ENTITY, CLIMATE, MOWER, CHILDREN, NUMBER, TEXT };
 struct BasicCardDefinition {
@@ -37,6 +37,7 @@ bool prepare_basic_card(const PageStore &,CardId,BasicCardDefinition &,BasicCard
 struct BasicCardState {
   bool on{false},numeric{false},formatted_label{false},climate_icon_on{false};
   std::string_view label,unit;
+  uint8_t closed_percent{0};
   char number[48]{},text[257]{};
 };
 // Pull only from the configuration-owned cache. It neither registers a callback

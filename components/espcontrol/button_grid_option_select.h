@@ -119,22 +119,10 @@ inline std::string option_select_trim(const std::string &value) {
 }
 
 inline void option_select_add_option(std::vector<std::string> &out,
-                                     const std::string &raw) {
-  std::string value = option_select_trim(raw);
-  while (!value.empty() && (value.front() == '\'' || value.front() == '"' ||
-                            value.front() == '[' || value.front() == '(' ||
-                            value.front() == '<')) {
-    value.erase(value.begin());
-    value = option_select_trim(value);
-  }
-  while (!value.empty() && (value.back() == '\'' || value.back() == '"' ||
-                            value.back() == ']' || value.back() == ')' ||
-                            value.back() == '>')) {
-    value.pop_back();
-    value = option_select_trim(value);
-  }
-  if (value.empty()) return;
-  if (value.size() > OPTION_SELECT_OPTION_MAX_LEN) value.resize(OPTION_SELECT_OPTION_MAX_LEN);
+                                     const std::string &value) {
+  // Values are service identifiers. Never strip punctuation or truncate one
+  // into a different valid option; omit values beyond the display budget.
+  if (value.empty() || value.size() > OPTION_SELECT_OPTION_MAX_LEN) return;
   for (const auto &existing : out) {
     if (existing == value) return;
   }
@@ -148,58 +136,128 @@ inline std::vector<std::string> option_select_parse_delimited_options(
   while (start <= body.length()) {
     size_t end = body.find(delim, start);
     if (end == std::string::npos) end = body.length();
-    option_select_add_option(out, body.substr(start, end - start));
+    option_select_add_option(out, option_select_trim(body.substr(start, end - start)));
     start = end + 1;
   }
   return out;
 }
 
 inline std::vector<std::string> option_select_parse_list_options(const std::string &text) {
+  if (text.size() < 2) return {};
+  const std::string body = text.substr(1, text.size() - 2);
   std::vector<std::string> out;
-  if (text.size() < 2) return out;
-  std::string body = text.substr(1, text.size() - 2);
   std::string token;
-  bool in_quote = false;
-  char quote = '\0';
-  bool escaping = false;
-
-  for (char ch : body) {
-    if (in_quote) {
-      if (escaping) {
-        token.push_back(ch);
-        escaping = false;
+  char quote = 0;
+  bool escaped = false;
+  bool quoted_token = false;
+  bool closed_quote = false;
+  auto flush = [&]() {
+    std::string item = quoted_token ? token : option_select_trim(token);
+    option_select_add_option(out, item);
+    token.clear();
+    quoted_token = closed_quote = false;
+  };
+  auto append_codepoint = [&](unsigned long codepoint) {
+    // NUL cannot be represented by the C-string service payload API.
+    if (codepoint == 0 || codepoint > 0x10FFFF ||
+        (codepoint >= 0xD800 && codepoint <= 0xDFFF)) return false;
+    if (codepoint <= 0x7F) {
+      token.push_back(static_cast<char>(codepoint));
+    } else if (codepoint <= 0x7FF) {
+      token.push_back(static_cast<char>(0xC0 | (codepoint >> 6)));
+      token.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+    } else if (codepoint <= 0xFFFF) {
+      token.push_back(static_cast<char>(0xE0 | (codepoint >> 12)));
+      token.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+      token.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+    } else {
+      token.push_back(static_cast<char>(0xF0 | (codepoint >> 18)));
+      token.push_back(static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F)));
+      token.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+      token.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+    }
+    return true;
+  };
+  for (size_t index = 0; index < body.size(); ++index) {
+    const char ch = body[index];
+    if (quote) {
+      if (escaped) {
+        switch (ch) {
+          case 'a': token.push_back('\a'); break;
+          case 'b': token.push_back('\b'); break;
+          case 'f': token.push_back('\f'); break;
+          case 'n': token.push_back('\n'); break;
+          case 'r': token.push_back('\r'); break;
+          case 't': token.push_back('\t'); break;
+          case 'v': token.push_back('\v'); break;
+          case '\\': case '\'': case '"': token.push_back(ch); break;
+          case 'x': case 'u': case 'U': {
+            auto read_hex = [&](size_t digits, unsigned long &value) {
+              value = 0;
+              if (body.size() - index - 1 < digits) return false;
+              for (size_t n = 0; n < digits; ++n) {
+                const char digit = body[++index];
+                unsigned long part = 0;
+                if (digit >= '0' && digit <= '9') part = digit - '0';
+                else if (digit >= 'a' && digit <= 'f') part = digit - 'a' + 10;
+                else if (digit >= 'A' && digit <= 'F') part = digit - 'A' + 10;
+                else return false;
+                value = (value << 4) | part;
+              }
+              return true;
+            };
+            unsigned long codepoint = 0;
+            if (!read_hex(ch == 'x' ? 2 : ch == 'u' ? 4 : 8, codepoint)) return {};
+            // Accept JSON's paired UTF-16 form as well as Python's \U form.
+            if (ch == 'u' && codepoint >= 0xD800 && codepoint <= 0xDBFF) {
+              if (body.size() - index - 1 < 6 ||
+                  body[index + 1] != '\\' || body[index + 2] != 'u') return {};
+              index += 2;
+              unsigned long low = 0;
+              if (!read_hex(4, low) || low < 0xDC00 || low > 0xDFFF) return {};
+              codepoint = 0x10000 + ((codepoint - 0xD800) << 10) + low - 0xDC00;
+            }
+            if (!append_codepoint(codepoint)) return {};
+            break;
+          }
+          default: return {};
+        }
+        escaped = false;
       } else if (ch == '\\') {
-        escaping = true;
+        escaped = true;
       } else if (ch == quote) {
-        in_quote = false;
+        quote = 0;
+        closed_quote = true;
       } else {
         token.push_back(ch);
       }
-      continue;
-    }
-    if (ch == '\'' || ch == '"') {
-      in_quote = true;
-      quote = ch;
-      continue;
-    }
-    if (ch == ',') {
-      option_select_add_option(out, token);
+    } else if (ch == ',') {
+      flush();
+    } else if ((ch == '\'' || ch == '"') && option_select_trim(token).empty() && !closed_quote) {
       token.clear();
-      continue;
+      quote = ch;
+      quoted_token = true;
+    } else if (closed_quote) {
+      if (!std::isspace(static_cast<unsigned char>(ch))) return {};
+    } else {
+      token.push_back(ch);
     }
-    token.push_back(ch);
   }
-  option_select_add_option(out, token);
+  // Incomplete quoted input must never become a different action value.
+  if (quote || escaped) return {};
+  flush();
   return out;
 }
 
 inline std::vector<std::string> option_select_parse_options(const std::string &raw) {
   std::string text = option_select_trim(raw);
   if (text.empty() || text == "unknown" || text == "unavailable") return {};
-  if ((text.front() == '[' && text.back() == ']') ||
-      (text.front() == '(' && text.back() == ')')) {
-    std::vector<std::string> parsed = option_select_parse_list_options(text);
-    if (!parsed.empty()) return parsed;
+  if (text.front() == '[' || text.front() == '(') {
+    const char closing = text.front() == '[' ? ']' : ')';
+    // A capped serialized list must never fall back to legacy delimiters:
+    // those would treat quotes/brackets as part of the command value.
+    if (text.size() < 2 || text.back() != closing) return {};
+    return option_select_parse_list_options(text);
   }
   if (text.find('\n') != std::string::npos) return option_select_parse_delimited_options(text, '\n');
   if (text.find('|') != std::string::npos) return option_select_parse_delimited_options(text, '|');

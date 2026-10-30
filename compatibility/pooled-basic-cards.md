@@ -126,3 +126,5 @@ temperature unit and `espcontrol_i18n(const char *)` translator, and bump its
 revision when language or unit changes. Native LVGL coverage includes climate
 to timer slot reuse, inactive icons, stale clicks and repeated navigation.
 These are not physical display or real climate-modal results.
+
+Light-control and cover All Controls presentation: [ownership and checks](pooled-light-cover-cards.md).

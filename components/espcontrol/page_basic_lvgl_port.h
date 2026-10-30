@@ -9,13 +9,14 @@
 #include "lvgl.h"
 #include "bounded_display_text.h"
 #include "display_color.h"
+#include "button_grid_slider_contrast.h"
 #include "page_basic_card.h"
 
 namespace espcontrol::pages {
 // The selected firmware supplies exactly one existing bank of grid widgets.
 // The bank and fonts outlive this port; no widgets are created by navigation.
 struct PageBasicWidgets {
-  lv_obj_t *button{nullptr},*icon{nullptr},*label{nullptr},*sensor_container{nullptr},*value{nullptr},*unit{nullptr};
+  lv_obj_t *button{nullptr},*icon{nullptr},*label{nullptr},*sensor_container{nullptr},*value{nullptr},*unit{nullptr},*fill{nullptr};
 };
 struct PageBasicTheme {
   uint64_t revision{0};
@@ -38,6 +39,7 @@ struct PageBasicActions {
   void (*back)(void *,PageBindingToken){nullptr};
   void (*climate)(void *,PageBindingToken){nullptr};
   void (*action)(void *,PageBindingToken){nullptr};
+  void (*control)(void *,PageBindingToken){nullptr};
 };
 inline const lv_style_transition_dsc_t *page_basic_push_transition() {
   static const lv_style_prop_t properties[]={LV_STYLE_BG_COLOR,LV_STYLE_PROP_INV};
@@ -68,6 +70,11 @@ class PageBasicLvglPort final:public PageRendererPort {
     retire_active();discard_prepared();
     for(size_t i=0;i<callbacks_;++i)
       lv_obj_remove_event_cb_with_user_data(widgets_[i].button,event,&shells_[i]);
+    for(size_t slot=0;slot<Slots;++slot) {
+      const auto &w=widgets_[slot];const std::array<lv_obj_t *,4>labels={w.icon,w.label,w.value,w.unit};
+      for(size_t i=0;i<shells_[slot].contrast_callbacks;++i)
+        lv_obj_remove_event_cb_with_user_data(labels[i],slider_text_contrast_event_cb,w.fill);
+    }
   }
   PageBasicLvglPort(const PageBasicLvglPort &)=delete;
   PageBasicLvglPort &operator=(const PageBasicLvglPort &)=delete;
@@ -78,15 +85,20 @@ class PageBasicLvglPort final:public PageRendererPort {
   bool initialize() {
     if(initialized_)return true;
     if(callbacks_!=0)return false;
+    for(const auto &shell:shells_)if(shell.contrast_callbacks)return false;
     if(actions_.icon==nullptr)return false;
     page_basic_push_transition();
     page_basic_no_transition();
-    std::array<lv_obj_t *,Slots*6> unique{};size_t used=0;
+    std::array<lv_obj_t *,Slots*7> unique{};size_t used=0;
     for(const auto &w:widgets_) {
       for(auto *object:{w.button,w.icon,w.label,w.sensor_container,w.value,w.unit}) {
         if(!object)return false;
         for(size_t index=0;index<used;++index)if(unique[index]==object)return false;
         unique[used++]=object;
+      }
+      if(w.fill) {
+        for(size_t index=0;index<used;++index)if(unique[index]==w.fill)return false;
+        unique[used++]=w.fill;if(lv_obj_get_parent(w.fill)!=w.button)return false;
       }
       if(lv_obj_get_parent(w.icon)!=w.button||lv_obj_get_parent(w.label)!=w.button||
          lv_obj_get_parent(w.sensor_container)!=w.button||lv_obj_get_parent(w.value)!=w.sensor_container||
@@ -110,6 +122,21 @@ class PageBasicLvglPort final:public PageRendererPort {
         lv_label_set_text_static(label,"");
         lv_obj_set_style_text_color(label,lv_color_hex(theme_.text),LV_PART_MAIN);
       }
+      if(w.fill) {
+        lv_obj_add_flag(w.fill,static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_HIDDEN|LV_OBJ_FLAG_IGNORE_LAYOUT|LV_OBJ_FLAG_FLOATING));
+        lv_obj_clear_flag(w.fill,static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE));
+        lv_obj_set_style_bg_opa(w.fill,LV_OPA_COVER,LV_PART_MAIN);
+        lv_obj_set_style_border_width(w.fill,0,LV_PART_MAIN);lv_obj_set_style_shadow_width(w.fill,0,LV_PART_MAIN);
+        lv_obj_set_style_pad_all(w.fill,0,LV_PART_MAIN);
+        lv_obj_set_style_radius(w.fill,0,LV_PART_MAIN);lv_obj_set_style_bg_color(w.fill,lv_color_hex(theme_.active),LV_PART_MAIN);
+        lv_obj_set_pos(w.fill,0,0);lv_obj_set_size(w.fill,0,0);lv_obj_move_background(w.fill);
+        lv_obj_set_style_clip_corner(w.button,true,LV_PART_MAIN);
+        for(auto *label:{w.icon,w.label,w.value,w.unit}) {
+          lv_obj_add_flag(label,LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
+          if(!lv_obj_add_event_cb(label,slider_text_contrast_event_cb,LV_EVENT_DRAW_TASK_ADDED,w.fill))return false;
+          ++shells_[i].contrast_callbacks;
+        }
+      }
       if(theme_.sensor_font)lv_obj_set_style_text_font(w.value,theme_.sensor_font,LV_PART_MAIN);
       if(lv_obj_add_event_cb(w.button,event,LV_EVENT_ALL,&shells_[i])==nullptr)return false;
       ++callbacks_;
@@ -129,6 +156,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         BasicCardDefinition view;if(!prepare_basic_card(store,card,view,&strings))return false;
         if(view.kind==BasicCardKind::CLIMATE&&actions_.climate==nullptr)return false;
         if(view.kind==BasicCardKind::ACTION&&actions_.action==nullptr)return false;
+        if((view.kind==BasicCardKind::LIGHT||view.kind==BasicCardKind::COVER)&&actions_.control==nullptr)return false;
+        if(view.kind==BasicCardKind::COVER)for(const auto &w:widgets_)if(!w.fill)return false;
         if(view.kind==BasicCardKind::TEXT||view.kind==BasicCardKind::CLIMATE||view.text_overlay||view.folder_mode==BasicFolderMode::TEXT||view.action_display==BasicActionDisplay::TEXT)label_capacity=std::max<size_t>(label_capacity,257);
         if(view.default_label) {
           label_capacity=std::max(label_capacity,std::strlen(basic_card_default_label(view,theme_.translate))+1);
@@ -194,7 +223,7 @@ class PageBasicLvglPort final:public PageRendererPort {
   }
   void retire_active()override {
     if(!active_.arena)return;
-    for(auto &shell:shells_){shell.token={};shell.pressed={};shell.definition=nullptr;shell.back={};shell.cell={};shell.label=shell.unit=shell.number=nullptr;}
+    for(auto &shell:shells_){shell.token={};shell.pressed={};shell.definition=nullptr;shell.back={};shell.cell={};shell.label=shell.unit=shell.number=nullptr;shell.fill_percent=0;}
     detach_text();for(const auto &w:widgets_)lv_obj_add_flag(w.button,LV_OBJ_FLAG_HIDDEN);
     release(active_);store_={};
   }
@@ -213,6 +242,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       lv_obj_set_style_bg_color(w.button,lv_color_hex(s.background),selector);
     lv_obj_clear_state(w.button,static_cast<lv_state_t>(LV_STATE_CHECKED|LV_STATE_PRESSED));
     lv_obj_clear_flag(w.button,LV_OBJ_FLAG_CLICKABLE);
+    s.fill_percent=0;if(w.fill){lv_obj_add_flag(w.fill,LV_OBJ_FLAG_HIDDEN);lv_obj_set_size(w.fill,0,0);}
     // Hidden static text only refers to this port's reusable buffers or
     // firmware glyphs; keep it attached until rebind or arena retirement.
   }
@@ -224,7 +254,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     s.label=text;s.unit=text+active_.label_capacity;s.number=s.unit+active_.unit_capacity;
     lv_obj_set_grid_cell(w.button,LV_GRID_ALIGN_STRETCH,cell.column,cell.column_span,LV_GRID_ALIGN_STRETCH,cell.row,cell.row_span);
     lv_obj_clear_flag(w.button,LV_OBJ_FLAG_HIDDEN);
-    const bool clickable=cell.back||(s.definition&&(s.definition->definition.kind==BasicCardKind::TOGGLE||s.definition->definition.kind==BasicCardKind::FOLDER||s.definition->definition.kind==BasicCardKind::CLIMATE||s.definition->definition.kind==BasicCardKind::ACTION));
+    const bool clickable=cell.back||(s.definition&&(s.definition->definition.kind==BasicCardKind::TOGGLE||s.definition->definition.kind==BasicCardKind::FOLDER||s.definition->definition.kind==BasicCardKind::CLIMATE||s.definition->definition.kind==BasicCardKind::ACTION||s.definition->definition.kind==BasicCardKind::LIGHT||s.definition->definition.kind==BasicCardKind::COVER));
     if(clickable)lv_obj_add_flag(w.button,LV_OBJ_FLAG_CLICKABLE);else lv_obj_clear_flag(w.button,LV_OBJ_FLAG_CLICKABLE);
     // Do not read the new state graph here: its activation may follow ours.
   }
@@ -248,7 +278,7 @@ class PageBasicLvglPort final:public PageRendererPort {
       checked=value.on&&(definition.kind==BasicCardKind::TOGGLE||definition.active_color);
       number=(definition.kind==BasicCardKind::CLIMATE&&definition.climate.number!=ClimateCardNumber::ICON)||definition.kind==BasicCardKind::NUMBER||definition.kind==BasicCardKind::DURATION||definition.folder_mode==BasicFolderMode::NUMBER||definition.action_display==BasicActionDisplay::NUMBER||(definition.kind==BasicCardKind::TOGGLE&&!definition.text_overlay&&!definition.sensor.empty()&&value.on);
       const bool state_icon=definition.kind==BasicCardKind::TOGGLE||definition.kind==BasicCardKind::ICON||
-        definition.kind==BasicCardKind::STATUS||definition.action_display==BasicActionDisplay::ICON||definition.folder_mode==BasicFolderMode::ENTITY||definition.folder_mode==BasicFolderMode::CLIMATE||definition.folder_mode==BasicFolderMode::MOWER||definition.folder_mode==BasicFolderMode::CHILDREN;
+        definition.kind==BasicCardKind::STATUS||definition.kind==BasicCardKind::LIGHT||definition.kind==BasicCardKind::COVER||definition.action_display==BasicActionDisplay::ICON||definition.folder_mode==BasicFolderMode::ENTITY||definition.folder_mode==BasicFolderMode::CLIMATE||definition.folder_mode==BasicFolderMode::MOWER||definition.folder_mode==BasicFolderMode::CHILDREN;
       glyph=definition.kind==BasicCardKind::CLIMATE?(value.climate_icon_on?s.definition->on:s.definition->off):state_icon&&value.on?s.definition->on:s.definition->off;
     }
     write(w.label,s.label,active_.label_capacity,value.formatted_label?std::string_view(value.text):value.label);
@@ -275,11 +305,18 @@ class PageBasicLvglPort final:public PageRendererPort {
       for(auto *label:{w.icon,w.label,w.value,w.unit})lv_obj_set_style_text_color(label,lv_color_hex(foreground),LV_PART_MAIN);
       s.painted=true;s.background=background;s.foreground=foreground;
     }
+    if(w.fill) {
+      if(definition.kind==BasicCardKind::COVER&&value.closed_percent) {
+        s.fill_percent=value.closed_percent;update_fill_geometry(s);
+        const auto fill_color=definition.custom_on?correct(definition.on_color):definition.custom_off&&!definition.theme_active?correct(active_card_color(definition.off_color)):theme_.active;
+        lv_obj_set_style_bg_color(w.fill,lv_color_hex(fill_color),LV_PART_MAIN);lv_obj_clear_flag(w.fill,LV_OBJ_FLAG_HIDDEN);
+      } else {s.fill_percent=0;lv_obj_add_flag(w.fill,LV_OBJ_FLAG_HIDDEN);lv_obj_set_size(w.fill,0,0);}
+    }
     seen_state_=state_.revision();seen_theme_=theme_.revision;
   }
   void suspend()override{for(auto &shell:shells_)shell.pressed={};}
   bool state_changed()const override{return state_.revision()!=seen_state_||theme_.revision!=seen_theme_;}
-  PageBasicMemory memory()const{auto m=memory_;m.fixed_bytes=sizeof(*this);m.borrowed_widgets=Slots*6;m.active_bytes=active_.bytes;m.staged_bytes=staged_.bytes;return m;}
+  PageBasicMemory memory()const{auto m=memory_;m.fixed_bytes=sizeof(*this);m.borrowed_widgets=Slots*6;for(const auto &w:widgets_)m.borrowed_widgets+=w.fill?1:0;m.active_bytes=active_.bytes;m.staged_bytes=staged_.bytes;return m;}
  private:
   bool collect_summary(const PageStore &store,PageId page_id,std::array<CardId,Slots> &cards,size_t &used)const {
     used=0;const auto *page=store.page(page_id);if(!page||!page->navigable)return true;
@@ -312,7 +349,7 @@ class PageBasicLvglPort final:public PageRendererPort {
   };
   struct Prepared {BasicCardDefinition definition;const char *off{nullptr},*on{nullptr};const CardId *summary{nullptr};uint16_t summary_count{0};};
   struct Arena {void *arena{nullptr};size_t bytes{0},label_capacity{0},unit_capacity{0},stride{0},cards{0};};
-  struct Shell {PageBasicLvglPort *port{nullptr};size_t index{0};PageBindingToken token,pressed;PageCellLayout cell;PageBackStyleView back;Prepared *definition{nullptr};char *label{nullptr},*unit{nullptr},*number{nullptr};bool painted{false};uint32_t background{0},foreground{0};const lv_font_t *painted_font{nullptr};};
+  struct Shell {PageBasicLvglPort *port{nullptr};size_t index{0};PageBindingToken token,pressed;PageCellLayout cell;PageBackStyleView back;Prepared *definition{nullptr};char *label{nullptr},*unit{nullptr},*number{nullptr};bool painted{false};uint8_t fill_percent{0},contrast_callbacks{0};uint32_t background{0},foreground{0};const lv_font_t *painted_font{nullptr};};
   static bool same(PageBindingToken a,PageBindingToken b){return a.binding!=0&&a.configuration==b.configuration&&a.binding==b.binding&&a.page==b.page&&a.card==b.card&&a.shell==b.shell&&a.back==b.back;}
   static Prepared *prepared(const Arena &arena){return static_cast<Prepared *>(arena.arena);}
   void release(Arena &arena){if(arena.arena)allocator_.release(arena.arena,arena.bytes);arena={};}
@@ -321,9 +358,18 @@ class PageBasicLvglPort final:public PageRendererPort {
     bool changed=false;const auto result=copy_display_text(buffer,capacity,text,SIZE_MAX,&changed);memory_.text_truncations+=result.truncated;memory_.invalid_text+=result.invalid;
     if(changed||lv_label_get_text(label)!=buffer)lv_label_set_text_static(label,buffer);
   }
+  void update_fill_geometry(Shell &shell) {
+    const auto &w=widgets_[shell.index];if(!w.fill||!shell.fill_percent)return;
+    const auto width=lv_obj_get_width(w.button),height=lv_obj_get_height(w.button);
+    const auto fill_height=static_cast<lv_coord_t>(static_cast<int32_t>(height)*shell.fill_percent/100);
+    lv_obj_set_size(w.fill,width,fill_height);
+    lv_obj_set_pos(w.fill,-lv_obj_get_style_pad_left(w.button,LV_PART_MAIN),-lv_obj_get_style_pad_top(w.button,LV_PART_MAIN));
+    lv_obj_set_style_radius(w.fill,lv_obj_get_style_radius(w.button,LV_PART_MAIN),LV_PART_MAIN);
+  }
   static void event(lv_event_t *event) {
     auto *shell=static_cast<Shell *>(lv_event_get_user_data(event));auto *port=shell->port;
     const auto code=lv_event_get_code(event);
+    if(code==LV_EVENT_SIZE_CHANGED){port->update_fill_geometry(*shell);return;}
     if(code==LV_EVENT_PRESSED){shell->pressed=shell->token;return;}
     if(code==LV_EVENT_PRESS_LOST){shell->pressed={};return;}
     if(code!=LV_EVENT_CLICKED)return;
@@ -339,6 +385,8 @@ class PageBasicLvglPort final:public PageRendererPort {
       port->actions_.climate(port->actions_.owner,origin);
     else if(definition.kind==BasicCardKind::TOGGLE&&port->actions_.toggle)
       port->actions_.toggle(port->actions_.owner,origin,definition.entity);
+    else if((definition.kind==BasicCardKind::LIGHT||definition.kind==BasicCardKind::COVER)&&port->actions_.control)
+      port->actions_.control(port->actions_.owner,origin);
     else if(definition.kind==BasicCardKind::ACTION&&port->actions_.action)
       port->actions_.action(port->actions_.owner,origin);
   }
