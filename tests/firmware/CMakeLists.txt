@@ -67,6 +67,16 @@ target_compile_options(page_renderer_runtime_test PRIVATE -Wall -Wextra -Werror 
 target_include_directories(page_renderer_runtime_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_renderer_runtime_test COMMAND page_renderer_runtime_test)
 
+add_executable(page_basic_card_test page_basic_card_test.cpp
+  ../../components/espcontrol/page_basic_card.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_basic_card_test PRIVATE cxx_std_17)
+target_compile_options(page_basic_card_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_basic_card_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_basic_card_test COMMAND page_basic_card_test)
+
 add_executable(dpi_timing_test dpi_timing_test.cpp)
 target_compile_features(dpi_timing_test PRIVATE cxx_std_17)
 target_compile_options(dpi_timing_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
@@ -766,3 +776,26 @@ add_test(NAME weather_daily_requests_test COMMAND
 
 add_test(NAME camera_screensaver_dimming_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/camera_screensaver_dimming_test.py)
+
+# Optional real-LVGL integration, using the exact library from an ESPHome build.
+# No network/download or machine-specific path is required by the normal suite.
+set(ESPCONTROL_LVGL_SOURCE_DIR "" CACHE PATH "LVGL 9.5 source from pinned firmware build")
+if(ESPCONTROL_LVGL_SOURCE_DIR)
+  enable_language(C)
+  set(LV_BUILD_CONF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/lvgl_native/lv_conf.h" CACHE PATH "" FORCE)
+  set(CONFIG_LV_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(CONFIG_LV_BUILD_DEMOS OFF CACHE BOOL "" FORCE)
+  set(CONFIG_LV_USE_THORVG_INTERNAL OFF CACHE BOOL "" FORCE)
+  add_subdirectory("${ESPCONTROL_LVGL_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/lvgl")
+  add_executable(page_basic_lvgl_port_test page_basic_lvgl_port_test.cpp
+    ../../components/espcontrol/page_basic_card.cpp
+    ../../components/espcontrol/page_card_dependencies.cpp
+    ../../components/espcontrol/page_entity_state_runtime.cpp
+    ../../components/espcontrol/page_renderer_layout.cpp
+    ../../components/espcontrol/page_store.cpp)
+  target_compile_features(page_basic_lvgl_port_test PRIVATE cxx_std_17)
+  target_compile_options(page_basic_lvgl_port_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_basic_lvgl_port_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_basic_lvgl_port_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_basic_lvgl_port_test COMMAND page_basic_lvgl_port_test)
+endif()

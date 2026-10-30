@@ -5,6 +5,8 @@ for the pooled renderer migration. It is not selected by production firmware.
 The existing LVGL grid remains active while real widget/driver ports are built
 and physically qualified. No nesting or capacity change is enabled here.
 
+The first real widget port is described in [pooled-basic-cards.md](pooled-basic-cards.md); it remains unselected while the remaining drivers are ported.
+
 The owner stores exactly the profile's number of binding slots. Preparation
 compiles immutable root/subpage layouts using the same order/span/Back parsers
 as the existing grid. Layout parsing and custom Back-label decoding happen
