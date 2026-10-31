@@ -61,8 +61,11 @@ constexpr uint32_t NATIVE_CONFIGURATION_INITIALIZATION_DELAY_MS = 5000;
 
 static uint8_t *allocate_configuration_slot(size_t size) {
 #ifdef USE_ESP32
+  // Native v1/v2 conversion scratch requires eight-byte alignment. Ordinary
+  // ESP32 PSRAM allocations only guarantee four bytes, so heap reuse can make
+  // an otherwise valid configuration fail representation conversion.
   return static_cast<uint8_t *>(
-      heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+      heap_caps_aligned_alloc(8, size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
 #else
   (void)size;
   return nullptr;

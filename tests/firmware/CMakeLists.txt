@@ -5,6 +5,18 @@ enable_testing()
 include(CheckCXXSourceCompiles)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/configuration_psram_allocator_test.cpp
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_configuration_psram_allocator_test.py
+          ${CMAKE_CURRENT_BINARY_DIR}/configuration_psram_allocator_test.cpp
+  DEPENDS generate_configuration_psram_allocator_test.py configuration_psram_allocator_test.cpp.in
+          ../../components/espcontrol/espcontrol_app.cpp)
+add_executable(configuration_psram_allocator_test ${CMAKE_CURRENT_BINARY_DIR}/configuration_psram_allocator_test.cpp)
+target_compile_features(configuration_psram_allocator_test PRIVATE cxx_std_17)
+target_compile_definitions(configuration_psram_allocator_test PRIVATE USE_ESP32)
+target_compile_options(configuration_psram_allocator_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(configuration_psram_allocator_test PRIVATE ../../components/espcontrol)
+add_test(NAME configuration_psram_allocator_test COMMAND configuration_psram_allocator_test)
+
 add_executable(panel_config_document_v2_reader panel_config_document_v2_reader.cpp)
 target_compile_features(panel_config_document_v2_reader PRIVATE cxx_std_17)
 target_compile_options(panel_config_document_v2_reader PRIVATE -Wall -Wextra -Werror -UNDEBUG)
@@ -26,7 +38,7 @@ check_cxx_source_compiles("int main() { return 0; }" ESPCONTROL_HAS_DOCUMENT_SAN
 set(CMAKE_REQUIRED_FLAGS "${ESPCONTROL_DOCUMENT_FLAGS_SAVED}")
 set(CMAKE_REQUIRED_LINK_OPTIONS "${ESPCONTROL_DOCUMENT_LINK_SAVED}")
 if(ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
-  foreach(target panel_config_document_v2_reader panel_config_projection_cli panel_config_import_cli)
+  foreach(target configuration_psram_allocator_test panel_config_document_v2_reader panel_config_projection_cli panel_config_import_cli)
     target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
     target_link_options(${target} PRIVATE -fsanitize=address,undefined)
   endforeach()
