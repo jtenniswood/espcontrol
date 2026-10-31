@@ -1,5 +1,7 @@
 #pragma once
 
+#include "page_scene_selection.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 inline std::string normalize_weather_state(std::string state) {
@@ -163,7 +165,13 @@ inline std::string weather_label_for_state(const std::string &state) {
 
 inline void reset_weather_forecast_cards() {}
 
-inline void refresh_weather_forecast_card_visuals() { weather_daily_refresh_visuals(); }
+inline void refresh_weather_forecast_card_visuals() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto *scene = espcontrol::application_scene_navigation()) scene->refresh_content();
+    return;
+  }
+  weather_daily_refresh_visuals();
+}
 
 inline void register_weather_forecast_card(lv_obj_t *btn,
                                            lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
@@ -302,6 +310,10 @@ inline bool weather_forecast_card_ref_ready(const WeatherForecastCardRef &ref) {
 }
 
 inline void refresh_weather_forecast_card_visuals() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto *scene = espcontrol::application_scene_navigation()) scene->refresh_content();
+    return;
+  }
   WeatherForecastCardRef *refs = weather_forecast_card_refs();
   int count = weather_forecast_card_count();
   bool updated = false;
@@ -735,6 +747,8 @@ inline bool weather_forecast_enqueue_due_retries() {
 inline void weather_forecast_send_next_queued();
 
 inline void weather_forecast_cancel_pending_requests(bool disconnected = true) {
+  // Native forecast ownership follows its connection generation and scene lifecycle.
+  if (espcontrol::pooled_application_selected()) return;
   // Grid rebuilds invalidate callbacks but have not failed the new sources.
   // Only a real disconnect changes loading/stale presentation here.
   if (disconnected) {
@@ -757,6 +771,7 @@ inline void weather_forecast_cancel_pending_requests(bool disconnected = true) {
 }
 
 inline bool weather_forecast_cancel_stale_requests() {
+  if (espcontrol::pooled_application_selected()) return false;
   WeatherForecastPendingRequest *requests = weather_forecast_pending_requests();
   uint32_t now = esphome::millis();
   for (int i = 0; i < WEATHER_FORECAST_PENDING_MAX; i++) {
@@ -908,6 +923,7 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
 }
 
 inline void weather_forecast_send_next_queued() {
+  if (espcontrol::pooled_application_selected()) return;
   if (!weather_forecast_actions_ready() || weather_forecast_any_pending()) return;
   weather_forecast_enqueue_due_retries();
   std::string entity_id;
@@ -917,6 +933,10 @@ inline void weather_forecast_send_next_queued() {
 }
 
 inline void refresh_weather_forecast_cards() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto *scene = espcontrol::application_scene_navigation()) scene->refresh_weather_forecasts();
+    return;
+  }
   WeatherForecastCardRef *refs = weather_forecast_card_refs();
   int count = weather_forecast_card_count();
   if (count <= 0 && weather_daily_sources().empty()) return;

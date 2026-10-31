@@ -21,6 +21,7 @@ harness = r'''
 #include <string>
 #include <vector>
 #include "button_grid_limits.h"
+#include "page_scene_selection.h"
 #include "button_grid_weather_daily_data.h"
 struct lv_obj_t {};
 template<typename... Args> void log_warning(Args...) {}

@@ -27,8 +27,7 @@ script:
             lambda: |-
               return espcontrol_can_open_modal(entity_id,
                 !id(connectivity_setup_display_active) &&
-                grid_phase2_complete() &&
-                !navigation_home_targets().empty());
+                espcontrol_navigation_ready());
           then:
             - script.execute: screensaver_wake
             - script.wait: screensaver_wake
@@ -37,8 +36,7 @@ script:
                   lambda: |-
                     return espcontrol_open_modal(entity_id,
                       !id(connectivity_setup_display_active) &&
-                      grid_phase2_complete() &&
-                      !navigation_home_targets().empty());
+                      espcontrol_navigation_ready());
                 then:
                   - script.execute: screensaver_idle_check
                   - script.execute: home_screen_idle_check
@@ -55,8 +53,7 @@ script:
             lambda: |-
               return espcontrol_can_open_subpage(label,
                 !id(connectivity_setup_display_active) &&
-                grid_phase2_complete() &&
-                !navigation_home_targets().empty());
+                espcontrol_navigation_ready());
           then:
             - script.execute: screensaver_wake
             - script.wait: screensaver_wake
@@ -65,14 +62,12 @@ script:
                   lambda: |-
                     return espcontrol_can_open_subpage(label,
                       !id(connectivity_setup_display_active) &&
-                      grid_phase2_complete() &&
-                      !navigation_home_targets().empty());
+                      espcontrol_navigation_ready());
                 then:
                   - lambda: |-
                       espcontrol_open_subpage(label,
                         !id(connectivity_setup_display_active) &&
-                        grid_phase2_complete() &&
-                        !navigation_home_targets().empty(),
+                        espcontrol_navigation_ready(),
                         id(main_page)->obj);
                   - script.execute: screensaver_idle_check
                   - script.execute: home_screen_idle_check

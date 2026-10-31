@@ -2,8 +2,8 @@
 
 Percentage (brightness, fan speed, cover position/tilt), numeric and Kelvin
 slider releases share the eight-entry `PageCardCommands` FIFO with basic card
-actions. Slider background toggles use a separate typed intent; numeric cards
-cannot toggle. `PageSliderCommandPolicy` borrows the existing three history
+actions. Percentage-slider background toggles use a separate typed intent;
+numeric and Kelvin cards act only on slider release. `PageSliderCommandPolicy` borrows the existing three history
 owners and entity graph, adding no fields to configured cards or subscriptions.
 The queue has a fixed larger scalar payload independent of card count.
 

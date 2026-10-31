@@ -1,5 +1,7 @@
 #pragma once
 
+#include "page_scene_selection.h"
+
 // Included after the card drivers. Resolve afresh before and after waking;
 // this file owns no card runtime, subscriptions, or persistent target cache.
 
@@ -107,11 +109,19 @@ inline bool remote_modal_resolve(const std::string &entity_id, bool ui_ready,
 }
 
 inline bool espcontrol_can_open_modal(const std::string &entity_id, bool ui_ready) {
+  if (espcontrol::pooled_application_selected()) {
+    auto *scene = espcontrol::application_scene_navigation();
+    return ui_ready && scene && scene->can_open_modal(entity_id);
+  }
   RemoteModalSelection selection;
   return remote_modal_resolve(entity_id, ui_ready, selection);
 }
 
 inline bool espcontrol_open_modal(const std::string &entity_id, bool ui_ready) {
+  if (espcontrol::pooled_application_selected()) {
+    auto *scene = espcontrol::application_scene_navigation();
+    return ui_ready && scene && scene->open_modal(entity_id);
+  }
   RemoteModalSelection selection;
   if (!remote_modal_resolve(entity_id, ui_ready, selection)) return false;
   // Keep the underlying screen. Closing a remote subpage modal must not navigate.
@@ -128,6 +138,11 @@ inline bool espcontrol_open_modal(const std::string &entity_id, bool ui_ready) {
 }
 
 inline void espcontrol_close_modal() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto *scene = espcontrol::application_scene_navigation())
+      scene->close_modal();
+    return;
+  }
   control_modal_close_nested_menu();
   control_modal_force_close_active();
 }
@@ -170,18 +185,30 @@ inline bool remote_subpage_resolve(const std::string &label, bool ui_ready,
 }
 
 inline bool espcontrol_can_open_subpage(const std::string &label, bool ui_ready) {
+  if (espcontrol::pooled_application_selected()) {
+    auto *scene = espcontrol::application_scene_navigation();
+    return ui_ready && scene && scene->can_open_subpage(label);
+  }
   NavigationHomeTargetEntry *target = nullptr;
   return remote_subpage_resolve(label, ui_ready, target);
 }
 
 inline bool espcontrol_open_subpage(const std::string &label, bool ui_ready,
                                     lv_obj_t *main_page_obj) {
+  if (espcontrol::pooled_application_selected()) {
+    auto *scene = espcontrol::application_scene_navigation();
+    return ui_ready && main_page_obj && scene && scene->open_subpage(label);
+  }
   NavigationHomeTargetEntry *target = nullptr;
   if (!remote_subpage_resolve(label, ui_ready && main_page_obj != nullptr, target)) return false;
   return navigation_activate_home_target(target, main_page_obj);
 }
 
 inline bool espcontrol_close_subpage(lv_obj_t *main_page_obj) {
+  if (espcontrol::pooled_application_selected()) {
+    auto *scene = espcontrol::application_scene_navigation();
+    return main_page_obj && scene && scene->close_subpage();
+  }
   if (alarm_display_takeover_active()) {
     ESP_LOGW("close_subpage", "Rejected request: alarm display is active");
     return false;

@@ -23,17 +23,42 @@ class PageDependencySource {
   virtual bool enumerate(const PageStore &store, PageDependencySink &sink) const = 0;
 };
 
+using PageEntityDeliver = void (*)(void *, uint32_t, uint32_t,
+                                   std::string_view);
+
+// One stable, caller-owned dispatch lease per staged/active graph. A port can
+// route small callback tokens through this node without a heap capture per
+// channel. release(owner) must unlink it before its storage is reset or freed.
+struct PageEntitySubscriptionBatch {
+  PageEntitySubscriptionBatch *next{nullptr};
+  void *adapter{nullptr}, *owner{nullptr};
+  PageEntityDeliver deliver{nullptr};
+  uint32_t revision{0}, first_token{0}, channels{0};
+};
+
 class PageEntitySubscriptions {
  public:
-  using Deliver = void (*)(void *, uint32_t, uint32_t, std::string_view);
-  virtual ~PageEntitySubscriptions() = default;
-  virtual bool subscribe(const char *entity, const char *attribute, void *owner,
-                         uint32_t revision, uint32_t channel, Deliver deliver) = 0;
-  // Immediately cancel callbacks for this owner, including retained replay.
-  virtual void release(void *owner) = 0;
-  virtual uint32_t connection_generation() const = 0;
-  // Local producers seed each replacement directly, including initial empty-text semantics.
-  virtual bool copy_shared_values() const { return true; }
+   using Deliver = PageEntityDeliver;
+   virtual ~PageEntitySubscriptions() = default;
+   virtual bool prepare_batch(PageEntitySubscriptionBatch &, void *, uint32_t,
+                              size_t, Deliver) {
+     return true;
+   }
+   // Temporary lookup storage for a synchronous pass of unique graph channels.
+   // The runtime owns this fallible allocation and ends the pass before freeing
+   // it, on both success and failure. Backends must not retain it afterward.
+   virtual size_t registration_scratch_bytes() const { return 0; }
+   virtual bool begin_registration_batch(void *, size_t) { return true; }
+   virtual void end_registration_batch() {}
+   virtual bool subscribe(const char *entity, const char *attribute,
+                          void *owner, uint32_t revision, uint32_t channel,
+                          Deliver deliver) = 0;
+   // Immediately cancel callbacks for this owner, including retained replay.
+   virtual void release(void *owner) = 0;
+   virtual uint32_t connection_generation() const = 0;
+   // Local producers seed each replacement directly, including initial
+   // empty-text semantics.
+   virtual bool copy_shared_values() const { return true; }
 };
 
 struct PageEntityBudget {
@@ -41,6 +66,10 @@ struct PageEntityBudget {
   size_t channels;
   size_t state_bytes;
   size_t channel_bytes{SIZE_MAX};
+  // Default keeps the complete allocation-free state reserve. A smaller
+  // initial capacity opts into a separately owned, demand-growing value pool;
+  // state_bytes and channel_bytes remain the same hard admission ceilings.
+  size_t initial_state_bytes{SIZE_MAX};
 };
 
 enum class PageEntityStatus : uint8_t { STALE, UNKNOWN, AVAILABLE, EXHAUSTED };
@@ -58,6 +87,10 @@ struct PageEntityMemory {
   size_t active_channels{0};
   size_t active_dependencies{0};
   size_t active_state_bytes{0};
+  size_t active_state_capacity_bytes{0};
+  size_t staged_state_capacity_bytes{0};
+  size_t state_reservations{0};
+  size_t state_allocation_failures{0};
   size_t preparation_failures{0};
   size_t state_overflows{0};
   size_t stale_deliveries{0};
@@ -82,10 +115,14 @@ class PageEntityObserver {
 };
 
 // Configuration-owned state, independent of view bindings. Names, dependency
-// edges and a packed state cache occupy one fallible arena per generation.
-// Queries return borrowed views until the next delivery/reconnect/replacement;
-// consumers pull state from the event loop rather than retaining these views.
-// The source, allocator and subscriptions must outlive this owner.
+// edges and a packed state cache occupy fallible generation-owned storage.
+// Fixed mode embeds values in the metadata arena; elastic mode reserves its
+// separate value pool during preparation and can grow on network delivery.
+// Activation, navigation and updates within the current capacity allocate
+// nothing. Queries return borrowed views until the next
+// delivery/reconnect/replacement; consumers pull state from the event loop
+// rather than retaining these views. The source, allocator and subscriptions
+// must outlive this owner.
 class PageEntityStateRuntime final : public PageRuntimeResources {
  public:
   PageEntityStateRuntime(const PageDependencySource &source, PageArenaAllocator &allocator,
@@ -137,6 +174,7 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
   struct Edge { CardId card; uint32_t channel; };
   struct Slot {
     PageEntityStateRuntime *runtime{nullptr};
+    PageEntitySubscriptionBatch subscription_batch;
     void *arena{nullptr};
     size_t arena_size{0};
     Channel *channels{nullptr};
@@ -144,13 +182,17 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
     uint32_t *card_offsets{nullptr};
     size_t card_count{0};
     char *names{nullptr}, *values{nullptr};
+    void *value_storage{nullptr};
+    size_t values_capacity{0};
     size_t channel_count{0}, edge_count{0}, names_used{0}, values_used{0};
     uint32_t revision{0}, generation{0};
   };
   class Counter;
   class Builder;
   static void deliver(void *owner, uint32_t revision, uint32_t channel, std::string_view value);
-  void receive(Slot &slot, uint32_t revision, uint32_t channel, std::string_view value,bool copied=false);
+  bool receive(Slot &slot, uint32_t revision, uint32_t channel,
+               std::string_view value, bool copied = false);
+  bool reserve_values(Slot &slot, size_t required);
   void release_slot(int index);
   void remove_value(Slot &slot, Channel &channel);
   bool index_dependencies(Slot &slot);
@@ -165,6 +207,7 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
   int active_{-1}, staged_{-1};
   uint32_t next_revision_{1}, connection_generation_{0};
   PageEntityMemory memory_;
+  size_t preparation_scratch_bytes_{0};
   uint64_t revision_{0};
 };
 }  // namespace espcontrol::pages

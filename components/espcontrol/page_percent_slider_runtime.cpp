@@ -41,7 +41,7 @@ bool cards(const PageStore& store, Emit emit) {
   for (PageId p = 0; p < store.page_count(); ++p) {
     const auto* page = store.page(p);
     if (!page->navigable) continue;
-    for (CardId id = page->first_card; id < page->first_card + page->card_count; ++id) {
+    for (CardId id = page->first_card; id < page->first_card + page->runtime_card_count; ++id) {
       const auto kind = PagePercentSliderRuntime::classify(store, id);
       if (kind != PagePercentSliderKind::NONE &&
           !emit(id, kind, store.field(*store.card(id), CardField::ENTITY)))
@@ -52,7 +52,7 @@ bool cards(const PageStore& store, Emit emit) {
 }
 }  // namespace
 PagePercentSliderKind PagePercentSliderRuntime::classify(const PageStore& store, CardId id) {
-  const auto* card = store.card(id);
+  const auto* card = store.runtime_card(id);
   if (!card) return PagePercentSliderKind::NONE;
   const auto type = store.field(*card, CardField::TYPE);
   const auto entity = store.field(*card, CardField::ENTITY);

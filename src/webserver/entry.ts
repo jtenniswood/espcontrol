@@ -814,6 +814,7 @@ function composeApplicationContext(): ApplicationContext {
   });
   const backupApplication = createAppBackupFeature({
     identity,
+    waitForInitialState: () => stateLoader.waitForInitialState(),
     layout,
     backupExport,
     backupImport,

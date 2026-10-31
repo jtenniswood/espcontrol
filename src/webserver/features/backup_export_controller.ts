@@ -2,6 +2,7 @@ import { panelHostname, type PanelIdentityBackup } from "../model/panel_identity
 import type { CardConfig } from "../contracts/types";
 import {
   createPanelConfigBackupPayload,
+  decodePanelConfig,
   encodePanelConfig,
   type PanelConfigBackupPayload,
 } from "../model";
@@ -12,6 +13,7 @@ export interface BackupNativeConfigSource {
   readonly subpages: Readonly<Record<string, unknown>>;
   readonly buttonOrder?: string;
   readonly buttonOnColor?: string;
+  readonly nativeDocumentBytes?: Uint8Array;
 }
 
 export interface BackupExportControllerOptions {
@@ -59,6 +61,13 @@ export function createBackupExportController(
     backup: Backup,
     source: BackupNativeConfigSource,
   ): Backup & { native_config: PanelConfigBackupPayload } => {
+    if (source.nativeDocumentBytes) {
+      if (decodePanelConfig(source.nativeDocumentBytes).deviceProfile !== source.deviceProfile) {
+        throw new Error("The backup targets a different device profile.");
+      }
+      backup.native_config = createPanelConfigBackupPayload(source.nativeDocumentBytes);
+      return backup as Backup & { native_config: PanelConfigBackupPayload };
+    }
     const buttons: Record<number, string> = {};
     const subpages: Record<number, string> = {};
     for (let index = 0; index < source.buttons.length; index += 1) {

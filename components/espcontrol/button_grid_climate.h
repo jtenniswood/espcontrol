@@ -264,8 +264,18 @@ inline ClimateOptionClick *climate_next_option_click(ClimateControlModalUi &ui,
   return click;
 }
 
+// Production registers only the one demanded climate modal. Unprofiled
+// standalone renderers keep their original eager-card registry capacity.
+inline constexpr int climate_control_ref_capacity() {
+#ifdef ESPCONTROL_DEVICE_UI_SLOT_COUNT
+  return 1;
+#else
+  return MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS;
+#endif
+}
+
 inline ClimateControlCtx **climate_control_refs() {
-  static ClimateControlCtx *refs[MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS];
+  static ClimateControlCtx *refs[climate_control_ref_capacity()];
   return refs;
 }
 
@@ -275,6 +285,7 @@ inline int &climate_control_ref_count() {
 }
 
 inline void reset_climate_control_refs() {
+  for (int i = 0; i < climate_control_ref_capacity(); ++i) climate_control_refs()[i] = nullptr;
   climate_control_ref_count() = 0;
 }
 
@@ -2356,6 +2367,7 @@ inline void unregister_climate_control_context(ClimateControlCtx *ctx) {
     if (refs[read_index] == ctx) continue;
     refs[write_index++] = refs[read_index];
   }
+  for (int i = write_index; i < count; ++i) refs[i] = nullptr;
   count = write_index;
 }
 
@@ -2782,7 +2794,7 @@ inline ClimateControlCtx *create_climate_control_context(
   ctx->width_compensation_percent = normalize_width_compensation_percent(width_compensation_percent);
   if (btn) lv_obj_set_user_data(btn, ctx);
   int &count = climate_control_ref_count();
-  if (count < MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS) climate_control_refs()[count++] = ctx;
+  if (count < climate_control_ref_capacity()) climate_control_refs()[count++] = ctx;
   climate_update_card(ctx);
   return ctx;
 }

@@ -74,7 +74,7 @@ Open **System > Backup** on your [device setup page](/features/setup).
 
 ### Save a Backup
 
-Choose **Export** and keep the downloaded file somewhere safe. It includes cards, subpages, colours, brightness, schedules, display settings, artwork connections, and update preferences. Export before resetting or changing firmware versions.
+Choose **Export** and keep the downloaded file somewhere safe. Export waits for the panel’s saved settings to finish loading; if they cannot be read, reconnect and retry. It includes cards, subpages, colours, brightness, schedules, display settings, artwork connections, and update preferences. Export before resetting or changing firmware versions.
 
 Backups do not include Wi-Fi login details, the Home Assistant encryption key, or the touchscreen PIN. They can contain passwords from Wifi Sharing cards and private card settings, so keep the file private.
 
@@ -85,11 +85,15 @@ Backups do not include Wi-Fi login details, the Home Assistant encryption key, o
 3. Let the restore finish, then check the cards, sensors, screen behaviour, and artwork.
 4. Set your touchscreen PIN again: importing clears the destination's PIN.
 
-A backup from a different-sized panel rearranges cards that no longer fit. Check the layout afterward. Older backups remain supported. Restoring a name uses the destination panel's own hardware suffix and restarts it after the restore.
+A backup from a compatible, different-sized panel can change the visible layout. Check it afterward. Restoring a name uses the destination panel's own hardware suffix and restarts it after the restore.
 
 ### Compatibility Notes
 
-New firmware keeps older card configurations and backups readable. If the editor warns that a saved configuration cannot be downgraded, export a backup and stay on compatible firmware; older versions may have smaller storage limits.
+Older backup files are recognized automatically; keep the file as exported, without manually converting it.
+
+A backup can contain cards or subpages outside the destination's visible grid, or settings that need newer firmware. If **Import** asks you to update the destination, these compatibility checks stop the restore before writing cards or settings. Update that panel, then retry with the original backup.
+
+Before installing older firmware, export a backup and check that the version supports your saved cards, settings and layout. Being able to read a backup file does not guarantee that older firmware can apply everything in it.
 
 ## Firmware
 

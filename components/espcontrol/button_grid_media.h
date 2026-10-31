@@ -4028,8 +4028,10 @@ inline void media_control_toggle_speaker(MediaControlCtx *ctx,
   auto callback = [ctx, entity_id = row->entity_id, call_id, opening, source_entity](
       const esphome::api::ActionResponse &response) {
     espcontrol::ModalCallbackDispatchScope dispatch;
-    if (!media_control_identity_current(ctx, opening) || !media_control_action_allowed(ctx) ||
-        ctx->entity_id != source_entity) return;
+    // This completes an accepted request, rather than admitting another input.
+    // Keep the exact opening/connection checks even while a wake guard or
+    // native callback scope temporarily blocks new panel gestures.
+    if (!media_control_identity_current(ctx, opening) || ctx->entity_id != source_entity) return;
     media_control_group_action_result(ctx, entity_id, *call_id, response);
   };
   bool sent = false;

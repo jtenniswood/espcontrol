@@ -479,6 +479,7 @@ class PageNetworkStatusSource {};
 class PageForecastRuntime {};
 static ControlModalKind wanted_kind = ControlModalKind::NONE, fail_install = ControlModalKind::NONE;
 static size_t live_contexts = 0, peak_contexts = 0, installed_families = 0;
+static bool qr_decoder_busy = false;
 template <ControlModalKind Kind>
 struct TestModalFamily {
   static constexpr auto kind = Kind;
@@ -493,6 +494,11 @@ using PageMediaControlModalFamily = TestModalFamily<ControlModalKind::MEDIA_CONT
 template <ControlModalKind Kind>
 class TestModalPort : public PageModalPort {
  public:
+  inline static size_t temperature_refreshes = 0;
+  void refresh_temperature_unit() {
+    static_assert(Kind == ControlModalKind::WEATHER_FORECAST);
+    ++temperature_refreshes;
+  }
   template <class... Args>
   explicit TestModalPort(Args&&...) {}
   template <class... Args>
@@ -523,7 +529,7 @@ class TestModalPort : public PageModalPort {
   bool valid_local_origin(PageLocalModalOrigin, ControlModalKind requested) const override {
     return local_kind(requested) == requested;
   }
-  bool ready() const override { return page_native_command_ready(); }
+  bool ready() const override { return page_native_command_ready() && (Kind != ControlModalKind::WIFI_QR || !qr_decoder_busy); }
   bool connected() const override { return Kind == ControlModalKind::NETWORK_STATUS || online; }
   uint32_t connection_generation() const override {
     return Kind == ControlModalKind::NETWORK_STATUS ? 1 : epoch;
@@ -598,6 +604,14 @@ void bank_composition() {
   fail_install = ControlModalKind::NONE;
   assert(bank.initialize(true) && bank.ready() && bank.maintenance_ready());
   assert(installed_families == 14 && bank.initialize(true) && installed_families == 14);
+  const auto unit_refreshes = TestModalPort<ControlModalKind::WEATHER_FORECAST>::temperature_refreshes;
+  bank.refresh_temperature_unit();
+  assert(TestModalPort<ControlModalKind::WEATHER_FORECAST>::temperature_refreshes == unit_refreshes + 1);
+  // A retiring decoder may defer modal collection while configuration preflight
+  // remains safe: every demanded context owns its copied configuration.
+  qr_decoder_busy=true;
+  assert(!bank.maintenance_ready() && bank.prepare(f.store));bank.discard_prepared();
+  qr_decoder_busy=false;
   assert(bank.prepare(f.store));
   bank.discard_prepared();
   assert(bank.prepare(f.store));

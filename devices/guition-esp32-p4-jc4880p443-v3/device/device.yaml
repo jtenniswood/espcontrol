@@ -195,6 +195,7 @@ safe_mode:
 # Shared infrastructure (API, logging, web server, restart button)
 # ---------------------------------------------------------------------------
 packages:
+  psram_malloc: !include ../../../common/device/psram_malloc.yaml
   core_infra: !include ../../../common/device/core_infra.yaml
 
 # ---------------------------------------------------------------------------

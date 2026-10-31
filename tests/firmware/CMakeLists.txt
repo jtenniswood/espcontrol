@@ -5,11 +5,95 @@ enable_testing()
 include(CheckCXXSourceCompiles)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/configuration_psram_allocator_test.cpp
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_configuration_psram_allocator_test.py
+          ${CMAKE_CURRENT_BINARY_DIR}/configuration_psram_allocator_test.cpp
+  DEPENDS generate_configuration_psram_allocator_test.py configuration_psram_allocator_test.cpp.in
+          ../../components/espcontrol/espcontrol_app.cpp)
+add_executable(configuration_psram_allocator_test ${CMAKE_CURRENT_BINARY_DIR}/configuration_psram_allocator_test.cpp)
+target_compile_features(configuration_psram_allocator_test PRIVATE cxx_std_17)
+target_compile_definitions(configuration_psram_allocator_test PRIVATE USE_ESP32)
+target_compile_options(configuration_psram_allocator_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(configuration_psram_allocator_test PRIVATE ../../components/espcontrol)
+add_test(NAME configuration_psram_allocator_test COMMAND configuration_psram_allocator_test)
+
+add_executable(panel_config_document_v2_reader panel_config_document_v2_reader.cpp)
+target_compile_features(panel_config_document_v2_reader PRIVATE cxx_std_17)
+target_compile_options(panel_config_document_v2_reader PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_document_v2_reader PRIVATE ../../components/espcontrol)
+add_executable(panel_config_projection_cli panel_config_projection_cli.cpp)
+target_compile_features(panel_config_projection_cli PRIVATE cxx_std_17)
+target_compile_options(panel_config_projection_cli PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_projection_cli PRIVATE ../../components/espcontrol)
+add_executable(panel_config_import_cli panel_config_import_cli.cpp)
+target_compile_features(panel_config_import_cli PRIVATE cxx_std_17)
+target_compile_options(panel_config_import_cli PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_import_cli PRIVATE ../../components/espcontrol)
+
+set(ESPCONTROL_DOCUMENT_FLAGS_SAVED "${CMAKE_REQUIRED_FLAGS}")
+set(ESPCONTROL_DOCUMENT_LINK_SAVED "${CMAKE_REQUIRED_LINK_OPTIONS}")
+set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -fsanitize=address,undefined -fno-omit-frame-pointer")
+set(CMAKE_REQUIRED_LINK_OPTIONS "${CMAKE_REQUIRED_LINK_OPTIONS};-fsanitize=address,undefined")
+check_cxx_source_compiles("int main() { return 0; }" ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+set(CMAKE_REQUIRED_FLAGS "${ESPCONTROL_DOCUMENT_FLAGS_SAVED}")
+set(CMAKE_REQUIRED_LINK_OPTIONS "${ESPCONTROL_DOCUMENT_LINK_SAVED}")
+if(ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+  foreach(target configuration_psram_allocator_test panel_config_document_v2_reader panel_config_projection_cli panel_config_import_cli)
+    target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_link_options(${target} PRIVATE -fsanitize=address,undefined)
+  endforeach()
+endif()
+
+add_test(NAME panel_config_document_v2_test
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/panel_config_document_v2_test.py
+          $<TARGET_FILE:panel_config_document_v2_reader>)
+add_test(NAME panel_config_projection_test
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/panel_config_projection_test.py
+          $<TARGET_FILE:panel_config_projection_cli>)
+add_test(NAME panel_config_import_test
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/panel_config_import_test.py
+          $<TARGET_FILE:panel_config_import_cli>)
+
+add_executable(panel_config_http_versions_test panel_config_http_versions_test.cpp
+  ../../components/espcontrol/configuration_main_loop.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp
+  ../../components/espcontrol/page_renderer_layout.cpp
+  ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/panel_config_legacy_adapter.cpp
+  ../../components/espcontrol/panel_config_text_bindings.cpp)
+target_compile_features(panel_config_http_versions_test PRIVATE cxx_std_17)
+target_compile_definitions(panel_config_http_versions_test PRIVATE USE_WEBSERVER USE_WEBSERVER_AUTH)
+target_compile_options(panel_config_http_versions_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_http_versions_test PRIVATE config_http_stubs stubs ../../components/espcontrol)
+target_link_libraries(panel_config_http_versions_test PRIVATE Threads::Threads)
+if(ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+  target_compile_options(panel_config_http_versions_test PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+  target_link_options(panel_config_http_versions_test PRIVATE -fsanitize=address,undefined)
+endif()
+add_test(NAME panel_config_http_versions_test COMMAND panel_config_http_versions_test)
+
 add_executable(page_modal_admission_test page_modal_admission_test.cpp)
 target_compile_features(page_modal_admission_test PRIVATE cxx_std_17)
 target_compile_options(page_modal_admission_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
 target_include_directories(page_modal_admission_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME page_modal_admission_test COMMAND page_modal_admission_test)
+
+add_executable(page_native_scene_state_test page_native_scene_state_test.cpp
+  ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_forecast_runtime.cpp
+  ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp
+  ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_percent_slider_runtime.cpp
+  ../../components/espcontrol/page_number_slider_runtime.cpp ../../components/espcontrol/page_light_temperature_runtime.cpp
+  ../../components/espcontrol/page_timer_runtime.cpp ../../components/espcontrol/page_cover_toggle_runtime.cpp
+  ../../components/espcontrol/page_access_state_runtime.cpp ../../components/espcontrol/page_calendar_runtime.cpp
+  ../../components/espcontrol/page_timezone_runtime.cpp ../../components/espcontrol/page_alarm_state_runtime.cpp
+  ../../components/espcontrol/page_alarm_ack_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_native_scene_state_test PRIVATE cxx_std_17)
+target_compile_options(page_native_scene_state_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_native_scene_state_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_native_scene_state_test COMMAND page_native_scene_state_test)
 
 add_executable(page_confirmation_runtime_test page_confirmation_runtime_test.cpp
   ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_store.cpp
@@ -39,6 +123,96 @@ target_compile_options(page_store_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
 target_include_directories(page_store_test PRIVATE stubs ../../components/espcontrol
   ${CMAKE_CURRENT_BINARY_DIR})
 add_test(NAME page_store_test COMMAND page_store_test)
+
+add_executable(page_store_v2_test page_store_v2_test.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/page_store_goldens.h
+  ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(page_store_v2_test PRIVATE cxx_std_17)
+target_compile_options(page_store_v2_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_store_v2_test PRIVATE stubs ../../components/espcontrol ${CMAKE_CURRENT_BINARY_DIR})
+if(ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+  target_compile_options(page_store_v2_test PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+  target_link_options(page_store_v2_test PRIVATE -fsanitize=address,undefined)
+endif()
+add_test(NAME page_store_v2_test COMMAND page_store_v2_test)
+
+add_executable(panel_config_dual_boot_test panel_config_dual_boot_test.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp
+  ../../components/espcontrol/panel_config_legacy_adapter.cpp
+  ../../components/espcontrol/panel_config_runtime_adapter.cpp
+  ../../components/espcontrol/panel_config_text_bindings.cpp
+  ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(panel_config_dual_boot_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_dual_boot_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_dual_boot_test PRIVATE stubs ../../components/espcontrol)
+if(ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+  target_compile_options(panel_config_dual_boot_test PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+  target_link_options(panel_config_dual_boot_test PRIVATE -fsanitize=address,undefined)
+endif()
+add_test(NAME panel_config_dual_boot_test COMMAND panel_config_dual_boot_test)
+
+add_executable(panel_config_esphome_text_test panel_config_esphome_text_test.cpp)
+target_compile_features(panel_config_esphome_text_test PRIVATE cxx_std_17)
+target_compile_definitions(panel_config_esphome_text_test PRIVATE USE_ESP32)
+target_compile_options(panel_config_esphome_text_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_esphome_text_test PRIVATE text_preference_stubs ../../components/espcontrol)
+add_test(NAME panel_config_esphome_text_test COMMAND panel_config_esphome_text_test)
+
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/panel_config_text_storage_test.cpp
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_panel_config_text_storage_test.py
+          ${CMAKE_CURRENT_BINARY_DIR}/panel_config_text_storage_test.cpp
+  DEPENDS generate_panel_config_text_storage_test.py panel_config_text_storage_test.cpp.in
+          ../../components/espcontrol/espcontrol_app.h ../../components/espcontrol/espcontrol_app.cpp
+  VERBATIM)
+add_custom_target(panel_config_text_storage_test_source
+  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/panel_config_text_storage_test.cpp)
+function(add_panel_text_storage_test name slots chunks)
+  add_executable(${name} ${CMAKE_CURRENT_BINARY_DIR}/panel_config_text_storage_test.cpp
+    ../../components/espcontrol/panel_config_text_bindings.cpp)
+  add_dependencies(${name} panel_config_text_storage_test_source)
+  target_compile_features(${name} PRIVATE cxx_std_17)
+  target_compile_definitions(${name} PRIVATE USE_ESP32)
+  if(NOT "${slots}" STREQUAL "default")
+    target_compile_definitions(${name} PRIVATE
+      ESPCONTROL_PANEL_CONFIG_TEXT_SLOT_COUNT=${slots}
+      ESPCONTROL_PANEL_CONFIG_TEXT_CHUNK_COUNT=${chunks})
+  endif()
+  target_compile_options(${name} PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+  target_include_directories(${name} PRIVATE profile_text_storage_stubs
+    text_preference_stubs ../../components/espcontrol)
+  add_test(NAME ${name} COMMAND ${name})
+endfunction()
+add_panel_text_storage_test(panel_text_storage_p4_six_test 6 8)
+add_panel_text_storage_test(panel_text_storage_s3_test 9 4)
+add_panel_text_storage_test(panel_text_storage_p4_nine_test 9 8)
+add_panel_text_storage_test(panel_text_storage_p4_fifteen_test 15 8)
+add_panel_text_storage_test(panel_text_storage_p4_twenty_test 20 8)
+add_panel_text_storage_test(panel_text_storage_five_chunks_test 1 5)
+add_panel_text_storage_test(panel_text_storage_six_chunks_test 1 6)
+add_panel_text_storage_test(panel_text_storage_seven_chunks_test 1 7)
+add_panel_text_storage_test(panel_text_storage_fallback_test default default)
+
+
+add_executable(panel_config_legacy_capacity_test panel_config_legacy_capacity_test.cpp
+  ../../components/espcontrol/panel_config_text_bindings.cpp)
+target_compile_features(panel_config_legacy_capacity_test PRIVATE cxx_std_17)
+target_compile_definitions(panel_config_legacy_capacity_test PRIVATE USE_ESP32)
+target_compile_options(panel_config_legacy_capacity_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_legacy_capacity_test PRIVATE text_preference_stubs ../../components/espcontrol)
+add_test(NAME panel_config_legacy_capacity_test COMMAND panel_config_legacy_capacity_test)
+add_test(NAME panel_config_empty_defaults_codegen_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/panel_config_empty_defaults_codegen_test.py)
+add_test(NAME psram_allocation_policy_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/psram_allocation_policy_test.py)
+
+add_executable(legacy_text_preference_test legacy_text_preference_test.cpp)
+target_compile_features(legacy_text_preference_test PRIVATE cxx_std_17)
+target_compile_options(legacy_text_preference_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(legacy_text_preference_test PRIVATE ../../components/espcontrol)
+add_test(NAME legacy_text_preference_test COMMAND legacy_text_preference_test)
 
 add_executable(page_store_runtime_test page_store_runtime_test.cpp
   ../../components/espcontrol/page_store.cpp
@@ -920,6 +1094,12 @@ target_compile_features(network_status_layout_test PRIVATE cxx_std_17)
 target_compile_options(network_status_layout_test PRIVATE -Wall -Wextra -Werror)
 add_test(NAME network_status_layout_test COMMAND network_status_layout_test)
 
+add_executable(panel_config_upload_test panel_config_upload_test.cpp)
+target_compile_features(panel_config_upload_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_upload_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_upload_test PRIVATE ../../components/espcontrol ../../components/web_server_idf)
+add_test(NAME panel_config_upload_test COMMAND panel_config_upload_test)
+
 add_executable(configuration_store_test
   configuration_store_test.cpp
   ../../components/espcontrol/configuration_store.cpp
@@ -998,6 +1178,17 @@ target_compile_options(panel_config_storage_backend_test PRIVATE -Wall -Wextra -
 target_include_directories(panel_config_storage_backend_test PRIVATE ../../components/espcontrol)
 add_test(NAME panel_config_storage_backend_test COMMAND panel_config_storage_backend_test)
 
+add_executable(panel_config_transient_storage_test
+  panel_config_transient_storage_test.cpp
+  ../../components/espcontrol/configuration_store.cpp
+  ../../components/espcontrol/panel_config_espidf_storage.cpp)
+target_compile_features(panel_config_transient_storage_test PRIVATE cxx_std_17)
+target_compile_definitions(panel_config_transient_storage_test PRIVATE USE_ESP32)
+target_compile_options(panel_config_transient_storage_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_transient_storage_test PRIVATE
+  config_storage_stubs ../../components/espcontrol)
+add_test(NAME panel_config_transient_storage_test COMMAND panel_config_transient_storage_test)
+
 add_executable(panel_config_storage_selection_test
   panel_config_storage_selection_test.cpp)
 target_compile_features(panel_config_storage_selection_test PRIVATE cxx_std_17)
@@ -1033,6 +1224,12 @@ target_compile_features(espcontrol_app_core_test PRIVATE cxx_std_17)
 target_compile_options(espcontrol_app_core_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(espcontrol_app_core_test PRIVATE ../../components/espcontrol)
 add_test(NAME espcontrol_app_core_test COMMAND espcontrol_app_core_test)
+
+add_executable(ha_callback_lease_test ha_callback_lease_test.cpp)
+target_compile_features(ha_callback_lease_test PRIVATE cxx_std_17)
+target_compile_options(ha_callback_lease_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(ha_callback_lease_test PRIVATE ../../components/espcontrol)
+add_test(NAME ha_callback_lease_test COMMAND ha_callback_lease_test)
 
 add_executable(ha_read_coordinator_test
   ha_read_coordinator_test.cpp
@@ -1296,6 +1493,10 @@ target_include_directories(reset_policy_test PRIVATE ../../components/espcontrol
 add_test(NAME reset_policy_test COMMAND reset_policy_test)
 add_test(NAME reset_ota_wrapper_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/reset_ota_wrapper_test.py)
+add_test(NAME p4_restart_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/p4_restart_test.py)
+add_test(NAME p4_restart_codegen_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/p4_restart_codegen_test.py)
 add_test(NAME wifi_reset_override_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/wifi_reset_override_test.py)
 add_test(NAME wifi_reset_boot_codegen_test COMMAND
@@ -1505,6 +1706,54 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   # All optional LVGL executables share this library, including the modal test,
   # because the pinned label translation unit is routed through its wrappers.
   link_libraries(page_label_refresh_test_support)
+
+  set(NATIVE_SCENE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_native_scene_test.cpp)
+  set(NATIVE_SCENE_STYLE_INPUTS)
+  foreach(family light_cover fan_control option_select media_volume media_control weather
+      confirmation alarm expanded_image wifi_qr network_status)
+    list(APPEND NATIVE_SCENE_STYLE_INPUTS ../../components/espcontrol/page_${family}_modal.h)
+  endforeach()
+  add_custom_command(OUTPUT ${NATIVE_SCENE_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_native_scene_test.py
+      --output ${NATIVE_SCENE_SOURCE}
+    DEPENDS generate_native_scene_test.py page_native_scene_test.cpp.in
+      ../../components/espcontrol/page_native_scene.h
+      ../../components/espcontrol/page_native_device_styles.h
+      ../../components/espcontrol/page_native_device.h
+      ../../components/espcontrol/button_grid_display.h
+      ../../components/espcontrol/button_grid_grid.h
+      ../../components/espcontrol/button_grid_layout.h
+      ../../components/espcontrol/button_grid_style.h
+      ../../components/espcontrol/button_grid_climate_control_driver.h
+      ../../components/espcontrol/icons.h
+      generate_media_lifecycle_integration.py ${NATIVE_SCENE_STYLE_INPUTS}
+    VERBATIM)
+  add_executable(page_native_scene_test ${NATIVE_SCENE_SOURCE}
+    ${ESPCONTROL_LVGL_SOURCE_DIR}/src/libs/qrcode/qrcodegen.c
+    ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_store_runtime.cpp
+    ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+    ../../components/espcontrol/page_entity_state_runtime.cpp
+    ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_renderer_layout.cpp
+    ../../components/espcontrol/page_climate_card.cpp
+    ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_forecast_runtime.cpp
+    ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp
+    ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_percent_slider_runtime.cpp
+    ../../components/espcontrol/page_number_slider_runtime.cpp ../../components/espcontrol/page_light_temperature_runtime.cpp
+    ../../components/espcontrol/page_timer_runtime.cpp ../../components/espcontrol/page_cover_toggle_runtime.cpp
+    ../../components/espcontrol/page_access_state_runtime.cpp ../../components/espcontrol/page_calendar_runtime.cpp
+    ../../components/espcontrol/page_timezone_runtime.cpp ../../components/espcontrol/page_alarm_state_runtime.cpp
+    ../../components/espcontrol/page_alarm_ack_runtime.cpp ../../components/espcontrol/page_alarm_commands.cpp
+    ../../components/espcontrol/page_alarm_presentation.cpp)
+  target_compile_features(page_native_scene_test PRIVATE cxx_std_17)
+  target_compile_options(page_native_scene_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG
+    $<$<COMPILE_LANGUAGE:C>:-Wno-unused-function>)
+  target_compile_definitions(page_native_scene_test PRIVATE USE_LVGL LV_USE_QRCODE=1 ESPCONTROL_REAL_LVGL_TEST)
+  target_include_directories(page_native_scene_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+    stubs/owned_artwork stubs ../../components/espcontrol ../../components/artwork_image)
+  target_link_libraries(page_native_scene_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_native_scene_test COMMAND page_native_scene_test)
+  add_test(NAME page_native_scene_p4_capacity_test COMMAND page_native_scene_test --maximum-p4)
+  set_tests_properties(page_native_scene_test page_native_scene_p4_capacity_test PROPERTIES TIMEOUT 180)
 
   add_executable(page_native_card_commands_test page_native_card_commands_test.cpp)
   target_compile_features(page_native_card_commands_test PRIVATE cxx_std_17)
@@ -1815,7 +2064,7 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   set(PAGE_WEATHER_MODAL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_weather_modal_test.cpp)
   add_custom_command(OUTPUT ${PAGE_WEATHER_MODAL_SOURCE}
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_weather_modal_test.py --output ${PAGE_WEATHER_MODAL_SOURCE}
-    DEPENDS generate_page_weather_modal_test.py generate_climate_update_test.py page_weather_modal_test.cpp.in
+    DEPENDS generate_page_weather_modal_test.py generate_climate_update_test.py page_weather_modal_test.cpp.in ../../components/espcontrol/temperature_unit.h
       ../../components/espcontrol/button_grid_weather_daily_ui.h ../../components/espcontrol/button_grid_weather_modal.h
     VERBATIM)
   add_executable(page_weather_modal_test ${PAGE_WEATHER_MODAL_SOURCE}
@@ -1829,3 +2078,63 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
 endif()
 
 add_test(NAME weather_condition_parity_test COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/weather_condition_parity_test.py)
+
+# Exercise the real scene with production compile-time renderer selection.
+if(ESPCONTROL_LVGL_SOURCE_DIR)
+  get_target_property(PROTOTYPE_NATIVE_SOURCES page_native_scene_test SOURCES)
+  get_target_property(PROTOTYPE_NATIVE_OPTIONS page_native_scene_test COMPILE_OPTIONS)
+  get_target_property(PROTOTYPE_NATIVE_DEFINES page_native_scene_test COMPILE_DEFINITIONS)
+  get_target_property(PROTOTYPE_NATIVE_INCLUDES page_native_scene_test INCLUDE_DIRECTORIES)
+  foreach(mode s3 p4 six fifteen)
+    add_executable(page_native_selected_${mode}_test ${PROTOTYPE_NATIVE_SOURCES})
+    target_compile_features(page_native_selected_${mode}_test PRIVATE cxx_std_17)
+    target_compile_options(page_native_selected_${mode}_test PRIVATE ${PROTOTYPE_NATIVE_OPTIONS})
+    target_compile_definitions(page_native_selected_${mode}_test PRIVATE ${PROTOTYPE_NATIVE_DEFINES})
+    target_include_directories(page_native_selected_${mode}_test PRIVATE ${PROTOTYPE_NATIVE_INCLUDES})
+    target_link_libraries(page_native_selected_${mode}_test PRIVATE lvgl::lvgl)
+  endforeach()
+  target_compile_definitions(page_native_selected_s3_test PRIVATE ESPCONTROL_UI_PROFILE_GUITION_ESP32_S3_4848S040)
+  target_compile_definitions(page_native_selected_p4_test PRIVATE ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC8012P4A1_V3)
+  target_compile_definitions(page_native_selected_six_test PRIVATE ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC4880P443)
+  target_compile_definitions(page_native_selected_fifteen_test PRIVATE ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC1060P470)
+  add_test(NAME page_native_selected_six_test COMMAND page_native_selected_six_test --six-slot)
+  add_test(NAME page_native_selected_fifteen_test COMMAND page_native_selected_fifteen_test --fifteen-slot)
+  add_test(NAME page_native_selected_s3_test COMMAND page_native_selected_s3_test)
+  add_test(NAME page_native_selected_p4_test COMMAND page_native_selected_p4_test --maximum-p4)
+  set_tests_properties(page_native_selected_s3_test page_native_selected_p4_test page_native_selected_six_test page_native_selected_fifteen_test PROPERTIES TIMEOUT 180)
+endif()
+
+add_test(NAME pooled_producer_routing_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/pooled_producer_routing_test.py)
+
+# The demanded climate adapter keeps one context for every generated device
+# profile. Standalone mode above retains the historical multi-context registry.
+if(ESPCONTROL_LVGL_SOURCE_DIR)
+  get_target_property(CLIMATE_MODAL_SOURCES page_climate_modal_test SOURCES)
+  get_target_property(CLIMATE_MODAL_OPTIONS page_climate_modal_test COMPILE_OPTIONS)
+  get_target_property(CLIMATE_MODAL_INCLUDES page_climate_modal_test INCLUDE_DIRECTORIES)
+  set(CLIMATE_MODAL_PROFILES
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC1060P470
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC1060P470_V2
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC4880P443
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC4880P443_V3
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC8012P4A1
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC8012P4A1_V2
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC8012P4A1_V3
+    ESPCONTROL_UI_PROFILE_ESP32_P4_86
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_S3_4848S040)
+  set(CLIMATE_PROFILE_INDEX 0)
+  foreach(profile IN LISTS CLIMATE_MODAL_PROFILES)
+    set(target page_climate_modal_profile_${CLIMATE_PROFILE_INDEX}_test)
+    add_executable(${target} ${CLIMATE_MODAL_SOURCES})
+    target_compile_features(${target} PRIVATE cxx_std_17)
+    target_compile_options(${target} PRIVATE ${CLIMATE_MODAL_OPTIONS})
+    target_compile_definitions(${target} PRIVATE ${profile})
+    target_include_directories(${target} PRIVATE ${CLIMATE_MODAL_INCLUDES})
+    target_link_libraries(${target} PRIVATE lvgl::lvgl)
+    add_test(NAME ${target} COMMAND ${target})
+    set_tests_properties(${target} PROPERTIES TIMEOUT 60)
+    math(EXPR CLIMATE_PROFILE_INDEX "${CLIMATE_PROFILE_INDEX}+1")
+  endforeach()
+endif()

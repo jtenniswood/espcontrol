@@ -9,6 +9,9 @@ namespace espcontrol::configuration {
 constexpr uint8_t CONFIGURATION_SLOT_COUNT = 2;
 constexpr size_t CONFIGURATION_ENVELOPE_HEADER_SIZE = 20;
 constexpr uint16_t CONFIGURATION_ENVELOPE_VERSION = 1;
+// Maximum read/write request at the store/backend boundary. Whole-blob ports
+// may still need one operation-scoped slot image below that boundary.
+constexpr size_t CONFIGURATION_IO_WINDOW_BYTES = 1024;
 
 enum class StoreStatus : uint8_t {
   OK,
@@ -21,6 +24,7 @@ enum class StoreStatus : uint8_t {
   WRITE_FAILED,
   SYNC_FAILED,
   VERIFY_FAILED,
+  ALLOCATION_FAILED,
 };
 
 struct LoadResult {
@@ -49,6 +53,14 @@ class StorageBackend {
   virtual ~StorageBackend() = default;
 
   virtual size_t slot_capacity() const = 0;
+  // A backend may borrow scratch memory only for this load or commit. Every
+  // successful begin is paired with end, including all failure paths.
+  virtual bool begin_operation() { return true; }
+  virtual void end_operation() {}
+  // Distinguish a retryable scratch reservation from a storage I/O failure.
+  virtual StoreStatus operation_failure() const {
+    return StoreStatus::READ_FAILED;
+  }
   virtual bool read(uint8_t slot, size_t offset, uint8_t *output,
                     size_t size) = 0;
   virtual bool write(uint8_t slot, size_t offset, const uint8_t *data,

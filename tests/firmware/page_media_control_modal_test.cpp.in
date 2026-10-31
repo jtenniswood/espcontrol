@@ -665,7 +665,8 @@ void test_panels() {
     PageMediaControlModalPort port(arena, state, style, nullptr,
                                    [](void*, PageBindingToken) { return true; });
     auto router = modal_test_router<ControlModalKind::MEDIA_CONTROL>(port);
-    PageModalRuntime runtime(router);
+    bool panel_input=true;
+    PageModalRuntime runtime(router,1,&panel_input,[](void* p) { return *static_cast<bool*>(p); });
     assert(!port.install(runtime, false));
     assert(port.install(runtime, true));
     assert(runtime.prepare(invalid.store));
@@ -827,7 +828,12 @@ void test_panels() {
       media_control_toggle_speaker(ui.active, confirmed, true);
     }
     const auto before_confirmation = confirmations;
+    // An accepted reply must finish even when a wake guard covers new input.
+    panel_input=false;
+    assert(runtime.valid(runtime.token()) && !runtime.interactive(runtime.token()) &&
+           !media_control_action_allowed(ui.active));
     group_calls.back().callback({true});
+    panel_input=true;
     assert(media_control_group_contains(ui.active, "media_player.other"));
     assert(confirmations == before_confirmation + 1 && group_confirmed &&
            runtime.valid(confirmation_token));
@@ -840,6 +846,17 @@ void test_panels() {
       runtime.loop();
       assert(media_control_group_contains(ui.active, "media_player.other") && confirmed->selected);
     }
+    {
+      espcontrol::ModalCallbackDispatchScope callback;
+      media_control_toggle_speaker(ui.active, confirmed, false);
+    }
+    assert(confirmed->pending);
+    panel_input=false;
+    group_calls.back().callback({false});
+    panel_input=true;
+    assert(!confirmed->pending && confirmed->selected &&
+           media_control_group_contains(ui.active,"media_player.other") &&
+           confirmations==before_confirmation+1);
     // A repeated old value is still a newer live report and overrides the
     // confirmation, even though the packed graph value did not change.
     t.send("media_player.room", "group_members", "[]");

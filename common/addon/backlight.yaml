@@ -1202,7 +1202,7 @@ script:
           condition:
             lambda: |-
               return !id(connectivity_setup_display_active) &&
-                     !id(button_order).state.empty();
+                     espcontrol::application_grid_configured(!id(button_order).state.empty());
           then:
             - delay: 120s
             - if:
@@ -1230,7 +1230,7 @@ script:
             lambda: |-
               float val = id(home_screen_timeout).state;
               return !id(connectivity_setup_display_active) &&
-                     !id(button_order).state.empty() &&
+                     espcontrol::application_grid_configured(!id(button_order).state.empty()) &&
                      !std::isnan(val) && val > 0;
           then:
             - delay: !lambda |-
@@ -1239,7 +1239,7 @@ script:
                 return (int)(val * 1000);
             - lambda: |-
                 if (!id(connectivity_setup_display_active) &&
-                    !id(button_order).state.empty() &&
+                    espcontrol::application_grid_configured(!id(button_order).state.empty()) &&
                     !alarm_display_takeover_active()) {
                   navigation_return_home(id(main_page)->obj);
                 }

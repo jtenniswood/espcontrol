@@ -4,8 +4,9 @@
 
 #include <functional>
 
-#include "grid_navigation_service.h"
 #include "espcontrol_app_core.h"
+#include "grid_navigation_service.h"
+#include "page_scene_selection.h"
 
 // Implemented by button_grid_image.h; navigation calls this when a subpage
 // becomes active after the S3 camera screensaver released image buffers.
@@ -92,16 +93,30 @@ inline std::string navigation_lower(const std::string &value) {
 }
 
 inline void navigation_hide_modals() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto *scene = espcontrol::application_scene_navigation())
+      scene->close_modal();
+    return;
+  }
   control_modal_close_nested_menu();
   control_modal_force_close_active();
 }
 
 inline void navigation_close_modals_for_display_takeover() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto *scene = espcontrol::application_scene_navigation())
+      scene->display_takeover();
+    return;
+  }
   control_modal_close_nested_menu();
   control_modal_close_for_display_takeover(alarm_display_takeover_active());
 }
 
 inline bool navigation_return_home(lv_obj_t *main_page_obj) {
+  if (espcontrol::pooled_application_selected()) {
+    auto *scene = espcontrol::application_scene_navigation();
+    return main_page_obj && scene && scene->home();
+  }
   navigation_hide_modals();
   if (main_page_obj == nullptr) {
     ESP_LOGW("navigation", "Main page is not ready");
@@ -238,6 +253,10 @@ inline NavigationSubpageEntry *navigation_find_slot(int slot) {
 }
 
 inline int navigation_active_subpage_slot() {
+  if (espcontrol::pooled_application_selected()) {
+    auto *scene = espcontrol::application_scene_navigation();
+    return scene ? scene->subpage_slot() : 0;
+  }
   lv_obj_t *active = lv_scr_act();
   for (const auto &entry : navigation_subpages()) {
     if (entry.screen == active) return entry.slot;
@@ -246,12 +265,21 @@ inline int navigation_active_subpage_slot() {
 }
 
 inline std::string navigation_active_subpage_label() {
+  if (espcontrol::pooled_application_selected()) {
+    auto *scene = espcontrol::application_scene_navigation();
+    return scene ? std::string(scene->subpage_label()) : std::string{};
+  }
   NavigationHomeTargetEntry *parent =
       navigation_find_slot_target(navigation_active_subpage_slot());
   return parent == nullptr ? "" : parent->label;
 }
 
 inline void navigation_refresh_subpage_label() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto *scene = espcontrol::application_scene_navigation())
+      scene->refresh_chrome();
+    return;
+  }
   if (network_status_modal_ui().overlay != nullptr) {
     set_clock_bar_subpage_label(espcontrol_i18n(std::string("Settings")));
     return;
@@ -346,6 +374,10 @@ inline bool navigation_activate_home_target(NavigationHomeTargetEntry *target,
 
 inline bool espcontrol_navigate(const std::string &target,
                                 lv_obj_t *main_page_obj) {
+  if (espcontrol::pooled_application_selected()) {
+    auto *scene = espcontrol::application_scene_navigation();
+    return main_page_obj && scene && scene->navigate(target);
+  }
   std::string normalized = navigation_lower(navigation_trim(target));
   if (normalized.empty()) {
     ESP_LOGW("navigation", "Navigation target is empty");

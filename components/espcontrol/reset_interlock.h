@@ -20,9 +20,19 @@ class OperationInterlock {
   }
   bool begin_installation(bool coprocessor) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (pending_ || native_reserved_.load() || coprocessor_busy_.load()) return false;
+    if (pending_ || configuration_reserved_ || native_reserved_.load() || coprocessor_busy_.load()) return false;
     (coprocessor ? coprocessor_busy_ : native_reserved_).store(true);
     return true;
+  }
+  bool begin_configuration_write() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (pending_ || busy()) return false;
+    configuration_reserved_.store(true);
+    return true;
+  }
+  void finish_configuration_write() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    configuration_reserved_.store(false);
   }
   // Only the caller that acquired begin_installation may report its result.
   void finish_begin(bool coprocessor, bool success, uint32_t handle = 0) {
@@ -57,14 +67,14 @@ class OperationInterlock {
     if (!busy) coprocessor_busy_.store(false);
   }
   bool pending() const { return pending_.load(); }
-  bool busy() const { return native_reserved_ || ota_busy_ || coprocessor_busy_ || entities_busy_; }
+  bool busy() const { return native_reserved_ || ota_busy_ || coprocessor_busy_ || entities_busy_ || configuration_reserved_; }
 
  private:
   std::mutex mutex_;
   std::vector<const void *> ota_sources_;
   uint32_t native_handle_{0};
   bool native_handle_valid_{false};
-  std::atomic<bool> native_reserved_{false};
+  std::atomic<bool> native_reserved_{false}, configuration_reserved_{false};
   std::atomic<bool> pending_{false}, ota_busy_{false}, coprocessor_busy_{false}, entities_busy_{false};
 };
 }  // namespace espcontrol::reset

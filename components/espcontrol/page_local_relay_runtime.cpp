@@ -13,7 +13,7 @@ bool unique_keys(const PageStore& store, Emit emit) {
   for (PageId p = 0; p < store.page_count(); ++p) {
     const auto* page = store.page(p);
     if (!page->navigable) continue;
-    for (CardId id = page->first_card; id < page->first_card + page->card_count; ++id) {
+    for (CardId id = page->first_card; id < page->first_card + page->runtime_card_count; ++id) {
       const auto& card = *store.card(id);
       if (!PageLocalRelayRuntime::toggle(store, card)) continue;
       const auto key = store.field(card, CardField::ENTITY);
@@ -23,7 +23,7 @@ bool unique_keys(const PageStore& store, Emit emit) {
         const auto* earlier = store.page(before);
         if (!earlier->navigable) continue;
         for (CardId previous = earlier->first_card;
-             previous < earlier->first_card + earlier->card_count && previous < id; ++previous)
+             previous < earlier->first_card + earlier->runtime_card_count && previous < id; ++previous)
           if (PageLocalRelayRuntime::toggle(store, *store.card(previous)) &&
               store.field(*store.card(previous), CardField::ENTITY) == key) {
             found = true;

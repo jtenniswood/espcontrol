@@ -90,6 +90,8 @@ struct Document {
                                    std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
     assert(w.append_button(1, reinterpret_cast<const uint8_t*>(row.data()), row.size()) ==
            PanelConfigStatus::OK);
+    assert(w.append_button(32, reinterpret_cast<const uint8_t*>(row.data()), row.size()) ==
+           PanelConfigStatus::OK);
     const std::string folder = ";Child;Auto;Auto;;;subpage;;";
     assert(w.append_button(6, reinterpret_cast<const uint8_t*>(folder.data()), folder.size()) ==
            PanelConfigStatus::OK);
@@ -234,6 +236,10 @@ void cycles(const DeviceUiLimits& limits) {
       h.port.received.clear();
       ++h.port.binding;
     }
+    const PageBindingToken dormant{0, h.port.binding, 0, 31, 0, false};
+    PageCardCommandValue value;
+    assert(!h.policy.admit(h.doc.store, dormant, PageCardCommandKind::DEVICE_ACTION, value));
+    assert(!h.commands.request_device(dormant, h.transport.epoch));
     assert(h.commands.memory().fixed_bytes == sizeof(PageCardCommands));
   }
 }

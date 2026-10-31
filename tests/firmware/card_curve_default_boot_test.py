@@ -22,9 +22,10 @@ boot = next(item for item in config["esphome"]["on_boot"]
 body = boot["then"][0]["lambda"]
 for slug in json.loads((ROOT / "devices/manifest.json").read_text())["devices"]:
     device = yaml.load((ROOT / "devices" / slug / "device/sensors.yaml").read_text(), Loader=Loader)
-    for phase in device.get("esphome", {}).get("on_boot", []):
-        if "grid_phase1(" in str(phase):
-            assert boot["priority"] > phase["priority"], slug
+    phases = [phase for phase in device.get("esphome", {}).get("on_boot", [])
+              if "page_native_device_start(" in str(phase)]
+    assert len(phases) == 1, slug
+    assert boot["priority"] > phases[0]["priority"], slug
 
 fixture = r'''
 #include <cassert>

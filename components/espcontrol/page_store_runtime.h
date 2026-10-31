@@ -13,18 +13,23 @@ class PageArenaAllocator {
   virtual ~PageArenaAllocator() = default;
   virtual void *allocate(size_t bytes) = 0;
   virtual void release(void *arena, size_t bytes) = 0;
+  // Shared scene allocators can also observe downstream resource preparation.
+  // Implementations without counters still classify direct arena failures.
+  virtual size_t allocation_failure_count() const { return 0; }
 };
 
 struct PageRuntimeMemory {
   size_t active_reserved_bytes{0};
   size_t staged_reserved_bytes{0};
   size_t peak_reserved_bytes{0};
+  size_t preparation_scratch_bytes{0};
+  size_t peak_preparation_scratch_bytes{0};
   size_t preparation_failures{0};
 };
 
-// Opt-in replacement runtime for the shadow migration. It is not selected by
-// production device wiring until the entity registry and pooled renderer pass
-// the hardware gates. The allocator must outlive this owner.
+// Owns immutable page definitions across a prepared configuration replacement.
+// The capacity is a hard staging ceiling; retained arenas contain only the
+// bytes used by that generation. The allocator must outlive this owner.
 class PageStoreRuntime final : public configuration::ConfigurationRuntimeAdapter {
  public:
   PageStoreRuntime(const DeviceUiLimits &limits, PageArenaAllocator &allocator,
@@ -35,6 +40,13 @@ class PageStoreRuntime final : public configuration::ConfigurationRuntimeAdapter
   PageStoreRuntime &operator=(const PageStoreRuntime &) = delete;
 
   bool prepare(uint16_t version, const uint8_t *document, size_t size) override;
+  bool prepare_write(uint16_t version, const uint8_t *document, size_t size) override;
+  bool preparation_capacity_exceeded() const override {
+    return last_stage_status_ == PageStoreStatus::CAPACITY_EXCEEDED;
+  }
+  bool preparation_allocation_failed() const override {
+    return preparation_allocation_failed_;
+  }
   void discard_prepared() override;
   bool activate_prepared(uint32_t generation, uint16_t version,
                          const uint8_t *document, size_t size) override;
@@ -47,6 +59,8 @@ class PageStoreRuntime final : public configuration::ConfigurationRuntimeAdapter
   PageStoreStatus last_stage_status() const { return last_stage_status_; }
 
  private:
+  bool prepare_impl(uint16_t version, const uint8_t *document, size_t size, bool write);
+  bool prepared_within_limits() const;
   const DeviceUiLimits &limits_;
   PageArenaAllocator &allocator_;
   size_t arena_capacity_;
@@ -57,6 +71,7 @@ class PageStoreRuntime final : public configuration::ConfigurationRuntimeAdapter
   PageStore staged_;
   PageRuntimeMemory memory_;
   PageStoreStatus last_stage_status_{PageStoreStatus::OK};
+  bool preparation_allocation_failed_{false};
 };
 
 }  // namespace espcontrol::pages

@@ -13,7 +13,7 @@ bool keys(const PageStore& store, Emit emit) {
   for (PageId p = 0; p < store.page_count(); ++p) {
     const auto* page = store.page(p);
     if (!page->navigable) continue;
-    for (CardId id = page->first_card; id < page->first_card + page->card_count; ++id) {
+    for (CardId id = page->first_card; id < page->first_card + page->runtime_card_count; ++id) {
       if (!PageCoverToggleRuntime::supported(store, id)) continue;
       const auto key = store.field(*store.card(id), CardField::ENTITY);
       bool duplicate = false;
@@ -21,7 +21,7 @@ bool keys(const PageStore& store, Emit emit) {
         const auto* earlier = store.page(before);
         if (!earlier->navigable) continue;
         for (CardId previous = earlier->first_card;
-             previous < earlier->first_card + earlier->card_count && previous < id; ++previous)
+             previous < earlier->first_card + earlier->runtime_card_count && previous < id; ++previous)
           if (PageCoverToggleRuntime::supported(store, previous) &&
               store.field(*store.card(previous), CardField::ENTITY) == key) {
             duplicate = true;
@@ -36,7 +36,7 @@ bool keys(const PageStore& store, Emit emit) {
 
 }  // namespace
 bool PageCoverToggleRuntime::supported(const PageStore& store, CardId id) {
-  const auto* card = store.card(id);
+  const auto* card = store.runtime_card(id);
   return card && store.field(*card, CardField::TYPE) == "cover" &&
          store.field(*card, CardField::SENSOR) == "toggle" && !store.field(*card, CardField::ENTITY).empty();
 }

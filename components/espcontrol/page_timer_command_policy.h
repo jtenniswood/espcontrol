@@ -17,7 +17,7 @@ class PageTimerCommandPolicy final : public PageCardControlPolicy {
              const PageCardCommandValue& value) override {
     if (kind != PageCardCommandKind::TIMER_START && kind != PageCardCommandKind::TIMER_CANCEL) return false;
     if (!PageTimerRuntime::supported(store, origin.card)) return false;
-    const auto* card = store.card({origin.configuration, origin.card});
+    const auto* card = store.runtime_card({origin.configuration, origin.card});
     return card && current(origin, kind, value, store.field(*card, CardField::ENTITY));
   }
   void discard(PageBindingToken, PageCardCommandKind, const PageCardCommandValue&) override {}

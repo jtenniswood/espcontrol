@@ -248,6 +248,7 @@ safe_mode:
 # Shared infrastructure (API, logging, web server, restart button)
 # ---------------------------------------------------------------------------
 packages:
+  psram_malloc: !include ../../../common/device/psram_malloc.yaml
   core_infra: !include ../../../common/device/core_infra.yaml
 
 # The 10.1" panel's USB-C serial output is exposed through a UART0 bridge.

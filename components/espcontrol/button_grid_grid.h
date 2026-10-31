@@ -92,6 +92,13 @@ inline bool &grid_phase2_complete_state() {
 inline bool grid_phase2_complete() {
   return grid_phase2_complete_state();
 }
+inline bool espcontrol_navigation_ready() {
+  if (espcontrol::pooled_application_selected()) {
+    auto *scene = espcontrol::application_scene_navigation();
+    return scene && scene->navigation_ready();
+  }
+  return grid_phase2_complete() && !navigation_home_targets().empty();
+}
 
 inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   DisplayProfile profile;

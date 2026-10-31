@@ -260,11 +260,11 @@ class PageConfirmationModalPort final : public PageModalPort {
   }
   static void no(lv_event_t* event) {
     auto& r = *static_cast<Record*>(lv_event_get_user_data(event));
-    if (r.port.current(r)) r.port.runtime_->notify_closed(r.token);
+    if (r.port.current(r) && r.port.runtime_->interactive(r.token)) r.port.runtime_->notify_closed(r.token);
   }
   static void yes(lv_event_t* event) {
     auto& r = *static_cast<Record*>(lv_event_get_user_data(event));
-    if (!r.port.current(r)) return;
+    if (!r.port.current(r) || !r.port.runtime_->interactive(r.token)) return;
     if (lv_event_get_code(event) == LV_EVENT_PRESSED)
       r.pressed_connection = r.port.graph_.connection_generation();
     else if (lv_event_get_code(event) == LV_EVENT_CLICKED)

@@ -1,3 +1,4 @@
+#include "page_scene_selection.h"
 #include <algorithm>
 #include <array>
 #include <cassert>

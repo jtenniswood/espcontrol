@@ -1,5 +1,7 @@
 #pragma once
 
+#include "page_scene_selection.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 #ifdef ESP_PLATFORM
@@ -3009,6 +3011,10 @@ inline void image_card_refresh_camera_attributes(ImageCardCtx *ctx) {
 }
 
 inline void refresh_visible_camera_cards() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto* scene = espcontrol::application_scene_navigation()) scene->refresh_images(false);
+    return;
+  }
   if (!ha_api_connected()) return;
   if (image_card_pipeline_suspended()) return;
   ImageCardCtx *contexts = image_card_contexts();
@@ -3023,6 +3029,10 @@ inline void refresh_visible_camera_cards() {
 // pipeline must explicitly rebuild any image or media-artwork card that was
 // hidden while the dashboard was handed back to the camera.
 inline void refresh_visible_image_cards() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto* scene = espcontrol::application_scene_navigation()) scene->refresh_images(true);
+    return;
+  }
   if (!ha_api_connected() || image_card_pipeline_suspended()) return;
   ImageCardCtx *contexts = image_card_contexts();
   const uint32_t now = esphome::millis();
@@ -3041,6 +3051,10 @@ inline void refresh_visible_image_cards() {
 }
 
 inline void refresh_image_cards() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto* scene = espcontrol::application_scene_navigation()) scene->refresh_images(true);
+    return;
+  }
   if (!ha_api_connected()) return;
   if (image_card_pipeline_suspended()) return;
   ImageCardCtx *contexts = image_card_contexts();
@@ -3064,6 +3078,8 @@ inline void image_card_begin_refresh_schedule(ImageCardCtx *ctx) {
 }
 
 inline void image_card_refresh_due(std::function<bool()> page_visible = nullptr) {
+  // The selected scene pumps its own bounded visible-image policies.
+  if (espcontrol::pooled_application_selected()) return;
   if (page_visible) image_card_page_visible() = page_visible;
   ImageCardCtx *contexts = image_card_contexts();
   uint32_t now = esphome::millis();
@@ -3142,6 +3158,11 @@ inline void image_card_refresh_due(std::function<bool()> page_visible = nullptr)
 
 // The ESP32-S3 releases dashboard image memory while its camera screensaver owns the display.
 inline void image_card_suspend_pipeline() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto *scene = espcontrol::application_scene_navigation())
+      scene->display_takeover();
+    return;
+  }
   if (!image_card_constrained_memory_profile()) return;
   if (image_card_pipeline_suspended()) return;
   image_card_pipeline_suspended_state() = true;
@@ -3192,6 +3213,8 @@ inline void image_card_suspend_pipeline() {
 }
 
 inline void image_card_resume_pipeline() {
+  if (espcontrol::pooled_application_selected())
+    return;
   if (!image_card_pipeline_suspended()) return;
   image_card_pipeline_suspended_state() = false;
   ImageCardCtx *contexts = image_card_contexts();
@@ -3225,6 +3248,10 @@ inline void image_card_handle_activity_state(ImageCardCtx *ctx, const std::strin
 }
 
 inline void image_card_refresh_theme(uint32_t fit_background_color) {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto* scene = espcontrol::application_scene_navigation()) scene->refresh_content();
+    return;
+  }
   ImageCardCtx *contexts = image_card_contexts();
   for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; ++i) {
     ImageCardCtx *ctx = &contexts[i];

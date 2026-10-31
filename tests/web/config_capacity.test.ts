@@ -32,7 +32,7 @@ export async function runConfigCapacityTests(): Promise<void> {
   let putCount = 0;
   const response = (status: number): NativePanelConfigResponse => ({
     ok: status >= 200 && status < 300, status,
-    headers: { get: () => '"1"' },
+    headers: { get: (name) => name === "ETag" ? '"1"' : null },
     json: async () => ({ configuration: { read: true, write: true, document_versions: [1],
       ...(legacy ? {} : { max_record_body_bytes: 4096 }) } }),
     arrayBuffer: async () => encodePanelConfig(document).buffer as ArrayBuffer,

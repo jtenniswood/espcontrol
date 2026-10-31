@@ -14,9 +14,9 @@ struct PageFanModalState {
   uint64_t revision{0};
   bool initialized{false}, repaint{false}, rebuild{false}, pulling{false};
 };
-template <typename State, typename Active, typename Paint>
+template <typename Active, typename Paint>
 void pull_fan_modal_context(FanCardCtx& ctx, PageEntityStateRuntime& graph, ConfigurationHandle card,
-                            State& state, Active active, Paint paint) {
+                            PageFanModalState& state, Active active, Paint paint) {
   if (state.pulling) return;
   if (graph.dependency_count(card) > state.channels.size()) {
     ctx.available = ctx.light_available = false;

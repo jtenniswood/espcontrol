@@ -6,7 +6,7 @@ EspControlApp owns long-lived firmware services while YAML continues to supply
 device-specific wiring.
 """
 import esphome.codegen as cg
-from esphome.components.esp32 import VARIANT_ESP32S3, get_esp32_variant
+from esphome.components.esp32 import VARIANT_ESP32P4, VARIANT_ESP32S3, get_esp32_variant
 from esphome.components import text
 import esphome.config_validation as cv
 from esphome.const import CONF_ID
@@ -81,12 +81,27 @@ def _consume_endpoint_socket(config):
 CONFIG_SCHEMA = cv.All(CONFIG_SCHEMA, _consume_endpoint_socket)
 
 
+def _empty_template_preference_ids(text_configs):
+    """Only missing preferences which the pinned SDK restores as empty."""
+    return {
+        str(entry[CONF_ID])
+        for entry in text_configs
+        if entry.get("platform") == "template"
+        and entry.get("restore_value", False)
+        and entry.get("initial_value", "") == ""
+        and "lambda" not in entry
+    }
+
+
 @coroutine_with_priority(CoroPriority.DIAGNOSTICS)
 async def to_code(config):
     # Run before safe_mode's early return and before any preference consumers.
     if CORE.config.get("preferences", {}).get("rtc_storage", False):
         raise cv.Invalid("EspControl reset requires flash preferences; remove preferences.rtc_storage")
     cg.add_define("USE_OTA_STATE_LISTENER")
+    if get_esp32_variant() == VARIANT_ESP32P4:
+        cg.add_define("ESPCONTROL_P4_RESTART_WORKAROUND")
+        cg.add_build_flag("-Wl,--wrap=esp_restart_noos")
     # Pooled labels can retain the pinned LVGL refresh descriptors. With no
     # selected bank these wrappers forward every call unchanged.
     for operation in ("lv_display_add_event_cb", "lv_display_remove_event_cb_with_user_data"):
@@ -115,6 +130,18 @@ async def to_code(config):
 
     panel_config = config.get(CONF_PANEL_CONFIG)
     if panel_config is not None:
+        # Every translation unit includes these generated defines through the
+        # component header, so the application's field layout stays consistent.
+        cg.add_define(
+            "ESPCONTROL_PANEL_CONFIG_TEXT_SLOT_COUNT", len(panel_config[CONF_BUTTONS])
+        )
+        cg.add_define(
+            "ESPCONTROL_PANEL_CONFIG_TEXT_CHUNK_COUNT",
+            max(
+                len(button[CONF_SUBPAGE_CHUNKS])
+                for button in panel_config[CONF_BUTTONS]
+            ),
+        )
         if panel_config[CONF_STORAGE] == "card_images":
             cg.add(var.set_panel_config_card_images_storage(True))
         cg.add(var.set_panel_config_device_profile(panel_config[CONF_DEVICE_PROFILE]))
@@ -123,6 +150,9 @@ async def to_code(config):
         if CONF_BUTTON_ON_COLOR in panel_config:
             button_on_color = await cg.get_variable(panel_config[CONF_BUTTON_ON_COLOR])
             cg.add(var.set_panel_config_button_on_color(button_on_color))
+        referenced_texts = [panel_config[CONF_BUTTON_ORDER]]
+        if CONF_BUTTON_ON_COLOR in panel_config:
+            referenced_texts.append(panel_config[CONF_BUTTON_ON_COLOR])
         for slot, button_sources in enumerate(panel_config[CONF_BUTTONS], start=1):
             button = await cg.get_variable(button_sources[CONF_CONFIG])
             subpages = [
@@ -130,6 +160,13 @@ async def to_code(config):
                 for source in button_sources[CONF_SUBPAGE_CHUNKS]
             ]
             cg.add(var.set_panel_config_button(slot, button, *subpages))
+            referenced_texts.extend(
+                [button_sources[CONF_CONFIG], *button_sources[CONF_SUBPAGE_CHUNKS]]
+            )
+        empty_defaults = _empty_template_preference_ids(CORE.config.get("text", []))
+        for source in referenced_texts:
+            if str(source) in empty_defaults:
+                cg.add(var.set_panel_config_text_empty_default(await cg.get_variable(source)))
 
     for update_config in CORE.config.get("update", []):
         update_entity = await cg.get_variable(update_config[CONF_ID])

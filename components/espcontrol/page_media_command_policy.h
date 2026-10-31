@@ -29,7 +29,7 @@ class PageMediaCommandPolicy final : public PageCardControlPolicy {
              const PageCardCommandValue& value) override {
     if (kind != PageCardCommandKind::MEDIA_ACTION && kind != PageCardCommandKind::MEDIA_SEEK) return false;
     const ConfigurationHandle handle{origin.configuration, origin.card};
-    const auto* card = store.card(handle);
+    const auto* card = store.runtime_card(handle);
     if (!card || store.field(*card, CardField::TYPE) != "media") return false;
     const auto entity = store.field(*card, CardField::ENTITY);
     if (entity.size() <= 13 || entity.substr(0, 13) != "media_player.") return false;

@@ -5,9 +5,31 @@
 #include <cstring>
 #include <limits>
 #include <new>
+#include <utility>
 
 namespace espcontrol::pages {
 namespace {
+struct PreparationIndex {
+  PageArenaAllocator &allocator;
+  size_t &bytes;
+  uint32_t *data{nullptr};
+  ~PreparationIndex() {
+    if (data != nullptr)
+      allocator.release(data, bytes);
+    bytes = 0;
+  }
+};
+
+uint32_t channel_hash(std::string_view entity, std::string_view attribute) {
+  uint32_t value = 2166136261u;
+  for (const unsigned char byte : entity)
+    value = (value ^ byte) * 16777619u;
+  value *= 16777619u; // NUL separates the two validated, NUL-free names.
+  for (const unsigned char byte : attribute)
+    value = (value ^ byte) * 16777619u;
+  return value;
+}
+
 bool add_size(size_t &total, size_t count, size_t unit = 1) {
   if (unit != 0 && count > (std::numeric_limits<size_t>::max() - total) / unit) return false;
   total += count * unit;
@@ -39,43 +61,81 @@ class PageEntityStateRuntime::Counter final : public PageDependencySink {
 
 class PageEntityStateRuntime::Builder final : public PageDependencySink {
  public:
-  Builder(Slot &slot, const PageStore &store, size_t count, size_t names, size_t channels)
-      : slot(slot), store(store), count_limit(count), names_limit(names), channels_limit(channels) {}
-  bool add(CardId card, std::string_view entity, std::string_view attribute) override {
-    if (!valid || ++count > count_limit || card >= store.card_count() || entity.empty() ||
-        !valid_name(entity) || !valid_name(attribute)) return valid = false;
-    size_t channel = 0;
-    for (; channel < slot.channel_count; ++channel) {
-      const auto &entry = slot.channels[channel];
-      if (std::string_view(slot.names + entry.entity_offset, entry.entity_size) == entity &&
-          std::string_view(slot.names + entry.attribute_offset, entry.attribute_size) == attribute) break;
-    }
-    if (channel == slot.channel_count) {
-      size_t bytes = entity.size();
-      if (channel >= channels_limit || !add_size(bytes, attribute.size()) || !add_size(bytes, 2) ||
-          bytes > names_limit - slot.names_used) return valid = false;
-      auto &entry = *new (slot.channels + channel) Channel{};
-      entry.entity_offset = static_cast<uint32_t>(slot.names_used);
-      entry.entity_size = static_cast<uint32_t>(entity.size());
-      std::memcpy(slot.names + slot.names_used, entity.data(), entity.size());
-      slot.names_used += entity.size();
-      slot.names[slot.names_used++] = '\0';
-      entry.attribute_offset = static_cast<uint32_t>(slot.names_used);
-      entry.attribute_size = static_cast<uint32_t>(attribute.size());
-      if (!attribute.empty()) std::memcpy(slot.names + slot.names_used, attribute.data(), attribute.size());
-      slot.names_used += attribute.size();
-      slot.names[slot.names_used++] = '\0';
-      ++slot.channel_count;
-    }
-    for (size_t i = 0; i < slot.edge_count; ++i)
-      if (slot.edges[i].card == card && slot.edges[i].channel == channel) return true;
-    new (slot.edges + slot.edge_count++) Edge{card, static_cast<uint32_t>(channel)};
-    return true;
-  }
+   Builder(Slot &slot, const PageStore &store, size_t count, size_t names,
+           size_t channels, uint32_t *lookup, size_t lookup_size)
+       : slot(slot), store(store), count_limit(count), names_limit(names),
+         channels_limit(channels), lookup(lookup), lookup_size(lookup_size) {}
+   bool add(CardId card, std::string_view entity,
+            std::string_view attribute) override {
+     if (!valid || ++count > count_limit || card >= store.card_count() ||
+         entity.empty() || !valid_name(entity) || !valid_name(attribute))
+       return valid = false;
+     const auto matches = [&](size_t channel) {
+       const auto &entry = slot.channels[channel];
+       return std::string_view(slot.names + entry.entity_offset,
+                               entry.entity_size) == entity &&
+              std::string_view(slot.names + entry.attribute_offset,
+                               entry.attribute_size) == attribute;
+     };
+     size_t channel = slot.channel_count, bucket = 0;
+     if (lookup != nullptr) {
+       bucket = channel_hash(entity, attribute) & (lookup_size - 1);
+       while (lookup[bucket] != UINT32_MAX) {
+         if (matches(lookup[bucket])) {
+           channel = lookup[bucket];
+           break;
+         }
+         bucket = (bucket + 1) & (lookup_size - 1);
+       }
+     } else {
+       for (channel = 0; channel < slot.channel_count; ++channel)
+         if (matches(channel))
+           break;
+     }
+     if (channel == slot.channel_count) {
+       size_t bytes = entity.size();
+       if (channel >= channels_limit || !add_size(bytes, attribute.size()) ||
+           !add_size(bytes, 2) || bytes > names_limit - slot.names_used)
+         return valid = false;
+       auto &entry = *new (slot.channels + channel) Channel{};
+       entry.entity_offset = static_cast<uint32_t>(slot.names_used);
+       entry.entity_size = static_cast<uint32_t>(entity.size());
+       std::memcpy(slot.names + slot.names_used, entity.data(), entity.size());
+       slot.names_used += entity.size();
+       slot.names[slot.names_used++] = '\0';
+       entry.attribute_offset = static_cast<uint32_t>(slot.names_used);
+       entry.attribute_size = static_cast<uint32_t>(attribute.size());
+       if (!attribute.empty())
+         std::memcpy(slot.names + slot.names_used, attribute.data(),
+                     attribute.size());
+       slot.names_used += attribute.size();
+       slot.names[slot.names_used++] = '\0';
+       ++slot.channel_count;
+       if (lookup != nullptr)
+         lookup[bucket] = static_cast<uint32_t>(channel);
+     }
+     // Production declarations visit cards in order. Limit duplicate checks to
+     // the current card; interleaved sources retain the general stable path.
+     if (card != previous_card) {
+       if (previous_card != NO_CARD && card < previous_card)
+         ordered = false;
+       previous_card = card;
+       card_edge_begin = slot.edge_count;
+     }
+     for (size_t i = ordered ? card_edge_begin : 0; i < slot.edge_count; ++i)
+       if (slot.edges[i].card == card && slot.edges[i].channel == channel)
+         return true;
+     new (slot.edges + slot.edge_count++)
+         Edge{card, static_cast<uint32_t>(channel)};
+     return true;
+   }
   Slot &slot;
   const PageStore &store;
   size_t count_limit, names_limit, channels_limit, count{0};
-  bool valid{true};
+  uint32_t *lookup;
+  size_t lookup_size, card_edge_begin{0};
+  CardId previous_card{NO_CARD};
+  bool ordered{true}, valid{true};
 };
 
 PageEntityStateRuntime::PageEntityStateRuntime(const PageDependencySource &source,
@@ -103,7 +163,11 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
   const size_t names_offset = bytes;
   if (!add_size(bytes, counter.names)) return fail();
   const size_t values_offset = bytes;
-  if (!add_size(bytes, channels == 0 ? 0 : budget_.state_bytes) || bytes > UINT32_MAX) return fail();
+  const bool elastic = budget_.initial_state_bytes < budget_.state_bytes;
+  const size_t embedded_values =
+      channels == 0 || elastic ? 0 : budget_.state_bytes;
+  if (!add_size(bytes, embedded_values) || bytes > UINT32_MAX)
+    return fail();
   bytes = std::max(bytes, size_t{1});
   void *arena = allocator_.allocate(bytes);
   if (arena == nullptr) return fail();
@@ -123,31 +187,152 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
   }
   slot.names = raw + names_offset;
   slot.values = raw + values_offset;
+  slot.values_capacity = embedded_values;
   const auto current = memory();
   memory_.peak_arena_bytes = std::max(memory_.peak_arena_bytes,
       current.active_arena_bytes + current.staged_arena_bytes);
-  Builder builder(slot, store, counter.count, counter.names, channels);
-  if (!source_.enumerate(store, builder) || !builder.valid || builder.count != counter.count ||
-      !index_dependencies(slot)) return fail();
+  if (elastic && channels != 0 &&
+      !reserve_values(slot, budget_.initial_state_bytes))
+    return fail();
+  {
+    PreparationIndex lookup{allocator_, preparation_scratch_bytes_};
+    size_t lookup_size = 0;
+    if (channels > 16) {
+      lookup_size = 1;
+      // Keep the table at most half full, including when all names differ.
+      while (lookup_size < channels) {
+        if (lookup_size > SIZE_MAX / 2)
+          return fail();
+        lookup_size *= 2;
+      }
+      if (lookup_size > SIZE_MAX / 2)
+        return fail();
+      lookup_size *= 2;
+      if (!add_size(preparation_scratch_bytes_, lookup_size, sizeof(uint32_t)))
+        return fail();
+      lookup.data = static_cast<uint32_t *>(
+          allocator_.allocate(preparation_scratch_bytes_));
+      if (lookup.data == nullptr)
+        return fail();
+      const auto current = memory();
+      memory_.peak_arena_bytes =
+          std::max(memory_.peak_arena_bytes, current.active_arena_bytes +
+                                                 current.staged_arena_bytes +
+                                                 preparation_scratch_bytes_);
+      std::fill_n(lookup.data, lookup_size, UINT32_MAX);
+    }
+    Builder builder(slot, store, counter.count, counter.names, channels,
+                    lookup.data, lookup_size);
+    if (!source_.enumerate(store, builder) || !builder.valid ||
+        builder.count != counter.count)
+      return fail();
+  } // Release build lookup before edge grouping, shared-value copy or transport
+    // setup.
+  if (!index_dependencies(slot))
+    return fail();
+  if (!subscriptions_.prepare_batch(slot.subscription_batch, &slot,
+                                    slot.revision, slot.channel_count, deliver))
+    return fail();
   synchronize_connection();
-  for (size_t i = 0; i < slot.channel_count; ++i) {
-    const auto &entry = slot.channels[i];
-    // Preserve shared live values without asking the coordinator to keep a
-    // second cache. Both arenas remain alive throughout this preparation.
-    if (active_ >= 0 && subscriptions_.copy_shared_values()) {
-      const auto &old = slots_[active_];
-      for (size_t j = 0; j < old.channel_count; ++j) {
-        const auto &previous = old.channels[j];
-        if (previous.status != PageEntityStatus::AVAILABLE ||
-            std::string_view(slot.names + entry.entity_offset, entry.entity_size) !=
-                std::string_view(old.names + previous.entity_offset, previous.entity_size) ||
-            std::string_view(slot.names + entry.attribute_offset, entry.attribute_size) !=
-                std::string_view(old.names + previous.attribute_offset, previous.attribute_size)) continue;
-        receive(slot, slot.revision, static_cast<uint32_t>(i),
-            {old.values + previous.value_offset, previous.value_size},true);
-        break;
+  // Keep large replacements bounded by sorting channel indices once. Names
+  // and values remain owned by the old arena; no second state cache is kept.
+  {
+    PreparationIndex copy_index{allocator_, preparation_scratch_bytes_};
+    const Slot *old = active_ >= 0 && subscriptions_.copy_shared_values()
+                          ? &slots_[active_]
+                          : nullptr;
+    const auto key = [](const Slot &source, size_t channel) {
+      const auto &entry = source.channels[channel];
+      return std::pair<std::string_view, std::string_view>{
+          {source.names + entry.entity_offset, entry.entity_size},
+          {source.names + entry.attribute_offset, entry.attribute_size}};
+    };
+    if (old != nullptr && old->channel_count > 16) {
+      if (!add_size(preparation_scratch_bytes_, old->channel_count,
+                    sizeof(uint32_t)))
+        return fail();
+      copy_index.data = static_cast<uint32_t *>(
+          allocator_.allocate(preparation_scratch_bytes_));
+      if (copy_index.data == nullptr)
+        return fail();
+      const auto current = memory();
+      memory_.peak_arena_bytes =
+          std::max(memory_.peak_arena_bytes, current.active_arena_bytes +
+                                                 current.staged_arena_bytes +
+                                                 preparation_scratch_bytes_);
+      for (size_t i = 0; i < old->channel_count; ++i)
+        copy_index.data[i] = static_cast<uint32_t>(i);
+      std::sort(copy_index.data, copy_index.data + old->channel_count,
+                [&](uint32_t left, uint32_t right) {
+                  return key(*old, left) < key(*old, right);
+                });
+    }
+    for (size_t i = 0; i < slot.channel_count; ++i) {
+      synchronize_connection();
+      if (old != nullptr) {
+        const auto wanted = key(slot, i);
+        size_t previous_channel = old->channel_count;
+        if (copy_index.data != nullptr) {
+          const auto *found = std::lower_bound(
+              copy_index.data, copy_index.data + old->channel_count, wanted,
+              [&](uint32_t channel, const auto &value) {
+                return key(*old, channel) < value;
+              });
+          if (found != copy_index.data + old->channel_count &&
+              key(*old, *found) == wanted)
+            previous_channel = *found;
+        } else {
+          for (size_t j = 0; j < old->channel_count; ++j) {
+            if (key(*old, j) == wanted) {
+              previous_channel = j;
+              break;
+            }
+          }
+        }
+        if (previous_channel != old->channel_count) {
+          const auto &previous = old->channels[previous_channel];
+          if (previous.status == PageEntityStatus::AVAILABLE &&
+              !receive(
+                  slot, slot.revision, static_cast<uint32_t>(i),
+                  {old->values + previous.value_offset, previous.value_size},
+                  true))
+            return fail();
+        }
       }
     }
+  } // Shared-value lookup is gone before reserving transport lookup scratch.
+  if (slot.channel_count == 0)
+    return true;
+  PreparationIndex registration_index{allocator_, preparation_scratch_bytes_};
+  preparation_scratch_bytes_ = subscriptions_.registration_scratch_bytes();
+  if (preparation_scratch_bytes_ == SIZE_MAX)
+    return fail();
+  if (preparation_scratch_bytes_) {
+    registration_index.data = static_cast<uint32_t *>(
+        allocator_.allocate(preparation_scratch_bytes_));
+    if (!registration_index.data)
+      return fail();
+    const auto current = memory();
+    memory_.peak_arena_bytes =
+        std::max(memory_.peak_arena_bytes, current.active_arena_bytes +
+                                               current.staged_arena_bytes +
+                                               preparation_scratch_bytes_);
+  }
+  struct RegistrationGuard {
+    PageEntitySubscriptions &subscriptions;
+    bool active{false};
+    ~RegistrationGuard() {
+      if (active)
+        subscriptions.end_registration_batch();
+    }
+  } registration_guard{subscriptions_};
+  if (!subscriptions_.begin_registration_batch(registration_index.data,
+                                               preparation_scratch_bytes_))
+    return fail();
+  registration_guard.active = true;
+  for (size_t i = 0; i < slot.channel_count; ++i) {
+    const auto &entry = slot.channels[i];
+    synchronize_connection();
     if (!subscriptions_.subscribe(slot.names + entry.entity_offset, slot.names + entry.attribute_offset,
           &slot, slot.revision, static_cast<uint32_t>(i), deliver)) return fail();
   }
@@ -192,6 +377,8 @@ void PageEntityStateRuntime::release_slot(int index) {
   auto &slot = slots_[index];
   slot.revision = 0;  // Disable late delivery before releasing any storage.
   subscriptions_.release(&slot);
+  if (slot.value_storage != nullptr)
+    allocator_.release(slot.value_storage, slot.values_capacity);
   if (slot.arena != nullptr) allocator_.release(slot.arena, slot.arena_size);
   slot = {};
   slot.runtime = this;
@@ -229,11 +416,12 @@ void PageEntityStateRuntime::deliver(void *owner, uint32_t revision, uint32_t ch
   auto &slot = *static_cast<Slot *>(owner);
   slot.runtime->receive(slot, revision, channel, value);
 }
-void PageEntityStateRuntime::receive(Slot &slot, uint32_t revision, uint32_t channel,
-                                    std::string_view value,bool copied) {
+bool PageEntityStateRuntime::receive(Slot &slot, uint32_t revision,
+                                     uint32_t channel, std::string_view value,
+                                     bool copied) {
   if (revision == 0 || slot.revision != revision || slot.arena == nullptr || channel >= slot.channel_count) {
     ++memory_.stale_deliveries;
-    return;
+    return false;
   }
   synchronize_connection();
   auto &entry = slot.channels[channel];
@@ -245,27 +433,121 @@ void PageEntityStateRuntime::receive(Slot &slot, uint32_t revision, uint32_t cha
   if(attribute=="current_position"||attribute=="current_tilt_position") {
     uint8_t percent;if(parse_bounded_percent(value,percent)){entry.percent=percent;entry.percent_known=true;}
   }
-  if (entry.status == PageEntityStatus::AVAILABLE && entry.value_size == value.size() &&
-      std::string_view(slot.values + entry.value_offset, entry.value_size) == value) return;
+  if (entry.status == PageEntityStatus::AVAILABLE &&
+      entry.value_size == value.size() &&
+      std::string_view(slot.values + entry.value_offset, entry.value_size) ==
+          value)
+    return true;
   if (entry.status == PageEntityStatus::AVAILABLE && entry.value_size == value.size()) {
     ++revision_;++entry.revision;
     if (!value.empty()) std::memmove(slot.values + entry.value_offset, value.data(), value.size());
-    return; // Equal-width updates need not move any neighbouring packed state.
+    return true; // Equal-width updates need not move any neighbouring packed
+                 // state.
   }
   const size_t available = budget_.state_bytes - (slot.values_used - entry.value_size);
   ++revision_;
-  remove_value(slot, entry);
   ++entry.revision;
   if (value.size() > available || value.size() > budget_.channel_bytes) {
+    remove_value(slot, entry);
     entry.status = PageEntityStatus::EXHAUSTED;
     ++memory_.state_overflows;
-    return;
+    return false;
   }
-  entry.value_offset = static_cast<uint32_t>(slot.values_used);
+  // A borrowed value may come from this same packed pool. Remember its offset
+  // before growth or compaction, rather than retaining a pointer to retired
+  // RAM.
+  const uintptr_t input = reinterpret_cast<uintptr_t>(value.data());
+  const uintptr_t base = reinterpret_cast<uintptr_t>(slot.values);
+  const bool borrowed = !value.empty() && input >= base &&
+                        input - base < slot.values_used &&
+                        value.size() <= slot.values_used - (input - base);
+  const size_t input_offset = borrowed ? input - base : 0;
+  const size_t required = slot.values_used - entry.value_size + value.size();
+  if (!reserve_values(slot, required)) {
+    remove_value(slot, entry);
+    entry.status = PageEntityStatus::EXHAUSTED;
+    return false;
+  }
+  const size_t offset =
+      entry.value_size == 0 ? slot.values_used : entry.value_offset;
+  const size_t tail = offset + entry.value_size;
+  if (value.size() <= entry.value_size) {
+    // Copy before shrinking: moving the tail left could overwrite a borrowed
+    // input.
+    if (!value.empty())
+      std::memmove(slot.values + offset,
+                   borrowed ? slot.values + input_offset : value.data(),
+                   value.size());
+    std::memmove(slot.values + offset + value.size(), slot.values + tail,
+                 slot.values_used - tail);
+  } else {
+    const size_t growth = value.size() - entry.value_size;
+    std::memmove(slot.values + tail + growth, slot.values + tail,
+                 slot.values_used - tail);
+    if (borrowed) {
+      // Input crossing the old tail boundary now has two source fragments.
+      // The left destination ends before the right source, so this order also
+      // handles views spanning multiple packed values without scratch storage.
+      const size_t prefix =
+          input_offset < tail ? std::min(value.size(), tail - input_offset) : 0;
+      if (prefix != 0)
+        std::memmove(slot.values + offset, slot.values + input_offset, prefix);
+      if (prefix != value.size())
+        std::memmove(slot.values + offset + prefix,
+                     slot.values + input_offset + prefix + growth,
+                     value.size() - prefix);
+    } else if (!value.empty()) {
+      std::memmove(slot.values + offset, value.data(), value.size());
+    }
+  }
+  // Appending an initial/copied value or resizing the final packed value
+  // moves no neighbours. Avoid rescanning every channel for each copied key.
+  if (tail != slot.values_used) {
+    for (size_t i = 0; i < slot.channel_count; ++i) {
+      auto &other = slot.channels[i];
+      if (&other != &entry && other.value_size != 0 &&
+          other.value_offset >= tail)
+        other.value_offset = static_cast<uint32_t>(
+            other.value_offset - entry.value_size + value.size());
+    }
+  }
+  entry.value_offset = static_cast<uint32_t>(offset);
   entry.value_size = static_cast<uint32_t>(value.size());
-  if (!value.empty()) std::memcpy(slot.values + slot.values_used, value.data(), value.size());
-  slot.values_used += value.size();
+  slot.values_used = required;
   entry.status = PageEntityStatus::AVAILABLE;
+  return true;
+}
+
+bool PageEntityStateRuntime::reserve_values(Slot &slot, size_t required) {
+  if (required <= slot.values_capacity)
+    return true;
+  if (required > budget_.state_bytes ||
+      budget_.initial_state_bytes >= budget_.state_bytes)
+    return false;
+  size_t capacity = std::max(slot.values_capacity, size_t{1});
+  while (capacity < required) {
+    capacity =
+        capacity > budget_.state_bytes / 2 ? budget_.state_bytes : capacity * 2;
+  }
+  auto *replacement = static_cast<char *>(allocator_.allocate(capacity));
+  if (replacement == nullptr) {
+    ++memory_.state_allocation_failures;
+    return false;
+  }
+  const auto current = memory();
+  memory_.peak_arena_bytes =
+      std::max(memory_.peak_arena_bytes,
+               current.active_arena_bytes + current.staged_arena_bytes +
+                   preparation_scratch_bytes_ + capacity);
+  if (slot.values_used != 0)
+    std::memcpy(replacement, slot.values, slot.values_used);
+  if (slot.value_storage != nullptr)
+    allocator_.release(slot.value_storage, slot.values_capacity);
+  slot.value_storage = replacement;
+  slot.values = replacement;
+  slot.values_capacity = capacity;
+  ++memory_.state_reservations;
+  return true;
 }
 void PageEntityStateRuntime::invalidate_disconnected_state() {
   ++revision_;
@@ -315,12 +597,21 @@ PageEntityMemory PageEntityStateRuntime::memory() const {
   auto result = memory_;
   if (active_ >= 0) {
     const auto &slot = slots_[active_];
-    result.active_arena_bytes = slot.arena_size;
+    result.active_arena_bytes =
+        slot.arena_size +
+        (slot.value_storage != nullptr ? slot.values_capacity : 0);
     result.active_channels = slot.channel_count;
     result.active_dependencies = slot.edge_count;
     result.active_state_bytes = slot.values_used;
+    result.active_state_capacity_bytes = slot.values_capacity;
   }
-  if (staged_ >= 0) result.staged_arena_bytes = slots_[staged_].arena_size;
+  if (staged_ >= 0) {
+    const auto &slot = slots_[staged_];
+    result.staged_arena_bytes =
+        slot.arena_size +
+        (slot.value_storage != nullptr ? slot.values_capacity : 0);
+    result.staged_state_capacity_bytes = slot.values_capacity;
+  }
   return result;
 }
 }  // namespace espcontrol::pages

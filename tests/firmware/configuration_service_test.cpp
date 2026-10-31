@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <functional>
+#include <future>
 #include <string>
 #include <vector>
 
@@ -32,6 +34,7 @@ class MemoryBackend final : public StorageBackend {
   }
   bool write(uint8_t slot, size_t offset, const uint8_t *data,
              size_t size) override {
+    ++write_calls;
     if (fail_writes_ || slot >= slots_.size() ||
         offset > slots_[slot].size() ||
         size > slots_[slot].size() - offset) {
@@ -42,8 +45,9 @@ class MemoryBackend final : public StorageBackend {
   }
   bool sync() override { return true; }
   void fail_writes(bool value) { fail_writes_ = value; }
+  size_t write_calls{0};
 
- private:
+private:
   std::array<std::vector<uint8_t>, CONFIGURATION_SLOT_COUNT> slots_;
   bool fail_writes_{false};
 };
@@ -61,16 +65,44 @@ class FakeLegacy final : public LegacyConfigurationAdapter {
     return {LegacyStatus::OK, version, value.size()};
   }
 
+  LegacyLoadResult merge(uint16_t document_version, const uint8_t *native,
+                         size_t size, uint8_t *output, size_t capacity,
+                         bool *changed) override {
+    if (read_failed || version != document_version)
+      return {LegacyStatus::READ_FAILED, version, 0};
+    if (value.size() > capacity)
+      return {LegacyStatus::BUFFER_TOO_SMALL, version, value.size()};
+    *changed = value.size() != size ||
+               (size && std::memcmp(value.data(), native, size) != 0);
+    std::copy(value.begin(), value.end(), output);
+    return {LegacyStatus::OK, version, value.size()};
+  }
+
+  bool publish(uint16_t document_version, const uint8_t *document,
+               size_t size) override {
+    ++publish_calls;
+    published.assign(document, document + size);
+    published_version = document_version;
+    if (on_publish)
+      on_publish();
+    return !publish_failed;
+  }
+
   bool mirror(uint16_t document_version, const uint8_t *document,
               size_t document_size) override {
     ++mirror_calls;
+    if(on_mirror)on_mirror();
     mirrored_version = document_version;
     mirrored.assign(document, document + document_size);
     return !mirror_failed;
   }
 
   std::vector<uint8_t> value;
-  std::vector<uint8_t> mirrored;
+  std::vector<uint8_t> mirrored, published;
+  std::function<void()> on_publish,on_mirror;
+  size_t publish_calls{0};
+  uint16_t published_version{0};
+  bool publish_failed{false};
   uint16_t version{CURRENT_CONFIGURATION_DOCUMENT_VERSION};
   uint16_t mirrored_version{0};
   size_t load_calls{0};
@@ -506,10 +538,346 @@ bool activation_failure_remains_durable() {
       runtime.applied_generation == saved.generation && runtime.applied == replacement;
 }
 
+bool compatibility_edits_use_prepared_runtime_transaction() {
+  MemoryBackend backend(512);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  FakeRuntime runtime;
+  std::array<uint8_t, 512> scratch{}, output{};
+  ConfigurationService service(store, legacy, nullptr, scratch.data(),
+                               scratch.size());
+  service.set_runtime_adapter(&runtime);
+  legacy.value = bytes("original");
+  auto loaded = service.load_and_apply_runtime(output.data(), output.size());
+  if (!loaded.ok() || runtime.apply_calls != 1)
+    return false;
+  const auto original_generation = loaded.generation;
+  // Repeated theme/orientation refreshes are no-ops, including storage writes.
+  loaded = service.synchronize_legacy_runtime(output.data(), output.size());
+  if (!loaded.ok() || loaded.generation != original_generation ||
+      runtime.prepare_calls != 1)
+    return false;
+  legacy.value = bytes("edited");
+  runtime.prepare_failed = true;
+  loaded = service.synchronize_legacy_runtime(output.data(), output.size());
+  if (loaded.status != ServiceStatus::RUNTIME_PREPARE_FAILED ||
+      runtime.applied != bytes("original") || runtime.has_prepared ||
+      legacy.mirror_calls)
+    return false;
+  const auto unchanged = service.load(output.data(), output.size());
+  if (!unchanged.ok() || unchanged.generation != original_generation ||
+      output[0] != 'o')
+    return false;
+  runtime.prepare_failed = false;
+  backend.fail_writes(true);
+  loaded = service.synchronize_legacy_runtime(output.data(), output.size());
+  if (loaded.status != ServiceStatus::STORE_FAILED ||
+      runtime.applied != bytes("original") || legacy.mirror_calls)
+    return false;
+  backend.fail_writes(false);
+  loaded = service.synchronize_legacy_runtime(output.data(), output.size());
+  if (!loaded.ok() || loaded.generation != original_generation + 1 ||
+      runtime.applied != legacy.value || legacy.mirror_calls != 1 ||
+      runtime.apply_calls != 2)
+    return false;
+  // A subsequent native save wins before the next queued edit refresh.
+  const auto browser = bytes("new browser save");
+  if (!service.save_current(browser.data(), browser.size()).ok())
+    return false;
+  legacy.value = browser; // Production publication updates text before mirror.
+  const auto prepared = runtime.prepare_calls;
+  loaded = service.synchronize_legacy_runtime(output.data(), output.size());
+  if (!loaded.ok() || runtime.prepare_calls != prepared ||
+      runtime.applied != browser)
+    return false;
+  legacy.read_failed = true;
+  if (service.synchronize_legacy_runtime(output.data(), output.size()).status !=
+      ServiceStatus::LEGACY_READ_FAILED)
+    return false;
+  return service.synchronize_legacy_runtime(scratch.data(), scratch.size())
+             .status == ServiceStatus::INVALID_ARGUMENT;
+}
+
+bool compatibility_publication_is_separate_from_runtime_activation() {
+  MemoryBackend backend(512);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  FakeRuntime runtime;
+  ConfigurationService service(store, legacy);
+  service.set_runtime_adapter(&runtime);
+  const auto document = bytes("committed native document");
+  bool published_after_activation = false;
+  legacy.on_publish = [&] {
+    published_after_activation =
+        runtime.apply_calls == 1 && runtime.applied == document;
+  };
+  legacy.publish_failed = true;
+  legacy.mirror_failed = true;
+  const auto saved =
+      service.save_if_generation(0, 1, document.data(), document.size());
+  if (saved.status != ServiceStatus::LEGACY_MIRROR_FAILED || !saved.durable() ||
+      !published_after_activation || legacy.publish_calls != 1 ||
+      legacy.mirror_calls != 1 || runtime.has_prepared ||
+      legacy.published != document)
+    return false;
+  legacy.on_publish = {};
+  std::array<uint8_t, 512> output{};
+  auto loaded = service.load(output.data(), output.size());
+  if (!loaded.ok() || loaded.generation != saved.generation ||
+      legacy.publish_calls != 1)
+    return false;
+  // Startup publication failure is a compatibility failure, after the same
+  // durable generation has been activated. Reboot must not import old text.
+  legacy.value = bytes("partially published/stale compatibility value");
+  const auto blocked =
+      service.synchronize_legacy_runtime(output.data(), output.size());
+  if (blocked.status != ServiceStatus::LEGACY_MIRROR_FAILED ||
+      blocked.generation != saved.generation || runtime.apply_calls != 1 ||
+      runtime.applied != document || legacy.publish_calls != 1)
+    return false;
+  loaded = service.load_and_apply_runtime(output.data(), output.size());
+  if (loaded.status != ServiceStatus::LEGACY_MIRROR_FAILED ||
+      loaded.generation != saved.generation || runtime.apply_calls != 2 ||
+      runtime.applied != document || legacy.published != document)
+    return false;
+  legacy.publish_failed = false;
+  if (!service.load_and_apply_runtime(output.data(), output.size()).ok() ||
+      legacy.publish_calls != 3)
+    return false;
+  runtime.prepare_failed = true;
+  const auto replacement = bytes("replacement");
+  auto rejected = service.save_current(replacement.data(), replacement.size());
+  if (rejected.status != ServiceStatus::RUNTIME_PREPARE_FAILED ||
+      legacy.publish_calls != 3 || legacy.mirror_calls != 1)
+    return false;
+  runtime.prepare_failed = false;
+  backend.fail_writes(true);
+  rejected = service.save_current(replacement.data(), replacement.size());
+  if (rejected.status != ServiceStatus::STORE_FAILED ||
+      legacy.publish_calls != 3 || legacy.mirror_calls != 1)
+    return false;
+  backend.fail_writes(false);
+  rejected =
+      service.save_if_generation(0, 1, replacement.data(), replacement.size());
+  return rejected.status == ServiceStatus::GENERATION_CONFLICT &&
+         legacy.publish_calls == 3 && legacy.mirror_calls == 1 &&
+         runtime.applied == document;
+}
+
+bool import_only_still_publishes_live_compatibility_values() {
+  MemoryBackend backend(512);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  FakeRuntime runtime;
+  ConfigurationService service(store, legacy, nullptr, nullptr, 0,
+                               LegacyConfigurationMode::READ_IMPORT_ONLY);
+  service.set_runtime_adapter(&runtime);
+  const auto value = bytes("native-only persistence");
+  const auto saved = service.save_current(value.data(), value.size());
+  return saved.ok() && legacy.publish_calls == 1 && legacy.mirror_calls == 0 &&
+         legacy.published == value && runtime.applied == value;
+}
+
+struct BufferProbe {
+  size_t calls{0}, releases{0}, live{0}, peak{0}, fail_on{0};
+  static BufferProbe state;
+  static uint8_t *allocate(size_t size) {
+    auto &s = state;
+    if (++s.calls == s.fail_on)
+      return nullptr;
+    auto *memory = static_cast<uint8_t *>(std::malloc(size));
+    if (memory) {
+      ++s.live;
+      s.peak = std::max(s.peak, s.live);
+    }
+    return memory;
+  }
+  static void release(uint8_t *memory) {
+    ++state.releases;
+    --state.live;
+    std::free(memory);
+  }
+};
+BufferProbe BufferProbe::state{};
+
+bool transient_service_buffers_release_and_fail_before_publication() {
+  BufferProbe::state = {};
+  auto &buffers = BufferProbe::state;
+  MemoryBackend backend(40960);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  FakeRuntime runtime;
+  ConfigurationService service(store, legacy);
+  service.set_buffer_allocator(BufferProbe::allocate, BufferProbe::release);
+  service.set_runtime_adapter(&runtime);
+  std::array<uint8_t, 40960> output{};
+  legacy.value = bytes("original");
+  auto loaded = service.load_and_apply_runtime(output.data(), output.size());
+  if (!loaded.ok() || buffers.live || buffers.peak != 1 ||
+      runtime.applied != legacy.value)
+    return false;
+  auto generation = loaded.generation;
+  auto writes = backend.write_calls;
+  auto publications = legacy.publish_calls;
+  auto mirrors = legacy.mirror_calls;
+  const auto replacement = bytes("replacement");
+
+  // Loading, encoding a prepared save, and both forms of legacy refresh must
+  // leave durable bytes, the active runtime and compatibility views untouched
+  // when their next temporary buffer cannot be reserved.
+  buffers.fail_on = buffers.calls + 1;
+  loaded = service.load(output.data(), output.size());
+  if (loaded.status != ServiceStatus::ALLOCATION_FAILED || buffers.live ||
+      backend.write_calls != writes)
+    return false;
+  buffers.fail_on = buffers.calls + 1;
+  const auto failed = service.save_if_generation(
+      generation, 1, replacement.data(), replacement.size());
+  if (failed.status != ServiceStatus::ALLOCATION_FAILED ||
+      failed.store_status != StoreStatus::ALLOCATION_FAILED ||
+      failed.durable() || runtime.has_prepared || buffers.live ||
+      backend.write_calls != writes || legacy.publish_calls != publications ||
+      legacy.mirror_calls != mirrors || runtime.applied != bytes("original"))
+    return false;
+  buffers.fail_on = 0;
+  legacy.value = replacement;
+  for (size_t step = 1; step <= 3; ++step) {
+    buffers.fail_on = buffers.calls + step;
+    loaded = service.synchronize_legacy_runtime(output.data(), output.size());
+    if (loaded.status != ServiceStatus::ALLOCATION_FAILED || buffers.live ||
+        runtime.has_prepared || backend.write_calls != writes ||
+        runtime.applied != bytes("original") ||
+        legacy.publish_calls != publications || legacy.mirror_calls != mirrors)
+      return false;
+  }
+  buffers.fail_on = buffers.calls + 1;
+  if (service.refresh_legacy_shadow(output.data(), output.size()).status !=
+          ServiceStatus::ALLOCATION_FAILED ||
+      buffers.live || backend.write_calls != writes)
+    return false;
+  buffers.fail_on = 0;
+  loaded = service.load(output.data(), output.size());
+  if (!loaded.ok() || loaded.generation != generation ||
+      std::memcmp(output.data(), "original", loaded.document_size) != 0)
+    return false;
+
+  // Success, no-op refresh, conflicts, store errors and mirror failures all
+  // release scratch. Repeated operations cannot retain old allocation peaks.
+  for (size_t cycle = 0; cycle < 25; ++cycle) {
+    legacy.value = bytes(cycle % 2 ? "original" : "replacement");
+    loaded = service.synchronize_legacy_runtime(output.data(), output.size());
+    if (!loaded.ok() || buffers.live || runtime.applied != legacy.value)
+      return false;
+    generation = loaded.generation;
+    if (service.synchronize_legacy_runtime(output.data(), output.size())
+                .generation != generation ||
+        buffers.live)
+      return false;
+    if (service.save_if_generation(0, 1, replacement.data(), replacement.size())
+                .status != ServiceStatus::GENERATION_CONFLICT ||
+        buffers.live || runtime.has_prepared)
+      return false;
+    backend.fail_writes(true);
+    if (service.save_current(replacement.data(), replacement.size()).status !=
+            ServiceStatus::STORE_FAILED ||
+        buffers.live || runtime.has_prepared)
+      return false;
+    backend.fail_writes(false);
+  }
+  legacy.mirror_failed = true;
+  const auto durable =
+      service.save_current(replacement.data(), replacement.size());
+  if (durable.status != ServiceStatus::LEGACY_MIRROR_FAILED ||
+      !durable.durable() || buffers.live || buffers.peak != 1)
+    return false;
+  loaded = service.load_and_apply_runtime(output.data(), output.size());
+  if (!loaded.ok() || loaded.generation != durable.generation || buffers.live ||
+      runtime.applied != replacement)
+    return false;
+
+  // Refreshing an old legacy-only shadow also releases its read scratch
+  // before encoding a changed document.
+  legacy.mirror_failed = false;
+  legacy.value = bytes("shadow replacement");
+  const auto shadow =
+      service.refresh_legacy_shadow(output.data(), output.size());
+  if (shadow.status != ServiceStatus::SYNCED_LEGACY || buffers.live ||
+      buffers.peak != 1)
+    return false;
+
+  // Explicit borrowed scratch remains compatible and never uses the allocator.
+  std::array<uint8_t, 40960> borrowed{};
+  ConfigurationService borrowed_service(store, legacy, nullptr, borrowed.data(),
+                                        borrowed.size());
+  borrowed_service.set_buffer_allocator(BufferProbe::allocate,
+                                        BufferProbe::release);
+  const auto calls = buffers.calls;
+  buffers.fail_on = calls + 1;
+  if (!borrowed_service.load(output.data(), output.size()).ok() ||
+      buffers.calls != calls ||
+      !borrowed_service.save_current(replacement.data(), replacement.size())
+           .ok() ||
+      buffers.calls != calls || buffers.live)
+    return false;
+  buffers.fail_on = 0;
+
+  // A failed empty-store import must also remain empty and retry normally.
+  MemoryBackend empty_backend(512);
+  ConfigurationStore empty_store(empty_backend);
+  FakeLegacy import_legacy;
+  import_legacy.value = bytes("legacy import");
+  ConfigurationService importing(empty_store, import_legacy);
+  importing.set_buffer_allocator(BufferProbe::allocate, BufferProbe::release);
+  buffers.fail_on =
+      buffers.calls + 2; // read scratch succeeds, import encoding fails
+  if (importing.load(output.data(), output.size()).status !=
+          ServiceStatus::ALLOCATION_FAILED ||
+      buffers.live || empty_backend.write_calls)
+    return false;
+  buffers.fail_on = 0;
+  loaded = importing.load(output.data(), output.size());
+  return loaded.imported_legacy() && loaded.generation == 1 &&
+         buffers.live == 0 && buffers.peak == 1;
+}
+
 }  // namespace
+
+bool compatibility_retry_cannot_import_or_race_a_new_save() {
+  MemoryBackend empty(1024);ConfigurationStore empty_store(empty);FakeLegacy stale;
+  stale.value=bytes("stale legacy");ConfigurationService empty_service(empty_store,stale);
+  std::array<uint8_t,512> output{};
+  if(empty_service.retry_compatibility(output.data(),output.size()).status!=ServiceStatus::EMPTY||stale.load_calls||empty.write_calls)return false;
+  {
+    MemoryBackend imported(1024);ConfigurationStore imported_store(imported);FakeLegacy legacy;FakeRuntime runtime;
+    ConfigurationService service(imported_store,legacy,nullptr,nullptr,0,LegacyConfigurationMode::READ_IMPORT_ONLY);
+    service.set_runtime_adapter(&runtime);const auto value=bytes("import-only");legacy.publish_failed=true;
+    if(service.save_current(value.data(),value.size()).status!=ServiceStatus::LEGACY_MIRROR_FAILED)return false;
+    const auto writes=imported.write_calls;legacy.publish_failed=false;
+    if(!service.retry_compatibility(output.data(),output.size()).ok()||legacy.mirror_calls||imported.write_calls!=writes||runtime.apply_calls!=1)return false;
+  }
+  MemoryBackend backend(1024);ConfigurationStore store(backend);FakeLegacy legacy;FakeRuntime runtime;
+  ConfigurationService service(store,legacy);service.set_runtime_adapter(&runtime);
+  const auto original=bytes("original"),latest=bytes("newest");
+  legacy.mirror_failed=true;
+  if(service.save_current(original.data(),original.size()).status!=ServiceStatus::LEGACY_MIRROR_FAILED)return false;
+  legacy.mirror_failed=false;
+  std::promise<void> entered,proceed;auto proceed_future=proceed.get_future().share();bool first=true;
+  legacy.on_mirror=[&]{if(first){first=false;entered.set_value();proceed_future.wait();}};
+  auto repair=std::async(std::launch::async,[&]{return service.retry_compatibility(output.data(),output.size());});
+  entered.get_future().wait();
+  auto save=std::async(std::launch::async,[&]{return service.save_if_generation(1,1,latest.data(),latest.size());});
+  proceed.set_value();const auto repaired=repair.get();const auto saved=save.get();
+  return repaired.ok()&&repaired.generation==1&&saved.ok()&&saved.generation==2&&legacy.mirrored==latest&&
+      runtime.apply_calls==2&&runtime.prepare_calls==2&&runtime.applied==latest&&!service.compatibility_state().retry_pending();
+}
 
 int main() {
   const bool passed =
+      compatibility_retry_cannot_import_or_race_a_new_save() &&
+      transient_service_buffers_release_and_fail_before_publication() &&
+      compatibility_publication_is_separate_from_runtime_activation() &&
+      import_only_still_publishes_live_compatibility_values() &&
+      compatibility_edits_use_prepared_runtime_transaction() &&
       legacy_is_imported_once() &&
       partial_migration_refreshes_the_native_shadow() &&
       failed_legacy_mirror_keeps_the_native_save_durable() &&

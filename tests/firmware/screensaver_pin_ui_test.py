@@ -22,6 +22,7 @@ stubs = r'''
 #include <functional>
 #include <algorithm>
 #include "screensaver_pin.h"
+#include "page_scene_selection.h"
 #include "network_status_layout.h"
 using lv_coord_t = int;
 struct lv_font_t {};

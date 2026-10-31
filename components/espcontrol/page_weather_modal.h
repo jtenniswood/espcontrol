@@ -126,9 +126,14 @@ class PageWeatherModalPort final : public PageModalPort {
     const auto& record = *static_cast<Record*>(pointer);
     return !record.retired && weather_daily_modal().source == &record.source && weather_daily_modal().overlay;
   }
+  // Settings callbacks only invalidate the view; repaint in the safe modal loop.
+  void refresh_temperature_unit() {
+    if (record_ && !record_->retired) record_->temperature_dirty = true;
+  }
   void update(void* pointer, PageModalToken) override {
     auto& record = *static_cast<Record*>(pointer);
-    if (record.retired || (record.seen == forecasts_.revision() && record.palette == &current_theme()))
+    if (record.retired || (!record.temperature_dirty && record.seen == forecasts_.revision() &&
+                           record.palette == &current_theme()))
       return;
     if (!refresh(record)) {
       runtime_->notify_closed(record.token, PageModalClose::REPLACED);
@@ -174,7 +179,7 @@ class PageWeatherModalPort final : public PageModalPort {
     uint64_t seen{UINT64_MAX};
     const void* palette{nullptr};
     int radius{12};
-    bool retired{false};
+    bool retired{false}, temperature_dirty{false};
   };
   void release(Record* record) {
     record->~Record();
@@ -188,6 +193,7 @@ class PageWeatherModalPort final : public PageModalPort {
     record.source.stale = snapshot.stale;
     record.seen = forecasts_.revision();
     record.palette = &current_theme();
+    record.temperature_dirty = false;
     return true;
   }
   static bool managed(void* owner, const WeatherDailySource* source) {
