@@ -503,6 +503,13 @@ async function installRoutes(context, slug, options = {}) {
       });
       return;
     }
+    if (requestUrl.hostname === "espcontrol.test" && route.request().method() === "GET" &&
+        /^\/(?:number|select|switch|sensor|text_sensor|light|button|update)\/[^/]+$/.test(requestUrl.pathname)) {
+      // This SSE fixture does not expose these optional REST entities.
+      // A missing entity is 404, not a successful empty JSON response.
+      await route.fulfill({ status: 404, body: "Not found" });
+      return;
+    }
     if (requestUrl.hostname === "espcontrol.test") {
       await route.fulfill({ status: 204, contentType: "text/plain", body: "" });
       return;

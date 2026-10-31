@@ -68,6 +68,7 @@ import { NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE, nativeBackupHasInactiveRecords }
 
 export interface AppBackupControllers {
     readonly identity?: PanelIdentityFeature;
+    readonly waitForInitialState: () => Promise<void>;
     readonly layout: ApplicationLayoutState;
     readonly backupExport: BackupExportController;
     readonly backupImport: BackupImportController<any, any, any>;
@@ -250,6 +251,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
         let nativeDocumentBytes: Uint8Array | undefined;
         let nativeDocument: PanelConfigDocument | undefined;
         try {
+            await controllers.waitForInitialState();
             nativeDocumentBytes = await controllers.nativePanelConfig?.readForBackup() ?? undefined;
             if (nativeDocumentBytes) nativeDocument = EspControlModel.decodePanelConfig(nativeDocumentBytes);
         } catch {

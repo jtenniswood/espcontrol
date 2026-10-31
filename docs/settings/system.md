@@ -74,7 +74,7 @@ Open **System > Backup** on your [device setup page](/features/setup).
 
 ### Save a Backup
 
-Choose **Export** and keep the downloaded file somewhere safe. It includes cards, subpages, colours, brightness, schedules, display settings, artwork connections, and update preferences. Export before resetting or changing firmware versions.
+Choose **Export** and keep the downloaded file somewhere safe. Export waits for the panel’s saved settings to finish loading; if they cannot be read, reconnect and retry. It includes cards, subpages, colours, brightness, schedules, display settings, artwork connections, and update preferences. Export before resetting or changing firmware versions.
 
 Backups do not include Wi-Fi login details, the Home Assistant encryption key, or the touchscreen PIN. They can contain passwords from Wifi Sharing cards and private card settings, so keep the file private.
 
