@@ -103,12 +103,24 @@ public:
     if (!ready() || running_)
       return;
     resources.activate_prepared(store);
+    // Every transport channel may already belong to the clock bar or another
+    // consumer. Registering this graph then adds no native subscription and
+    // cannot trigger the transport's usual announcement. Request fresh values
+    // after activation, never replay retained metadata into a staged graph.
+    initial_values_pending_ = graph.memory().active_channels != 0;
   }
-  void retire_active() override { resources.retire_active(); }
+  void retire_active() override {
+    initial_values_pending_ = false;
+    resources.retire_active();
+  }
   void loop() {
     if (!ready() || running_ || !page_native_command_ready())
       return;
     running_ = true;
+    if (initial_values_pending_) {
+      initial_values_pending_ = false;
+      ha_reannounce_state_subscriptions();
+    }
     (void)graph
         .revision(); // Synchronize only when the HA connection epoch changed.
     local.loop();
@@ -130,6 +142,7 @@ public:
   // retire it safely; revoke producer facades immediately without dispatching.
   void stop() {
     stopped_ = true;
+    initial_values_pending_ = false;
     calendar_events.uninstall();
     timezone_events.uninstall();
     if (page_local_sensor_feed().owner == &local)
@@ -172,6 +185,7 @@ public:
 
 private:
   PageRuntimeResourcesGroup<16> resources;
+  bool initial_values_pending_{false};
   bool configured_{false}, initialized_{false}, stopped_{false},
       running_{false}, calendar_installed_{false}, timezone_installed_{false};
 };

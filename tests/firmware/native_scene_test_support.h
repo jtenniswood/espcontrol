@@ -39,7 +39,7 @@ struct Coordinator {
   std::vector<Entry> entries;
   bool subscribe(std::string entity, std::string attribute, std::function<void(State)> receive,
                  uint32_t scope, void* owner, bool replay, bool, bool) {
-    assert(!replay && scope == 1u << 4);
+    assert(!replay && (scope == 1u << 4 || scope == 1));
     entries.push_back({std::move(entity), std::move(attribute), std::move(receive), owner, scope});
     return true;
   }
@@ -57,7 +57,13 @@ struct Coordinator {
 } coordinator;
 Coordinator& ha_read_coordinator() { return coordinator; }
 bool ha_api_state_connected() { return online; }
-void ha_reannounce_state_subscriptions() {}
+static size_t subscription_announcements = 0;
+static std::function<void()> subscription_announcement_reply;
+void ha_reannounce_state_subscriptions() {
+  if (!online) return;
+  ++subscription_announcements;
+  if (subscription_announcement_reply) subscription_announcement_reply();
+}
 #include "page_ha_media_transport.h"
 
 // Native producer/forecast sources are doubled; the production state owner,

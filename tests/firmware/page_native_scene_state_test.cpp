@@ -180,7 +180,71 @@ void dormant_families() {
   }
   assert(coordinator.entries.empty() && !page_local_sensor_feed().owner && !calendar_state_events().owner);
 }
+void activation_requests_current_values_after_shared_channel_binding() {
+  Arena arena;
+  std::array<uint8_t, 1024> bytes{};
+  alignas(std::max_align_t) std::array<uint8_t, 8192> memory{};
+  const auto &limits = DEVICE_UI_PROFILES[8];
+  PanelConfigWriter writer(bytes.data(), bytes.size());
+  assert(writer.begin() == PanelConfigStatus::OK);
+  assert(writer.append_device_profile(reinterpret_cast<const uint8_t *>(limits.device_profile),
+                                      std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+  const std::string card = ";Shared;Auto;Auto;sensor.shared;;sensor;1;";
+  assert(writer.append_button(1, reinterpret_cast<const uint8_t *>(card.data()), card.size()) ==
+         PanelConfigStatus::OK);
+  size_t size = 0;
+  assert(writer.finish(&size) == PanelConfigStatus::OK);
+  PageStore store;
+  assert(PageStore::stage_v1(bytes.data(), size, limits, 17, memory.data(), memory.size(), &store) ==
+         PageStoreStatus::OK);
+  // A clock-bar consumer received its value before the native graph existed.
+  // The graph deliberately refuses synchronous retained replay while staging.
+  int clock_owner = 0;
+  std::string clock_value;
+  assert(coordinator.subscribe("sensor.shared", "", [&](const auto &v) { clock_value = v; },
+                               1, &clock_owner, false, false, false));
+  coordinator.report("sensor.shared", "", "41");
+  {
+    PageNativeSceneState state(arena, budget(), page_timezone_resolver(), {}, nullptr);
+    assert(state.initialize(true) && state.prepare(store));
+    const auto registrations = coordinator.entries.size();
+    const auto before = subscription_announcements;
+    assert(clock_value == "41");
+    state.activate_prepared(store);
+    assert(state.graph.read_attribute({17, 0}, "sensor.shared", "").status == PageEntityStatus::UNKNOWN);
+    assert(subscription_announcements == before);
+    // Model a fresh HA response using the already installed subscriptions.
+    subscription_announcement_reply = [&] { coordinator.report("sensor.shared", "", "42"); };
+    busy = true;
+    state.loop();
+    assert(subscription_announcements == before);
+    busy = false;
+    state.loop();
+    assert(subscription_announcements == before + 1);
+    assert(state.graph.read_attribute({17, 0}, "sensor.shared", "").value == "42");
+    assert(clock_value == "42" && coordinator.entries.size() == registrations);
+    for (int i = 0; i < 20; ++i) state.loop();
+    assert(subscription_announcements == before + 1);
+    // Failed/discarded staging does not request values for an uncommitted graph.
+    arena.fail = true;
+    assert(!state.prepare(store));
+    arena.fail = false;
+    state.discard_prepared();
+    state.loop();
+    assert(subscription_announcements == before + 1);
+    assert(state.prepare(store));
+    state.activate_prepared(store);
+    state.retire_active();
+    state.loop();
+    assert(subscription_announcements == before + 1);
+    subscription_announcement_reply = {};
+    state.stop();
+  }
+  coordinator.release_owner(&clock_owner);
+  assert(coordinator.entries.empty());
+}
 int main() {
+  activation_requests_current_values_after_shared_channel_binding();
   observations();
   dormant_families();
   for (int cycle = 0; cycle < 1000; ++cycle) {
