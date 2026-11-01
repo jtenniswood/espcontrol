@@ -7330,13 +7330,14 @@ async function assertCardCurveSettings(browser, testCase) {
     const base = Number(substitutions.radius.replace("px", ""));
     const small = Number((substitutions.card_curve_small_radius || '').replace('px', '')) || Math.round(base * .6);
     const medium = Number((substitutions.card_curve_medium_radius || '').replace('px', '')) || Math.round(base * .8);
-    for (const [preset, expected] of [["Small", small], ["Medium", medium], ["Large", base]]) {
+    for (const [preset, firmwareRadius] of [["Small", small], ["Medium", medium], ["Large", base]]) {
+      const expected = profile.web.cardCurveRadii?.[preset] ?? firmwareRadius;
       const posted = page.waitForResponse(response => response.url().includes(`/select/screen__card_curve/set?option=${preset}`));
       await page.locator("#sp-set-card-curve").getByRole("button", { name: preset, exact: true }).click();
       await posted;
       assert.strictEqual(savedPreset, preset, "curve changes must reach the saved firmware select");
       const radius = await page.evaluate(logicalWidth => parseFloat(document.documentElement.style.getPropertyValue("--btn-r")) * logicalWidth / 100, width);
-      assert(Math.abs(radius - expected) < .001, `${testCase.slug}: ${preset} must match the firmware radius ${expected}`);
+      assert(Math.abs(radius - expected) < .001, `${testCase.slug}: ${preset} must match the configured preview radius ${expected}`);
       await page.getByRole("tab", { name: "Layout", exact: true }).click();
       const checkCards = async surface => {
         await page.waitForFunction(() => [...document.querySelectorAll(".sp-main .sp-btn")].every(card => getComputedStyle(card).clipPath.startsWith("path(")));
@@ -7740,7 +7741,7 @@ async function assertS3ForecastEditorLayout(browser) {
     await page.waitForSelector(".sp-settings-overlay.sp-visible");
     const modeSelect = page.locator('.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select');
     assert.deepStrictEqual(await modeSelect.locator('option').allTextContents(),
-      ["Current Conditions", "Today's Forecast", "Tomorrow's Forecast", "Daily Forecast"]);
+      ["Current Conditions", "Wind", "Rainfall", "Today's Forecast", "Tomorrow's Forecast", "Daily Forecast"]);
     for (const [mode, label] of [["today", "Today"], ["tomorrow", "Tomorrow"]]) {
       await page.locator('.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select').selectOption(mode);
       await page.getByRole("button", { name: "Save", exact: true }).click();
@@ -7868,10 +7869,153 @@ async function assertCameraScreensaverDimming(browser, testCase) {
   } finally { await context.close(); }
 }
 
+
+async function assertWindSensorEditor(browser) {
+  const slug = "guition-esp32-p4-jc1060p470";
+  const nativeState = nativeConfigState(slug);
+  nativeState.document.buttons[1] = "weather.home;;Auto;Auto;;;weather;wind";
+  nativeState.document.buttons[2] = "weather.home;;Auto;Auto;;;weather;today";
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await installRoutes(context, slug, { nativeState });
+  const page = await context.newPage();
+  await installFakeEventSource(page);
+  async function openWind() {
+    await page.locator('.sp-main [data-slot="1"]').click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  }
+  try {
+    await page.goto('http://espcontrol.test/' + slug + '?events=1');
+    await page.waitForSelector('#sp-app');
+    await seedNativeDocument(page, nativeState);
+    await openWind();
+    await page.locator('[id$="wind-source"]').getByRole("button", {name:"Forecast",exact:true}).click();
+    assert.strictEqual(await page.locator('.sp-settings-modal input[id$="entity"]').inputValue(), "weather.home", "Active Wind Forecast preserves its entity");
+    const sourceGroup = page.locator('.sp-disclosure').filter({ has: page.locator('[id$="wind-source-settings"]') });
+    assert.strictEqual(await sourceGroup.locator('.sp-disclosure-button').innerText(), "Source");
+    assert.strictEqual(await sourceGroup.locator('.sp-disclosure-body input[id$="entity"]').count(), 1);
+    assert(await sourceGroup.locator('.sp-disclosure-body').evaluate(body =>
+      body.getBoundingClientRect().bottom - body.lastElementChild.getBoundingClientRect().bottom >= 28),
+      "Wind Source retains extra bottom spacing");
+    await page.locator('[id$="wind-source"]').getByRole("button", { name: "Sensor", exact: true }).click();
+    assert.strictEqual(await sourceGroup.locator('.sp-disclosure-body input[id$="wind-direction"]').count(), 1);
+    assert.strictEqual(await sourceGroup.locator('.sp-disclosure-body input[id$="wind-speed"]').count(), 1);
+    await page.locator('[id$="wind-source-settings"]').click();
+    assert(!(await page.locator('input[id$="wind-speed"]').isVisible()), "Source group collapses like Custom Colours");
+    await page.locator('[id$="wind-source-settings"]').click();
+    await page.locator('input[id$="wind-direction"]').fill("sensor.wind_direction");
+    await page.locator('input[id$="wind-speed"]').fill("sensor.wind_speed");
+    await page.locator('input[id$="wind-speed"]').press("Tab");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible", { state: "hidden" });
+    await waitForNativeState(nativeState, () => nativeState.document.buttons[1].includes("sensor.wind_speed"), "Wind sensors saved");
+    assert(nativeState.document.buttons[1].includes("wind_source"));
+    const geometry = await page.locator('.sp-main [data-slot="1"] .sp-weather-wind-speed').evaluate(speed => {
+      const card = speed.closest('.sp-btn').getBoundingClientRect();
+      const rect = speed.getBoundingClientRect();
+      return { left: rect.left - card.left, bottom: card.bottom - rect.bottom };
+    });
+    assert(geometry.left >= 10 && geometry.bottom >= 10, "Wind preview retains card padding");
+    const styles = await page.evaluate(() => {
+      const properties = ["fontFamily", "fontSize", "fontWeight", "color", "opacity"];
+      const style = selector => {
+        const css = getComputedStyle(document.querySelector(selector));
+        return Object.fromEntries(properties.map(key => [key, css[key]]));
+      };
+      return { wind: style('.sp-main [data-slot="1"] .sp-weather-wind-speed'),
+        forecast: style('.sp-main [data-slot="2"] .sp-weather-temperature-high') };
+    });
+    assert.deepStrictEqual(styles.wind, styles.forecast, "Wind secondary text matches forecast temperatures");
+    await page.reload();
+    await page.waitForSelector('#sp-app');
+    await seedNativeDocument(page, nativeState);
+    await openWind();
+    assert(await page.locator('[id$="wind-source"]').getByRole("button", { name: "Sensor", exact: true }).evaluate(button => button.classList.contains("active")));
+    assert.strictEqual(await page.locator('input[id$="wind-direction"]').inputValue(), "sensor.wind_direction");
+    await page.locator('[id$="wind-source"]').getByRole("button", {name:"Sensor",exact:true}).click();
+    assert.strictEqual(await page.locator('input[id$="wind-direction"]').inputValue(), "sensor.wind_direction", "Active Wind Sensor preserves direction");
+    assert.strictEqual(await page.locator('input[id$="wind-speed"]').inputValue(), "sensor.wind_speed", "Active Wind Sensor preserves speed");
+    await page.locator('[id$="wind-source"]').getByRole("button", { name: "Forecast", exact: true }).click();
+    assert.strictEqual(await page.locator('input[id$="wind-speed"]').count(), 0);
+    await page.locator('.sp-settings-modal input[id$="entity"]').fill("weather.home");
+    await page.locator('.sp-settings-modal input[id$="entity"]').press("Tab");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible", { state: "hidden" });
+    await waitForNativeState(nativeState, () => nativeState.document.buttons[1].includes("weather.home"), "Weather source saved");
+    assert(!nativeState.document.buttons[1].includes("sensor.wind_speed"));
+    assert(!nativeState.document.buttons[1].includes("wind_source"));
+    console.log("Wind editor: separate sensors save/reload, source switching, and padded preview passed.");
+  } finally { await context.close(); }
+}
+
+async function assertRainfallEditor(browser) {
+  const slug="guition-esp32-p4-jc1060p470";
+  const nativeState=nativeConfigState(slug);
+  nativeState.document.buttons[1]="sensor.rainfall_today;;Auto;Auto;;;weather;rainfall";
+  nativeState.document.buttons[2]="weather.home;;Auto;Auto;;;weather;today";
+  const context=await browser.newContext({viewport:{width:1280,height:900}});
+  await installRoutes(context,slug,{nativeState});
+  const page=await context.newPage(); await installFakeEventSource(page);
+  async function open(){
+    await page.locator('.sp-main [data-slot="1"]').click();
+    await page.getByRole("button",{name:"Edit",exact:true}).click();
+    await page.waitForSelector('.sp-settings-overlay.sp-visible');
+  }
+  async function save(){
+    await page.getByRole("button",{name:"Save",exact:true}).click();
+    await page.waitForSelector('.sp-settings-overlay.sp-visible',{state:"hidden"});
+  }
+  try {
+    await page.goto('http://espcontrol.test/'+slug+'?events=1');
+    await page.waitForSelector('#sp-app'); await seedNativeDocument(page,nativeState);
+    await open();
+    await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Sensor",exact:true}).click();
+    const sourceGroup = page.locator('.sp-disclosure').filter({ has: page.locator('[id$="rainfall-source-settings"]') });
+    assert.strictEqual(await sourceGroup.locator('.sp-disclosure-button').innerText(), "Source");
+    assert(await sourceGroup.locator('.sp-disclosure-body').evaluate(body =>
+      body.getBoundingClientRect().bottom - body.lastElementChild.getBoundingClientRect().bottom >= 28),
+      "Rainfall Source retains extra bottom spacing");
+    assert(await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Sensor",exact:true}).evaluate(button=>button.classList.contains("active")));
+    await page.locator('[id$="rainfall-source-settings"]').click();
+    assert(!(await page.locator('.sp-settings-modal input[id$="entity"]').isVisible()), "Rainfall Source collapses like Custom Colours");
+    await page.locator('[id$="rainfall-source-settings"]').click();
+    assert.strictEqual(await page.locator('.sp-settings-modal input[id$="entity"]').inputValue(),"sensor.rainfall_today");
+    await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Forecast",exact:true}).click();
+    await page.locator('.sp-settings-modal input[id$="entity"]').fill("weather.home");
+    await page.locator('.sp-settings-modal input[id$="entity"]').press("Tab");
+    await save();
+    await waitForNativeState(nativeState,()=>nativeState.document.buttons[1].includes("rainfall_source"),"Forecast rainfall saved");
+    await page.reload(); await page.waitForSelector('#sp-app'); await seedNativeDocument(page,nativeState);
+    await open();
+    assert(await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Forecast",exact:true}).evaluate(button=>button.classList.contains("active")));
+    await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Forecast",exact:true}).click();
+    assert.strictEqual(await page.locator('.sp-settings-modal input[id$="entity"]').inputValue(),"weather.home", "Active Rainfall Forecast preserves its entity");
+    await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Sensor",exact:true}).click();
+    await page.locator('.sp-settings-modal input[id$="entity"]').fill("sensor.rainfall_today");
+    await page.locator('.sp-settings-modal input[id$="entity"]').press("Tab");
+    await save();
+    await waitForNativeState(nativeState,()=>nativeState.document.buttons[1].includes("sensor.rainfall_today"),"Rainfall sensor saved");
+    assert(!nativeState.document.buttons[1].includes("rainfall_source"));
+    const styles=await page.evaluate(()=>{
+      const keys=["fontFamily","fontSize","fontWeight","color","opacity"];
+      const style=selector=>{const css=getComputedStyle(document.querySelector(selector));return Object.fromEntries(keys.map(key=>[key,css[key]]))};
+      const node=document.querySelector('.sp-main [data-slot="1"] .sp-rainfall-value');
+      const bounds=node.getBoundingClientRect(),card=node.closest('.sp-btn').getBoundingClientRect();
+      return {rain:style('.sp-main [data-slot="1"] .sp-rainfall-value'),forecast:style('.sp-main [data-slot="2"] .sp-weather-temperature-high'),left:bounds.left-card.left,bottom:card.bottom-bounds.bottom};
+    });
+    assert.deepStrictEqual(styles.rain,styles.forecast,"Rainfall matches forecast secondary text");
+    assert(styles.left>=10 && styles.bottom>=10,"Rainfall retains card padding");
+    console.log("Rainfall editor source changes, save/reload, padding and forecast text-style parity passed.");
+  } finally {await context.close()}
+}
+
 (async function main() {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    await assertWindSensorEditor(browser);
+    if (process.env.ESPCONTROL_WIND_ONLY === "1") return;
+    if (process.env.ESPCONTROL_RAINFALL_ONLY === "1") { await assertRainfallEditor(browser); return; }
     if (process.env.ESPCONTROL_CAMERA_DIMMING_ONLY === "1") {
       for (const testCase of ACTIVE_CASES) await assertCameraScreensaverDimming(browser, testCase);
       console.log(`Camera dimming browser checks passed for ${ACTIVE_CASES.length} layouts.`);
@@ -7941,6 +8085,7 @@ async function assertCameraScreensaverDimming(browser, testCase) {
     await assertScreensaverPinSettings(browser);
     if (process.env.ESPCONTROL_PIN_ONLY === "1") { console.log("Screensaver PIN browser checks passed."); return; }
 
+    await assertRainfallEditor(browser);
     await assertWeatherWidthScaling(browser);
     await assertS3ForecastEditorLayout(browser);
     if (process.env.ESPCONTROL_RESET_ONLY === "1") {

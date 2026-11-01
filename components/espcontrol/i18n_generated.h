@@ -5744,6 +5744,14 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "label_garage") == 0) return "Garage";
   if (std::strcmp(key, "label_sensor") == 0) return "Sensor";
   if (std::strcmp(key, "label_camera") == 0) return "Camera";
+  if (std::strcmp(key, "wind_north") == 0) return "North";
+  if (std::strcmp(key, "wind_north_east") == 0) return "North East";
+  if (std::strcmp(key, "wind_east") == 0) return "East";
+  if (std::strcmp(key, "wind_south_east") == 0) return "South East";
+  if (std::strcmp(key, "wind_south") == 0) return "South";
+  if (std::strcmp(key, "wind_south_west") == 0) return "South West";
+  if (std::strcmp(key, "wind_west") == 0) return "West";
+  if (std::strcmp(key, "wind_north_west") == 0) return "North West";
   return key;
 }
 

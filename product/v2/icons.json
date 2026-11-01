@@ -136,6 +136,36 @@
       "codepoint": "F035B",
       "mdi": "memory",
       "comment": "Build information card"
+    },
+    {
+      "name": "Wind arrow-top-right",
+      "codepoint": "F005C",
+      "mdi": "arrow-top-right"
+    },
+    {
+      "name": "Wind arrow-right",
+      "codepoint": "F0054",
+      "mdi": "arrow-right"
+    },
+    {
+      "name": "Wind arrow-bottom-right",
+      "codepoint": "F0043",
+      "mdi": "arrow-bottom-right"
+    },
+    {
+      "name": "Wind arrow-bottom-left",
+      "codepoint": "F0042",
+      "mdi": "arrow-bottom-left"
+    },
+    {
+      "name": "Wind arrow-left",
+      "codepoint": "F004D",
+      "mdi": "arrow-left"
+    },
+    {
+      "name": "Wind arrow-top-left",
+      "codepoint": "F005B",
+      "mdi": "arrow-top-left"
     }
   ],
   "icons": [
