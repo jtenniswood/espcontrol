@@ -12,7 +12,7 @@
     "deviceProfiles": 9,
     "cardTypes": 44,
     "entityNames": 112,
-    "icons": 367,
+    "icons": 370,
     "structuralIcons": 28,
     "compatibilityFixtureGroups": 2
   },
@@ -8483,6 +8483,11 @@
         "mdi": "broom"
       },
       {
+        "name": "Bunk Bed",
+        "codepoint": "F1302",
+        "mdi": "bunk-bed"
+      },
+      {
         "name": "Bus",
         "codepoint": "F00E7",
         "mdi": "bus"
@@ -9153,6 +9158,11 @@
         "mdi": "mailbox"
       },
       {
+        "name": "Menu",
+        "codepoint": "F035C",
+        "mdi": "menu"
+      },
+      {
         "name": "Message Video",
         "codepoint": "F036B",
         "mdi": "message-video"
@@ -9601,6 +9611,11 @@
         "name": "Sprinkler Variant",
         "codepoint": "F1060",
         "mdi": "sprinkler-variant"
+      },
+      {
+        "name": "Stairs",
+        "codepoint": "F04CD",
+        "mdi": "stairs"
       },
       {
         "name": "Stop",
