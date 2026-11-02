@@ -36,6 +36,7 @@ source = r'''
 #include <cassert>
 #include <cstdint>
 #include <set>
+#include "external_memory_allocator.h"
 #include "button_grid_limits.h"
 #include "button_grid_weather_daily_data.h"
 template<class... T> void test_log(T...) {}
@@ -107,7 +108,7 @@ with tempfile.TemporaryDirectory(prefix='weather-requests-') as directory:
     cpp, binary = Path(directory)/'test.cpp', Path(directory)/'test'
     cpp.write_text(source)
     subprocess.run([os.environ.get('CXX','g++'),'-std=c++17','-Wall','-Wextra','-Werror',
-                    '-I',str(HEADERS),str(cpp),'-o',str(binary)],check=True)
+                    '-I',str(ROOT / 'tests/firmware/stubs'),'-I',str(HEADERS),str(cpp),'-o',str(binary)],check=True)
     subprocess.run([str(binary)],check=True)
 # Keep the phase wiring tied to the executable reset semantics above.
 grid=(HEADERS/'button_grid_grid.h').read_text()

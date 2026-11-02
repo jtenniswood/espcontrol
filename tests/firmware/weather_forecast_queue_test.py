@@ -20,6 +20,7 @@ harness = r'''
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "external_memory_allocator.h"
 #include "button_grid_limits.h"
 #include "button_grid_weather_daily_data.h"
 struct lv_obj_t {};
@@ -56,7 +57,15 @@ for name in ("weather_forecast_card_refs", "weather_forecast_card_count",
 harness += r'''
 #line 1 "weather_forecast_queue_test_harness.cpp"
 int main() {
+  // Forecast storage must remain usable when internal RAM is exhausted.
+  fake_esphome_allocator::internal_available = false;
   auto *refs = weather_forecast_card_refs();
+  auto *pending = weather_forecast_pending_requests();
+  assert(esp_ptr_external_ram(refs));
+  assert(esp_ptr_external_ram(pending));
+  assert(pending[WEATHER_FORECAST_PENDING_MAX - 1].call_id == 0);
+  assert(refs[0].btn == nullptr);
+  pending[WEATHER_FORECAST_PENDING_MAX - 1].entity_id = "weather.last_pending";
   const int total_cards = MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS;
   // Repeated refreshes must include the final card, not starve it indefinitely.
   for (int refresh = 0; refresh < 2; ++refresh) {
@@ -86,6 +95,10 @@ int main() {
   assert(weather_forecast_dequeue(entity, day) && entity == "weather.shared");
   assert(!weather_forecast_dequeue(entity, day));
 
+  assert(esp_ptr_external_ram(weather_forecast_queued_requests().data()));
+  assert(weather_forecast_card_refs() == refs);
+  assert(weather_forecast_pending_requests() == pending);
+  assert(pending[WEATHER_FORECAST_PENDING_MAX - 1].entity_id == "weather.last_pending");
   assert(weather_forecast_enqueue("weather.cleared", ""));
   weather_forecast_clear_queue();
   reset_weather_forecast_cards();
@@ -98,6 +111,7 @@ int main() {
     assert(weather_forecast_schedule_retry(key, "", "low internal heap"));
     assert(weather_forecast_schedule_retry(key, "", "duplicate"));
   }
+  assert(esp_ptr_external_ram(weather_forecast_retry_requests().data()));
   assert(!weather_forecast_enqueue_due_retries());
   now_ms += WEATHER_FORECAST_RETRY_DELAY_MS;
   connected = false;
@@ -135,7 +149,8 @@ with tempfile.TemporaryDirectory(prefix="weather-forecast-queue-") as directory:
     (path / "test.cpp").write_text(harness)
     for grid_slots in (6, 9, 16, 25):
         subprocess.run([os.environ.get("CXX", "c++"), "-std=c++17", "-Wall", "-Wextra", "-Werror",
-                        f"-DESPCONTROL_MAX_GRID_SLOTS={grid_slots}",
+                        f"-DESPCONTROL_MAX_GRID_SLOTS={grid_slots}", "-DUSE_ESP32",
+                        "-I", str(root / "tests/firmware/stubs"),
                         "-I", str(root / "components/espcontrol"), str(path / "test.cpp"),
                         "-o", str(path / "test")], check=True)
         subprocess.run([str(path / "test")], check=True)
