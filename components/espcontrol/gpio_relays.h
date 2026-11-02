@@ -20,7 +20,7 @@ struct GpioRelaySettings {
 class GpioRelays {
  public:
   void setup(const char *profile);
-  bool supported() const { return supported_; }
+  bool supported() const { std::lock_guard<std::mutex> guard(mutex_); return supported_; }
   bool ready() const { std::lock_guard<std::mutex> guard(mutex_); return ready_; }
   GpioRelaySettings settings() const { std::lock_guard<std::mutex> guard(mutex_); return settings_; }
   static bool valid(const GpioRelaySettings &settings);
