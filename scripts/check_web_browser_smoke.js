@@ -18,8 +18,11 @@ const {
   activeCardColor,
   decodeConfigField,
 } = loadTypeScriptModule(path.join(ROOT, "src", "webserver", "model", "index.ts"));
-const { convertNativeV1ToV2, convertNativeV2ToV1, encodePanelPageDocument, decodePanelPageDocument } = loadTypeScriptModule(
+const { convertNativeV1ToV2, convertNativeV2ToV1, encodePanelPageDocument, decodePanelPageDocument, panelPageDocumentDepth } = loadTypeScriptModule(
   path.join(ROOT, "src", "webserver", "model", "panel_config_conversion.ts"),
+);
+const { createNativeConfigBackupPayload, decodeNativeConfigBackupPayload } = loadTypeScriptModule(
+  path.join(ROOT,"src/webserver/model/native_config_backup.ts"),
 );
 const MANIFEST_PATH = path.join(ROOT, "devices", "manifest.json");
 const WEB_OUTPUT_DIR = freshWebOutputDir();
@@ -257,10 +260,15 @@ async function installRoutes(context, slug, options = {}) {
     `${slug}: generated web UI does not exist at ${scriptPath}`,
   );
   const webAssetManifest = JSON.parse(fs.readFileSync(webAssetManifestPath, "utf8"));
-  const immutableBundlePath = path.join(
+  const immutableBundlePath = options.bundlePath || path.join(
     WEB_OUTPUT_DIR,
     webAssetManifest.bundles[0].path,
   );
+  if (options.bundlePath) {
+    const hash=require("crypto").createHash("sha256").update(fs.readFileSync(options.bundlePath)).digest("hex");
+    for (const entry of webAssetManifest.bundles.filter(entry=>entry.firmwareVersions.includes("dev")))
+      Object.assign(entry,{id:hash,sha256:hash,path:`bundles/${hash}/www.js`});
+  }
 
   await context.route("**/*", async (route) => {
     const requestUrl = new URL(route.request().url());
@@ -418,6 +426,9 @@ async function installRoutes(context, slug, options = {}) {
         return;
       }
       const etag = () => `"${version === 2 ? "v2-" : ""}${nativeState.generation}"`;
+      if (version === 1 && nativeState.readDepth === 2 && panelPageDocumentDepth(nativeState.document) > 1) {
+        await route.fulfill({status:route.request().method()==="PUT"?422:406,body:"nested document requires version two"});return;
+      }
       if (route.request().method() === "PUT") {
         if (nativeState.rejectNextStatus) {
           const status = nativeState.rejectNextStatus; delete nativeState.rejectNextStatus;
@@ -432,8 +443,10 @@ async function installRoutes(context, slug, options = {}) {
         const body = route.request().postDataBuffer();
         assert(body, `${slug}: native configuration PUT has a binary body`);
         const input = new Uint8Array(body);
-        nativeState.document = version === 2 && nativeState.readDepth === 2
+        const candidate = version === 2 && nativeState.readDepth === 2
           ? decodePanelPageDocument(input) : decodePanelConfig(version === 2 ? convertNativeV2ToV1(input) : input);
+        if (nativeState.beforeCommit) await nativeState.beforeCommit(candidate);
+        nativeState.document = candidate;
         nativeState.generation += 1;
         nativeState.puts.push({
           generation: nativeState.generation,
@@ -8439,6 +8452,130 @@ function nestedEditorCases() {
   return [...new Map(ACTIVE_CASES.map(testCase => [testCase.slots,testCase])).values()];
 }
 
+async function assertNestedBackup(browser,testCase) {
+  const slug=testCase.slug;
+  const original={deviceProfile:slug,buttons:{1:";Backup Root;;;;;subpage",32:";Hidden Root;;;;;subpage"},
+    subpages:{1:"~B=Home:ABCDEF,1|G,,Child",33:"~B=Root:123456,1|,light.leaf,Leaf",
+      32:"~B,1|G,,Dormant",1025:"~B=Hidden:0088FF,1|,light.hidden,Hidden"},
+    settings:{button_order:"1",future:"opaque\0🌡️"}};
+  const nativeState={...nativeConfigState(slug),documentVersions:[1,2],readDepth:2,writeDepth:2,durableVersion:2,
+    document:JSON.parse(JSON.stringify(original))};
+  let exported;
+  const context=await browser.newContext({viewport:testCase.viewport});await installRoutes(context,slug,{nativeState});
+  const page=await context.newPage();await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${slug}?events=1`,{waitUntil:"domcontentloaded"});
+    await page.waitForFunction(()=>document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Backup Root"));
+    await page.evaluate(events=>window.__seedEspState(events),seededEvents());
+    await openBackupControls(page);
+    const downloadPromise=page.waitForEvent("download");await page.getByRole("button",{name:"Export",exact:true}).click();
+    exported=JSON.parse(fs.readFileSync(await (await downloadPromise).path(),"utf8"));
+    assert.strictEqual(exported.version,3,"graph exports use an outer version older editors reject");
+    assert.strictEqual(exported.native_config.document_version,2);
+    assert.deepStrictEqual(Array.from(decodeNativeConfigBackupPayload(exported.native_config)),Array.from(encodePanelPageDocument(original)),"backup retains exact graph bytes and inactive descendants");
+    const pendingMove=testCase.slug==="guition-esp32-s3-4848s040";
+    if(pendingMove) {
+      await page.getByRole("tab",{name:"Layout",exact:true}).click();
+      await page.evaluate(async()=>{
+        const realSet=window.setTimeout,realClear=window.clearTimeout,held=new Map();
+        window.setTimeout=function(callback,delay,...args){
+          if(delay!==500)return realSet(callback,delay,...args);
+          const id=realSet(()=>{},60000);held.set(id,()=>callback(...args));return id;
+        };
+        window.clearTimeout=function(id){held.delete(id);return realClear(id);};
+        window.__releaseBackupGridTimers=()=>{
+          window.setTimeout=realSet;window.clearTimeout=realClear;const callbacks=[...held.entries()];held.clear();
+          for(const [id,callback]of callbacks){realClear(id);callback();}return callbacks.length;
+        };
+        const root=document.querySelector('.sp-main'),card=root.querySelector('[data-slot="1"]'),destination=root.querySelector('[data-pos="2"]');
+        const rect=destination.getBoundingClientRect(),dataTransfer=new DataTransfer();
+        const event=name=>new DragEvent(name,{bubbles:true,cancelable:true,dataTransfer,clientX:rect.x+rect.width/2,clientY:rect.y+rect.height/2});
+        card.dispatchEvent(event("dragstart"));destination.dispatchEvent(event("dragover"));
+        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+        destination.dispatchEvent(event("drop"));root.dispatchEvent(event("dragend"));
+        if(held.size!==1)throw new Error("Expected one pending grid-save debounce after the real drag/drop");
+      });
+      await page.waitForFunction(()=>document.querySelector('.sp-main [data-slot="1"]')?.getAttribute("data-pos")==="2");
+      nativeState.beforeCommit=async candidate=>{
+        if(candidate.buttons[1]===original.buttons[1] && nativeState.releasedGridTimers===undefined)
+          nativeState.releasedGridTimers=await page.evaluate(()=>window.__releaseBackupGridTimers());
+      };
+    }
+    nativeState.document.buttons[1]=";Changed Root;;;;;subpage";
+    nativeState.document.subpages[33]="~B,1|,light.changed,Changed";
+    nativeState.document.settings.future="changed";
+    await importBackup(page,exported,`graph-restore-${slug}`);
+    await page.waitForSelector(".sp-banner.sp-success",{timeout:15000});
+    assert.strictEqual(nativeState.puts.length,pendingMove?2:1,"pending edits finish first, then restore commits the full graph once");
+    if(pendingMove)assert.strictEqual(nativeState.releasedGridTimers,0,"a delayed old grid save cannot run while restore publishes");
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(nativeState.document)),original,"restore preserves every saved page, raw Back value and unknown setting without adding defaults");
+    await page.getByRole("tab",{name:"Layout",exact:true}).click();
+    await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+    await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+    await page.waitForFunction(()=>document.querySelector('.sp-clockbar-subpage-title')?.textContent==="Child");
+    assert((await page.locator('.sp-main').textContent()).includes("Leaf"),"restore refreshes graph navigation and child labels");
+    await page.reload({waitUntil:"domcontentloaded"});
+    await page.waitForFunction(()=>document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Backup Root"));
+  } finally {await context.close();}
+
+  for(const target of ["reader-only","flat-native","legacy","older-editor"]) {
+    const nested=target==="reader-only";
+    const olderBundle=path.join(ROOT,"docs/public/webserver/bundles/42f3fd87eb8cbfab59943a7643a19416ded29eddb8608498ada20e95b416fd49/www.js");
+    const frozenSource=target==="older-editor"?fs.readFileSync(olderBundle,"utf8"):"";
+    // New hardware revisions may postdate this frozen editor. Its format
+    // guard is exercised with a supported profile of the same grid size.
+    const olderProfile=target==="older-editor"?CASES.find(row=>row.slots===testCase.slots&&frozenSource.includes(row.slug)):null;
+    if(target==="older-editor")assert(olderProfile,"frozen editor has a supported profile for this grid");
+    const targetSlug=olderProfile?.slug??slug;
+    const stateForTarget=target==="legacy"?null:{...nativeConfigState(slug),documentVersions:[1,2],
+      readDepth:nested?2:1,writeDepth:1,durableVersion:1,
+      document:nested?JSON.parse(JSON.stringify(original)):{deviceProfile:targetSlug,buttons:{1:"light.original;Original"},subpages:{},settings:{button_order:"1"}}};
+    const before=JSON.stringify(stateForTarget?.document),posts=[];
+    const options={...(stateForTarget?{nativeState:stateForTarget}:{}),
+      ...(target==="older-editor"?{bundlePath:olderBundle}: {})};
+    const restricted=await browser.newContext({viewport:testCase.viewport});await installRoutes(restricted,targetSlug,options);
+    const restrictedPage=await restricted.newPage();await installFakeEventSource(restrictedPage);
+    restrictedPage.on("request",request=>{if(request.method()==="POST"||request.method()==="PUT")posts.push(request.url());});
+    try {
+      await restrictedPage.goto(`http://espcontrol.test/${targetSlug}?events=1`,{waitUntil:"domcontentloaded"});
+      await restrictedPage.waitForFunction(()=>window.__eventSources?.length>0);
+      const initialEvents=target==="older-editor"?nativeDocumentEvents(stateForTarget.document).filter(event=>
+        !/^text-subpage_\d+_/.test(event.id) && !["text-button_off_color","text-sensor_card_color"].includes(event.id)):
+        seededEvents().map(event=>event.id==="text-button_order"?{...event,state:"1"}:event);
+      await restrictedPage.evaluate(events=>window.__seedEspState(events),initialEvents);
+      if(nested) {
+        await restrictedPage.waitForFunction(()=>document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Backup Root"));
+        await openBackupControls(restrictedPage);
+        const download=restrictedPage.waitForEvent("download");await restrictedPage.getByRole("button",{name:"Export",exact:true}).click();
+        const readonlyBackup=JSON.parse(fs.readFileSync(await (await download).path(),"utf8"));
+        assert.deepStrictEqual(readonlyBackup.native_config,exported.native_config,"reader-only firmware exports the complete graph after explicit v1 projection rejection");
+      }
+      if (target === "older-editor") {
+        await restrictedPage.getByRole("tab",{name:"Settings",exact:true}).click();
+        if (!await restrictedPage.getByText("Backup",{exact:true}).isVisible())
+          await restrictedPage.getByText("System",{exact:true}).click();
+        if (!await restrictedPage.getByRole("button",{name:"Import",exact:true}).isVisible())
+          await restrictedPage.getByText("Backup",{exact:true}).click();
+        const chooser=restrictedPage.waitForEvent("filechooser");
+        await restrictedPage.getByRole("button",{name:"Import",exact:true}).click();
+        await (await chooser).setFiles(writeJsonFixture(`graph-reject-${target}-${slug}`,exported));
+      } else await importBackup(restrictedPage,exported,`graph-reject-${target}-${slug}`);
+      const message=target==="older-editor"?"Backup was created by a newer version of EspControl":"This backup needs newer panel firmware";
+      await restrictedPage.locator(".sp-banner.sp-error").filter({hasText:message}).waitFor({timeout:10000});
+      assert.strictEqual(posts.length,0,`${target}: rejection precedes layout, PIN and other setting writes (${posts.join(", ")})`);
+      assert.strictEqual(JSON.stringify(stateForTarget?.document),before,`${target}: existing layout remains intact`);
+    } catch(error) {
+      fs.mkdirSync(FAILURE_DIR,{recursive:true});
+      fs.writeFileSync(path.join(FAILURE_DIR,`backup-${target}-${slug}.json`),JSON.stringify({posts,puts:stateForTarget?.puts,ui:await restrictedPage.evaluate(()=>({
+        text:document.body.innerText.slice(0,5000),tabs:[...document.querySelectorAll('.sp-tab,[role="tab"]')].map(el=>({text:el.textContent,rect:el.getBoundingClientRect().toJSON(),hidden:el.getAttribute("hidden")}))
+      }))},null,2));
+      await restrictedPage.screenshot({path:path.join(FAILURE_DIR,`backup-${target}-${slug}.png`)});
+      error.message=`${target}: ${error.message}`;throw error;
+    } finally {await restricted.close();}
+  }
+  console.log(`${slug}: exact graph backup/restore/reload and reader-only, flat-native, legacy and older-editor protection passed`);
+}
+
 (async function main() {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
@@ -8461,6 +8598,10 @@ function nestedEditorCases() {
     await assertWindSensorEditor(browser);
     if (process.env.ESPCONTROL_WIND_ONLY === "1") return;
     if (process.env.ESPCONTROL_RAINFALL_ONLY === "1") { await assertRainfallEditor(browser); return; }
+    if (process.env.ESPCONTROL_NESTED_BACKUPS_ONLY === "1") {
+      for(const testCase of nestedEditorCases()) await assertNestedBackup(browser,testCase);
+      return;
+    }
     if (process.env.ESPCONTROL_CARD_TRANSFER_ONLY === "1") {
       for (const testCase of ACTIVE_CASES) {
         const context=await browser.newContext({viewport:testCase.viewport}); await installRoutes(context,testCase.slug);
@@ -8597,6 +8738,7 @@ function nestedEditorCases() {
     }
     for (const testCase of nestedEditorCases()) {
       await assertNestedPageEditor(browser,testCase);
+      await assertNestedBackup(browser,testCase);
       await assertNestedWriterLimits(browser,testCase);
     }
     await assertHostedCompatibility(browser);

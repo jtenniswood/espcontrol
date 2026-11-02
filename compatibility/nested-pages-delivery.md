@@ -14,7 +14,10 @@ and navigates the graph and offers creation only at negotiated writable depths.
 Browser fixtures cover creation, rejection rollback, reload and reconnect on all
 four grid sizes. Clipboard operations save owner/order/subtree changes together;
 cut removes its source only when paste commits. Version-two card codes retain
-raw descendant pages, while flat codes remain version one. Backups, physical nested testing and
+raw descendant pages, while flat codes remain version one. Graph backups keep
+exact native-v2 bytes in outer format three so older editors reject them;
+flat exports retain outer format two/native v1. Restore checks writer support
+and publishes the whole graph before other settings. Physical nested testing and
 durable-v2 release enablement remain separate gates.
 No nested-page candidate has been flashed to a physical device yet.
 

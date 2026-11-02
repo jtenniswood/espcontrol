@@ -7,6 +7,8 @@ import {
 } from "../model";
 import { convertNativeV1ToV2, convertNativeV2ToV1, decodePanelPageDocument, encodePanelPageDocument, panelPageDocumentDepth } from "../model/panel_config_conversion";
 import { PageTransferConflict } from "../model/page_card_transfer";
+import { decodeNativeConfigDocument, nativeConfigDocumentVersion } from "../model/native_config_backup";
+import { pageDepth, pageOwnerSlot, parentPageKey } from "../model/page_keys";
 
 const V2_DOCUMENT_VERSION = 2;
 const MAX_V2_DOCUMENT_BYTES = 512 * 1024;
@@ -43,7 +45,10 @@ export type NativePanelConfigSaveResult = "saved" | "unsupported" | "conflict" |
 export const NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE = "This backup needs newer panel firmware to restore all saved cards and settings. Update the panel before importing it. No backup settings were changed.";
 export class NativePanelConfigCompatibilityError extends Error {}
 export function nativeBackupHasInactiveRecords(document: PanelConfigDocument, slotCount: number): boolean {
-  return [...Object.keys(document.buttons), ...Object.keys(document.subpages)].some(slot => Number(slot) > slotCount);
+  return Object.keys(document.buttons).some(slot => Number(slot) > slotCount) || Object.keys(document.subpages).some(key => {
+    const page = Number(key);
+    return pageOwnerSlot(page) > slotCount || (pageDepth(page) === 2 && parentPageKey(page) > slotCount);
+  });
 }
 export type NativePanelConfigCollection = "buttons" | "subpages" | "settings";
 
@@ -108,6 +113,7 @@ export class NativePanelConfigClient {
   private preservesInactiveRecords_ = false;
   private readDepth_ = 1;
   private writeDepth_ = 1;
+  private durableVersion_ = 1;
   private lastDocument_: PanelConfigDocument | null = null;
 
   constructor(private readonly fetch_: NativePanelConfigFetch) {}
@@ -164,6 +170,7 @@ export class NativePanelConfigClient {
         this.documentVersion_ = supported === true && versions.includes(V2_DOCUMENT_VERSION)
           ? V2_DOCUMENT_VERSION : PANEL_CONFIG_DOCUMENT_VERSION;
         this.readDepth_ = configuration?.max_navigation_depth === 2 ? 2 : 1;
+        this.durableVersion_ = configuration?.durable_document_version === 2 ? 2 : 1;
         this.writeDepth_ = this.readDepth_ === 2 && configuration?.writable_navigation_depth === 2 &&
           configuration?.durable_document_version === V2_DOCUMENT_VERSION ? 2 : 1;
         const v2Limit = configuration?.max_v2_document_bytes;
@@ -245,23 +252,28 @@ export class NativePanelConfigClient {
       if (this.confirmedUnsupported_) return null;
       throw new Error("Configuration discovery is unavailable.");
     }
-    // Backups keep the deployed v1 payload contract until the versioned backup
-    // rollout is qualified. Never synthesize a partial v1 backup from a graph
-    // that this editor cannot represent losslessly.
-    if (!this.v1Available_) throw new Error("A compatible backup representation is unavailable.");
-    const response = await this.fetch_("/api/v1/config", {
-      cache: "no-store", headers: { "X-Panel-Config-Version": String(PANEL_CONFIG_DOCUMENT_VERSION) },
-    });
-    if (!response.ok) throw new Error("Could not read the saved configuration.");
-    const version = response.headers.get("X-Panel-Config-Version");
-    if (version !== null && version !== String(PANEL_CONFIG_DOCUMENT_VERSION)) {
-      throw new Error("The backup configuration version is unavailable.");
+    // Keep exact v1 backups on existing writers. A graph writer, or a reader
+    // whose stored graph cannot project to v1, requires an exact v2 snapshot.
+    const graphReadable = this.readNavigationDepth() === 2;
+    let version = graphReadable && this.durableVersion_ === 2 ? 2 : this.v1Available_ ? 1 : graphReadable ? 2 : 0;
+    if (!version) throw new Error("A compatible backup representation is unavailable.");
+    for (let attempt = 0; attempt < 2; ++attempt) {
+      const response = await this.fetch_("/api/v1/config", {
+        cache: "no-store", headers: { "X-Panel-Config-Version": String(version) },
+      });
+      if (response.status === 406 && version === 1 && graphReadable) { version = 2; continue; }
+      if (!response.ok) throw new Error("Could not read the saved configuration.");
+      const returnedVersion = response.headers.get("X-Panel-Config-Version");
+      if ((version === 2 && returnedVersion !== "2") || (returnedVersion !== null && returnedVersion !== String(version)))
+        throw new Error("The backup configuration version is unavailable.");
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (version === 2 && bytes.length > this.maxV2DocumentBytes_) throw new Error("The backup exceeds the advertised byte limit.");
+      if (nativeConfigDocumentVersion(bytes) !== version) throw new Error("The backup document does not match its negotiated version.");
+      if (decodeNativeConfigDocument(bytes).deviceProfile !== deviceProfile)
+        throw new Error("The device configuration profile changed.");
+      return bytes;
     }
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (decodePanelConfig(bytes).deviceProfile !== deviceProfile) {
-      throw new Error("The device configuration profile changed.");
-    }
-    return bytes;
+    throw new Error("A compatible backup representation is unavailable.");
   }
 
   async save(update: (document: PanelConfigDocument) => PanelConfigDocument): Promise<NativePanelConfigSaveResult> {

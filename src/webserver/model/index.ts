@@ -1,5 +1,6 @@
 export {
   BACKUP_CONFIG_VERSION,
+  BACKUP_GRAPH_VERSION,
   BACKUP_FORMAT,
   backupOrderUsedSlots,
   backupSource,

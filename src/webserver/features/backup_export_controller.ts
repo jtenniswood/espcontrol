@@ -1,11 +1,11 @@
 import { panelHostname, type PanelIdentityBackup } from "../model/panel_identity";
 import type { CardConfig } from "../contracts/types";
 import {
-  createPanelConfigBackupPayload,
-  decodePanelConfig,
+  BACKUP_GRAPH_VERSION,
   encodePanelConfig,
   type PanelConfigBackupPayload,
 } from "../model";
+import { createNativeConfigBackupPayload, decodeNativeConfigDocument } from "../model/native_config_backup";
 
 export interface BackupNativeConfigSource {
   readonly deviceProfile: string;
@@ -25,6 +25,7 @@ export interface BackupWithNativeConfig {
   readonly button_order?: string;
   readonly button_on_color?: string;
   native_config?: PanelConfigBackupPayload;
+  version?: number;
 }
 
 export interface BackupExportController {
@@ -62,10 +63,11 @@ export function createBackupExportController(
     source: BackupNativeConfigSource,
   ): Backup & { native_config: PanelConfigBackupPayload } => {
     if (source.nativeDocumentBytes) {
-      if (decodePanelConfig(source.nativeDocumentBytes).deviceProfile !== source.deviceProfile) {
+      if (decodeNativeConfigDocument(source.nativeDocumentBytes).deviceProfile !== source.deviceProfile) {
         throw new Error("The backup targets a different device profile.");
       }
-      backup.native_config = createPanelConfigBackupPayload(source.nativeDocumentBytes);
+      backup.native_config = createNativeConfigBackupPayload(source.nativeDocumentBytes);
+      if (backup.native_config.document_version === 2) backup.version = BACKUP_GRAPH_VERSION;
       return backup as Backup & { native_config: PanelConfigBackupPayload };
     }
     const buttons: Record<number, string> = {};
@@ -80,7 +82,7 @@ export function createBackupExportController(
       const subpageConfig = options.serializeSubpageConfig(subpage);
       if (subpageConfig) subpages[Number(slot)] = subpageConfig;
     }
-    backup.native_config = createPanelConfigBackupPayload(encodePanelConfig({
+    backup.native_config = createNativeConfigBackupPayload(encodePanelConfig({
       deviceProfile: source.deviceProfile,
       buttons,
       subpages,

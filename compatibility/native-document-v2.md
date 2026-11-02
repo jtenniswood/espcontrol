@@ -3,14 +3,15 @@
 Implementation stage: matching C++/TypeScript structural codecs and bounded
 firmware conversion are implemented. HTTP handlers can explicitly import/export
 v2 while preserving durable v1, default v1 responses and generation checks.
-The bundled editor requests v2 when advertised and retains a lossless v1 editing
-model during the durable-v1 phase. Backups still use v1. PageStore and the
+The bundled editor requests v2 when advertised, retaining the flat v1 bridge
+where graph reading is unavailable. Existing writers keep exact v1 backups;
+stored graphs use explicitly negotiated v2 snapshots. PageStore and the
 service/compatibility boot path read both versions; durable writes remain v1.
 New saves enforce profile and compatibility limits before publication. A
 released downgrade floor and physical qualification remain unfinished. This
 does not enable nested pages.
 
-Backup JSON version 2 is separate from native document v2. Exports retain a
+Flat backup JSON version 2 is separate from native document v2. Those exports retain a
 native-v1 payload alongside the readable layout. File-format interoperability
 does not establish that every older runtime can apply retained records: the
 released v2.13.0 text adapter rejects even empty native records outside its
@@ -321,15 +322,17 @@ respect the advertised byte ceiling, capped at 512 KiB. A missing/mismatched
 response-version header or an unprojectable graph rejects the edit without a
 write or silent downgrade. Old v1-only firmware retains its default requests.
 
-The current editor still edits through the lossless v1 model, preserving opaque
-settings and inactive records during both conversions. Its existing backup
-format explicitly retains the exact default-v1 response; v2-only firmware cannot
-produce a falsely compatible backup. The controller still serializes snapshot
+The editor preserves opaque settings and inactive records during both flat
+conversions. Graph-aware firmware uses the direct editable graph instead. Flat
+backup export retains the exact v1 response; graph export requires explicit
+depth-two reading and a separately versioned backup envelope. V2-only firmware
+without that reading capability cannot produce a falsely compatible backup.
+The controller serializes snapshot
 reads with preceding and subsequent edits. Browser checks exercise negotiated
 edit/reconnect/reload/restore and exact v1 backup export on 6/9/15/20-slot layouts;
 protocol tests separately exercise old firmware, refusal and fallback paths.
-Physical dual-reader qualification and versioned backup rollout remain separate
-work; negotiation does not establish a released durable-v2 downgrade floor.
+Physical dual-reader and backup qualification remain due; negotiation does not
+establish a released durable-v2 downgrade floor.
 
 The service rejects a v1 replacement of stored nested v2 data before runtime
 preparation or compatibility writes, including before boot activation. This
@@ -376,10 +379,22 @@ state; inactive saved cards are not reused as empty paste slots. Changed cut
 sources reject the transfer. Explicit save rejection retains the clipboard for
 retry; an uncertain acknowledgement requires reloading saved state first.
 Version-two card codes preserve raw subtree values and are rejected by older
-editors; flat card codes retain version one. Native-v2 backups are still
-unfinished. `page_subtree.ts` can capture and stage complete folder trees, remap
+editors; flat card codes retain version one. `page_subtree.ts` can capture and stage complete folder trees, remap
 paths during copy/move and validate the whole candidate before returning it;
 failed transfers leave their input unchanged.
+
+Graph backups preserve the exact version-two native bytes in an outer backup
+format version three. These are different version numbers: existing flat
+exports retain outer version two and native version one. The new outer version
+makes older editors reject a graph backup before skipping its native section.
+Current editors require nested-write capability before restoring nested data;
+reader-only firmware can export it after an explicit v1 projection rejection.
+Restore publishes the complete graph before updating the editor or other backup
+settings. It preserves inactive paths, raw Back values and unknown settings;
+it does not inject display defaults into the stored graph. Pending grid moves
+finish before replacement. Cross-profile nested backups reject instead of
+falling back to a partial portable layout. Browser fixtures check these paths,
+including the frozen older editor; physical backup qualification remains due.
 
 Projection rejects stale raw hints, inconsistent root-order/settings, sparse
 child positions, invalid absence provenance and nested pages. New fields use a
