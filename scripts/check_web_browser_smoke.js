@@ -330,6 +330,17 @@ async function installRoutes(context, slug, options = {}) {
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(identity.info) });
       return;
     }
+    if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/gpio-relays") {
+      const gpio = options.gpioRelayState;
+      if (!gpio) { await route.fulfill({status: 404, body: "Not found"}); return; }
+      if (route.request().method() === "POST") {
+        if (gpio.failSave) { await route.fulfill({status: 500, body: "Save failed"}); return; }
+        gpio.info = route.request().postDataJSON();
+        gpio.posts.push(gpio.info);
+      }
+      await route.fulfill({status: 200, contentType: "application/json", body: JSON.stringify(gpio.info)});
+      return;
+    }
     if (requestUrl.hostname === "espcontrol.test" && requestUrl.pathname === "/api/v1/screensaver-pin") {
       const pin = options.screensaverPinState;
       if (!pin) { await route.fulfill({ status: 404, body: "Not found" }); return; }
@@ -8009,10 +8020,76 @@ async function assertRainfallEditor(browser) {
   } finally {await context.close()}
 }
 
+async function assertGpioRelaySettings(browser) {
+  const slug = "guition-esp32-p4-jc1060p470";
+  const gpio = { info: {enabled: false, allowed_pins: [1, 2, 3], controls:
+    [0, 1, 2].map(() => ({pin: -1, name: "", inverted: false}))}, posts: [], failSave: false };
+  const context = await browser.newContext({viewport: {width: 1280, height: 1000}});
+  await installRoutes(context, slug, {gpioRelayState: gpio});
+  const page = await context.newPage();
+  const errors = []; page.on("pageerror", error => errors.push(error.message));
+  await page.addInitScript(() => { window.__ESPCONTROL_TEST_HOOKS__ = {}; });
+  await installFakeEventSource(page);
+  const available = () => page.evaluate(() => window.__ESPCONTROL_TEST_HOOKS__.config.buttonTypeVisibleInPickerFor("gpio_relay", false));
+  try {
+    await page.goto(`http://espcontrol.test/${slug}?events=1`);
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await page.getByRole("tab", {name: "System", exact: true}).click();
+    const card = page.locator("#sp-device .card").filter({has: page.locator("#sp-gpio-enabled")});
+    await card.locator(".card-header").click();
+    await page.waitForFunction(() => !document.querySelector("#sp-gpio-enabled").disabled);
+    assert.equal(await available(), false, "GPIO cards are unavailable until explicitly configured and enabled");
+    assert.equal(await page.locator("#sp-gpio-enabled").isChecked(), false);
+    await page.locator("#sp-gpio-enabled + .sp-toggle-track").click();
+    const save = page.getByRole("button", {name: "Save GPIO settings", exact: true});
+    await save.click();
+    await card.getByRole("status").filter({hasText: "Assign a GPIO pin"}).waitFor();
+    assert.equal(gpio.posts.length, 0);
+    await page.locator("#sp-gpio-control-1-pin").selectOption("1");
+    await page.locator("#sp-gpio-control-1-name").fill("Porch");
+    await page.locator("#sp-gpio-control-2-pin").selectOption("1");
+    await save.click();
+    await card.getByRole("status").filter({hasText: "only be assigned"}).waitFor();
+    assert.equal(gpio.posts.length, 0);
+    await page.locator("#sp-gpio-control-2-pin").selectOption("-1");
+    await page.locator("#sp-gpio-control-1-inverted + .sp-toggle-track").click();
+    await save.click();
+    await card.getByRole("status").filter({hasText: "Saved."}).waitFor();
+    assert.equal(gpio.posts.length, 1);
+    assert.deepEqual(gpio.posts[0].controls[0], {pin: 1, name: "Porch", inverted: true});
+    assert.equal(await available(), true);
+    await page.screenshot({path: "/tmp/gpio-relay-settings.png", fullPage: true});
+    await page.reload();
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await page.getByRole("tab", {name: "System", exact: true}).click();
+    await card.locator(".card-header").click();
+    await page.waitForFunction(() => !document.querySelector("#sp-gpio-enabled").disabled);
+    assert.equal(await page.locator("#sp-gpio-control-1-pin").inputValue(), "1");
+    assert.equal(await page.locator("#sp-gpio-control-1-name").inputValue(), "Porch");
+    gpio.failSave = true;
+    await page.locator("#sp-gpio-enabled + .sp-toggle-track").click();
+    await save.click();
+    await card.getByRole("status").filter({hasText: "Could not"}).waitFor();
+    assert.equal(await available(), true, "Failed writes retain the last saved controls");
+    gpio.failSave = false;
+    await save.click();
+    await card.getByRole("status").filter({hasText: "Saved."}).waitFor();
+    assert.equal(await available(), false, "Disabling GPIO removes it from the card picker");
+    assert.deepEqual(errors, []);
+    console.log("GPIO relay browser checks passed: opt-in, pin requirement, duplicates, polarity, reload, failures and disable.");
+  } finally { await context.close(); }
+}
+
 (async function main() {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    await assertGpioRelaySettings(browser);
+    if (process.env.ESPCONTROL_GPIO_ONLY === "1") return;
     await assertWindSensorEditor(browser);
     if (process.env.ESPCONTROL_WIND_ONLY === "1") return;
     if (process.env.ESPCONTROL_RAINFALL_ONLY === "1") { await assertRainfallEditor(browser); return; }

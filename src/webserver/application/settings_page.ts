@@ -668,6 +668,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             const gpioSettings = buildGpioRelaySettings(document, resetAwareFetch, fields, visible => {
                 if (gpioCard) gpioCard.hidden = !visible;
                 advancedSection.hidden = !visible;
+                if (!visible) advancedSection.remove();
             });
             gpioCard = makeCollapsibleCard("GPIO Relays", gpioSettings, true);
             gpioCard!.hidden = true;

@@ -11,7 +11,7 @@ This feature supports the **7-inch JC1060P470 original and V2 panels**. GPIO rel
 
 ## Set up the controls
 
-1. Open **Device Settings → Advanced → GPIO Relays**.
+1. Open **System → Advanced → GPIO Relays**.
 2. Enable **GPIO relay controls**.
 3. Choose a **GPIO pin** for each control you need and optionally give it a name. GPIO **1, 2, and 3** are supported; each pin can belong to only one control. Leave unused controls **Not configured**.
 4. Enable **Active low** only if the connected relay module requires a low signal to turn on.

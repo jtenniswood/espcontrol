@@ -105,8 +105,11 @@ export function buildGpioRelaySettings(
       const name = fields.textInput(prefix + "-name", control.name, "e.g. Porch Light") as HTMLInputElement;
       name.maxLength = 32;
       const inverted = fields.toggleRow("Active low", prefix + "-inverted", control.inverted);
-      section.append(title, fields.fieldLabel("Name", name.id), name,
-        fields.fieldLabel("GPIO pin", pin.id), pin, inverted.row);
+      const nameField = document.createElement("div"); nameField.className = "sp-field";
+      nameField.append(fields.fieldLabel("Name", name.id), name);
+      const pinField = document.createElement("div"); pinField.className = "sp-field";
+      pinField.append(fields.fieldLabel("GPIO pin", pin.id), pin);
+      section.append(title, nameField, pinField, inverted.row);
       controls.append(section); inputs.push({ pin, name, inverted: inverted.input });
     });
   }).catch(error => { onVisibilityChange(true); status.textContent = (error as Error).message; })
