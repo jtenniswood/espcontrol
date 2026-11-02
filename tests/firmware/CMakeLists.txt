@@ -742,3 +742,13 @@ target_compile_features(rainfall_card_test PRIVATE cxx_std_17)
 target_compile_options(rainfall_card_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(rainfall_card_test PRIVATE ../../components/espcontrol)
 add_test(NAME rainfall_card_test COMMAND rainfall_card_test)
+
+add_executable(panel_backup_test panel_backup_test.cpp)
+target_compile_features(panel_backup_test PRIVATE cxx_std_17)
+target_compile_options(panel_backup_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+add_test(NAME panel_backup_test COMMAND panel_backup_test)
+add_test(NAME panel_backup_bindings_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/panel_backup_bindings_test.py)
+add_test(NAME panel_backup_endpoint_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/panel_backup_endpoint_test.py)
