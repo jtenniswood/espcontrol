@@ -673,7 +673,6 @@ def validate_package(slug: str, device: dict[str, Any], errors: list[str]) -> No
     for key in (
         "networkCoprocessor",
         "ethernetSelectable",
-        "improvSerial",
         "touchscreenPackage",
         "apiNavigateAction",
         "apiOpenModalAction",

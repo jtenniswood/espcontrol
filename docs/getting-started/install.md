@@ -47,8 +47,7 @@ If the install button doesn't detect your device, try a different USB-C cable. C
 
 After flashing, the display needs to connect to your WiFi network.
 
-If the browser installer offers **Connect to WiFi** while USB is still connected,
-you can enter your network details there. Otherwise, use the hotspot:
+Configure WiFi through the display's setup hotspot:
 
 1. **The display creates a hotspot.** It can take up to **90 seconds** to appear. Connect to the `EspControl_XXXX` network named on the display from your phone or laptop; `XXXX` is the last four characters of the device MAC address. A custom hotspot name configured in ESPHome is kept.
 2. **A setup page opens automatically** (captive portal). If it doesn't, open a browser and go to `192.168.4.1`.

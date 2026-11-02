@@ -18,6 +18,6 @@ for path in configs:
     wifi = merged.get("wifi", {})
     if "ap" in wifi:
         assert "captive_portal" in merged, f"{path.relative_to(ROOT)}: setup AP needs a captive portal"
-        assert "improv_serial" in merged, f"{path.relative_to(ROOT)}: USB provisioning missing"
-        print(f"{path.relative_to(ROOT)}: setup AP, captive portal and USB provisioning present")
+        assert "improv_serial" not in merged, f"{path.relative_to(ROOT)}: USB provisioning must stay disabled"
+        print(f"{path.relative_to(ROOT)}: setup AP and captive portal present; USB provisioning disabled")
 print("WiFi setup package expansion checks passed.")
