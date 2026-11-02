@@ -101,7 +101,7 @@ void nested_depth_two() {
     Arena arena(16384),other(16384),scratch;PageStore store;
     assert(stage(source,old_limits,other,scratch,store)==PageStoreStatus::INVALID_DOCUMENT);
     assert(stage(source,limits,arena,scratch,store)==PageStoreStatus::OK);
-    assert(store.page_count()==3 && store.card_count()==limits.slot_count+2);
+    assert(store.page_count()==3 && store.card_count()==static_cast<size_t>(limits.slot_count)+2);
     const CardId folder=limits.slot_count,leaf=folder+1;
     assert(store.page(1)->parent==0 && store.page(1)->owner==1);
     assert(store.card(1)->target==1 && store.card(folder)->target==2);
