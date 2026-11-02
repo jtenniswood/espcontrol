@@ -12,6 +12,8 @@
 #include "button_grid_card_runtime.h"
 #include "page_store_goldens.h"
 #include "panel_config_document.h"
+#include "panel_config_import.h"
+#include "page_renderer_layout.h"
 
 using namespace espcontrol;
 using namespace espcontrol::pages;
@@ -237,6 +239,41 @@ void alarm_name_dependencies() {
   assert(sink.pairs(1).count("alarm_control_panel.home/friendly_name") == 0);
   assert(sink.pairs(2).count("alarm_control_panel.home/friendly_name") == 0);
 }
+void reordered_retained_card_membership() {
+  for (const auto &limits : DEVICE_UI_PROFILES) {
+    Document document(limits);
+    document.button(1, ";Folder;;;;;subpage");
+    std::string children = "~B," + std::to_string(limits.slot_count);
+    for (size_t slot = 1; slot <= limits.slot_count; ++slot)
+      children += "|S,,Saved,Auto,Auto,sensor.row_" + std::to_string(slot) + ",C,1,";
+    document.child(1, children);
+    const auto legacy = document.finish();
+    PanelConfigImportBounds bounds;
+    assert(panel_config_v1_to_v2_bounds(legacy.source_document(), legacy.source_size(), &bounds) == PanelConfigImportStatus::OK);
+    std::vector<uint64_t> conversion((bounds.workspace_bytes + 7) / 8);
+    std::vector<uint8_t> converted(bounds.output_bytes); size_t converted_size = 0;
+    assert(panel_config_v1_to_v2(legacy.source_document(), legacy.source_size(), converted.data(), converted.size(),
+      conversion.data(), conversion.size() * 8, &converted_size) == PanelConfigImportStatus::OK);
+    size_t workspace_size = 0;
+    assert(PageStore::v2_workspace_bytes(converted.data(), converted_size, &workspace_size) == PageStoreStatus::OK);
+    std::vector<uint64_t> workspace((workspace_size + 7) / 8), arena(32768);
+    PageStore graph;
+    assert(PageStore::stage_v2(converted.data(), converted_size, limits, 1, arena.data(), arena.size() * 8,
+      workspace.data(), workspace_size, &graph) == PageStoreStatus::OK);
+    for (const auto *store : std::array<const PageStore *, 2>{&legacy, &graph}) {
+      const auto *page = store->page(1);
+      const CardId visible = page->first_card + limits.slot_count - 1;
+      assert(page->runtime_card_count == 1 && store->runtime_card(visible));
+      assert(!store->runtime_card(page->first_card));
+      Sink sink; assert(PageCardDependencies().enumerate(*store, sink));
+      assert((sink.pairs(visible) == std::set<std::string>{"sensor.row_" + std::to_string(limits.slot_count) + "/"}));
+      assert(sink.entries.size() == 1);
+      std::array<PageCellLayout, 32> cells; PageBackAppearance back;
+      assert(compile_page_layout(*store, 1, {limits.slot_count, 3}, cells.data(), cells.size(), &back));
+      assert(cells[0].back && cells[1].card == visible && cells[1].visible);
+    }
+  }
+}
 void maximum_live_sensor_dependencies() {
   for(const auto &limits:DEVICE_UI_PROFILES) {
     Document doc(limits);
@@ -248,6 +285,11 @@ void maximum_live_sensor_dependencies() {
         const std::string entity="sensor.room_"+std::to_string(parent)+"_"+std::to_string(child);
         subpage+="|S,"+entity+",Zone,Auto,Auto,"+entity+",C,1,";
       }
+      // Stored rows beyond the Back-limited grid survive without reserving
+      // live HA subscriptions or per-card dependencies.
+      for (size_t extra = 1; extra <= 2; ++extra)
+        subpage += "|S,,Dormant,Auto,Auto,sensor.off_grid_" +
+          std::to_string(parent) + "_" + std::to_string(extra) + ",C,1,";
       doc.child(parent,subpage);
     }
     for (size_t slot = limits.slot_count + 1; slot <= 32; ++slot) {
@@ -267,9 +309,12 @@ void maximum_live_sensor_dependencies() {
         assert(state.dependency_count({1, id}) == 0);
       }
       for(PageId page=1;page<store.page_count();++page) {
+        assert(store.page(page)->card_count == limits.cards_per_subpage + size_t{2});
         for(size_t child=0;child<store.page(page)->card_count;++child) {
           const auto id=static_cast<CardId>(store.page(page)->first_card+child);
-          assert(state.dependency_count({1,id})==1);
+          const bool visible = child < store.page(page)->runtime_card_count;
+          assert(bool(store.runtime_card(id)) == visible);
+          assert(state.dependency_count({1,id}) == (visible ? 1u : 0u));
         }
       }
       std::cout<<limits.device_profile<<": distinct live sensor channels="<<channels
@@ -282,6 +327,7 @@ void maximum_live_sensor_dependencies() {
 }
 }  // namespace
 int main() {
+  reordered_retained_card_membership();
   nested_ancestor_indicators();unlinked_legacy_child_folder_is_rejected();
   alarm_name_dependencies();
   sensor_fields_and_modes();

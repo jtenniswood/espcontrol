@@ -1467,13 +1467,28 @@ class PageBasicLvglPort final:public PageRendererPort {
            (percent_slider_ && percent_slider_->revision() != seen_percent_slider_) ||
            (fan_status_ && fan_status_->revision() != seen_fan_status_) ||
            (relay_ && relay_->revision() != seen_relay_) || (local_ && local_->revision() != seen_local_) ||
-           state_.revision() != seen_state_ || theme_.revision != seen_theme_ ||
+           visible_state_changed() || theme_.revision != seen_theme_ ||
            (forecasts_ && forecasts_->revision() != seen_forecast_) ||
            (media_ && media_->revision() != seen_media_) ||
            (artwork_ && artwork_->revision() != seen_artwork_);
   }
   PageBasicMemory memory()const{auto m=memory_;m.fixed_bytes=sizeof(*this);m.borrowed_widgets=Slots*6;for(const auto &w:widgets_)m.borrowed_widgets+=(w.fill?1:0)+(w.forecast?1:0)+(w.slider?1:0);m.forecast_frames=active_.frame_count;m.active_bytes=active_.bytes;m.staged_bytes=staged_.bytes;return m;}
  private:
+  bool visible_state_changed() const {
+    const auto revision = state_.revision();
+    if (revision == seen_state_) return false;
+    for (const auto &shell : shells_) {
+      if (!shell.definition || !shell.token.binding) continue;
+      if (state_.changed_since({shell.token.configuration, shell.token.card}, seen_state_)) return true;
+      // Child-indicator folders intentionally depend on their descendants.
+      for (size_t child = 0; child < shell.definition->summary_count; ++child)
+        if (state_.changed_since({shell.token.configuration, shell.definition->summary[child]}, seen_state_))
+          return true;
+    }
+    // Nothing visible changed. Remember this check without dirtying LVGL.
+    seen_state_ = revision;
+    return false;
+  }
   bool collect_summary(const PageStore &store,PageId page_id,CardId *cards,size_t capacity,size_t &used)const {
     used=0;const auto *page=store.page(page_id);if(!page||!page->navigable)return true;
     const auto *owner=store.card(page->owner);if(!owner)return false;
@@ -2996,8 +3011,9 @@ class PageBasicLvglPort final:public PageRendererPort {
   size_t callbacks_{0};
   uint64_t seen_alarm_{0}, seen_timezone_{0}, seen_calendar_{0}, seen_access_{0}, seen_cover_toggle_{0},
       seen_timer_{0}, seen_temperature_{0}, seen_number_slider_{0}, seen_percent_slider_{0},
-      seen_fan_status_{0}, seen_relay_{0}, seen_local_{0}, seen_state_{0}, seen_theme_{0}, seen_forecast_{0},
+      seen_fan_status_{0}, seen_relay_{0}, seen_local_{0}, seen_theme_{0}, seen_forecast_{0},
       seen_media_{0}, seen_artwork_{0};
+  mutable uint64_t seen_state_{0};
   PageBasicMemory memory_;
 };
 }  // namespace espcontrol::pages

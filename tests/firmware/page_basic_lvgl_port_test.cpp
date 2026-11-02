@@ -889,6 +889,8 @@ template<size_t Slots>struct Actions {
            : name == "Wind arrow-right"         ? "WIND_E"
            : name == "Wind arrow-bottom-left"   ? "WIND_SW"
            : name == "Weather Sunny"            ? "SUN"
+           : name == "Wind arrow-right"         ? "WIND_E"
+           : name == "Wind arrow-bottom-left"   ? "WIND_SW"
            : name == "Lightbulb"                ? "ON"
            : name == "Blinds Open"              ? "OPEN"
            : name == "Blinds"                   ? "CLOSED"
@@ -8373,6 +8375,16 @@ int main() {
         case 15: media_control_profile<15>(limits); break;
         case 20: media_control_profile<20>(limits); break;
         default: assert(false);
+      }
+      continue;
+    }
+    if(family && std::strcmp(family,"weather_metrics")==0) {
+      switch(limits.slot_count) {
+        case 6: weather_metrics_profile<6>(limits);break;
+        case 9: weather_metrics_profile<9>(limits);break;
+        case 15: weather_metrics_profile<15>(limits);break;
+        case 20: weather_metrics_profile<20>(limits);break;
+        default:assert(false);
       }
       continue;
     }

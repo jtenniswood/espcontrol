@@ -261,8 +261,7 @@ bool PageCardDependencies::enumerate(const PageStore &store, PageDependencySink 
                  store.field(*owner,CardField::ENTITY).empty();
       ancestor=definition->parent;
     }
-    for (size_t i=0;i<page->runtime_card_count;++i) {
-      const auto card_id=static_cast<CardId>(page->first_card+i);
+    for (const auto card_id : page->runtime_cards()) {
       const auto *card=store.card(card_id);
       if (card==nullptr) return false;
       auto config=configuration(store,*card);
