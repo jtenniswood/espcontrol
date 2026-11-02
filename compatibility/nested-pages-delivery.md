@@ -67,6 +67,11 @@ fields/base64 in bounded chunks. Host HTTP tests and actual C++ output passed
 through the browser importer cover these paths; physical backup qualification
 remains part of the device gate.
 
+Browser backup export also works on a depth-two reader whose writer still uses
+v1: when the device rejects a lossy v1 export with HTTP 422, the browser requests
+the complete v2 graph. Authentication, storage and memory failures still stop
+export instead of falling back to a partial snapshot.
+
 The generated contract now describes the logical two-level shape separately
 from memory admission. The 6-, 9-, 15- and 20-slot grids allow at most
 37/186, 82/657, 226/3,165 and 401/7,620 pages/cards respectively, including Home.

@@ -56,8 +56,9 @@ const capabilities=(extra={})=>({...reply(200),json:async()=>({configuration:{re
 test("backup negotiation keeps durable-v1 snapshots exact and reads authoritative graphs when required",async()=>{
   const wire=graph.encodePanelPageDocument(document());
   const old=flat.encodePanelConfig({deviceProfile:"panel-a",buttons:{},subpages:{},settings:{}});
-  for(const [extra,flatAvailable,expected,bytes] of [
+  for(const [extra,flatAvailable,expected,bytes,rejection=422] of [
     [{},true,[1],old],[{},false,[1,2],wire],
+    [{},false,[1,2],wire,406],
     [{durable_document_version:2,writable_navigation_depth:2},true,[2],wire],
     [{durable_document_version:2,writable_navigation_depth:2,document_versions:[2]},false,[2],wire],
   ]){
@@ -65,7 +66,7 @@ test("backup negotiation keeps durable-v1 snapshots exact and reads authoritativ
     const client=native.createNativePanelConfigClient(async(path,request)=>{
       if(path.endsWith("capabilities"))return capabilities(extra);
       assert.notEqual(request?.method,"PUT");const version=Number(request.headers["X-Panel-Config-Version"]);requests.push(version);
-      return version===1&&!flatAvailable?reply(406):reply(200,version===1?old:wire,String(version));
+      return version===1&&!flatAvailable?reply(rejection):reply(200,version===1?old:wire,String(version));
     });
     assert.deepEqual(await client.readForBackup("panel-a"),bytes);
     assert.deepEqual(requests,expected);
@@ -73,10 +74,16 @@ test("backup negotiation keeps durable-v1 snapshots exact and reads authoritativ
 });
 test("backup read failures cannot fall back to partial or mismatched representations",async()=>{
   const wire=graph.encodePanelPageDocument(document());
-  for(const response of [reply(503),reply(401),reply(200,wire,"1"),reply(200,wire),reply(200,new Uint8Array(),"2")]){
+  for(const durable of [1,2])for(const response of [reply(500),reply(503),reply(401),reply(403),reply(200,wire,"1"),reply(200,wire),reply(200,new Uint8Array(),"2")]){
     let reads=0;
     const client=native.createNativePanelConfigClient(async path=>path.endsWith("capabilities")?
-      capabilities({durable_document_version:2}):(reads++,response));
+      capabilities({durable_document_version:durable}):(reads++,response));
+    await assert.rejects(()=>client.readForBackup("panel-a"));assert.equal(reads,1);
+  }
+  for(const extra of [{max_navigation_depth:1},{document_versions:[1]}]){
+    let reads=0;
+    const client=native.createNativePanelConfigClient(async path=>path.endsWith("capabilities")?
+      capabilities(extra):(reads++,reply(422)));
     await assert.rejects(()=>client.readForBackup("panel-a"));assert.equal(reads,1);
   }
   const disguised=native.createNativePanelConfigClient(async path=>path.endsWith("capabilities")?capabilities():reply(200,wire,"1"));

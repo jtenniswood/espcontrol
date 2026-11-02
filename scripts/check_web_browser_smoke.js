@@ -427,7 +427,7 @@ async function installRoutes(context, slug, options = {}) {
       }
       const etag = () => `"${version === 2 ? "v2-" : ""}${nativeState.generation}"`;
       if (version === 1 && nativeState.readDepth === 2 && panelPageDocumentDepth(nativeState.document) > 1) {
-        await route.fulfill({status:route.request().method()==="PUT"?422:406,body:"nested document requires version two"});return;
+        await route.fulfill({status:422,body:"nested document requires version two"});return;
       }
       if (route.request().method() === "PUT") {
         if (nativeState.rejectNextStatus) {
@@ -8430,7 +8430,7 @@ async function assertNestedPageEditor(browser, testCase) {
 async function assertNestedWriterLimits(browser,testCase) {
   for(const nested of [false,true]) {
     const nativeState={...nativeConfigState(testCase.slug),documentVersions:[1,2],readDepth:2,writeDepth:1,durableVersion:1,
-      document:{deviceProfile:testCase.slug,buttons:{1:";Reader Root;;;;;subpage"},subpages:nested?{1:"~B,1|G,,Child",33:"~B,1|,light.leaf,Leaf"}:{1:"~B"},settings:{button_order:"1"}}};
+      document:{deviceProfile:testCase.slug,buttons:{1:";Reader Root;;;;;subpage"},subpages:nested?{1:"~B,1|G,,Child",33:"~B,1|,light.leaf,Leaf",2:"~B,1|,light.hidden,Hidden"}:{1:"~B"},settings:{button_order:"1"}}};
     const context=await browser.newContext({viewport:testCase.viewport});await installRoutes(context,testCase.slug,{nativeState});
     const page=await context.newPage();await installFakeEventSource(page);
     try {
@@ -8439,6 +8439,14 @@ async function assertNestedWriterLimits(browser,testCase) {
       if(nested) {
         assert.strictEqual(await page.locator('.sp-main').getAttribute('aria-disabled'),'true','reader-only nested configurations are locked for editing');
         assert.strictEqual(nativeState.puts.length,0);
+        await page.evaluate(events=>window.__seedEspState(events),seededEvents());
+        await openBackupControls(page);
+        const downloadPromise=page.waitForEvent("download");
+        await page.getByRole("button",{name:"Export",exact:true}).click();
+        const exported=JSON.parse(fs.readFileSync(await(await downloadPromise).path(),"utf8"));
+        assert.strictEqual(exported.version,3,"reader-only nested backups use the complete graph format");
+        assert.deepStrictEqual(Array.from(decodeNativeConfigBackupPayload(exported.native_config)),Array.from(encodePanelPageDocument(nativeState.document)),"reader-only export retains exact graph bytes and inactive pages after the firmware's v1 HTTP422");
+        assert.strictEqual(nativeState.puts.length,0,"reader-only backup performs no writes");
       } else {
         await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
         await page.locator('.sp-main .sp-empty-cell').first().click();

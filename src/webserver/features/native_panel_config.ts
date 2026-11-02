@@ -261,7 +261,12 @@ export class NativePanelConfigClient {
       const response = await this.fetch_("/api/v1/config", {
         cache: "no-store", headers: { "X-Panel-Config-Version": String(version) },
       });
-      if (response.status === 406 && version === 1 && graphReadable) { version = 2; continue; }
+      // A supported v1 representation can still be unavailable for this
+      // stored graph: firmware rejects lossy v2-to-v1 export with HTTP 422.
+      if ((response.status === 406 || response.status === 422) && version === 1 && graphReadable) {
+        version = 2;
+        continue;
+      }
       if (!response.ok) throw new Error("Could not read the saved configuration.");
       const returnedVersion = response.headers.get("X-Panel-Config-Version");
       if ((version === 2 && returnedVersion !== "2") || (returnedVersion !== null && returnedVersion !== String(version)))
