@@ -1,6 +1,10 @@
 import type { CardConfig } from "../contracts/types";
 import { CARD_CONFIG_FIELDS, cloneCardConfig } from "./card";
 import { CARD_SIZE_DEFINITIONS } from "./grid";
+import type { PanelPageSubtree } from "./page_subtree";
+import { encodePanelPageDocument } from "./panel_config_conversion";
+import { childPageKey } from "./page_keys";
+import { encodeConfigField } from "./config_primitives";
 import {
   parseStructuredSubpageConfig,
   structuredSubpageFromParsed,
@@ -8,6 +12,7 @@ import {
 } from "./subpage";
 
 export const CARD_TRANSFER_VERSION = 1;
+export const CARD_TRANSFER_TREE_VERSION = 2;
 export const CARD_TRANSFER_FORMAT = "espcontrol.cards";
 export const CARD_TRANSFER_MAX_BYTES = 64 * 1024;
 export const CARD_TRANSFER_MAX_CARDS = 20;
@@ -20,6 +25,7 @@ export interface CardTransferSource {
 export interface CardTransferEntry extends CardConfig {
   size: number;
   subpage?: StructuredSubpageConfig;
+  page_tree?: PanelPageSubtree;
 }
 
 export interface CardTransferEnvelope {
@@ -93,7 +99,7 @@ function normalizeTransferSubpage(value: unknown, context: string): StructuredSu
   return structuredSubpageFromParsed(parseStructuredSubpageConfig(value));
 }
 
-function normalizeTransferEntry(value: unknown, index: number): CardTransferEntry {
+function normalizeTransferEntry(value: unknown, index: number, version: number): CardTransferEntry {
   const context = "card " + (index + 1);
   if (!isRecord(value)) throw transferError("Invalid card code - " + context + " must be an object");
   const card = normalizeTransferCard(value, context);
@@ -102,6 +108,26 @@ function normalizeTransferEntry(value: unknown, index: number): CardTransferEntr
     throw transferError("Invalid card code - " + context + " has an invalid size");
   }
   const entry: CardTransferEntry = { ...card, size: value.size as number };
+  if (Object.prototype.hasOwnProperty.call(value, "page_tree")) {
+    if (version < CARD_TRANSFER_TREE_VERSION || Object.prototype.hasOwnProperty.call(value, "subpage"))
+      throw transferError("Invalid card code - page trees require the nested-page format");
+    const tree = value.page_tree;
+    if (!isRecord(tree) || (tree.configuration !== null && typeof tree.configuration !== "string") || !isRecord(tree.children))
+      throw transferError("Invalid card code - invalid page tree");
+    const children: Record<number, string> = {};
+    const subpages: Record<number, string> = {};
+    if (tree.configuration !== null) subpages[1] = tree.configuration;
+    for (const [slot, raw] of Object.entries(tree.children)) {
+      if (!/^[1-9][0-9]*$/.test(slot) || Number(slot) > 32 || typeof raw !== "string")
+        throw transferError("Invalid card code - invalid descendant page");
+      children[Number(slot)] = raw; subpages[childPageKey(1, Number(slot))] = raw;
+    }
+    try {
+      encodePanelPageDocument({ deviceProfile: "card-transfer", buttons: { 1: "~" + CARD_CONFIG_FIELDS.map(field => encodeConfigField(card[field])).join(",") },
+        subpages, settings: {} });
+    } catch (_) { throw transferError("Invalid card code - invalid or excessively deep page tree"); }
+    entry.page_tree = { configuration: tree.configuration, children };
+  }
   if (Object.prototype.hasOwnProperty.call(value, "subpage")) {
     if (card.type !== "subpage") {
       throw transferError("Invalid card code - only a Subpage card can contain a subpage");
@@ -117,7 +143,7 @@ export function normalizeCardTransferEnvelope(value: unknown): CardTransferEnvel
   if (!Number.isInteger(version) || version < 1) {
     throw transferError("Invalid card code - missing a supported version");
   }
-  if (version > CARD_TRANSFER_VERSION) {
+  if (version > CARD_TRANSFER_TREE_VERSION) {
     throw transferError("Card code was created by a newer version of EspControl");
   }
   if (value.format !== CARD_TRANSFER_FORMAT) {
@@ -135,12 +161,12 @@ export function normalizeCardTransferEnvelope(value: unknown): CardTransferEnvel
   }
   return {
     format: CARD_TRANSFER_FORMAT,
-    version: CARD_TRANSFER_VERSION,
+    version,
     source: {
       device: value.source.device,
       firmware: value.source.firmware,
     },
-    cards: value.cards.map(normalizeTransferEntry),
+    cards: value.cards.map((card, index) => normalizeTransferEntry(card, index, version)),
   };
 }
 
@@ -150,7 +176,7 @@ export function createCardTransferCode(
 ): string {
   const envelope = normalizeCardTransferEnvelope({
     format: CARD_TRANSFER_FORMAT,
-    version: CARD_TRANSFER_VERSION,
+    version: cards.some(card => card.page_tree !== undefined) ? CARD_TRANSFER_TREE_VERSION : CARD_TRANSFER_VERSION,
     source,
     cards,
   });

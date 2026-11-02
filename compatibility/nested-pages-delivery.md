@@ -12,7 +12,9 @@ browser graph codec and subtree-transfer planning. Generated reader limits are
 depth two; the advertised writable depth remains one. The web editor now loads
 and navigates the graph and offers creation only at negotiated writable depths.
 Browser fixtures cover creation, rejection rollback, reload and reconnect on all
-four grid sizes. Clipboard persistence, backups, physical nested testing and
+four grid sizes. Clipboard operations save owner/order/subtree changes together;
+cut removes its source only when paste commits. Version-two card codes retain
+raw descendant pages, while flat codes remain version one. Backups, physical nested testing and
 durable-v2 release enablement remain separate gates.
 No nested-page candidate has been flashed to a physical device yet.
 

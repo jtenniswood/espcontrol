@@ -6,6 +6,7 @@ import {
   type PanelConfigDocument,
 } from "../model";
 import { convertNativeV1ToV2, convertNativeV2ToV1, decodePanelPageDocument, encodePanelPageDocument, panelPageDocumentDepth } from "../model/panel_config_conversion";
+import { PageTransferConflict } from "../model/page_card_transfer";
 
 const V2_DOCUMENT_VERSION = 2;
 const MAX_V2_DOCUMENT_BYTES = 512 * 1024;
@@ -107,10 +108,13 @@ export class NativePanelConfigClient {
   private preservesInactiveRecords_ = false;
   private readDepth_ = 1;
   private writeDepth_ = 1;
+  private lastDocument_: PanelConfigDocument | null = null;
 
   constructor(private readonly fetch_: NativePanelConfigFetch) {}
 
   supported(): boolean { return this.supported_; }
+  lastDocument(): PanelConfigDocument | null { return this.lastDocument_; }
+  acceptSnapshot(document: PanelConfigDocument): void { this.lastDocument_ = document; }
   preservesInactiveRecords(): boolean { return this.supported_ && this.preservesInactiveRecords_; }
   readNavigationDepth(): number {
     return this.supported_ && this.documentVersion_ === V2_DOCUMENT_VERSION ? this.readDepth_ : 1;
@@ -322,8 +326,10 @@ export class NativePanelConfigClient {
         // update its legacy entity mirror. Treat it as a failed compatibility
         // save so callers do not claim that an older firmware can restore it.
         if (next.status === 413) return "too-large";
-        if (next.status === 202) return "mirror-failed";
-        if (next.ok) return "saved";
+        if (next.ok) {
+          this.lastDocument_ = updated;
+          return next.status === 202 ? "mirror-failed" : "saved";
+        }
         if (next.status === 401 || next.status === 403) return "authentication-required";
         if (next.status === 404 || next.status === 503) {
           this.retryDiscovery();
@@ -332,6 +338,7 @@ export class NativePanelConfigClient {
         if (next.status !== 409) return "failed";
         conflicts += 1;
       } catch (error) {
+        if (error instanceof PageTransferConflict) return "conflict";
         if (error instanceof NativePanelConfigCompatibilityError) return "firmware-update-required";
         return "failed";
       }

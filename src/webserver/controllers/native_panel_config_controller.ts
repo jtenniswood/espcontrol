@@ -24,6 +24,7 @@ export interface NativePanelConfigControllerDependencies {
   readonly normalizeHexColor: (value: string, fallback: string) => string;
   readonly showBanner: (message: string, level: "error") => void;
   readonly delay: (callback: () => void, milliseconds: number) => unknown;
+  readonly saved?: (document: PanelConfigDocument) => void;
 }
 
 /** Owns native configuration discovery and serialised document writes. */
@@ -147,7 +148,11 @@ export class NativePanelConfigController {
         if (supported === "legacy-fallback" || supported === "failed") return supported;
         return supported ? client.save(update) : result;
       })
-      .then((result) => this.report(result === "unsupported" ? "failed" : result), () => this.report("failed"));
+      .then((result) => {
+        const document = client.lastDocument();
+        if ((result === "saved" || result === "mirror-failed") && document) this.dependencies.saved?.(document);
+        return this.report(result === "unsupported" ? "failed" : result);
+      }, () => this.report("failed"));
     this.saveQueue_ = save;
     return save;
   }

@@ -371,7 +371,13 @@ from wire IDs: 1–32 identify first-level owners; 33–1056 identify a root own
 and child owner slot. They preserve inactive page data and reject orphaned or
 third-level pages. The flat-v1 projector remains strict. These graph entry
 points support editor creation with negotiated writable depth. Clipboard
-persistence and backups are still unfinished. `page_subtree.ts` can capture and stage complete folder trees, remap
+copy/move/delete and duplicate use one native transaction before applying editor
+state; inactive saved cards are not reused as empty paste slots. Changed cut
+sources reject the transfer. Explicit save rejection retains the clipboard for
+retry; an uncertain acknowledgement requires reloading saved state first.
+Version-two card codes preserve raw subtree values and are rejected by older
+editors; flat card codes retain version one. Native-v2 backups are still
+unfinished. `page_subtree.ts` can capture and stage complete folder trees, remap
 paths during copy/move and validate the whole candidate before returning it;
 failed transfers leave their input unchanged.
 

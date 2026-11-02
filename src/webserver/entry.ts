@@ -1,4 +1,5 @@
 import { resetAwareFetch } from "./api/reset_session";
+import type { CardConfig } from "./contracts/types";
 import * as DeviceConfig from "./device_config";
 import * as Model from "./model";
 import { createDeviceApi } from "./api/device_api";
@@ -68,6 +69,9 @@ import { createButtonSettingsFeature, type ButtonSettingsFeature } from "./appli
 import { createPreviewGridPlacementFeature } from "./application/preview_grid_placement";
 import { createPreviewContextMenuFeature, type PreviewContextMenuFeature } from "./application/preview_context_menu";
 import { createPreviewClipboardFeature } from "./application/preview_clipboard";
+import { createNativePageTransfersFeature } from "./application/native_page_transfers";
+import { pageDepth } from "./model/page_keys";
+import { panelPageDocumentDepth } from "./model/panel_config_conversion";
 import { createPreviewInteractionsFeature, type PreviewInteractionsFeature } from "./application/preview_interactions";
 import { createCardEditorDraftController } from "./features/card_editor_draft_controller";
 import { createCardEditorValidationController } from "./features/card_editor_validation_controller";
@@ -381,6 +385,10 @@ function composeApplicationContext(): ApplicationContext {
     normalizeHexColor: (value, fallback) => Model.normalizeHexColor(value, fallback),
     showBanner: shell.showBanner,
     delay: (callback, milliseconds) => dom.schedule(callback, milliseconds),
+    saved: document => {
+      state.nativeHasNestedPages = panelPageDocumentDepth(document) > 1;
+      state.nativePanelDocument = { ...document, buttons: { ...document.buttons }, subpages: { ...document.subpages }, settings: { ...document.settings } };
+    },
   }, dom.fetch);
   const configurationPersistence = createConfigPersistenceFeature(nativePanelConfig, runtime, layout, entityState, shell);
   const cards = createCardRegistry();
@@ -622,7 +630,28 @@ function composeApplicationContext(): ApplicationContext {
     grid,
     selection,
   });
+  const nativeTransfers = createNativePageTransfersFeature({
+    native: nativePanelConfig, editor: () => nativePages, layout, api: requestApi, grid, shell,
+    validate: (entries, target, moving) => {
+      let images = 0;
+      const checkCard = (button: CardConfig, inSubpage: boolean) => {
+        const definition = cards.definitions[button.type || ""];
+        if (!definition || preview.configDisabled(button) || (inSubpage && !preview.registryValue(definition, "allowInSubpage", false)))
+          throw new Error("A copied card is not supported on this page.");
+        if (imageConfigurationOptions.isImageCard(button)) ++images;
+      };
+      for (const entry of entries) {
+        checkCard(entry.button, pageDepth(target) > 0);
+        if (entry.subtree) for (const raw of [entry.subtree.configuration, ...Object.values(entry.subtree.children)]) {
+          if (raw !== null) for (const button of configurationCodec.parseSubpageConfig(raw, true).buttons) checkCard(button, true);
+        }
+      }
+      if (!moving && !imageConfigurationOptions.canAddImageCards(images))
+        throw new Error(imageConfigurationOptions.imageSlotCapacityMessage());
+    },
+  });
   const clipboard = createPreviewClipboardFeature({
+    nativeTransfers,
     configPersistence: configurationPersistence,
     document: dom.document,
     layout,
@@ -666,6 +695,7 @@ function composeApplicationContext(): ApplicationContext {
     deleteButtons: (slots) => interactions.deleteButtons(slots),
   });
   interactions = createPreviewInteractionsFeature({
+    nativeTransfers,
     cardEditorDraft,
     configPersistence: configurationPersistence,
     layout,

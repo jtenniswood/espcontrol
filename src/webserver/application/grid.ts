@@ -13,6 +13,7 @@ export interface GridFeature {
     scheduleMainGridSave(): void;
     cancelMainGridSave(): void;
     hasPendingMainGridSave(): boolean;
+    flushMainGridSave(): void;
     sizeClass(size?: any): string;
     applyButtonOrderValue(value?: any, skipRender?: any): void;
     serializeGrid(grid?: any): string;
@@ -37,6 +38,11 @@ export function createGridFeature(codec: ConfigCodecFeature, runtime: UiRuntimeS
     function cancelMainGridSave(this: any) {
         clearTimeout(mainGridSaveTimer);
         mainGridSaveTimer = null;
+    }
+    function flushMainGridSave(): void {
+        if (!hasPendingMainGridSave()) return;
+        cancelMainGridSave();
+        requestApi.postText(entityName("button_order"), serializeGrid(state.grid));
     }
     function ctx(this: any) {
         if (state.editingSubpage) {
@@ -108,6 +114,7 @@ export function createGridFeature(codec: ConfigCodecFeature, runtime: UiRuntimeS
         scheduleMainGridSave,
         cancelMainGridSave,
         hasPendingMainGridSave,
+        flushMainGridSave,
         sizeClass,
         applyButtonOrderValue,
         serializeGrid,

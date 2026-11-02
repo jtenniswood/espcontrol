@@ -59,6 +59,7 @@ export class NativePageEditorLoader {
   private pending: Promise<boolean> | null = null;
   constructor(private readonly options: NativePageEditorLoaderOptions) {}
   invalidate(): void { ++this.epoch; this.abort?.abort(); this.abort = null; this.pending = null; }
+  replace(document: PanelConfigDocument): void { this.invalidate(); this.options.apply(document); }
   refresh(): Promise<boolean> {
     if (this.pending) return this.pending;
     const abort = new AbortController();

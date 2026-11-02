@@ -8350,10 +8350,60 @@ async function assertNestedPageEditor(browser, testCase) {
     await page.waitForFunction(() => document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Created");
     assert((await page.locator('.sp-main').textContent()).includes("Deep"),"nested cards survive reload");
     fs.mkdirSync(FAILURE_DIR,{recursive:true});await page.screenshot({path:path.join(FAILURE_DIR,`nested-${slug}.png`)});
+    await page.locator('.sp-back-btn .sp-back-hit').click();
+    await page.waitForFunction(() => document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Root");
+    const contextAction = async (slot, action) => {
+      await page.locator(`.sp-main [data-slot="${slot}"]`).click({button:"right"});
+      await page.locator(".sp-ctx-menu").getByText(action,{exact:true}).click();
+    };
+    const beforeTransfer = JSON.stringify(nativeState.document), putsBeforeTransfer = nativeState.puts.length;
+    nativeState.rejectNextStatus = 422;
+    await contextAction(1,"Duplicate");
+    await page.waitForFunction(() => document.querySelector('.sp-banner.sp-error')?.textContent.includes("No transfer was applied"));
+    assert.strictEqual(JSON.stringify(nativeState.document),beforeTransfer,"rejected folder transfer changes neither server data nor the editor");
+    assert.strictEqual(await page.locator('.sp-main [data-slot="3"]').count(),0);
+    await contextAction(1,"Duplicate");
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="3"]')?.textContent.includes("Child"));
+    assert.strictEqual(nativeState.puts.length,putsBeforeTransfer+1,"retry duplicates the entire folder with one successful native PUT");
+    assert.strictEqual(nativeState.document.subpages[35],nativeState.document.subpages[33],"duplicate remaps the complete saved child page");
+    await contextAction(3,"Delete");
+    await waitForNativeState(nativeState,()=>!Object.hasOwn(nativeState.document.subpages,35),"whole duplicate subtree deleted");
+    await page.waitForSelector('.sp-main [data-slot="3"]',{state:"detached"});
+    const beforeCut = nativeState.puts.length, movedRaw = nativeState.document.subpages[33];
+    await contextAction(1,"Cut");
+    await page.waitForFunction(() => document.querySelector('.sp-main')?.getAttribute('aria-disabled') === "false");
+    await page.locator('.sp-back-btn .sp-back-hit').click();
+    await page.waitForFunction(() => !document.querySelector('.sp-clockbar-subpage-title'));
+    await page.locator('.sp-main .sp-empty-cell').first().click({button:"right"});
+    await page.locator(".sp-ctx-menu").getByText("Paste",{exact:true}).click();
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="2"]')?.textContent.includes("Child"));
+    assert.strictEqual(nativeState.puts.length,beforeCut+1,"cut defers source deletion until one atomic move PUT");
+    assert.strictEqual(nativeState.document.subpages[2],movedRaw,"move preserves exact raw page fields");
+    assert(!Object.hasOwn(nativeState.document.subpages,33),"move removes the previous owner path");
+    assert(nativeState.document.subpages[34].includes("light.deep"),"move leaves unrelated descendants intact");
+    await contextAction(1,"Copy Code");
+    const codeDialog=page.getByRole("dialog",{name:"Copy Code",exact:true});
+    const code=JSON.parse(await codeDialog.getByRole("textbox").inputValue());
+    assert.strictEqual(code.version,2,"nested folder codes require a newer reader");
+    assert.strictEqual(code.cards[0].page_tree.children[2],nativeState.document.subpages[34],"transfer code preserves all descendant page data");
+    await codeDialog.getByRole("button",{name:"Close",exact:true}).click();
+    const beforeCodePaste=nativeState.puts.length;
+    await page.locator('.sp-main .sp-empty-cell').first().click({button:"right"});
+    await page.locator(".sp-ctx-menu").getByText("Paste Code",{exact:true}).click();
+    const pasteDialog=page.getByRole("dialog",{name:"Paste Code",exact:true});
+    await pasteDialog.getByRole("textbox").fill(JSON.stringify({...code,version:3}));
+    await pasteDialog.getByRole("button",{name:"Paste",exact:true}).click();
+    await pasteDialog.locator(".sp-transfer-error").filter({hasText:"newer version"}).waitFor();
+    assert.strictEqual(nativeState.puts.length,beforeCodePaste,"unsupported transfer versions do not write");
+    await pasteDialog.getByRole("textbox").fill(JSON.stringify(code));
+    await pasteDialog.getByRole("button",{name:"Paste",exact:true}).click();
+    await pasteDialog.waitFor({state:"detached"});
+    assert.strictEqual(nativeState.puts.length,beforeCodePaste+1,"code import commits the whole tree once");
+    assert.strictEqual(nativeState.document.subpages[98],code.cards[0].page_tree.children[2],"code import remaps retained descendant slots without flattening");
     nativeState.document.buttons[1]=";Reconnected Root;;;;;subpage";
     await page.evaluate(() => {const source=window.__eventSources.at(-1);source.dispatch("error",{});source.dispatch("open",{});});
     await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Reconnected Root"));
-    console.log(`${slug}: nested graph load, parent Back/title, child creation/save/reload, third-level block and reconnect passed`);
+    console.log(`${slug}: nested graph load, creation/reload, parent Back, atomic copy/move/delete with rejected-save retry, versioned code round-trip and reconnect passed`);
   } catch(error) {
     fs.mkdirSync(FAILURE_DIR,{recursive:true});await page.screenshot({path:path.join(FAILURE_DIR,`nested-failure-${slug}.png`)});throw error;
   } finally { await context.close(); }
@@ -8406,6 +8456,24 @@ function nestedEditorCases() {
     await assertWindSensorEditor(browser);
     if (process.env.ESPCONTROL_WIND_ONLY === "1") return;
     if (process.env.ESPCONTROL_RAINFALL_ONLY === "1") { await assertRainfallEditor(browser); return; }
+    if (process.env.ESPCONTROL_CARD_TRANSFER_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) {
+        const context=await browser.newContext({viewport:testCase.viewport}); await installRoutes(context,testCase.slug);
+        const page=await context.newPage(), posts=[], errors=[];
+        page.on("pageerror",error=>errors.push(error.message));
+        page.on("request",request=>{if(request.method()==="POST" && new URL(request.url()).hostname==="espcontrol.test") posts.push(postRecord(request.url()));});
+        await installFakeEventSource(page);
+        try {
+          await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`,{waitUntil:"domcontentloaded"});
+          await page.waitForFunction(()=>window.__eventSources?.length>0);
+          await page.evaluate(events=>window.__seedEspState(events),seededEvents().map(event=>event.id==="text-button_order"?{...event,state:"1"}:event));
+          await assertCardTransferSmoke(page,posts,testCase.name);
+          assert.deepStrictEqual(errors,[],"legacy transfers have no script errors");
+          console.log(`${testCase.slug}: existing legacy card-transfer journey passed`);
+        } finally {await context.close();}
+      }
+      return;
+    }
     if (process.env.ESPCONTROL_NESTED_PAGES_ONLY === "1") {
       for(const testCase of nestedEditorCases())
         { await assertNestedPageEditor(browser,testCase); await assertNestedWriterLimits(browser,testCase); }

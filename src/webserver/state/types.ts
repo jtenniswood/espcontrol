@@ -1,6 +1,7 @@
 import type { PanelConfigDocument } from "../model/panel_config";
 import type { CardConfig } from "../contracts/types";
 import type { ClipboardEntry } from "../features/clipboard";
+import type { PageCardClipboard } from "../model/page_card_transfer";
 import type { SlotSizeMap } from "../model/grid";
 
 export interface DeviceConfigFeatures {
@@ -98,6 +99,7 @@ export interface RuntimeSubpage {
 
 export interface AppClipboard {
   buttons: ClipboardEntry[];
+  native?: PageCardClipboard & { readonly cut: boolean };
 }
 
 export interface SettingsDraft {
