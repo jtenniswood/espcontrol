@@ -154,19 +154,24 @@ class PanelConfigWriteHandler final
     PanelConfigRepresentation converted(context.allocate, context.release);
     const uint8_t *document = upload->body.data();
     size_t document_size = upload->body.size();
-    if (representation == 2) {
-      const auto status = converted.convert(2, 1, document, document_size, context.document_capacity);
+    const auto durable_version = context.service->write_version();
+    if (representation != durable_version) {
+      const auto status = converted.convert(representation, durable_version, document, document_size, context.document_capacity);
       if (status != PanelConfigRepresentationStatus::OK) {
         send_status(raw_request, status == PanelConfigRepresentationStatus::UNAVAILABLE
             ? "503 Service Unavailable" : status == PanelConfigRepresentationStatus::TOO_LARGE
             ? "413 Content Too Large" : "400 Bad Request",
-            "Configuration cannot be converted losslessly to the stored v1 format");
+            "Configuration cannot be converted losslessly to the stored format");
         return;
       }
       document = converted.data(); document_size = converted.size();
     }
+    if (document_size > context.document_capacity) {
+      send_status(raw_request, "413 Content Too Large", "Configuration exceeds the stored document byte limit");
+      return;
+    }
     const auto transaction = context.transactions->save_if_generation(
-        expected_generation, PANEL_CONFIG_DOCUMENT_VERSION, document, document_size);
+        expected_generation, durable_version, document, document_size, ConfigurationWriteSource{representation});
     if (transaction.dispatch != ConfigurationDispatchStatus::COMPLETED) {
       send_status(raw_request, "503 Service Unavailable",
                   "Panel configuration is busy; retry the request");

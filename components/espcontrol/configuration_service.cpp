@@ -505,7 +505,7 @@ ConfigurationService::synchronize_legacy_runtime(uint8_t *output,
   std::memcpy(output, merged, legacy.document_size);
   fallback.reset();
   const auto saved =
-      save_unlocked(legacy.document_version, output, legacy.document_size);
+      save_unlocked(legacy.document_version, output, legacy.document_size, {1});
   if (saved.status == ServiceStatus::CAPACITY_EXCEEDED) {
     // A legacy client may already have persisted individual text fields. A
     // rejected native edit must not leave those fields as a false downgrade
@@ -522,13 +522,13 @@ ConfigurationService::synchronize_legacy_runtime(uint8_t *output,
 
 ServiceSaveResult ConfigurationService::save(uint16_t document_version,
                                              const uint8_t *document,
-                                             size_t document_size) {
+                                             size_t document_size, ConfigurationWriteSource source) {
   std::lock_guard<std::mutex> lock(operation_mutex_);
-  return save_unlocked(document_version, document, document_size);
+  return save_unlocked(document_version, document, document_size, source);
 }
 
 ServiceSaveResult ConfigurationService::save_unlocked(
-    uint16_t document_version, const uint8_t *document, size_t document_size) {
+    uint16_t document_version, const uint8_t *document, size_t document_size, ConfigurationWriteSource source) {
   if (document_size > 0 && document == nullptr) {
     return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT,
             document_version, 0, document_size};
@@ -547,7 +547,8 @@ ServiceSaveResult ConfigurationService::save_unlocked(
     return {ServiceStatus::STORE_FAILED, StoreStatus::PAYLOAD_TOO_LARGE,
             document_version, 0, document_size};
   }
-  const auto replacement = admit_replacement(document_version, nullptr);
+  // A v1 format at either end of conversion cannot describe nested data.
+  const auto replacement = admit_replacement(source.document_version == 1 ? 1 : document_version, nullptr);
   if (replacement.status != ServiceStatus::OK)
     return {replacement.status, replacement.store_status, document_version, replacement.generation, document_size};
   if (legacy_writes_enabled()) {
@@ -593,15 +594,15 @@ ServiceSaveResult ConfigurationService::save_unlocked(
 
 ServiceSaveResult ConfigurationService::save_if_generation(
     uint32_t expected_generation, uint16_t document_version,
-    const uint8_t *document, size_t document_size) {
+    const uint8_t *document, size_t document_size, ConfigurationWriteSource source) {
   std::lock_guard<std::mutex> lock(operation_mutex_);
   return save_if_generation_unlocked(expected_generation, document_version,
-                                     document, document_size);
+                                     document, document_size, source);
 }
 
 ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
     uint32_t expected_generation, uint16_t document_version,
-    const uint8_t *document, size_t document_size) {
+    const uint8_t *document, size_t document_size, ConfigurationWriteSource source) {
   if (document_size > 0 && document == nullptr) {
     return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT,
             document_version, 0, document_size};
@@ -620,7 +621,7 @@ ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
     return {ServiceStatus::STORE_FAILED, StoreStatus::PAYLOAD_TOO_LARGE,
             document_version, 0, document_size};
   }
-  const auto replacement = admit_replacement(document_version, &expected_generation);
+  const auto replacement = admit_replacement(source.document_version == 1 ? 1 : document_version, &expected_generation);
   if (replacement.status != ServiceStatus::OK)
     return {replacement.status, replacement.store_status, document_version, replacement.generation, document_size};
   if (legacy_writes_enabled()) {

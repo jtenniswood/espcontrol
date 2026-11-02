@@ -150,6 +150,12 @@ struct ServiceSaveResult {
   }
 };
 
+// Keep the caller's format across conversion. Zero means it supplied the same
+// complete format as the document being saved.
+struct ConfigurationWriteSource {
+  uint16_t document_version{0};
+};
+
 // A service integration can select the native document it understands without
 // changing the durable two-slot store. Leaving this unset preserves the
 // compatibility service's existing v1 envelope behaviour during migration.
@@ -158,6 +164,7 @@ class ConfigurationDocumentValidator {
   virtual ~ConfigurationDocumentValidator() = default;
 
   virtual bool supports_version(uint16_t document_version) const = 0;
+  virtual uint16_t write_version() const { return CURRENT_CONFIGURATION_DOCUMENT_VERSION; }
   // Reading an existing format does not grant permission to publish it. A
   // release can ship dual readers before raising its supported downgrade floor.
   virtual bool supports_write_version(uint16_t document_version) const {
@@ -214,11 +221,14 @@ class ConfigurationService {
   ServiceLoadResult synchronize_legacy_runtime(uint8_t *output,
                                                size_t output_capacity);
   ServiceSaveResult save(uint16_t document_version, const uint8_t *document,
-                         size_t document_size);
+                         size_t document_size, ConfigurationWriteSource source = {});
   ServiceSaveResult save_if_generation(uint32_t expected_generation,
                                        uint16_t document_version,
                                        const uint8_t *document,
-                                       size_t document_size);
+                                       size_t document_size, ConfigurationWriteSource source = {});
+  uint16_t write_version() const {
+    return validator_ ? validator_->write_version() : CURRENT_CONFIGURATION_DOCUMENT_VERSION;
+  }
   ServiceSaveResult save_current(const uint8_t *document,
                                  size_t document_size) {
     return save(CURRENT_CONFIGURATION_DOCUMENT_VERSION, document,
@@ -251,10 +261,10 @@ class ConfigurationService {
                                                    size_t output_capacity);
   ServiceSaveResult save_unlocked(uint16_t document_version,
                                   const uint8_t *document,
-                                  size_t document_size);
+                                  size_t document_size, ConfigurationWriteSource source = {});
   ServiceSaveResult save_if_generation_unlocked(
       uint32_t expected_generation, uint16_t document_version,
-      const uint8_t *document, size_t document_size);
+      const uint8_t *document, size_t document_size, ConfigurationWriteSource source = {});
   struct ReplacementAdmission {
     ServiceStatus status{ServiceStatus::OK};
     StoreStatus store_status{StoreStatus::OK};

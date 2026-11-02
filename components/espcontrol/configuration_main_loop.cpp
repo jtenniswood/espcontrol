@@ -14,12 +14,19 @@ ConfigurationLoadTransaction ConfigurationMainLoop::load(uint8_t *output,
 ConfigurationSaveTransaction ConfigurationMainLoop::save_if_generation(
     uint32_t generation, uint16_t version, const uint8_t *document, size_t size,
     std::chrono::milliseconds timeout) {
+  return save_if_generation(generation, version, document, size, {}, timeout);
+}
+
+ConfigurationSaveTransaction ConfigurationMainLoop::save_if_generation(
+    uint32_t generation, uint16_t version, const uint8_t *document, size_t size,
+    ConfigurationWriteSource source, std::chrono::milliseconds timeout) {
   Request request;
   request.operation = Operation::SAVE;
   request.document = document;
   request.size = size;
   request.generation = generation;
   request.version = version;
+  request.source = source;
   const auto completed = submit(request, timeout);
   return {completed.dispatch, completed.saved};
 }
@@ -66,7 +73,7 @@ bool ConfigurationMainLoop::process(ConfigurationService &service) {
     request.loaded = service.load(request.output, request.size);
   else
     request.saved = service.save_if_generation(request.generation, request.version,
-                                               request.document, request.size);
+                                               request.document, request.size, request.source);
   {
     std::lock_guard<std::mutex> lock(mutex_);
     request_ = request;

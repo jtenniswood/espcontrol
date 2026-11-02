@@ -177,16 +177,37 @@ std::unique_ptr<PageRuntimeResources> renderer(const DeviceUiLimits& limits,Aren
     default:assert(false);return {};
   }
 }
+// Test-only future policy. Stable product policy remains the declared v1 writer.
+struct FutureGraphWriter:ConfigurationDocumentValidator {
+  PanelConfigDocumentValidator content{allocate,release};
+  bool supports_version(uint16_t version)const override{return content.supports_version(version);}
+  uint16_t write_version()const override{return 2;}
+  bool supports_write_version(uint16_t version)const override{return version==2;}
+  bool checks_replacements(uint16_t version)const override{return content.checks_replacements(version);}
+  bool replacement_needs_document(uint16_t current,uint16_t incoming)const override{return content.replacement_needs_document(current,incoming);}
+  ServiceStatus replacement_status(uint16_t current,const uint8_t*bytes,size_t size,uint16_t incoming)const override {
+    return content.replacement_status(current,bytes,size,incoming);
+  }
+  bool validate(uint16_t version,const uint8_t*bytes,size_t size)const override{return content.validate(version,bytes,size);}
+  ServiceStatus validation_status(uint16_t version,const uint8_t*bytes,size_t size)const override{return content.validation_status(version,bytes,size);}
+};
 struct Fixture {
   Backend backend;ConfigurationStore store{backend};Legacy legacy;PanelConfigDocumentValidator validator{allocate,release};
-  ConfigurationService service{store,legacy,&validator};ConfigurationMainLoop queue;Arena arena;
+  ConfigurationService service;ConfigurationMainLoop queue;Arena arena;
   RendererPort port;std::unique_ptr<PageRuntimeResources> render_resources;PageRuntimeResourcesGroup<1> resources;
   PageStoreRuntime runtime;PanelConfigReadHandler reader;PanelConfigWriteHandler writer;
-  explicit Fixture(const DeviceUiLimits &limits):legacy(limits),port(limits),render_resources(renderer(limits,arena,port)),
+  explicit Fixture(const DeviceUiLimits &limits,const ConfigurationDocumentValidator*policy=nullptr):legacy(limits),
+      service(store,legacy,policy?policy:&validator),port(limits),render_resources(renderer(limits,arena,port)),
       resources({{render_resources.get()}}),runtime(limits,arena,128*1024,&resources) {
     service.set_runtime_adapter(&runtime);
     bind_panel_config_http_context(service,queue,40*1024,allocate,release,"user","password");
-    const auto source=document(limits);assert(service.save_if_generation(0,1,source.data(),source.size()).ok());
+    const auto source=document(limits);
+    if(service.write_version()==1)assert(service.save_if_generation(0,1,source.data(),source.size()).ok());
+    else {
+      PanelConfigRepresentation converted(allocate,release);
+      assert(converted.convert(1,2,source.data(),source.size(),40*1024)==PanelConfigRepresentationStatus::OK);
+      assert(service.save_if_generation(0,2,converted.data(),converted.size()).ok());
+    }
   }
   ~Fixture(){queue.stop();panel_config_http_context().ready=false;assert(allocations.empty());}
   void run(esphome::web_server_idf::AsyncWebHandler &handler,esphome::web_server_idf::AsyncWebServerRequest &request) {
@@ -540,6 +561,51 @@ void replacement_check_and_commit_share_the_generation() {
     assert(status(fixture.put(old,"1","\"2\""))==422);
   }
 }
+void original_format_survives_a_future_writer_conversion() {
+  {
+    FutureGraphWriter policy;Fixture fixture(DEVICE_UI_PROFILES[8],&policy);
+    const auto old=fixture.get("1").response;
+    const auto saved=fixture.put(old,nullptr,"\"1\"");
+    assert(status(saved)==204&&saved.sent_headers.at("X-Panel-Config-Durable-Version")=="2");
+    assert(records(fixture.get("1").response)==records(old));
+  }
+  for(bool restored:{false,true}) {
+    FutureGraphWriter policy;Fixture fixture(DEVICE_UI_PROFILES[8],&policy);
+    const auto old=fixture.get("1").response,old_v2=fixture.get("2").response;
+    const auto nested=nested_document();fixture.seed_v2(nested);
+    if(restored) {
+      Bytes output(40*1024);
+      assert(fixture.service.load_and_apply_runtime(output.data(),output.size()).status==ServiceStatus::LEGACY_MIRROR_FAILED);
+    }
+    const auto generation=fixture.runtime.active().generation();
+    const auto preferences=fixture.legacy.preference_writes();
+    const auto preparations=fixture.arena.calls,writes=fixture.backend.writes;
+    // HTTP converts the old v1 body to durable v2. That does not make it a
+    // graph-aware edit, and the main-loop queue must retain its original format.
+    assert(status(fixture.put(old,"1","\"2\""))==422);
+    assert(fixture.service.save(2,old_v2.data(),old_v2.size(),{1}).status==ServiceStatus::INCOMPATIBLE_REPLACEMENT);
+    assert(fixture.service.save_if_generation(2,2,old_v2.data(),old_v2.size(),{1}).status==ServiceStatus::INCOMPATIBLE_REPLACEMENT);
+    assert(status(fixture.put(old,"1","\"1\""))==409);
+    assert(fixture.get("2").response==nested&&fixture.runtime.active().generation()==generation);
+    assert(fixture.arena.calls==preparations&&fixture.backend.writes==writes&&fixture.legacy.preference_writes()==preferences);
+    // An explicitly selected complete graph may intentionally restore a flat
+    // configuration. Only the caller's original v1 path is fenced.
+    const auto saved=fixture.put(old_v2,"2","\"v2-2\"");
+    assert(status(saved)==204&&saved.sent_headers.at("X-Panel-Config-Durable-Version")=="2");
+    assert(fixture.get("2").response==old_v2&&fixture.runtime.active().generation()==3);
+  }
+  for(bool http:{false,true}) {
+    FutureGraphWriter policy;Fixture fixture(DEVICE_UI_PROFILES[8],&policy);
+    const auto old=fixture.get("1").response,old_v2=fixture.get("2").response;
+    const auto nested=nested_document();bool replaced=false;
+    const auto preferences=fixture.legacy.preference_writes();
+    fixture.port.on_prepare=[&] {if(!replaced){replaced=true;fixture.seed_v2(nested);}};
+    if(http)assert(status(fixture.put(old,"1","\"1\""))==409);
+    else assert(fixture.service.save(2,old_v2.data(),old_v2.size(),{1}).status==ServiceStatus::GENERATION_CONFLICT);
+    assert(replaced&&fixture.get("2").response==nested&&fixture.runtime.active().generation()==1);
+    assert(fixture.legacy.preference_writes()==preferences);
+  }
+}
 void compressed_compatibility_growth() {
   Bytes input(32768);PanelConfigV2Writer writer(input.data(),input.size());assert(writer.begin()==PanelConfigStatus::OK);
   auto append=[&](const PanelConfigV2Record &row){assert(writer.append(row)==PanelConfigStatus::OK);};
@@ -583,7 +649,7 @@ int main() {
   profile_capacity_write_limits();
   legacy_fixed_write_limits();
   shared_image_write_limits();
-  stored_v2_reads_and_replacements();old_format_cannot_replace_nested_data();replacement_check_and_commit_share_the_generation();compressed_compatibility_growth();
+  stored_v2_reads_and_replacements();old_format_cannot_replace_nested_data();replacement_check_and_commit_share_the_generation();original_format_survives_a_future_writer_conversion();compressed_compatibility_growth();
   profiles_and_cas();rejection_and_failure();authentication_and_request_limits();converted_owner_boundaries();
   assert(allocations.empty()&&live_bytes==0&&peak_bytes<3*PANEL_CONFIG_V2_HTTP_MAX_BYTES);
   std::printf("HTTP v1/v2: all nine maximum profiles, shared-generation CAS, request/allocator/storage/runtime rejection; host HTTP allocation peak=%zu bytes; retained=%zu bytes\n",peak_bytes,live_bytes);

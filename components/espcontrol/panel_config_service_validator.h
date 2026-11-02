@@ -22,6 +22,7 @@ public:
   bool supports_write_version(uint16_t version) const override {
     return version == PANEL_CONFIG_DURABLE_WRITE_VERSION;
   }
+  uint16_t write_version() const override { return PANEL_CONFIG_DURABLE_WRITE_VERSION; }
 
   bool checks_replacements(uint16_t incoming) const override { return incoming == 1; }
   bool replacement_needs_document(uint16_t current, uint16_t incoming) const override {
