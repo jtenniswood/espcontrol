@@ -51,6 +51,37 @@ inline std::vector<Row> authored_nested(const DeviceUiLimits &limits) {
   records.insert(records.end(),{leaf,page,navigation,label,order});
   return records;
 }
+// Fill first-level pages and add two full nested pages. The number of slider
+// cards alone exceeds the former slots-squared model ceiling on every grid.
+inline std::vector<Row> capacity_nested(const DeviceUiLimits& limits) {
+  Row profile; profile.kind = K::DEVICE_PROFILE; profile.text = limits.device_profile;
+  Row root; root.kind = K::PAGE; root.first = root.second = UINT16_MAX;
+  std::vector<Row> records{profile, root};
+  for (const auto& value : std::array<std::pair<uint16_t, const char*>, 4>{{
+      {1, "subpage"}, {2, "slider"}, {3, "number.shared"}, {4, "B"}}}) {
+    Row row; row.kind = K::STRING; row.id = value.first; row.text = value.second;
+    records.push_back(row);
+  }
+  Row entity; entity.kind = K::ENTITY; entity.id = 1; entity.first = 3; records.push_back(entity);
+  uint16_t card_id = 1;
+  auto card = [&](uint16_t page, uint16_t slot, uint16_t target = UINT16_MAX) {
+    Row row; row.kind = K::CARD; row.id = card_id++; row.first = page; row.second = slot;
+    row.field_mask = 1 << 6; row.fields[6] = target == UINT16_MAX ? 2 : 1;
+    if (target == UINT16_MAX) { row.field_mask |= 1; row.fields[0] = 1; }
+    records.push_back(row);
+    if (target == UINT16_MAX) return;
+    Row child; child.kind = K::PAGE; child.id = target; child.first = page;
+    child.second = row.id; child.third = 4; records.push_back(child);
+    Row nav; nav.kind = K::NAVIGATION; nav.id = row.id; nav.first = target; records.push_back(nav);
+  };
+  for (uint16_t slot = 1; slot <= limits.slot_count; ++slot) card(0, slot, slot);
+  for (uint16_t page = 1; page <= limits.slot_count; ++page)
+    for (uint16_t slot = 1; slot <= limits.cards_per_subpage; ++slot)
+      card(page, slot, page == 1 && slot <= 2 ? limits.slot_count + slot : UINT16_MAX);
+  for (uint16_t page = limits.slot_count + 1; page <= limits.slot_count + 2; ++page)
+    for (uint16_t slot = 1; slot <= limits.cards_per_subpage; ++slot) card(page, slot);
+  return records;
+}
 // More descendant controls than visible shells, plus optional explicit state
 // on the intermediate folder. The final leaf has its own HA channel.
 inline std::vector<Row> summary_nested(const DeviceUiLimits &limits, bool explicit_nested = false) {

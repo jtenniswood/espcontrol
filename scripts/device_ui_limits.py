@@ -48,9 +48,14 @@ def render_header() -> str:
         subpages = slots if "subpage" not in web_config(profile).get("disabledCardTypes", []) else 0
         values = [layout["cols"], layout["rows"], slots, subpages,
                   slots - 1, 2, profile["capabilities"]["imageSlots"], chunks, 255]
+        constrained = profile["firmware"]["display"]["modal"]["memoryTier"] == "constrained"
+        budgets = [128 * 1024 if constrained else 256 * 1024,
+                   512 * 1024 if constrained else 2 * 1024 * 1024,
+                   128 * 1024 if constrained else 512 * 1024]
         lines.append(f"    {{{json.dumps(profile['slug'])}, " + ", ".join(map(str, values)) +
                      f", DEVICE_UI_CARD_TYPES_{table}, " +
-                     f"sizeof(DEVICE_UI_CARD_TYPES_{table}) / sizeof(DeviceCardTypeSupport)" + "},")
+                     f"sizeof(DEVICE_UI_CARD_TYPES_{table}) / sizeof(DeviceCardTypeSupport), " +
+                     ", ".join(map(str, budgets)) + "},")
     lines.extend(["};", "", "}  // namespace espcontrol", ""])
 
     flags = [profile_flag(profile["slug"]) for profile in profiles]

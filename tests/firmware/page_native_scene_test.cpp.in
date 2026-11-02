@@ -355,11 +355,8 @@ struct ProfileHarness {
       theme.media_control_title_font=theme.media_control_artist_font=theme.cover_title_font=theme.cover_artist_font=
       theme.option_select_font=&lv_font_montserrat_14;
     theme.translate=translate;
-    const auto cards=limits.max_cards();
     const PageNativeSceneBudget budget = production_budget
-      ? PageNativeSceneBudget{{cards,cards*512,
-          {cards*40,cards*40,constrained?128u*1024:512u*1024,32*1024,4096},
-          {cards,cards,16*1024,HA_TEXT_SENSOR_STATE_MAX_LEN}},constrained?128u*1024:256u*1024}
+      ? PageNativeSceneBudget{page_native_state_budget(limits), limits.page_store_bytes}
       : PageNativeSceneBudget{{128,16384,{1024,512,65536,SIZE_MAX,elastic_state?size_t{1024}:SIZE_MAX},{128,128,8192}},65536};
     scene=new(memory.data()) Scene(scene_limits,counted,budget,
       widgets,{limits.slot_count,limits.grid_columns},theme,page_timezone_resolver(),{},nullptr,styles,platform,network);
@@ -633,7 +630,7 @@ void maximum_profile_disjoint_replacements() {
   for(unsigned iteration=0;iteration<20;++iteration) {
     const bool second=iteration%2;
     h.apply(second?b:a,100+iteration);
-    assert(h.scene->active().card_count()==limits.max_cards()&&
+    assert(h.scene->active().card_count()==limits.max_first_level_cards()&&
       h.scene->active().page_count()==limits.max_first_level_subpages+1u);
     visible();
     assert(h.scene->memory().state.active_channels==channels&&coordinator.entries.size()==channels);

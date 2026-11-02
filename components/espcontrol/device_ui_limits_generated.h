@@ -52,15 +52,15 @@ inline constexpr DeviceCardTypeSupport DEVICE_UI_CARD_TYPES_0[] = {
 };
 
 inline constexpr DeviceUiLimits DEVICE_UI_PROFILES[] = {
-    {"guition-esp32-p4-jc1060p470", 5, 3, 15, 15, 14, 2, 6, 8, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport)},
-    {"guition-esp32-p4-jc1060p470-v2", 5, 3, 15, 15, 14, 2, 6, 8, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport)},
-    {"guition-esp32-p4-jc4880p443", 2, 3, 6, 6, 5, 2, 6, 8, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport)},
-    {"guition-esp32-p4-jc4880p443-v3", 2, 3, 6, 6, 5, 2, 6, 8, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport)},
-    {"guition-esp32-p4-jc8012p4a1", 5, 4, 20, 20, 19, 2, 6, 8, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport)},
-    {"guition-esp32-p4-jc8012p4a1-v2", 5, 4, 20, 20, 19, 2, 6, 8, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport)},
-    {"guition-esp32-p4-jc8012p4a1-v3", 5, 4, 20, 20, 19, 2, 6, 8, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport)},
-    {"esp32-p4-86", 3, 3, 9, 9, 8, 2, 6, 8, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport)},
-    {"guition-esp32-s3-4848s040", 3, 3, 9, 9, 8, 2, 2, 4, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport)},
+    {"guition-esp32-p4-jc1060p470", 5, 3, 15, 15, 14, 2, 6, 8, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport), 262144, 2097152, 524288},
+    {"guition-esp32-p4-jc1060p470-v2", 5, 3, 15, 15, 14, 2, 6, 8, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport), 262144, 2097152, 524288},
+    {"guition-esp32-p4-jc4880p443", 2, 3, 6, 6, 5, 2, 6, 8, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport), 262144, 2097152, 524288},
+    {"guition-esp32-p4-jc4880p443-v3", 2, 3, 6, 6, 5, 2, 6, 8, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport), 262144, 2097152, 524288},
+    {"guition-esp32-p4-jc8012p4a1", 5, 4, 20, 20, 19, 2, 6, 8, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport), 262144, 2097152, 524288},
+    {"guition-esp32-p4-jc8012p4a1-v2", 5, 4, 20, 20, 19, 2, 6, 8, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport), 262144, 2097152, 524288},
+    {"guition-esp32-p4-jc8012p4a1-v3", 5, 4, 20, 20, 19, 2, 6, 8, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport), 262144, 2097152, 524288},
+    {"esp32-p4-86", 3, 3, 9, 9, 8, 2, 6, 8, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport), 262144, 2097152, 524288},
+    {"guition-esp32-s3-4848s040", 3, 3, 9, 9, 8, 2, 2, 4, 255, DEVICE_UI_CARD_TYPES_0, sizeof(DEVICE_UI_CARD_TYPES_0) / sizeof(DeviceCardTypeSupport), 131072, 524288, 131072},
 };
 
 }  // namespace espcontrol

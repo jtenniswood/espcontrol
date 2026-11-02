@@ -90,6 +90,7 @@ struct PageNativeSceneMemory {
   PageModalMemory modal;
   PageEntityMemory state;
   size_t image_leases{0}, qr_lease_bytes{0}, qr_frame_bytes{0};
+  PageNativeStateMemory state_metadata{};
 };
 
 template <size_t Slots, size_t ImageSlots>
@@ -512,6 +513,7 @@ public:
         ++result.image_leases;
     result.qr_lease_bytes = qr_.reserved_bytes();
     result.qr_frame_bytes = qr_frames_.reserved_bytes();
+    result.state_metadata = state_.metadata_memory();
     return result;
   }
   PageId active_page() const { return renderer_.active_page(); }

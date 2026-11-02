@@ -44,25 +44,34 @@ bool PageLocalSensorDependencies::enumerate(const PageStore& store, PageDependen
 PageLocalSensorRuntime::Subscriptions::Subscriptions(PageArenaAllocator& allocator,
                                                      PageLocalSensorProvider& provider, size_t channels)
     : allocator(allocator), provider(provider) {
-  const auto count = channels;
-  if (count <= SIZE_MAX / (2 * sizeof(Binding))) capacity = count * 2;
+  if (channels <= SIZE_MAX / (2 * sizeof(Binding))) max_channels = channels;
 }
 PageLocalSensorRuntime::Subscriptions::~Subscriptions() {
   cleanup();
 }
-bool PageLocalSensorRuntime::Subscriptions::initialize() {
-  if (bindings) return true;
-  if (!capacity) return false;
-  bytes = capacity * sizeof(Binding);
-  auto* memory = allocator.allocate(bytes);
-  if (!memory) {
-    bytes = 0;
-    return false;
+bool PageLocalSensorRuntime::Subscriptions::prepare_batch(
+    PageEntitySubscriptionBatch&, void* owner, uint32_t, size_t channels, Deliver) {
+  if (!owner || channels > max_channels) return false;
+  for (const auto& batch : batches)
+    if (batch.owner == owner) return false;
+  for (auto& batch : batches) {
+    if (batch.owner) continue;
+    const auto required = channels * sizeof(Binding);
+    auto* bindings = required ? static_cast<Binding*>(allocator.allocate(required)) : nullptr;
+    if (required && !bindings) return false;
+    for (size_t i = 0; i < channels; ++i) new (bindings + i) Binding{};
+    batch = {owner, bindings, channels};
+    staged_owner = owner;
+    bytes += required;
+    peak = std::max(peak, bytes);
+    return true;
   }
-  bindings = static_cast<Binding*>(memory);
-  for (size_t i = 0; i < capacity; ++i) new (bindings + i) Binding{};
-  peak = std::max(peak, bytes);
-  return true;
+  return false;
+}
+size_t PageLocalSensorRuntime::Subscriptions::staged_bytes() const {
+  for (const auto& batch : batches)
+    if (batch.owner && batch.owner == staged_owner) return batch.capacity * sizeof(Binding);
+  return 0;
 }
 void PageLocalSensorRuntime::Subscriptions::deliver(Binding& binding, const PageLocalSensorSample& sample,
                                                     bool initial) {
@@ -86,28 +95,39 @@ bool PageLocalSensorRuntime::Subscriptions::subscribe(const char* entity, const 
   if (field != TEXT && field != NUMBER) return false;
   const bool text = field == TEXT;
   const auto source = provider.resolve(entity, text);
-  if (!initialize()) return false;
-  for (size_t i = 0; i < capacity; ++i)
-    if (!bindings[i].owner) {
+  for (auto& batch : batches) {
+    if (batch.owner != owner) continue;
+    for (size_t i = 0; i < batch.capacity; ++i) {
+      auto& binding = batch.bindings[i];
+      if (binding.owner) continue;
       if (source != NO_LOCAL_SENSOR && !provider.watch(source)) return false;
-      bindings[i] = {owner, callback, entity, 0, revision, channel, source, text};
+      binding = {owner, callback, entity, 0, revision, channel, source, text};
       ++live;
-      if (source != NO_LOCAL_SENSOR) deliver(bindings[i], provider.read(source), true);
+      if (source != NO_LOCAL_SENSOR) deliver(binding, provider.read(source), true);
       return true;
     }
+  }
   return false;
 }
 void PageLocalSensorRuntime::Subscriptions::release(void* owner) {
-  for (size_t i = 0; i < capacity && bindings; ++i)
-    if (bindings[i].owner == owner) {
-      bindings[i] = {};
-      --live;
+  for (auto& batch : batches) {
+    if (!batch.owner || batch.owner != owner) continue;
+    for (size_t i = 0; i < batch.capacity; ++i) {
+      if (batch.bindings[i].owner) --live;
+      batch.bindings[i].~Binding();
     }
+    const auto released = batch.capacity * sizeof(Binding);
+    if (batch.bindings) allocator.release(batch.bindings, released);
+    bytes -= released;
+    if (staged_owner == owner) staged_owner = nullptr;
+    batch = {};
+  }
 }
 void PageLocalSensorRuntime::Subscriptions::loop() {
-  for (size_t i = 0; i < capacity && bindings; ++i)
-    if (bindings[i].owner && bindings[i].source != NO_LOCAL_SENSOR) {
-      auto& binding = bindings[i];
+  for (auto& batch : batches)
+    for (size_t i = 0; i < batch.capacity; ++i) {
+      auto& binding = batch.bindings[i];
+      if (!binding.owner || binding.source == NO_LOCAL_SENSOR) continue;
       const auto sample = provider.read(binding.source);
       if (sample.revision != binding.seen) deliver(binding, sample, false);
     }
@@ -115,21 +135,20 @@ void PageLocalSensorRuntime::Subscriptions::loop() {
 bool PageLocalSensorRuntime::Subscriptions::feed(std::string_view key, bool text, float number,
                                                  std::string_view value) {
   bool applied = false;
-  for (size_t i = 0; i < capacity && bindings; ++i) {
-    auto& binding = bindings[i];
-    if (!binding.owner || binding.text != text || std::string_view(binding.key) != key) continue;
-    PageLocalSensorSample sample{binding.seen, number, value};
-    deliver(binding, sample, false);
-    applied = true;
-  }
+  for (auto& batch : batches)
+    for (size_t i = 0; i < batch.capacity; ++i) {
+      auto& binding = batch.bindings[i];
+      if (!binding.owner || binding.text != text || std::string_view(binding.key) != key) continue;
+      PageLocalSensorSample sample{binding.seen, number, value};
+      deliver(binding, sample, false);
+      applied = true;
+    }
   return applied;
 }
 void PageLocalSensorRuntime::Subscriptions::cleanup() {
-  if (live || !bindings) return;
-  for (size_t i = 0; i < capacity; ++i) bindings[i].~Binding();
-  allocator.release(bindings, bytes);
-  bindings = nullptr;
-  bytes = 0;
+  if (live) return;
+  for (auto& batch : batches)
+    if (batch.owner) release(batch.owner);
 }
 PageLocalSensorRuntime::PageLocalSensorRuntime(PageArenaAllocator& allocator,
                                                PageLocalSensorProvider& provider, PageEntityBudget budget,
@@ -185,6 +204,7 @@ void PageLocalSensorRuntime::activate_prepared(const PageStore& store) {
     // Reads and packed-cache updates allocate nothing and dispatch no actions.
     subscriptions_.loop();
     graph_.activate_prepared(store);
+    subscriptions_.activate();
   }
   subscriptions_.cleanup();
 }
@@ -200,6 +220,7 @@ PageEntityValue PageLocalSensorRuntime::read(ConfigurationHandle handle, std::st
 }
 PageLocalSensorMemory PageLocalSensorRuntime::memory() const {
   return {sizeof(*this),           subscriptions_.bytes,  subscriptions_.peak, subscriptions_.live,
-          provider_.fixed_bytes(), provider_.callbacks(), graph_.memory()};
+          provider_.fixed_bytes(), provider_.callbacks(), graph_.memory(),
+          sizeof(PageLocalSensorFeed), subscriptions_.staged_bytes()};
 }
 }  // namespace espcontrol::pages

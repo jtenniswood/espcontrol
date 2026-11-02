@@ -1,16 +1,22 @@
 #include "native_scene_test_support.h"
+#include "nested_page_fixture.h"
+#include <cstdio>
 
 struct Arena : PageArenaAllocator {
-  size_t live{0};
+  size_t live{0}, bytes{0};
   bool fail{false};
   void* allocate(size_t n) override {
     if (fail) return nullptr;
+    auto* result = std::malloc(n);
+    assert(result);
     ++live;
-    return std::malloc(n);
+    bytes += n;
+    return result;
   }
-  void release(void* p, size_t) override {
-    assert(live);
+  void release(void* p, size_t n) override {
+    assert(live && bytes >= n);
     --live;
+    bytes -= n;
     std::free(p);
   }
   ~Arena() { assert(!live); }
@@ -78,6 +84,146 @@ struct Document {
   }
 };
 PageNativeStateBudget budget() { return {128, 16384, {1024, 512, 65536}, {128, 128, 8192}}; }
+void maximum_first_level_climate_fits_metadata_ceiling() {
+  for (const auto& limits : DEVICE_UI_PROFILES) {
+    std::vector<uint8_t> bytes(128 * 1024);
+    std::vector<uint64_t> storage(limits.page_store_bytes / sizeof(uint64_t));
+    PanelConfigWriter writer(bytes.data(), bytes.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                       std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string folder = ";Folder;Auto;Auto;;;subpage;;indicator";
+    for (unsigned parent = 1; parent <= limits.max_first_level_subpages; ++parent) {
+      assert(writer.append_button(parent, reinterpret_cast<const uint8_t*>(folder.data()), folder.size()) == PanelConfigStatus::OK);
+      std::string children = "~B";
+      for (unsigned slot = 1; slot <= limits.cards_per_subpage; ++slot)
+        children += "," + std::to_string(slot);
+      for (unsigned slot = 1; slot <= limits.cards_per_subpage; ++slot)
+        children += "|HC,climate.maximum_" + std::to_string(parent) + "_" + std::to_string(slot) +
+                    ",Climate,Auto,Auto,,,,";
+      assert(children.size() <= limits.legacy_subpage_byte_ceiling());
+      assert(writer.append_subpage(parent, reinterpret_cast<const uint8_t*>(children.data()), children.size()) == PanelConfigStatus::OK);
+    }
+    size_t size = 0;
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    PageStore store;
+    assert(PageStore::stage_v1(bytes.data(), size, limits, 17, storage.data(),
+                              storage.size() * sizeof(uint64_t), &store) == PageStoreStatus::OK);
+    Arena arena;
+    PageNativeSceneState state(arena, page_native_state_budget(limits), page_timezone_resolver(), {}, nullptr);
+    assert(state.initialize(true) && state.prepare(store));
+    const auto required = state.metadata_memory().staged_metadata_bytes;
+    std::fprintf(stderr, "%s first-level climate metadata: %zu / %zu bytes\n", limits.device_profile,
+                 required, limits.state_metadata_bytes);
+    assert(required <= limits.state_metadata_bytes);
+    state.discard_prepared();
+    state.stop();
+    assert(!arena.live && !arena.bytes && coordinator.entries.empty());
+  }
+}
+void unchanged_dashboards_keep_their_memory() {
+  for (const auto& limits : DEVICE_UI_PROFILES) {
+    test::NativeGraphFixture document(limits, test::authored(limits), 17);
+    auto flat_limits = limits;
+    flat_limits.max_navigation_depth = 1;
+    const auto before = page_native_state_budget(flat_limits);
+    const auto after = page_native_state_budget(limits);
+    assert(before.cards < after.cards && before.keys == after.keys);
+    assert(before.ha.dependencies == after.ha.dependencies && before.ha.channels == after.ha.channels);
+    assert(before.ha.state_bytes == after.ha.state_bytes && before.metadata_bytes == after.metadata_bytes);
+    size_t flat_bytes = 0;
+    for (const auto& selected : {before, after}) {
+      Arena arena;
+      PageNativeSceneState state(arena, selected, page_timezone_resolver(), {}, nullptr);
+      assert(state.initialize(true) && state.prepare(document.store));
+      state.activate_prepared(document.store);
+      if (!flat_bytes) flat_bytes = arena.bytes;
+      assert(arena.bytes == flat_bytes);
+      assert(state.metadata_memory().active_metadata_bytes <= limits.state_metadata_bytes);
+      state.stop();
+      state.retire_active();
+      assert(!arena.live && !arena.bytes && coordinator.entries.empty());
+    }
+  }
+}
+void additional_nested_capacity() {
+  for (const auto& limits : DEVICE_UI_PROFILES) {
+    test::NativeGraphFixture document(limits, test::capacity_nested(limits), 17);
+    Arena arena;
+    const auto production = page_native_state_budget(limits);
+    PageNativeSceneState state(arena, production, page_timezone_resolver(), {}, nullptr);
+    assert(state.initialize(true) && state.prepare(document.store));
+    state.activate_prepared(document.store);
+    const auto count = state.number.memory().cards;
+    assert(count > size_t{limits.slot_count} * limits.slot_count);
+    coordinator.report("number.shared", "min", "0");
+    coordinator.report("number.shared", "max", "100");
+    coordinator.report("number.shared", "step", "1");
+    coordinator.report("number.shared", "", "41");
+    state.loop();
+    const auto last = static_cast<CardId>(document.store.card_count() - 1);
+    assert(state.number.read({17, last}).ready && state.number.read({17, last}).position == 41);
+    state.stop();
+    state.retire_active();
+    assert(!arena.live && coordinator.entries.empty());
+  }
+}
+void metadata_admission_is_atomic() {
+  const auto& limits = DEVICE_UI_PROFILES[8];
+  Document original(17);
+  auto records = test::capacity_nested(limits);
+  test::Row key; key.kind = test::K::STRING; key.id = 5; key.text = "local_value";
+  test::Row type; type.kind = test::K::STRING; type.id = 6; type.text = "local_sensor";
+  test::Row entity; entity.kind = test::K::ENTITY; entity.id = 2; entity.first = 5;
+  records.insert(records.end(), {key, type, entity});
+  for (auto& row : records) {
+    if (row.kind != test::K::CARD || row.fields[6] != 2) continue;
+    row.fields[6] = 6; row.fields[0] = 2;
+    break;
+  }
+  test::NativeGraphFixture next(limits, std::move(records), 18);
+  size_t required = 0;
+  {
+    Arena arena;
+    PageNativeSceneState state(arena, page_native_state_budget(limits), page_timezone_resolver(), {}, nullptr);
+    assert(state.initialize(true) && state.prepare(next.store));
+    required = state.metadata_memory().staged_metadata_bytes;
+    assert(required > 0 && required < limits.state_metadata_bytes);
+    state.discard_prepared();
+    assert(state.metadata_memory().staged_metadata_bytes == 0 && !arena.live);
+    state.stop();
+  }
+  for (const auto limit : {required - 1, required}) {
+    Arena arena;
+    auto selected_budget = page_native_state_budget(limits);
+    selected_budget.metadata_bytes = limit;
+    PageNativeSceneState state(arena, selected_budget, page_timezone_resolver(), {}, nullptr);
+    assert(state.initialize(true) && state.prepare(original.store));
+    state.activate_prepared(original.store);
+    const auto active_bytes = state.metadata_memory().active_metadata_bytes;
+    const auto allocations = arena.live;
+    const auto registrations = coordinator.entries.size();
+    assert(active_bytes < limit);
+    const bool prepared = state.prepare_write(next.store);
+    assert(prepared == (limit == required));
+    assert(state.preparation_capacity_exceeded() == !prepared);
+    if (prepared) {
+      assert(state.metadata_memory().staged_metadata_bytes == required);
+      state.activate_prepared(next.store);
+      assert(state.metadata_memory().active_metadata_bytes == required);
+    } else {
+      assert(state.metadata_memory().staged_metadata_bytes == 0);
+      assert(state.metadata_memory().active_metadata_bytes == active_bytes);
+      assert(arena.live == allocations && coordinator.entries.size() == registrations);
+      coordinator.report("fan.room", "", "on");
+      state.loop();
+      assert(state.fans.read({17, 0}).on);
+    }
+    state.stop();
+    state.retire_active();
+    assert(!arena.live && coordinator.entries.empty());
+  }
+}
 void observations() {
   Arena arena;
   Document old(17), next(18);
@@ -244,6 +390,10 @@ void activation_requests_current_values_after_shared_channel_binding() {
   assert(coordinator.entries.empty());
 }
 int main() {
+  maximum_first_level_climate_fits_metadata_ceiling();
+  unchanged_dashboards_keep_their_memory();
+  additional_nested_capacity();
+  metadata_admission_is_atomic();
   activation_requests_current_values_after_shared_channel_binding();
   observations();
   dormant_families();

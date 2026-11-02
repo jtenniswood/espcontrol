@@ -251,7 +251,48 @@ void channel_limit() {
   }
   assert(arena.live.empty());
 }
+void bindings_follow_configuration_size() {
+  Fixture first(17), second(18, "other", "other_text");
+  size_t small_bytes = 0;
+  for (const size_t channel_limit : {size_t{8}, size_t{4096}}) {
+    Arena arena;
+    Provider provider;
+    PageLocalSensorRuntime runtime(arena, provider, {16, channel_limit, 512});
+    assert(runtime.memory().binding_bytes == 0);
+    assert(runtime.prepare(first.store));
+    runtime.activate_prepared(first.store);
+    const auto bytes = runtime.memory().binding_bytes;
+    if (!small_bytes) small_bytes = bytes;
+    assert(bytes == small_bytes && runtime.memory().live_bindings == 2);
+    if (channel_limit == 8) {
+      runtime.retire_active();
+      assert(arena.live.empty());
+      continue;
+    }
+    // The metadata arena succeeds; the prepared graph's binding allocation
+    // fails. Existing producer handles and values must remain usable.
+    arena.remaining = 1;
+    assert(!runtime.prepare(second.store));
+    arena.remaining = -1;
+    assert(runtime.memory().live_bindings == 2);
+    assert(runtime.memory().binding_bytes == bytes);
+    assert(number(runtime, 17, 0, "temp") == 21.25f);
+    ++provider.values[0].revision;
+    provider.values[0].number = 23.5f;
+    runtime.loop();
+    assert(number(runtime, 17, 0, "temp") == 23.5f);
+    assert(runtime.prepare(second.store));
+    assert(runtime.memory().live_bindings == 4);
+    const auto calls = arena.calls;
+    runtime.activate_prepared(second.store);
+    assert(arena.calls == calls && runtime.memory().live_bindings == 2);
+    assert(number(runtime, 18, 0, "other") == 44.5f);
+    runtime.retire_active();
+    assert(arena.live.empty());
+  }
+}
 int main() {
+  bindings_follow_configuration_size();
   cycles();
   failures();
   channel_limit();

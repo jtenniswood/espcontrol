@@ -27,6 +27,19 @@ namespace espcontrol::pages {
 struct PageNativeStateBudget {
   size_t cards{0}, keys{0};
   PageEntityBudget ha{}, local{};
+  size_t metadata_bytes{SIZE_MAX};
+};
+inline PageNativeStateBudget page_native_state_budget(const DeviceUiLimits& limits) {
+  // More logical pages must not multiply byte or dependency ceilings. Existing
+  // flat dashboards retain their budgets; all model arenas follow actual use.
+  const auto base_cards = limits.max_first_level_cards();
+  const auto cards = limits.max_cards();
+  return {cards, base_cards * 512,
+          {base_cards * 40, base_cards * 40, limits.ha_state_bytes, 32u * 1024, 4u * 1024},
+          {cards, cards, 16u * 1024, HA_TEXT_SENSOR_STATE_MAX_LEN}, limits.state_metadata_bytes};
+}
+struct PageNativeStateMemory {
+  size_t active_metadata_bytes{0}, staged_metadata_bytes{0};
 };
 
 class PageNativeSceneState final : public PageRuntimeResources {
@@ -63,7 +76,8 @@ public:
         calendar_events(calendar), timezone_events(timezones),
         resources({{&media, &forecasts, &local, &relays, &fans, &percent,
                     &number, &temperature, &timers, &covers, &access, &calendar,
-                    &timezones, &alarms, &acknowledgements, &graph}}) {
+                    &timezones, &alarms, &acknowledgements, &graph}}),
+        metadata_limit_(budget.metadata_bytes) {
     configured_ = budget.cards && budget.keys && timezone_resolver.resolve &&
                   observers.add(media) && observers.add(fans) &&
                   observers.add(percent) && observers.add(number) &&
@@ -95,8 +109,39 @@ public:
   }
   bool ready() const { return initialized_ && !stopped_; }
   bool prepare(const PageStore &store) override {
-    return ready() && !running_ && page_native_command_ready() &&
-           resources.prepare(store);
+    capacity_exceeded_ = false;
+    if (!ready() || running_ || !page_native_command_ready() || !resources.prepare(store))
+      return false;
+    if (metadata_memory().staged_metadata_bytes > metadata_limit_) {
+      capacity_exceeded_ = true;
+      resources.discard_prepared();
+      return false;
+    }
+    return true;
+  }
+  bool preparation_capacity_exceeded() const override {
+    return capacity_exceeded_ || resources.preparation_capacity_exceeded();
+  }
+  PageNativeStateMemory metadata_memory() const {
+    PageNativeStateMemory result;
+    const auto add = [&](const auto& memory) {
+      result.active_metadata_bytes += memory.active_bytes;
+      result.staged_metadata_bytes += memory.staged_bytes;
+    };
+    add(media.memory()); add(forecasts.memory()); add(relays.memory()); add(fans.memory());
+    add(percent.memory()); add(number.memory()); add(temperature.memory()); add(timers.memory());
+    add(covers.memory()); add(access.memory()); add(alarms.memory()); add(acknowledgements.memory());
+    const auto ha = graph.memory();
+    const auto producers = local.memory();
+    result.active_metadata_bytes += ha.active_arena_bytes - ha.active_state_capacity_bytes +
+        producers.state.active_arena_bytes - producers.state.active_state_capacity_bytes +
+        producers.binding_bytes - producers.staged_binding_bytes;
+    result.staged_metadata_bytes += ha.staged_arena_bytes - ha.staged_state_capacity_bytes +
+        producers.state.staged_arena_bytes - producers.state.staged_state_capacity_bytes +
+        producers.staged_binding_bytes;
+    // Calendar/timezone owners retain fixed scalars and borrowed PageStore
+    // views; neither has a per-card allocation to add here.
+    return result;
   }
   void discard_prepared() override { resources.discard_prepared(); }
   void activate_prepared(const PageStore &store) override {
@@ -185,6 +230,8 @@ public:
 
 private:
   PageRuntimeResourcesGroup<16> resources;
+  size_t metadata_limit_;
+  bool capacity_exceeded_{false};
   bool initial_values_pending_{false};
   bool configured_{false}, initialized_{false}, stopped_{false},
       running_{false}, calendar_installed_{false}, timezone_installed_{false};

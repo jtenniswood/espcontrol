@@ -21,6 +21,26 @@ and publishes the whole graph before other settings. Physical nested testing and
 durable-v2 release enablement remain separate gates.
 No nested-page candidate has been flashed to a physical device yet.
 
+The generated contract now describes the logical two-level shape separately
+from memory admission. The 6-, 9-, 15- and 20-slot grids allow at most
+37/186, 82/657, 226/3,165 and 401/7,620 pages/cards respectively, including Home.
+These are shape ceilings, not guaranteed full layouts. `/api/v1/capabilities`
+reports them as `max_runtime_pages` and `max_runtime_cards`. Inactive records
+remain preserved within the document budget rather than counting as runtime cards.
+The same response advertises `max_page_store_bytes` (128 KiB S3, 256 KiB P4),
+`max_state_metadata_bytes` (512 KiB S3, 2 MiB P4) and `max_ha_state_bytes`
+(128 KiB S3, 512 KiB P4). State metadata covers the semantic models, graph
+edges/names/indexes and local producer bindings; it excludes value caches,
+prepared layouts, fixed owners, transport storage, widgets and image buffers.
+Local values retain their separate 16 KiB ceiling. Key-byte and HA dependency
+ceilings stay at the first-level runtime budgets. A prepared replacement must
+fit all ceilings before publication. Local producer bindings allocate per
+active/prepared graph, and failed preparation releases its own bindings.
+Host tests cover larger-than-first-level layouts on all nine profiles, exact
+metadata admission and rollback, and unchanged allocation for an unchanged
+dashboard. These budgets still require physical qualification; writable depth
+remains one and durable document version remains one.
+
 ## Agreed behaviour
 
 - Keep current grid sizes and one Back slot on every non-root page.
