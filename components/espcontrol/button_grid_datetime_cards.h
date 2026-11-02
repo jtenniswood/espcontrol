@@ -1,5 +1,7 @@
 #pragma once
 
+#include "external_memory_allocator.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 struct CalendarCardRef {
@@ -10,8 +12,10 @@ struct CalendarCardRef {
 };
 
 inline CalendarCardRef *calendar_card_refs() {
-  static CalendarCardRef refs[MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS];
-  return refs;
+  // Fixed capacity keeps card references stable while storing metadata in PSRAM.
+  static std::vector<CalendarCardRef, EspControlExternalAllocator<CalendarCardRef>>
+      refs(MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS);
+  return refs.data();
 }
 
 inline int &calendar_card_count() {
