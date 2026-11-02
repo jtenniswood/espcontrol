@@ -1,5 +1,7 @@
 #pragma once
 
+#include "external_memory_allocator.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 inline std::string normalize_weather_state(std::string state) {
@@ -206,8 +208,11 @@ struct WeatherForecastCardRef {
 };
 
 inline WeatherForecastCardRef *weather_forecast_card_refs() {
-  static WeatherForecastCardRef refs[MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS];
-  return refs;
+  // Keep the full capacity and stable element addresses, but place metadata
+  // in PSRAM rather than permanently reserving the S3's internal RAM.
+  static std::vector<WeatherForecastCardRef, EspControlExternalAllocator<WeatherForecastCardRef>>
+      refs(MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS);
+  return refs.data();
 }
 
 inline int &weather_forecast_card_count() {
@@ -523,17 +528,18 @@ inline uint32_t next_weather_forecast_call_id() {
 }
 
 inline WeatherForecastPendingRequest *weather_forecast_pending_requests() {
-  static WeatherForecastPendingRequest requests[WEATHER_FORECAST_PENDING_MAX];
+  static std::vector<WeatherForecastPendingRequest, EspControlExternalAllocator<WeatherForecastPendingRequest>>
+      requests(WEATHER_FORECAST_PENDING_MAX);
+  return requests.data();
+}
+
+inline std::vector<WeatherForecastQueuedRequest, EspControlExternalAllocator<WeatherForecastQueuedRequest>> &weather_forecast_queued_requests() {
+  static std::vector<WeatherForecastQueuedRequest, EspControlExternalAllocator<WeatherForecastQueuedRequest>> requests;
   return requests;
 }
 
-inline std::vector<WeatherForecastQueuedRequest> &weather_forecast_queued_requests() {
-  static std::vector<WeatherForecastQueuedRequest> requests;
-  return requests;
-}
-
-inline std::vector<WeatherForecastRetryRequest> &weather_forecast_retry_requests() {
-  static std::vector<WeatherForecastRetryRequest> requests;
+inline std::vector<WeatherForecastRetryRequest, EspControlExternalAllocator<WeatherForecastRetryRequest>> &weather_forecast_retry_requests() {
+  static std::vector<WeatherForecastRetryRequest, EspControlExternalAllocator<WeatherForecastRetryRequest>> requests;
   return requests;
 }
 
