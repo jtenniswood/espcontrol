@@ -1,11 +1,16 @@
 #pragma once
 #ifdef USE_WEBSERVER
 #include <algorithm>
+#include <chrono>
 #include <cmath>
+#include <condition_variable>
 #include <ctime>
 #include <functional>
+#include <memory>
+#include <mutex>
 
 #include "esphome/components/json/json_util.h"
+#include "esphome/core/application.h"
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #include "configuration_service.h"
 #include "panel_backup.h"
@@ -27,6 +32,43 @@ inline void configure(const char *profile, size_t slots, SettingsWriter writer) 
   context() = {profile, slots, std::move(writer)};
 }
 
+// The HTTP task only owns serialized strings. Entity states are read on the
+// ESPHome main loop, where Home Assistant/editor updates are applied.
+struct SettingsSnapshot {
+  std::mutex mutex;
+  std::condition_variable ready;
+  bool done{false}, success{false}, cancelled{false};
+  std::string settings, screen, identity;
+};
+
+inline bool capture_settings_snapshot(SettingsSnapshot &snapshot) {
+  auto &backup = context();
+  JsonDocument metadata(esphome::json::heap_json_allocator());
+  JsonObject settings_object = metadata["settings"].to<JsonObject>();
+  JsonObject screen_object = metadata["screen"].to<JsonObject>();
+  backup.settings_writer(settings_object, screen_object);
+  JsonObject identity_object = metadata["identity"].to<JsonObject>();
+  identity_object["version"] = 1;
+  identity_object["name"] = panel_identity->saved_name();
+  identity_object["hostname"] = panel_identity->target_hostname();
+  identity_object["mac_suffix"] = panel_identity->suffix();
+  if (metadata.overflowed()) return false;
+  serializeJson(settings_object, snapshot.settings);
+  serializeJson(screen_object, snapshot.screen);
+  serializeJson(identity_object, snapshot.identity);
+  return true;
+}
+
+inline void send_backup_error(esphome::web_server_idf::AsyncWebServerRequest *request,
+                              const char *status, const char *message) {
+  httpd_req_t *raw = *request;
+  // The local request->send wrapper maps unknown status codes to 500.
+  httpd_resp_set_status(raw, status);
+  httpd_resp_set_type(raw, "text/plain");
+  httpd_resp_set_hdr(raw, "Cache-Control", "no-store");
+  httpd_resp_send(raw, message, HTTPD_RESP_USE_STRLEN);
+}
+
 class PanelBackupHandler final : public esphome::web_server_idf::AsyncWebHandler {
  public:
   bool canHandle(esphome::web_server_idf::AsyncWebServerRequest *request) const override {
@@ -37,7 +79,7 @@ class PanelBackupHandler final : public esphome::web_server_idf::AsyncWebHandler
     using namespace configuration;
     // Authenticate before loading settings or returning startup/storage status.
     if (panel_identity == nullptr || !panel_identity->ready()) {
-      request->send(503, "text/plain", "Backup is starting");
+      send_backup_error(request, "503 Service Unavailable", "Backup is starting");
       return;
     }
 #ifdef USE_WEBSERVER_AUTH
@@ -48,39 +90,46 @@ class PanelBackupHandler final : public esphome::web_server_idf::AsyncWebHandler
 #endif
     auto &backup = context();
     if (!panel_config_http_context_ready() || backup.profile == nullptr || !backup.settings_writer) {
-      request->send(503, "text/plain", "Backup is unavailable");
+      send_backup_error(request, "503 Service Unavailable", "Backup is unavailable");
       return;
     }
     auto &config = panel_config_http_context();
     const auto loaded = config.service->load(config.document, config.document_capacity);
     if (!loaded.ok()) {
       // Never present a settings-only or empty-layout file as a complete backup.
-      request->send(503, "text/plain", "Saved configuration is unavailable");
+      send_backup_error(request, "503 Service Unavailable", "Saved configuration is unavailable");
       return;
     }
     if (!valid_backup_document(config.document, loaded.document_size, backup.slots)) {
-      request->send(500, "text/plain", "Saved configuration is invalid");
+      send_backup_error(request, "500 Internal Server Error", "Saved configuration is invalid");
       return;
     }
-    // Settings are small; the potentially large cards, subpages and native
-    // payload below are streamed directly from the stored document.
-    JsonDocument metadata(esphome::json::heap_json_allocator());
-    JsonObject settings_object = metadata["settings"].to<JsonObject>();
-    JsonObject screen_object = metadata["screen"].to<JsonObject>();
-    backup.settings_writer(settings_object, screen_object);
-    JsonObject identity_object = metadata["identity"].to<JsonObject>();
-    identity_object["version"] = 1;
-    identity_object["name"] = panel_identity->saved_name();
-    identity_object["hostname"] = panel_identity->target_hostname();
-    identity_object["mac_suffix"] = panel_identity->suffix();
-    if (metadata.overflowed()) {
-      request->send(500, "text/plain", "Backup settings could not be serialized");
+    auto snapshot = std::make_shared<SettingsSnapshot>();
+    esphome::App.scheduler.set_timeout(nullptr, static_cast<const char *>(nullptr), 0, [snapshot]() {
+      std::unique_lock<std::mutex> lock(snapshot->mutex);
+      // A timed-out HTTP request must not leave work reading entities later.
+      if (snapshot->cancelled) return;
+      snapshot->success = capture_settings_snapshot(*snapshot);
+      snapshot->done = true;
+      lock.unlock();
+      snapshot->ready.notify_one();
+    });
+    std::unique_lock<std::mutex> lock(snapshot->mutex);
+    if (!snapshot->ready.wait_for(lock, std::chrono::seconds(2), [&]() { return snapshot->done; })) {
+      snapshot->cancelled = true;
+      lock.unlock();
+      send_backup_error(request, "503 Service Unavailable", "Backup settings are busy; retry shortly");
       return;
     }
-    std::string settings, screen, identity;
-    serializeJson(settings_object, settings);
-    serializeJson(screen_object, screen);
-    serializeJson(identity_object, identity);
+    if (!snapshot->success) {
+      lock.unlock();
+      send_backup_error(request, "500 Internal Server Error", "Backup settings could not be serialized");
+      return;
+    }
+    std::string settings = std::move(snapshot->settings);
+    std::string screen = std::move(snapshot->screen);
+    std::string identity = std::move(snapshot->identity);
+    lock.unlock();
     char exported_at[25]{};
     const std::time_t now = std::time(nullptr);
     std::tm utc{};

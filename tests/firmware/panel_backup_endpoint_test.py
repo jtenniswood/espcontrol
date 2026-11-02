@@ -9,6 +9,13 @@ ROOT = Path(__file__).resolve().parents[2]
 HEADER = ROOT / "components/espcontrol/panel_backup_endpoint.h"
 PREFIX = r'''#include <algorithm>
 #include <cassert>
+#include <chrono>
+#include <condition_variable>
+#include <memory>
+#include <mutex>
+#include <thread>
+#include <cstdlib>
+#include <cstring>
 #include <cmath>
 #include <ctime>
 #include <functional>
@@ -19,13 +26,31 @@ PREFIX = r'''#include <algorithm>
 #include "panel_config_http_context.h"
 #define USE_WEBSERVER
 #define USE_WEBSERVER_AUTH
-constexpr int HTTP_GET=1, HTTP_POST=2, ESP_OK=0;
+constexpr int HTTP_GET=1, HTTP_POST=2, ESP_OK=0, HTTPD_RESP_USE_STRLEN=-1;
+thread_local bool on_main_loop=false;
+namespace esphome {
+struct Scheduler {
+  bool delay=false;
+  std::function<void()> pending;
+  void set_timeout(void *, const char *, unsigned, std::function<void()> callback) {
+    if (delay) { pending=std::move(callback); return; }
+    std::thread worker([callback]() { on_main_loop=true; callback(); });
+    worker.join();
+  }
+};
+struct Application { Scheduler scheduler; } App;
+}
 struct httpd_req_t {
   int status=200, chunks=0, fail_after=-1;
   bool complete=false;
   std::string body, type;
   std::map<std::string,std::string> headers;
 };
+int httpd_resp_set_status(httpd_req_t *r, const char *v) { r->status=std::atoi(v); return 0; }
+int httpd_resp_send(httpd_req_t *r, const char *v, int n) {
+  r->body.assign(v,n==HTTPD_RESP_USE_STRLEN?std::strlen(v):size_t(n));
+  return 0;
+}
 int httpd_resp_set_type(httpd_req_t *r, const char *v) { r->type=v; return 0; }
 int httpd_resp_set_hdr(httpd_req_t *r, const char *k, const char *v) { r->headers[k]=v; return 0; }
 int httpd_resp_send_chunk(httpd_req_t *r, const char *v, size_t n) {
@@ -68,7 +93,7 @@ class AsyncWebServerRequest {
     return authorized;
   }
   void requestAuthentication() { ++challenges; response.status=401; }
-  void send(int status, const char *, const char *body) { response.status=status; response.body=body; }
+  void send(int status, const char *, const char *body) { response.status=(status==200||status==404||status==409)?status:500; response.body=body; }
 };
 class AsyncWebHandler {
  public:
@@ -143,7 +168,7 @@ int main() {
   size_t size=0; assert(writer.finish(&size)==PanelConfigStatus::OK); service.document.resize(size);
   bind_panel_config_http_context(service,buffer,sizeof(buffer),"user","pass");
   int snapshots=0;
-  configure("panel-test",9,[&](JsonObject,JsonObject){ ++snapshots; });
+  configure("panel-test",9,[&](JsonObject,JsonObject){ assert(on_main_loop); ++snapshots; });
   request={}; request.authorized=false; handler.handleRequest(&request);
   assert(service.loads==0 && snapshots==0 && request.response.status==401);
   service.readable=false;
@@ -169,6 +194,20 @@ int main() {
   assert(request.response.body.substr(request.response.body.size()-3)=="\"}}");
   request={}; request.response.fail_after=0; handler.handleRequest(&request);
   assert(!request.response.complete && request.response.chunks==0);
+  // Main-loop delay must return a real 503, and a late callback must not
+  // capture settings or retain the destroyed HTTP request.
+  const int before_timeout=snapshots;
+  esphome::App.scheduler.delay=true;
+  { AsyncWebServerRequest timed_out; handler.handleRequest(&timed_out);
+    assert(timed_out.response.status==503 && !timed_out.response.complete); }
+  assert(snapshots==before_timeout);
+  assert(esphome::App.scheduler.pending);
+  esphome::App.scheduler.pending();
+  esphome::App.scheduler.pending={};
+  assert(snapshots==before_timeout);
+  esphome::App.scheduler.delay=false;
+  request={}; handler.handleRequest(&request);
+  assert(request.response.status==200 && request.response.complete);
   esphome::web_server_idf::AsyncWebServer server;
   register_panel_backup_endpoint(server); register_panel_backup_endpoint(server);
   assert(server.handlers.size()==1);
@@ -183,7 +222,7 @@ with tempfile.TemporaryDirectory(prefix="backup-endpoint-") as temporary:
     source = folder / "test.cpp"
     source.write_text(PREFIX + header + SUFFIX)
     binary = folder / "test"
-    subprocess.run([os.environ.get("CXX", "c++"), "-std=c++17", "-Wall", "-Wextra", "-Werror", "-UNDEBUG",
+    subprocess.run([os.environ.get("CXX", "c++"), "-std=c++17", "-Wall", "-Wextra", "-Werror", "-UNDEBUG", "-pthread",
                     "-I", str(ROOT / "components/espcontrol"), str(source), "-o", str(binary)], check=True)
     subprocess.run([str(binary)], check=True)
 print("Backup HTTP authorization, errors, headers and streaming checks passed.")
