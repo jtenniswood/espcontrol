@@ -43,6 +43,10 @@ check suite, MIPI model check, docs build, and browser installer check. Chromium
 is installed automatically; on a Linux machine missing its system libraries,
 run `npx playwright install-deps chromium` once.
 
+Standalone icon generation (`python scripts/build.py icons`) also needs the
+lockfile dependencies installed with `npm ci`: browser icon validation uses the
+web compiler to ignore TypeScript declarations that cannot render an icon.
+
 Review `git diff` before committing. Preparation does not rewrite compatibility
 expectations, increase bundle-size budgets, or reconcile conflicting authored
 product definitions. Fix those deliberately when a check reports them. For a

@@ -64,10 +64,11 @@ FAST = ("fast", "ci", "all")
 CI = ("ci", "all")
 RELEASE = ("release",)
 MAINTAINER_DOCS = ("DEVELOPERS.md", "README.md", "product/README.md", "docs/**")
-WEB_SOURCE_HELPERS = ("scripts/web_source.js", "scripts/build_web_bundle.js")
+WEB_SOURCE_HELPERS = ("scripts/web_source.js", "scripts/build_web_bundle.js", "scripts/web_icon_names.js")
 WEB_BUNDLE_INPUTS = ("devices/**", "common/addon/time.yaml")
 WEB_BUNDLE_BUILD_HELPERS = (
     "scripts/build.py",
+    "scripts/web_icon_names.js",
     "scripts/check_timezones.py",
     "scripts/device_profiles.py",
     "scripts/product_schema.py",
@@ -192,7 +193,7 @@ TASKS = (
          ), parallel_safe=True,
          cache="never"),
     task("web-unit", ("node", "--test", "tests/web/unit/**/*.test.js"), profiles=FAST + RELEASE,
-         domains=("web",), inputs=("tests/web/unit/**", "tests/web/*.test.ts", "tests/firmware/panel_config_document_v2_cases.py", "src/webserver/**", "product/v2/product_compatibility.json", "compatibility/fixtures/panel_config_migration_v1.json", "compatibility/fixtures/panel_config_v2.json", "devices/manifest.json", "scripts/load_typescript_module.js", "scripts/web_bundle_budget.js", "package-lock.json"), parallel_safe=True,
+         domains=("web",), inputs=("tests/web/unit/**", "tests/web/*.test.ts", "tests/firmware/panel_config_document_v2_cases.py", "src/webserver/**", "product/v2/product_compatibility.json", "compatibility/fixtures/panel_config_migration_v1.json", "compatibility/fixtures/panel_config_v2.json", "devices/manifest.json", "scripts/load_typescript_module.js", "scripts/web_bundle_budget.js", "scripts/web_icon_names.js", "package-lock.json"), parallel_safe=True,
          cache_tools=("node", "python3")),
     task("native-document-projection", ("node", "scripts/check_native_document_conversion.js"),
          ("node", "scripts/check_nested_page_document.js"),
@@ -206,7 +207,7 @@ TASKS = (
          cache="never"),
     task("generated", ("python3", "scripts/build.py", "--check"),
          ("python3", "scripts/build.py", "--self-test"), profiles=PRODUCT,
-         domains=("product", "firmware", "web", "docs"), inputs=("common/**", "devices/**", "builds/**", "components/espcontrol/**", "components/captive_portal/**", "src/webserver/**", "compatibility/**", "scripts/build.py", "scripts/captive_portal_assets.js", "scripts/build_web_bundle.js", "scripts/web_source.js"),
+         domains=("product", "firmware", "web", "docs"), inputs=("common/**", "devices/**", "builds/**", "components/espcontrol/**", "components/captive_portal/**", "src/webserver/**", "compatibility/**", "scripts/build.py", "scripts/captive_portal_assets.js", "scripts/build_web_bundle.js", "scripts/web_source.js", "scripts/web_icon_names.js"),
          generated_inputs=("components/espcontrol/*_generated.h", "docs/generated/**", "docs/public/**", "product/product_snapshot.json"),
          parallel_safe=True, cache="never"),
     task("device-manifest", ("python3", "scripts/check_device_manifest.py"),
