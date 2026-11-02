@@ -226,6 +226,37 @@
         { "name": "stop", "config": { "entity": "cover.example", "sensor": "stop" } }
       ]
     },
+    "gpio_relay": {
+      "classification": "canonical",
+      "canonicalType": "gpio_relay",
+      "webRegistration": "gpio_relay",
+      "firmwareFamily": "INTERNAL",
+      "lifecycle": {
+        "subscriptions": [
+          "local"
+        ],
+        "actions": [
+          "local"
+        ],
+        "modalOwner": "none"
+      },
+      "modes": [
+        {
+          "name": "switch",
+          "config": {
+            "entity": "gpio_relay_1",
+            "sensor": "switch"
+          }
+        },
+        {
+          "name": "push",
+          "config": {
+            "entity": "gpio_relay_1",
+            "sensor": "push"
+          }
+        }
+      ]
+    },
     "internal": {
       "classification": "canonical", "canonicalType": "internal", "webRegistration": "internal", "firmwareFamily": "INTERNAL",
       "lifecycle": { "subscriptions": ["local"], "actions": ["local"], "modalOwner": "none" },

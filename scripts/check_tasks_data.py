@@ -109,6 +109,7 @@ TASKS = (
              "components/espcontrol/theme_settings.h",
              "components/espcontrol/display_mode_controller.h",
              "components/espcontrol/screensaver_pin.*",
+             "components/espcontrol/gpio_relays.*",
              "components/espcontrol/pin_keypad*.h",
              "components/espcontrol/device_reset.*",
              "components/espcontrol/reset_policy.h",

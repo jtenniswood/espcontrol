@@ -29,6 +29,7 @@
 #include "panel_config_http_context.h"
 #include "panel_identity_endpoint.h"
 #include "screensaver_pin_endpoint.h"
+#include "gpio_relays_endpoint.h"
 #include "button_grid.h"
 
 extern "C" void espcontrol_register_web_server_handlers(
@@ -38,6 +39,7 @@ extern "C" void espcontrol_register_web_server_handlers(
   espcontrol::reset::register_handlers(*server);
   espcontrol::register_panel_identity_endpoint(*server);
   espcontrol::register_screensaver_pin_endpoint(*server);
+  espcontrol::register_gpio_relays_endpoint(*server);
   register_local_sensor_endpoint(*server);
   register_local_action_endpoint(*server);
   espcontrol::configuration::register_panel_config_capabilities_endpoint(*server);
@@ -227,6 +229,18 @@ void EspControlApp::apply_boot_configuration() {
 
 void EspControlApp::setup() {
   screensaver_pin().setup();
+  gpio_relays().setup(panel_config_device_profile_);
+  if (gpio_relays().supported()) {
+    for (size_t i = 0; i < 3; ++i) {
+      const std::string key = "gpio_relay_" + std::to_string(i + 1);
+      const auto settings = gpio_relays().settings();
+      const std::string label = settings.controls[i].name[0] ? settings.controls[i].name : "GPIO Control " + std::to_string(i + 1);
+      register_internal_relay(key, label,
+          [i](bool on) { gpio_relays().set(i, on); },
+          [i]() { gpio_relays().set(i, true, true); },
+          [i]() { return gpio_relays().state(i); });
+    }
+  }
   home_assistant_endpoint_.setup();
   esphome::artwork_image::TransferObserver::instance().set(
       [this](const std::string &origin) -> uint32_t {
@@ -370,6 +384,14 @@ void EspControlApp::initialize_native_configuration() {
 }
 
 void EspControlApp::loop() {
+  gpio_relays().loop(esphome::millis(), [](size_t i, bool on) {
+    const std::string key = "gpio_relay_" + std::to_string(i + 1);
+    if (auto *relay = find_internal_relay(key)) {
+      const auto settings = gpio_relays().settings();
+      relay->label = settings.controls[i].name[0] ? settings.controls[i].name : "GPIO Control " + std::to_string(i + 1);
+    }
+    notify_internal_relay_changed(key, on);
+  });
   home_assistant_endpoint_.loop();
   core_.run_once();
   // The app core starts before WiFi so Home Assistant boot automations are
@@ -385,6 +407,7 @@ void EspControlApp::on_safe_shutdown() {
 }
 
 void EspControlApp::on_shutdown() {
+  gpio_relays().shutdown();
   esphome::artwork_image::TransferObserver::instance().set({}, {});
   cards::set_card_runtime_registry_service(nullptr);
   core_.stop();

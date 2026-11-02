@@ -1,3 +1,4 @@
+import { buildGpioRelaySettings, gpioRelayProfileSupported } from "./gpio_relays";
 import { buildScreensaverPinSettings } from "./screensaver_pin";
 import { resetAwareFetch } from "../api/reset_session";
 import { state } from "../state/app_instance";
@@ -660,6 +661,19 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
             batteryStatusCard,
             systemSettingsCards.resetCard,
         ]);
+        if (gpioRelayProfileSupported(layout.deviceId)) {
+            let gpioCard: HTMLElement | undefined;
+            const advancedSection = document.createElement("div");
+            advancedSection.hidden = true;
+            const gpioSettings = buildGpioRelaySettings(document, resetAwareFetch, fields, visible => {
+                if (gpioCard) gpioCard.hidden = !visible;
+                advancedSection.hidden = !visible;
+            });
+            gpioCard = makeCollapsibleCard("GPIO Relays", gpioSettings, true);
+            gpioCard!.hidden = true;
+            appendSettingsSection(advancedSection, "Advanced", [gpioCard]);
+            deviceConfig.appendChild(advancedSection);
+        }
         page.appendChild(config);
         page.appendChild(buildApplyBar());
         parent.appendChild(page);

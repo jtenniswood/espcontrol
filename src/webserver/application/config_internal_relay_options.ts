@@ -4,8 +4,10 @@ import { cardContractOptionSpec } from "./config_option_core";
 
 export function createConfigInternalRelayOptionsFeature(
     deviceProfile: Pick<DeviceConfig, "features">,
+    relayOptions?: () => { key: string; label: string }[],
 ) {
     function internalRelayOptions(this: any) {
+        if (relayOptions) return relayOptions();
         return (deviceProfile.features && deviceProfile.features.internalRelays) || [];
     }
 

@@ -4213,6 +4213,79 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "precision": "tomorrow",
       "options": ""
     }
+  },
+  "gpio_relay": {
+    "label": "GPIO Relay",
+    "allowInSubpage": true,
+    "domains": [],
+    "options": [
+      {
+        "name": "internal_mode",
+        "label": "Mode",
+        "kind": "choice",
+        "values": [
+          "switch",
+          "push"
+        ],
+        "defaultValue": "switch",
+        "storageField": "sensor",
+        "omitDefault": false
+      }
+    ],
+    "behavior": {
+      "internalRelay": {
+        "defaultIcons": {
+          "switch": "Lightbulb Outline",
+          "push": "Gesture Tap"
+        },
+        "defaultIconOn": "Lightbulb"
+      }
+    },
+    "normalization": {
+      "fields": {
+        "entity": {
+          "policy": "keep"
+        },
+        "label": {
+          "policy": "keep"
+        },
+        "icon": {
+          "policy": "keep"
+        },
+        "icon_on": {
+          "policy": "keep"
+        },
+        "sensor": {
+          "policy": "keep"
+        },
+        "unit": {
+          "policy": "keep"
+        },
+        "type": {
+          "policy": "default",
+          "value": "gpio_relay"
+        },
+        "precision": {
+          "policy": "keep"
+        },
+        "options": {
+          "policy": "clear"
+        }
+      },
+      "unknownOptions": "drop",
+      "canonicalOptionOrder": []
+    },
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
+      "sensor": "",
+      "unit": "",
+      "type": "gpio_relay",
+      "precision": "",
+      "options": ""
+    }
   }
 };
 export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
@@ -4769,6 +4842,18 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
       "runtimeAllocation": true,
       "subpage": true
     }
+  },
+  "gpio_relay": {
+    "driver": "internal",
+    "capabilities": {
+      "informationOnly": false,
+      "subscriptions": true,
+      "actions": true,
+      "numericControl": false,
+      "modal": false,
+      "runtimeAllocation": false,
+      "subpage": true
+    }
   }
 };
 export const CARD_CONTRACT_MIGRATION_ALIASES: Readonly<Record<string, Partial<CardConfig>>> = {
@@ -4843,7 +4928,8 @@ export const CARD_CONTRACT_SUBPAGE_TYPE_CODES: Readonly<Record<string, string>> 
   "screensaver": "SS",
   "webhook": "WH",
   "internal": "I",
-  "subpage": "G"
+  "subpage": "G",
+  "gpio_relay": "GR"
 };
 export const CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE: Readonly<Record<string, string>> = {
   "TM": "timer",
@@ -4885,7 +4971,8 @@ export const CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE: Readonly<Record<string, string
   "SS": "screensaver",
   "WH": "webhook",
   "I": "internal",
-  "G": "subpage"
+  "G": "subpage",
+  "GR": "gpio_relay"
 };
 export const CARD_CONTRACT_LARGE_NUMBERS: Readonly<Record<string, LargeNumbersRule>> = {
   "": true,

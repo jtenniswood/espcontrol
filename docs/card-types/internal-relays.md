@@ -34,3 +34,5 @@ Push Button mode shows one **Icon** field, because it does not have a separate o
 ## When to Use It
 
 Use Internal Switches cards when the panel itself should operate the connected circuit, even during a Home Assistant outage. Use normal [Switch](/card-types/switches) cards with Home Assistant relay entities when you specifically want the command to go through Home Assistant automations or permissions.
+
+For external relay modules connected to user-assigned pins on a 7-inch panel, use [GPIO Relay](/card-types/gpio-relays).

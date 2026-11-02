@@ -56,6 +56,7 @@ enum class CardTypeId : uint8_t {
   WIFI_QR,
   WIFI_QR_CARD,
   WEATHER_FORECAST,
+  GPIO_RELAY,
   UNKNOWN,
 };
 
@@ -172,6 +173,7 @@ inline CardTypeId card_type_id(const std::string &type) {
   if (type == "wifi_qr") return CardTypeId::WIFI_QR;
   if (type == "wifi_qr_card") return CardTypeId::WIFI_QR_CARD;
   if (type == "weather_forecast") return CardTypeId::WEATHER_FORECAST;
+  if (type == "gpio_relay") return CardTypeId::GPIO_RELAY;
   return CardTypeId::UNKNOWN;
 }
 
@@ -221,6 +223,7 @@ inline CardRuntimeSpec card_runtime_spec(CardTypeId type) {
     case CardTypeId::WIFI_QR: return {type, CardDriverId::WIFI_QR, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_SUBPAGE)};
     case CardTypeId::WIFI_QR_CARD: return {type, CardDriverId::WIFI_QR, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_SUBPAGE)};
     case CardTypeId::WEATHER_FORECAST: return {type, CardDriverId::WEATHER, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
+    case CardTypeId::GPIO_RELAY: return {type, CardDriverId::INTERNAL, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_SUBPAGE)};
     default: return {};
   }
 }
@@ -619,6 +622,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "wifi_qr") return "Wifi Sharing";
   if (type == "wifi_qr_card") return "QR Card";
   if (type == "weather_forecast") return "Weather Forecast";
+  if (type == "gpio_relay") return "GPIO Relay";
   return type.empty() ? "Switch" : type.c_str();
 }
 
@@ -667,6 +671,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "wifi_qr") return true;
   if (type == "wifi_qr_card") return true;
   if (type == "weather_forecast") return true;
+  if (type == "gpio_relay") return true;
   return false;
 }
 
@@ -715,6 +720,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "wifi_qr") return "Wifi";
   if (type == "wifi_qr_card") return "Auto";
   if (type == "weather_forecast") return "Auto";
+  if (type == "gpio_relay") return "Lightbulb Outline";
   return "Auto";
 }
 
@@ -763,6 +769,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "wifi_qr") return "Auto";
   if (type == "wifi_qr_card") return "Auto";
   if (type == "weather_forecast") return "Auto";
+  if (type == "gpio_relay") return "Lightbulb";
   return "Auto";
 }
 
@@ -838,6 +845,7 @@ inline const char *card_contract_subpage_type_code(const std::string &type) {
   if (type == "webhook") return "WH";
   if (type == "internal") return "I";
   if (type == "subpage") return "G";
+  if (type == "gpio_relay") return "GR";
   return type.c_str();
 }
 
@@ -882,5 +890,6 @@ inline std::string card_contract_subpage_type_from_code(const std::string &code)
   if (code == "WH") return "webhook";
   if (code == "I") return "internal";
   if (code == "G") return "subpage";
+  if (code == "GR") return "gpio_relay";
   return code;
 }

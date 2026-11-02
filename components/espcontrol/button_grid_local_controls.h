@@ -448,7 +448,7 @@ inline void send_internal_relay_action(const std::string &key, bool push_mode) {
   }
   bool next = !internal_relay_state(key);
   if (relay->set_state) relay->set_state(next);
-  notify_internal_relay_changed(key, next);
+  notify_internal_relay_changed(key, internal_relay_state(key));
 }
 
 inline void send_internal_relay_action(const ParsedCfg &p) {

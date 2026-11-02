@@ -1455,6 +1455,36 @@
     }
   },
   {
+    "name": "gpio_relay: switch",
+    "input": "~gpio_relay_1,,Lightbulb%20Outline,Lightbulb,switch,,gpio_relay,,",
+    "expected": {
+      "entity": "gpio_relay_1",
+      "label": "",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
+      "sensor": "switch",
+      "unit": "",
+      "type": "gpio_relay",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "gpio_relay: push",
+    "input": "~gpio_relay_1,,Lightbulb%20Outline,Lightbulb,push,,gpio_relay,,",
+    "expected": {
+      "entity": "gpio_relay_1",
+      "label": "",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
+      "sensor": "push",
+      "unit": "",
+      "type": "gpio_relay",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
     "name": "local: accepted_legacy_input",
     "input": "~zoom_mute,,,,local,,local,,",
     "expected": {

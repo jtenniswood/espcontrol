@@ -163,7 +163,7 @@ export function createPreviewClipboardFeature(
             throw cardTransferError("The " + cardTransferTypeLabel(type) +
                 " card type cannot be placed inside a subpage.");
         }
-        if (type === "internal" ||
+        if (type === "internal" || type === "gpio_relay" ||
             (type === "action" && normalized.sensor === ACTION_CARD_LOCAL_ACTION) ||
             (type === "sensor" && normalized.sensor === SENSOR_CARD_LOCAL_SENSOR)) {
             warnings.local = true;

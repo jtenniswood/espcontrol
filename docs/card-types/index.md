@@ -40,6 +40,7 @@ Use this page when you know what you want the panel to do but are not sure which
 | Let visitors scan guest Wifi details | [Wifi Sharing](/card-types/wifi-share) | No entity required |
 | Control media playback, volume, progress, or now-playing display | [Media](/card-types/media) | `media_player` |
 | Control a thermostat or HVAC entity | [Climate](/card-types/climate) | `climate` |
+| Control an external relay through an assigned GPIO pin | [GPIO Relay](/card-types/gpio-relays) | Configured GPIO control |
 | Control a built-in relay on the panel itself | [Internal Switches](/card-types/internal-relays) | Built-in relay |
 | Start the configured screensaver immediately | [Screensaver](/settings/sleep#start-the-screensaver-with-a-card) | No entity required |
 | Lock or unlock the touchscreen controls locally | [Screen Lock](/card-types/screen-lock) | No entity required |

@@ -1293,6 +1293,7 @@ def gen_saved_config_media_h(data):
 
 
 SAVED_CONFIG_STATIC_CARD_TYPES = (
+    "gpio_relay",
     "internal",
     "light_brightness",
     "light_switch",

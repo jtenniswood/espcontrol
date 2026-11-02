@@ -3056,6 +3056,68 @@
       }
     },
     {
+      "name": "gpio_relay: switch",
+      "sourceKind": "contract",
+      "sourceType": "gpio_relay",
+      "mode": "switch",
+      "canonicalType": "gpio_relay",
+      "web": {
+        "registration": "gpio_relay",
+        "picker": {
+          "main": false,
+          "subpage": false,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "88b22e96f4df9274"
+        }
+      },
+      "firmware": {
+        "family": "INTERNAL"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "local"
+        ],
+        "actions": [
+          "local"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
+      "name": "gpio_relay: push",
+      "sourceKind": "contract",
+      "sourceType": "gpio_relay",
+      "mode": "push",
+      "canonicalType": "gpio_relay",
+      "web": {
+        "registration": "gpio_relay",
+        "picker": {
+          "main": false,
+          "subpage": false,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "88b22e96f4df9274"
+        }
+      },
+      "firmware": {
+        "family": "INTERNAL"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "local"
+        ],
+        "actions": [
+          "local"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
       "name": "local: accepted_legacy_input",
       "sourceKind": "runtime_only",
       "sourceType": "local",

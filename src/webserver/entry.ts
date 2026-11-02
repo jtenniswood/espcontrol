@@ -110,6 +110,7 @@ import { registerGarageCardTypes } from "./cards/garage";
 import { registerGateCardTypes } from "./cards/gate";
 import { registerImageCardTypes } from "./cards/image";
 import { registerWifiQrCardTypes } from "./cards/wifi_qr";
+import { gpioRelayOptions, gpioRelayRequest, gpioRelayProfileSupported } from "./application/gpio_relays";
 import { registerInternalCardTypes } from "./cards/internal";
 import { registerLawnMowerCardTypes } from "./cards/lawn_mower";
 import { registerLightTemperatureCardTypes } from "./cards/light_temperature";
@@ -188,6 +189,9 @@ function registerCards(context: ApplicationContext) {
     context.dom.document,
     fields,
   );
+  registerInternalCardTypes(registry, createConfigInternalRelayOptionsFeature({}, gpioRelayOptions),
+    context.dom.document, fields, "gpio_relay");
+  if (gpioRelayProfileSupported(context.device.id)) void gpioRelayRequest(context.dom.fetch).catch(() => {});
   registerLawnMowerCardTypes(registry, context.configuration.robotOptions, fields, cardUi);
   const lightCards = registerLightTemperatureCardTypes(registry, context.configuration.modalTabs, fields, cardUi);
   registerLockCardTypes(registry, context.configuration.lockOptions, fields, cardUi);

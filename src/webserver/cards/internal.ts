@@ -16,6 +16,7 @@ export function registerInternalCardTypes(
     internalRelayOptionsFeature: ConfigInternalRelayOptionsFeature,
     documentService: Document,
     fields: ControlsFieldsFeature,
+    cardType = "internal",
 ): void {
     const { cardBadgeLabelHtml, condField } = fields;
     const {
@@ -49,10 +50,10 @@ export function registerInternalCardTypes(
                 label: b.entity ? "Unavailable relay (" + b.entity + ")" : (relays.length ? "Choose a relay" : "No relays"),
             });
         }
-        var relayField: any = helpers.selectField("Internal Relay", helpers.idPrefix + "internal-relay", options, b.entity || "");
+        var relayField: any = helpers.selectField(cardType === "gpio_relay" ? "GPIO Control" : "Internal Relay", helpers.idPrefix + "internal-relay", options, b.entity || "");
         var relaySelect: any = relayField.select;
         relaySelect.disabled = !relays.length;
-        helpers.requireField(relaySelect, "Choose an available internal relay before saving.", undefined,
+        helpers.requireField(relaySelect, "Choose an available relay control before saving.", undefined,
             function (value: string) {
                 return internalRelayOptions().some(function (relay: any) { return relay.key === value; });
             });
@@ -84,20 +85,20 @@ export function registerInternalCardTypes(
             pushBadge: "gesture-tap",
         },
     };
-    registry.register("internal", {
-        label: function (this: any) { return cardContractCardLabel("internal"); },
-        allowInSubpage: function (this: any) { return cardContractAllowInSubpage("internal"); },
-        pickerKey: function (this: any) { return cardContractPickerKey("internal"); },
-        hidden: function (this: any) { return cardContractHidden("internal"); },
+    const definition = {
+        label: function (this: any) { return cardContractCardLabel(cardType); },
+        allowInSubpage: function (this: any) { return cardContractAllowInSubpage(cardType); },
+        pickerKey: function (this: any) { return cardContractPickerKey(cardType); },
+        hidden: function (this: any) { return cardContractHidden(cardType); },
         hideLabel: true,
         labelPlaceholder: "e.g. Porch Light",
-        defaultConfig: function (this: any) { return cardContractDefaultConfig("internal"); },
+        defaultConfig: function (this: any) { return cardContractDefaultConfig(cardType); },
         cardMetadata: INTERNAL_CARD_METADATA,
         isAvailable: function (this: any) {
             return internalRelayOptions().length > 0;
         },
         onSelect: function (this: any, b?: any) {
-            var defaults: any = cardContractDefaultConfig("internal");
+            var defaults: any = cardContractDefaultConfig(cardType);
             Object.keys(defaults).forEach(function (this: any, key?: any) { b[key] = defaults[key]; });
             ensureInternalRelaySelection(b);
         },
@@ -216,5 +217,7 @@ export function registerInternalCardTypes(
                 labelHtml: cardBadgeLabelHtml(helpers, label, badge),
             };
         },
-    });
+    };
+    if (cardType === "gpio_relay") registry.register("gpio_relay", definition);
+    else registry.register("internal", definition);
 }

@@ -9,6 +9,11 @@
 
 template<typename Config>
 inline bool normalize_saved_config_static(Config &config) {
+  if (config.type == "gpio_relay") {
+    config.type = "gpio_relay";
+    config.options.clear();
+    return true;
+  }
   if (config.type == "internal") {
     config.type = "internal";
     config.options.clear();

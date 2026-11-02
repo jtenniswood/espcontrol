@@ -4,7 +4,7 @@
 // The same visual, binding, interaction, layout, and cleanup entry points serve
 // main-grid and subpage cards while preserving their established ownership.
 // Contract coverage markers: type == "", "action", "alarm_action",
-// "fan_switch", "internal", "light_switch", "push", "screen_lock", "screensaver", "webhook".
+// "fan_switch", "gpio_relay", "internal", "light_switch", "push", "screen_lock", "screensaver", "webhook".
 
 namespace espcontrol::cards {
 

@@ -653,6 +653,18 @@
           "runtimeAllocation": true,
           "subpage": true
         }
+      },
+      "gpio_relay": {
+        "driver": "internal",
+        "capabilities": {
+          "informationOnly": false,
+          "subscriptions": true,
+          "actions": true,
+          "numericControl": false,
+          "modal": false,
+          "runtimeAllocation": false,
+          "subpage": true
+        }
       }
     }
   },
@@ -4709,6 +4721,79 @@
         "precision": "tomorrow",
         "options": ""
       }
+    },
+    "gpio_relay": {
+      "label": "GPIO Relay",
+      "allowInSubpage": true,
+      "domains": [],
+      "options": [
+        {
+          "name": "internal_mode",
+          "label": "Mode",
+          "kind": "choice",
+          "values": [
+            "switch",
+            "push"
+          ],
+          "defaultValue": "switch",
+          "storageField": "sensor",
+          "omitDefault": false
+        }
+      ],
+      "behavior": {
+        "internalRelay": {
+          "defaultIcons": {
+            "switch": "Lightbulb Outline",
+            "push": "Gesture Tap"
+          },
+          "defaultIconOn": "Lightbulb"
+        }
+      },
+      "normalization": {
+        "fields": {
+          "entity": {
+            "policy": "keep"
+          },
+          "label": {
+            "policy": "keep"
+          },
+          "icon": {
+            "policy": "keep"
+          },
+          "icon_on": {
+            "policy": "keep"
+          },
+          "sensor": {
+            "policy": "keep"
+          },
+          "unit": {
+            "policy": "keep"
+          },
+          "type": {
+            "policy": "default",
+            "value": "gpio_relay"
+          },
+          "precision": {
+            "policy": "keep"
+          },
+          "options": {
+            "policy": "clear"
+          }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
+      },
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Lightbulb Outline",
+        "icon_on": "Lightbulb",
+        "sensor": "",
+        "unit": "",
+        "type": "gpio_relay",
+        "precision": "",
+        "options": ""
+      }
     }
   },
   "migrationActions": {
@@ -4988,6 +5073,7 @@
     "screensaver": "SS",
     "webhook": "WH",
     "internal": "I",
-    "subpage": "G"
+    "subpage": "G",
+    "gpio_relay": "GR"
   }
 }

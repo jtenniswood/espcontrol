@@ -7,6 +7,11 @@ import type { CardConfig } from "../contracts/types";
 import { configOptionEnabled } from "../model/config_primitives";
 
 export function normalizeSavedConfigStatic(config: CardConfig): boolean {
+  if (config.type === "gpio_relay") {
+    config.type = "gpio_relay";
+    config.options = "";
+    return true;
+  }
   if (config.type === "internal") {
     config.type = "internal";
     config.options = "";
