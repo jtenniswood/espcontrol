@@ -1075,6 +1075,7 @@ def main() -> int:
     with TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         shutil.copy2(PARSER_HEADER, tmp_path / "button_grid_config_parser.h")
+        shutil.copy2(PARSER_HEADER.parent / "config_field_decode.h", tmp_path / "config_field_decode.h")
         shutil.copy2(PARSER_HEADER.with_name("i18n_generated.h"), tmp_path / "i18n_generated.h")
         shutil.copy2(DISPLAY_COLOR_HEADER, tmp_path / "display_color.h")
         shutil.copy2(MEDIA_CONFIG_HEADER, tmp_path / "button_grid_media_config.h")
