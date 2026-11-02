@@ -2560,7 +2560,7 @@
         "registration": "subpage",
         "picker": {
           "main": true,
-          "subpage": false,
+          "subpage": true,
           "infoOnly": false
         },
         "preview": {
