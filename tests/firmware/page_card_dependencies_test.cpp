@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "page_card_dependencies.h"
+#include "nested_page_fixture.h"
 #include "button_grid_card_runtime.h"
 #include "page_store_goldens.h"
 #include "panel_config_document.h"
@@ -63,6 +64,20 @@ struct Sink final : PageDependencySink {
 std::set<std::string> declarations(const std::string &config,bool low_heap=false) {
   Document doc(DEVICE_UI_PROFILES[8]);doc.button(1,config);auto store=doc.finish();Sink sink;
   assert(PageCardDependencies({low_heap}).enumerate(store,sink));return sink.pairs();
+}
+void nested_ancestor_indicators() {
+  auto limits=DEVICE_UI_PROFILES[8];limits.max_navigation_depth=2;
+  auto records=test::summary_nested(limits,true);
+  for(auto &row:records) {
+    if(row.kind==test::K::STRING && row.id==75)row.text="vacuum";
+    if(row.kind==test::K::STRING && row.id==76)row.text="vacuum.leaf";
+  }
+  test::NativeGraphFixture fixture(limits,std::move(records));Sink sink;
+  assert(PageCardDependencies().enumerate(fixture.store,sink));
+  const auto leaf=fixture.store.page(2)->first_card;
+  assert(sink.pairs(leaf).count("vacuum.leaf/")==1);
+  // Explicit intermediate state does not stop the automatic ancestor from
+  // reserving the leaf state used by its descendant summary.
 }
 void sensor_fields_and_modes() {
   assert(declarations("sensor.unused;Name;Auto;Auto;;;sensor;1;").empty());
@@ -262,6 +277,7 @@ void maximum_live_sensor_dependencies() {
 }
 }  // namespace
 int main() {
+  nested_ancestor_indicators();
   alarm_name_dependencies();
   sensor_fields_and_modes();
   actions_and_numeric_controls();

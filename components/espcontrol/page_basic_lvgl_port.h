@@ -676,8 +676,8 @@ class PageBasicLvglPort final:public PageRendererPort {
       forecast_frames=std::max(forecast_frames,count);
     }
     for(PageId page=1;page<store.page_count();++page) {
-      std::array<CardId,Slots> cards{};size_t used=0;
-      if(!collect_summary(store,page,cards,used)||used>SIZE_MAX-summary_count)return false;
+      size_t used=0;
+      if(!collect_summary(store,page,nullptr,0,used)||used>SIZE_MAX-summary_count)return false;
       summary_count+=used;
     }
     if(has_weather) {
@@ -841,12 +841,13 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(writer.used!=strings.bytes){discard_prepared();return false;}
     size_t summary_used=0;auto *summary=reinterpret_cast<CardId *>(static_cast<char *>(memory)+summary_offset);
     for(PageId page=1;page<store.page_count();++page) {
-      std::array<CardId,Slots> cards{};size_t used=0;
-      if(!collect_summary(store,page,cards,used)||used>summary_count-summary_used){discard_prepared();return false;}
+      size_t used=0;
+      if(!collect_summary(store,page,summary+summary_used,summary_count-summary_used,used)){
+        discard_prepared();return false;
+      }
       if(used==0)continue;
       const auto owner=store.page(page)->owner;
       auto &parent=prepared(staged_)[owner];parent.summary=summary+summary_used;parent.summary_count=static_cast<uint16_t>(used);
-      for(size_t index=0;index<used;++index)new(summary+summary_used+index) CardId(cards[index]);
       summary_used+=used;
     }
     if(summary_used!=summary_count){discard_prepared();return false;}
@@ -1473,16 +1474,32 @@ class PageBasicLvglPort final:public PageRendererPort {
   }
   PageBasicMemory memory()const{auto m=memory_;m.fixed_bytes=sizeof(*this);m.borrowed_widgets=Slots*6;for(const auto &w:widgets_)m.borrowed_widgets+=(w.fill?1:0)+(w.forecast?1:0)+(w.slider?1:0);m.forecast_frames=active_.frame_count;m.active_bytes=active_.bytes;m.staged_bytes=staged_.bytes;return m;}
  private:
-  bool collect_summary(const PageStore &store,PageId page_id,std::array<CardId,Slots> &cards,size_t &used)const {
+  bool collect_summary(const PageStore &store,PageId page_id,CardId *cards,size_t capacity,size_t &used)const {
     used=0;const auto *page=store.page(page_id);if(!page||!page->navigable)return true;
     const auto *owner=store.card(page->owner);if(!owner)return false;
     if(!store.field(*owner,CardField::ENTITY).empty()||store.field(*owner,CardField::SENSOR)!="indicator")return true;
+    return collect_summary_cards(store,page_id,cards,capacity,used);
+  }
+  bool collect_summary_cards(const PageStore &store,PageId page_id,CardId *cards,size_t capacity,size_t &used)const {
+    if(store.page_depth(page_id)>2)return false;
     std::array<PageCellLayout,Slots>cells{};PageBackAppearance back;
     if(!compile_page_layout(store,page_id,geometry_,cells.data(),Slots,&back))return false;
-    for(const auto &cell:cells) {
-      if(!cell.visible||cell.back||basic_folder_child_indicator(store,cell.card).empty())continue;
-      bool duplicate=false;for(size_t previous=0;previous<used;++previous)duplicate|=cards[previous]==cell.card;
-      if(!duplicate)cards[used++]=cell.card;
+    for(size_t index=0;index<Slots;++index) {
+      const auto &cell=cells[index];
+      if(!cell.visible||cell.back||cell.card==NO_CARD)continue;
+      bool duplicate=false;
+      for(size_t previous=0;previous<index;++previous)
+        duplicate|=cells[previous].visible&&!cells[previous].back&&cells[previous].card==cell.card;
+      if(duplicate)continue;
+      const auto *card=store.card(cell.card);if(!card)return false;
+      if(!basic_folder_child_indicator(store,cell.card).empty()) {
+        if(used==UINT16_MAX || (cards && used>=capacity))return false;
+        if(cards)new(cards+used)CardId(cell.card);
+        ++used;
+      }
+      const auto *target=store.page(card->target);
+      if(target && target->navigable &&
+         (target->parent!=page_id || !collect_summary_cards(store,card->target,cards,capacity,used)))return false;
     }
     return true;
   }

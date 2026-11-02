@@ -18,12 +18,15 @@ PageStoreRuntime::~PageStoreRuntime() {
 bool PageStoreRuntime::prepared_within_limits() const {
   const auto *root = staged_.page(0);
   if (!root || root->runtime_card_count > limits_.slot_count) return false;
-  size_t child_pages = 0;
+  size_t first_level_pages = 0;
   for (PageId id = 1; id < staged_.page_count(); ++id) {
     const auto *page = staged_.page(id);
     if (!page->navigable) continue;
-    if (++child_pages > limits_.max_first_level_subpages || page->parent != 0 ||
-        limits_.max_navigation_depth < 1 || page->runtime_card_count > limits_.cards_per_subpage) return false;
+    const auto depth = staged_.page_depth(id);
+    const auto *parent = staged_.page(page->parent);
+    if (depth == NO_PAGE || depth > limits_.max_navigation_depth || !parent || !parent->navigable ||
+        (depth == 1 && ++first_level_pages > limits_.max_first_level_subpages) ||
+        page->runtime_card_count > limits_.cards_per_subpage) return false;
     for (size_t index = 0; index < page->runtime_card_count; ++index) {
       const auto *card = staged_.card(page->first_card + index);
       const auto type = staged_.field(*card, CardField::TYPE);

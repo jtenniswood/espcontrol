@@ -40,6 +40,8 @@ int main() {
       std::strstr(capabilities.data(), "\"document_versions\":[1,2]") != nullptr &&
       std::strstr(capabilities.data(), "\"default_document_version\":1") != nullptr &&
       std::strstr(capabilities.data(), "\"durable_document_version\":1") != nullptr &&
+      std::strstr(capabilities.data(), "\"max_navigation_depth\":2") != nullptr &&
+      std::strstr(capabilities.data(), "\"writable_navigation_depth\":1") != nullptr &&
       std::strstr(capabilities.data(), "\"max_v2_document_bytes\":524288") != nullptr &&
       std::strstr(capabilities.data(), "\"preserves_inactive_records\":true") != nullptr &&
       std::strstr(capabilities.data(), "\"read\":true") != nullptr &&

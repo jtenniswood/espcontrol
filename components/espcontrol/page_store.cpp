@@ -1,5 +1,6 @@
 #include "page_store.h"
 
+#include <algorithm>
 #include <cstring>
 #include <limits>
 #include <new>
@@ -155,146 +156,197 @@ class PageStoreBuilder {
   PageStoreStatus build_v2(const uint8_t *document, size_t size,
       const DeviceUiLimits &limits, void *workspace, size_t workspace_size,
       PageStore *output) {
-    using Kind = PanelConfigV2Kind;
-    using Row = PanelConfigV2Record;
-    using namespace panel_config_projection_detail;
     auto *state = new (workspace) V2StageState{};
     const size_t index_size = (workspace_size - V2_STAGE_FIXED) / 2;
     auto *index = static_cast<uint8_t *>(workspace) + V2_STAGE_FIXED;
     PanelConfigV2Reader reader(document, size);
     if (reader.validate(index, index_size) != PanelConfigStatus::OK)
       return PageStoreStatus::INVALID_DOCUMENT;
-    auto *positions = reinterpret_cast<V2Position *>(index + index_size);
-    size_t position_count = 0, root_count = limits.slot_count, page_count = 1;
-    Row row, root;
-    reader.record(Kind::PAGE, 0, &root);
+    PanelConfigV2Record row;
     for (size_t i = 0; i < reader.record_count(); ++i) {
       reader.record(i, &row);
-      if (row.kind == Kind::DEVICE_PROFILE && row.text != limits.device_profile)
-        return PageStoreStatus::PROFILE_MISMATCH;
-      if (row.kind == Kind::CARD) {
-        new (positions + position_count++) V2Position{row.first, row.second, row.id, 0};
-        if (!row.first) {
-          if (row.second > state->roots.size()) return PageStoreStatus::INVALID_DOCUMENT;
-          state->roots[row.second - 1] = row.id;
-          root_count = std::max(root_count, size_t(row.second));
-        }
-      } else if (row.kind == Kind::PAGE && row.id) {
-        // The wire codec can describe future nested pages. This runtime cannot
-        // activate them until the separate depth-two feature is qualified.
-        if (row.first != 0) return PageStoreStatus::INVALID_DOCUMENT;
-        Row owner;
-        reader.record(Kind::CARD, row.second, &owner);
-        if (owner.first != 0 || owner.second > state->pages.size())
-          return PageStoreStatus::INVALID_DOCUMENT;
-        state->pages[owner.second - 1] = row.id;
-        ++page_count;
-      } else if (row.kind == Kind::SETTING && reader.string(row.id) == "button_order" &&
-                 reader.string(row.first) != reader.string(root.third)) {
+      if (row.kind == PanelConfigV2Kind::PAGE && row.id &&
+          limits.max_navigation_depth < (row.first ? 2 : 1))
         return PageStoreStatus::INVALID_DOCUMENT;
-      }
     }
-    std::sort(positions, positions + position_count, [](const V2Position &a, const V2Position &b) {
-      return a.page != b.page ? a.page < b.page : a.slot < b.slot;
-    });
-    auto range = [&](uint16_t page) {
-      const auto *begin = std::lower_bound(positions, positions + position_count, page,
-          [](const V2Position &position, uint16_t id) { return position.page < id; });
-      const auto *end = begin;
-      while (end != positions + position_count && end->page == page) ++end;
-      return std::make_pair(begin, end);
-    };
-    size_t card_count = root_count;
-    for (size_t slot = 0; slot < root_count; ++slot) {
-      if (!state->pages[slot]) continue;
-      const auto cards = range(state->pages[slot]);
-      size_t child_slot = 1;
-      for (auto *position = cards.first; position != cards.second; ++position, ++child_slot)
-        if (position->slot != child_slot) return PageStoreStatus::INVALID_DOCUMENT;
-      state->children[slot] = child_slot - 1;
-      card_count += child_slot - 1;
-    }
-    if (card_count >= NO_CARD) return PageStoreStatus::INVALID_DOCUMENT;
-    auto *pages = take<PageDefinition>(page_count);
-    auto *cards = take<CardDefinition>(card_count);
-    auto *source = take<uint8_t>(size);
-    if (!pages || !cards || !source) return PageStoreStatus::BUFFER_TOO_SMALL;
-    std::memcpy(source, document, size);
-    store_.pages_ = pages; store_.cards_ = cards; store_.source_ = source;
-    store_.page_count_ = page_count; store_.card_count_ = card_count;
-    store_.source_version_ = PANEL_CONFIG_DOCUMENT_VERSION_2;
-    store_.strings_begin_ = offset_;
-    store_.memory_.record_bytes = page_count * sizeof(PageDefinition) + card_count * sizeof(CardDefinition);
-    store_.memory_.source_bytes = size;
-    pages[0].card_count = root_count; pages[0].runtime_card_count = limits.slot_count;
-    pages[0].navigable = true; pages[0].order = intern(std::string(reader.string(root.third)));
-    auto normalized = [&](const Row &card, bool child, bool compact, ParsedCfg *parsed) {
-      const auto fields = saved_fields(reader, card, child);
-      if (card.flags == PANEL_CONFIG_V2_RAW_SOURCE) {
-        Fields raw;
-        if (!raw_fields(reader.string(card.raw_source), child, compact,
-                        state->decoded.data(), state->decoded.size(), &raw) || raw != fields)
-          return false;
-      }
-      ParsedCfg saved{std::string(fields[0]), std::string(fields[1]), std::string(fields[2]),
-        std::string(fields[3]), std::string(fields[4]), std::string(fields[5]),
-        std::string(fields[6]), std::string(fields[7]), std::string(fields[8])};
-      if (child) {
-        SubpageBtn button{saved.entity, saved.label, saved.icon, saved.icon_on, saved.sensor,
-          saved.unit, saved.type, saved.precision, saved.options};
-        *parsed = parsed_cfg_from_subpage_btn(normalize_subpage_btn(std::move(button)));
-      } else *parsed = normalize_parsed_cfg(std::move(saved));
-      return true;
-    };
-    PageId next_page = 1;
-    CardId next_card = root_count;
-    for (size_t slot = 0; slot < root_count; ++slot) {
-      ParsedCfg parsed = parse_cfg("");
-      Row owner;
-      if (state->roots[slot]) {
-        reader.record(Kind::CARD, state->roots[slot], &owner);
-        if (!normalized(owner, false, false, &parsed)) return PageStoreStatus::INVALID_DOCUMENT;
-        if (owner.flags == PANEL_CONFIG_V2_ABSENT_IMPORT && !state->pages[slot])
-          return PageStoreStatus::INVALID_DOCUMENT;
-      }
-      set_card(cards[slot], parsed, slot + 1);
-      const auto wire_page = state->pages[slot];
-      if (!wire_page) {
-        if (parsed.type == "subpage") return PageStoreStatus::INVALID_DOCUMENT;
-        continue;
-      }
-      Row page, navigation;
-      reader.record(Kind::PAGE, wire_page, &page);
-      const bool folder = saved_fields(reader, owner)[6] == "subpage";
-      const bool navigable = reader.record(Kind::NAVIGATION, owner.id, &navigation);
-      if (folder != navigable || (page.flags == PANEL_CONFIG_V2_ABSENT_IMPORT &&
-          (page.third || state->children[slot] || !folder || !navigable)))
-        return PageStoreStatus::INVALID_DOCUMENT;
-      auto &target = pages[next_page];
-      target.parent = 0; target.owner = slot; target.first_card = next_card;
-      target.card_count = state->children[slot];
-      target.navigable = navigable && slot < limits.slot_count;
-      target.runtime_card_count = target.navigable ? target.card_count : 0;
-      target.order = intern(std::string(reader.string(page.third)));
-      if (target.navigable) cards[slot].target = next_page;
-      const auto children = range(wire_page);
-      for (auto *position = children.first; position != children.second; ++position) {
-        reader.record(Kind::CARD, position->card, &row);
-        if (row.flags == PANEL_CONFIG_V2_ABSENT_IMPORT ||
-            !normalized(row, true, page.flags == PANEL_CONFIG_V2_COMPACT_IMPORT, &parsed))
-          return PageStoreStatus::INVALID_DOCUMENT;
-        set_card(cards[next_card++], parsed, position->slot);
-      }
-      ++next_page;
-    }
-    if (failed_) return PageStoreStatus::BUFFER_TOO_SMALL;
-    store_.memory_.arena_bytes = offset_;
-    store_.memory_.string_bytes = offset_ - store_.strings_begin_;
-    *output = store_;
-    return PageStoreStatus::OK;
+    auto *positions = reinterpret_cast<V2Position *>(index + index_size);
+    return build_v2_pages(reader, document, size, limits, *state, positions, output);
   }
 
  private:
+  static bool normalize_v2(PanelConfigV2Reader &reader,const PanelConfigV2Record &card,
+                          bool child,bool compact,V2StageState &state,ParsedCfg *parsed) {
+    using namespace panel_config_projection_detail;
+    const auto fields=saved_fields(reader,card,child);
+    if(card.flags==PANEL_CONFIG_V2_RAW_SOURCE) {
+      Fields raw;
+      if(!raw_fields(reader.string(card.raw_source),child,compact,state.decoded.data(),
+                     state.decoded.size(),&raw) || raw!=fields)return false;
+    }
+    ParsedCfg saved{std::string(fields[0]),std::string(fields[1]),std::string(fields[2]),
+      std::string(fields[3]),std::string(fields[4]),std::string(fields[5]),
+      std::string(fields[6]),std::string(fields[7]),std::string(fields[8])};
+    if(child) {
+      SubpageBtn button{saved.entity,saved.label,saved.icon,saved.icon_on,saved.sensor,
+        saved.unit,saved.type,saved.precision,saved.options};
+      *parsed=parsed_cfg_from_subpage_btn(normalize_subpage_btn(std::move(button)));
+    } else *parsed=normalize_parsed_cfg(std::move(saved));
+    return true;
+  }
+
+  PageStoreStatus build_v2_pages(PanelConfigV2Reader &reader,const uint8_t *document,size_t size,
+      const DeviceUiLimits &limits,V2StageState &state,V2Position *positions,PageStore *output) {
+    using Kind=PanelConfigV2Kind;
+    using Row=PanelConfigV2Record;
+    using namespace panel_config_projection_detail;
+    state.roots.fill(0);state.pages.fill(0);state.children.fill(0);
+    size_t position_count=0,page_count=0,root_count=limits.slot_count;
+    Row row,root;reader.record(Kind::PAGE,0,&root);
+    for(size_t i=0;i<reader.record_count();++i) {
+      reader.record(i,&row);
+      if(row.kind==Kind::DEVICE_PROFILE && row.text!=limits.device_profile)
+        return PageStoreStatus::PROFILE_MISMATCH;
+      if(row.kind==Kind::CARD) {
+        new(positions+position_count++)V2Position{row.first,row.second,row.id,NO_CARD};
+        if(!row.first) {
+          if(row.second>state.roots.size() || state.roots[row.second-1])return PageStoreStatus::INVALID_DOCUMENT;
+          state.roots[row.second-1]=row.id;root_count=std::max(root_count,size_t(row.second));
+        }
+      } else if(row.kind==Kind::PAGE)++page_count;
+      else if(row.kind==Kind::SETTING && reader.string(row.id)=="button_order" &&
+              reader.string(row.first)!=reader.string(root.third))return PageStoreStatus::INVALID_DOCUMENT;
+    }
+    if(page_count>=NO_PAGE)return PageStoreStatus::INVALID_DOCUMENT;
+    // Each CARD and PAGE consumes at most one eight-byte entry in the existing
+    // second index window. No full identity-space table or retained lookup is added.
+    auto *page_positions=positions+position_count;
+    size_t next=0;
+    for(size_t i=0;i<reader.record_count();++i) {
+      reader.record(i,&row);if(row.kind!=Kind::PAGE)continue;
+      Row owner;
+      if(row.id) {
+        if(!reader.record(Kind::CARD,row.second,&owner) || owner.first!=row.first)
+          return PageStoreStatus::INVALID_DOCUMENT;
+        if(!row.first) {
+          if(owner.second>state.pages.size() || state.pages[owner.second-1])return PageStoreStatus::INVALID_DOCUMENT;
+          state.pages[owner.second-1]=row.id;
+        }
+      }
+      new(page_positions+next++)V2Position{row.id,row.id?owner.second:uint16_t{0},row.second,NO_PAGE};
+    }
+    auto key=[&](const V2Position &position) {
+      if(!position.page)return std::array<uint16_t,4>{0,0,0,0};
+      Row page;reader.record(Kind::PAGE,position.page,&page);
+      if(!page.first)return std::array<uint16_t,4>{1,position.slot,0,position.page};
+      Row parent,owner;reader.record(Kind::PAGE,page.first,&parent);
+      reader.record(Kind::CARD,parent.second,&owner);
+      return std::array<uint16_t,4>{2,owner.second,position.slot,position.page};
+    };
+    std::sort(page_positions,page_positions+page_count,[&](const V2Position &a,const V2Position &b){return key(a)<key(b);});
+    if(!page_count || page_positions[0].page)return PageStoreStatus::INVALID_DOCUMENT;
+    for(size_t i=0;i<page_count;++i) {
+      if(i) {
+        const auto previous=key(page_positions[i-1]),current=key(page_positions[i]);
+        if(previous[0]==current[0] && previous[1]==current[1] && previous[2]==current[2])
+          return PageStoreStatus::INVALID_DOCUMENT;
+      }
+      page_positions[i].reserved=static_cast<uint16_t>(i);
+    }
+    std::sort(positions,positions+position_count,[](const V2Position &a,const V2Position &b){
+      return a.page!=b.page?a.page<b.page:a.slot<b.slot;
+    });
+    auto range=[&](uint16_t page) {
+      auto *begin=std::lower_bound(positions,positions+position_count,page,
+        [](const V2Position &position,uint16_t id){return position.page<id;});
+      auto *end=begin;while(end!=positions+position_count && end->page==page)++end;
+      return std::make_pair(begin,end);
+    };
+    size_t card_count=root_count;
+    for(size_t i=1;i<page_count;++i) {
+      const auto children=range(page_positions[i].page);size_t slot=1;
+      for(auto *position=children.first;position!=children.second;++position,++slot)
+        if(position->slot!=slot)return PageStoreStatus::INVALID_DOCUMENT;
+      card_count+=slot-1;
+    }
+    if(card_count>=NO_CARD)return PageStoreStatus::INVALID_DOCUMENT;
+    auto *pages=take<PageDefinition>(page_count);auto *cards=take<CardDefinition>(card_count);
+    auto *source=take<uint8_t>(size);
+    if(!pages || !cards || !source)return PageStoreStatus::BUFFER_TOO_SMALL;
+    std::memcpy(source,document,size);
+    store_.pages_=pages;store_.cards_=cards;store_.source_=source;
+    store_.page_count_=page_count;store_.card_count_=card_count;
+    store_.source_version_=PANEL_CONFIG_DOCUMENT_VERSION_2;store_.strings_begin_=offset_;
+    store_.memory_.record_bytes=page_count*sizeof(PageDefinition)+card_count*sizeof(CardDefinition);
+    store_.memory_.source_bytes=size;
+    pages[0].card_count=root_count;pages[0].runtime_card_count=limits.slot_count;
+    pages[0].navigable=true;pages[0].order=intern(std::string(reader.string(root.third)));
+    for(size_t slot=0;slot<root_count;++slot) {
+      ParsedCfg parsed=parse_cfg("");
+      if(state.roots[slot]) {
+        reader.record(Kind::CARD,state.roots[slot],&row);
+        if(!normalize_v2(reader,row,false,false,state,&parsed) ||
+           (row.flags==PANEL_CONFIG_V2_ABSENT_IMPORT && !state.pages[slot]))return PageStoreStatus::INVALID_DOCUMENT;
+      }
+      set_card(cards[slot],parsed,slot+1);
+    }
+    const auto roots=range(0);
+    for(auto *position=roots.first;position!=roots.second;++position)position->reserved=position->slot-1;
+    CardId next_card=root_count;
+    for(size_t index=1;index<page_count;++index) {
+      const auto &position=page_positions[index];Row page;
+      reader.record(Kind::PAGE,position.page,&page);
+      auto &target=pages[index];target.parent=page.first;target.owner=page.second;
+      target.first_card=next_card;target.order=intern(std::string(reader.string(page.third)));
+      const auto children=range(position.page);target.card_count=children.second-children.first;
+      for(auto *child=children.first;child!=children.second;++child) {
+        ParsedCfg parsed;reader.record(Kind::CARD,child->card,&row);
+        if(row.flags==PANEL_CONFIG_V2_ABSENT_IMPORT ||
+           !normalize_v2(reader,row,true,page.flags==PANEL_CONFIG_V2_COMPACT_IMPORT,state,&parsed))
+          return PageStoreStatus::INVALID_DOCUMENT;
+        child->reserved=next_card;set_card(cards[next_card++],parsed,child->slot);
+      }
+    }
+    for(PageId index=1;index<page_count;++index) {
+      auto &target=pages[index];const auto parent_wire=target.parent;const auto owner_wire=target.owner;
+      Row parent_record,parent_owner;
+      reader.record(Kind::PAGE,parent_wire,&parent_record);
+      if(parent_wire)reader.record(Kind::CARD,parent_record.second,&parent_owner);
+      // At depth two every parent is root or first-level. The same path key
+      // used above keeps lookup bounded without a second identity table.
+      const std::array<uint16_t,4> parent_key{parent_wire?uint16_t{1}:uint16_t{0},
+        parent_wire?parent_owner.second:uint16_t{0},0,parent_wire};
+      const auto *parent=std::lower_bound(page_positions,page_positions+page_count,parent_key,
+        [&](const V2Position &position,const std::array<uint16_t,4> &value){return key(position)<value;});
+      if(parent==page_positions+page_count || parent->page!=parent_wire || parent->reserved>=index)
+        return PageStoreStatus::INVALID_DOCUMENT;
+      Row owner;reader.record(Kind::CARD,owner_wire,&owner);
+      const auto siblings=range(parent_wire);
+      const auto *position=std::lower_bound(siblings.first,siblings.second,owner.second,
+        [](const V2Position &candidate,uint16_t slot){return candidate.slot<slot;});
+      if(position==siblings.second || position->card!=owner_wire || position->reserved==NO_CARD)
+        return PageStoreStatus::INVALID_DOCUMENT;
+      Row navigation;const bool navigable=reader.record(Kind::NAVIGATION,owner_wire,&navigation);
+      const bool folder=saved_fields(reader,owner)[6]=="subpage";
+      Row wire_page;reader.record(Kind::PAGE,page_positions[index].page,&wire_page);
+      if(folder!=navigable || (wire_page.flags==PANEL_CONFIG_V2_ABSENT_IMPORT &&
+          (wire_page.third || target.card_count || !folder || !navigable)))return PageStoreStatus::INVALID_DOCUMENT;
+      target.parent=parent->reserved;target.owner=position->reserved;
+      const auto &parent_page=pages[target.parent];
+      target.navigable=navigable && parent_page.navigable && target.owner>=parent_page.first_card &&
+        target.owner-parent_page.first_card<parent_page.runtime_card_count;
+      target.runtime_card_count=target.navigable?target.card_count:0;
+      if(target.navigable)cards[target.owner].target=index;
+    }
+    for(size_t i=0;i<position_count;++i) {
+      reader.record(Kind::CARD,positions[i].card,&row);Row navigation;
+      if((saved_fields(reader,row)[6]=="subpage")!=reader.record(Kind::NAVIGATION,row.id,&navigation))
+        return PageStoreStatus::INVALID_DOCUMENT;
+    }
+    if(failed_)return PageStoreStatus::BUFFER_TOO_SMALL;
+    store_.memory_.arena_bytes=offset_;store_.memory_.string_bytes=offset_-store_.strings_begin_;
+    *output=store_;return PageStoreStatus::OK;
+  }
+
   template<typename T> T *take(size_t count) {
     const size_t padding = (alignof(T) - offset_ % alignof(T)) % alignof(T);
     if (padding > capacity_ - offset_) return nullptr;

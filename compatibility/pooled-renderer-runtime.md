@@ -5,7 +5,9 @@ used by the concrete [pooled application](pooled-application-owner.md).
 Generated device profiles select that application at compile time, including
 startup or allocation failure. Standalone consumers without a generated
 profile retain their explicit boot selection. No nesting or capacity change
-is enabled here. Physical qualification remains a cutover requirement.
+is enabled by the generated profiles. Depth-two host fixtures exercise
+immediate-parent Back, restoration by owner path and allocation-free navigation;
+writable depth remains one until the nested-page delivery gates pass.
 
 The real widget port is described in [pooled-basic-cards.md](pooled-basic-cards.md).
 

@@ -85,10 +85,11 @@ class CardEmitter {
           "percentage_step", "oscillating", "direction", "preset_mode", "preset_modes"})) return false;
     return pair(cfg_option_value(config.options, FAN_LIGHT_ENTITY_OPTION));
   }
-  bool emit(const ParsedCfg &config, bool in_subpage, bool aggregate_parent) {
+  bool emit(const ParsedCfg &config, bool in_subpage, bool aggregate_parent, bool nested_folder) {
     const auto context = cards::context_for(config.type, config.sensor,
         in_subpage ? cards::Surface::SUBPAGE : cards::Surface::MAIN_GRID);
-    if (!context.known || (in_subpage && !context.allow_in_subpage)) return false;
+    if (!context.known || (in_subpage && !context.allow_in_subpage &&
+        !(nested_folder && context.runtime.driver == Driver::SUBPAGE))) return false;
     if (context.family == cards::Family::MEDIA && config.entity.empty()) return true;
     if (action_card_option_select(config) || context.runtime.driver == Driver::OPTION_SELECT)
       return pair(config.entity) && pair(config.entity,"options") && friendly(config,config.entity);
@@ -252,7 +253,15 @@ bool PageCardDependencies::enumerate(const PageStore &store, PageDependencySink 
       if (owner==nullptr) return false;
       parent=configuration(store,*owner);
     }
-    const bool aggregate=parent.sensor=="indicator" && parent.entity.empty();
+    bool aggregate=false;
+    for(PageId ancestor=page_id;ancestor!=0;) {
+      const auto *definition=store.page(ancestor);
+      const auto *owner=definition?store.card(definition->owner):nullptr;
+      if(!owner)return false;
+      aggregate|=store.field(*owner,CardField::SENSOR)=="indicator" &&
+                 store.field(*owner,CardField::ENTITY).empty();
+      ancestor=definition->parent;
+    }
     for (size_t i=0;i<page->runtime_card_count;++i) {
       const auto card_id=static_cast<CardId>(page->first_card+i);
       const auto *card=store.card(card_id);
@@ -263,7 +272,7 @@ bool PageCardDependencies::enumerate(const PageStore &store, PageDependencySink 
         if (config.entity.empty()) config.entity=parent.entity;
         if (config.options.empty()) config.options=parent.options;
       }
-      if (!CardEmitter(sink,card_id,policy_.low_heap_media_control).emit(config,page_id!=0,aggregate)) return false;
+      if (!CardEmitter(sink,card_id,policy_.low_heap_media_control).emit(config,page_id!=0,aggregate,card->target!=NO_PAGE)) return false;
     }
   }
   return true;

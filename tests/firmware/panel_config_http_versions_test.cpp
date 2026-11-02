@@ -134,6 +134,12 @@ struct Legacy:LegacyConfigurationAdapter {
   CompatibilityStatus admit_write(uint16_t version,const uint8_t* data,size_t size)override{return adapter.admit_write(version,data,size);}
   bool publish(uint16_t version,const uint8_t* data,size_t size)override{++publications;return adapter.publish(version,data,size);}
   bool mirror(uint16_t version,const uint8_t* data,size_t size)override{assert(version==1);++mirrors;return mirror_ok&&adapter.mirror(version,data,size);}
+  CompatibilityStatus publish_status(uint16_t version,const uint8_t* data,size_t size)override{
+    ++publications;return adapter.publish_status(version,data,size);
+  }
+  CompatibilityStatus mirror_status(uint16_t version,const uint8_t* data,size_t size)override{
+    ++mirrors;return mirror_ok ? adapter.mirror_status(version,data,size) : CompatibilityStatus::RETRYABLE_FAILURE;
+  }
   size_t preference_writes()const {
     size_t count=order.writes+color.writes;
     for(const auto& text:buttons)count+=text.writes;
@@ -475,8 +481,18 @@ void stored_v2_reads_and_replacements() {
   }
   Fixture future(DEVICE_UI_PROFILES[8]);const auto source=nested_document();future.seed_v2(source);
   assert(future.get("2").response==source&&status(future.get("1"))==422);
-  Bytes output(40*1024);assert(future.service.load_and_apply_runtime(output.data(),output.size()).status==ServiceStatus::RUNTIME_PREPARE_FAILED);
-  assert(future.runtime.active().generation()==1&&future.get("2").response==source);
+  const auto preferences=future.legacy.preference_writes();
+  Bytes output(40*1024);
+  assert(future.service.load_and_apply_runtime(output.data(),output.size()).status==ServiceStatus::LEGACY_MIRROR_FAILED);
+  assert(future.runtime.active().generation()==2 && future.runtime.active().source_version()==2);
+  assert(future.runtime.active().page_count()==3 && future.runtime.active().page(2)->parent==1);
+  assert(future.get("2").response==source && future.legacy.preference_writes()==preferences);
+  assert(future.service.synchronize_legacy_runtime(output.data(),output.size()).status==ServiceStatus::LEGACY_MIRROR_FAILED);
+  assert(future.service.retry_compatibility(output.data(),output.size()).status==ServiceStatus::LEGACY_MIRROR_FAILED);
+  const auto compatibility=future.service.compatibility_state();
+  assert(compatibility.publication==CompatibilityStatus::NOT_REPRESENTABLE &&
+         compatibility.persistence==CompatibilityStatus::NOT_REPRESENTABLE && !compatibility.retry_pending());
+  assert(future.get("2").response==source && future.legacy.preference_writes()==preferences);
 }
 void compressed_compatibility_growth() {
   Bytes input(32768);PanelConfigV2Writer writer(input.data(),input.size());assert(writer.begin()==PanelConfigStatus::OK);

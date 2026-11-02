@@ -149,14 +149,19 @@ This changes neither the v1 document bytes nor the live document version.
 `PageStore::stage_v2` reads the validated graph into the same immutable runtime
 records as v1, without serializing a temporary v1 document. Wire identities and
 record order remain independent of runtime indices. Root slots determine the
-runtime page order; retained roots through slot 32 and inactive child pages use
-the same admission as v1. Existing root/child normalization, order/spans/Back
-text, unknown fields and exact source bytes are preserved. Inconsistent raw
-import hints, sparse children, profile mismatches and nested pages fail before
-publication. This reader retains the existing first-level page model.
+runtime page order, with first-level pages before nested pages and owners in
+slot order. Retained roots through slot 32 keep complete inactive subtrees.
+Existing normalization, order/spans/Back text, unknown fields and exact source
+bytes are preserved. Inconsistent raw import hints, sparse children, profile
+mismatches and graphs beyond the supplied navigation-depth limit fail before
+publication. The reader and prepared renderer support depth two when supplied
+capable limits. Generated profiles now provide depth-two reader limits;
+production writes and editor placement remain at depth one. Capabilities expose
+`max_navigation_depth: 2` separately from `writable_navigation_depth: 1`, with the
+latter still fenced by durable-v1 release policy.
 
 The caller supplies aligned, disjoint scratch for a bounded record index,
-card grouping and one 4,095-byte decode window. PageStore retains no scratch or
+card/page grouping and one 4,095-byte decode window. PageStore retains no scratch or
 input pointers. `PageStoreRuntime` accepts either version, uses its injected
 arena allocator for scratch, limits scratch to its configured admission ceiling,
 and releases it before resource preparation. Peak accounting includes the active
@@ -164,7 +169,7 @@ arena, private staged arena, compact arena and scratch while they overlap.
 Activation verifies the prepared version and exact source bytes and makes no
 arena allocation. Preparation failures preserve the active generation.
 
-Host tests cover 3,365 cases across all nine profiles, including imported
+Host tests cover all nine profiles, including imported
 maximum folders, every supported root/child card family and authored
 normalization goldens. Independently authored graphs use forward references and
 large, reordered IDs. Failure tests cover scratch/staging/compaction/resource
@@ -285,7 +290,7 @@ explicit v2 selection cannot accidentally submit v2 bytes as v1.
 
 V2 PUT conversion finishes before runtime preparation or storage writes. The
 projector checks graph/RAW/import-hint agreement and lossless v1 representation;
-currently unsupported nested graphs fail without flattening them. The existing
+nested graphs fail without flattening them while durable storage remains v1. The existing
 runtime still performs profile and fallible resource preparation before commit.
 Invalid/unrepresentable documents fail with 400, conversion-budget exhaustion
 with 413 and allocation failure with 503. The old configuration stays active.
@@ -334,6 +339,16 @@ retains order/spans/Back labels and colours as exact order text, all panel
 settings, inactive definitions, missing versus empty records, malformed escape
 spellings and unknown extra imported fields. It uses the generated compact type
 tables with own-key lookups, so prototype-like unknown names remain data.
+
+The separate `encodePanelPageDocument` / `decodePanelPageDocument` entry points
+retain two levels as an editable graph. Their numeric editor paths are separate
+from wire IDs: 1–32 identify first-level owners; 33–1056 identify a root owner
+and child owner slot. They preserve inactive page data and reject orphaned or
+third-level pages. The flat-v1 projector remains strict. These graph entry
+points are not yet connected to editor creation, clipboard persistence or
+backups. `page_subtree.ts` can capture and stage complete folder trees, remap
+paths during copy/move and validate the whole candidate before returning it;
+failed transfers leave their input unchanged.
 
 Projection rejects stale raw hints, inconsistent root-order/settings, sparse
 child positions, invalid absence provenance and nested pages. New fields use a

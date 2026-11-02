@@ -1,4 +1,5 @@
 #include "native_scene_test_support.h"
+#include "nested_page_fixture.h"
 #include <cmath>
 #include <tuple>
 #include <optional>
@@ -319,6 +320,7 @@ struct ProfileHarness {
   static constexpr size_t slots=limits.slot_count, image_slots=limits.image_slot_count;
   static_assert(ProfileIndex==0||ProfileIndex==2||ProfileIndex==6||ProfileIndex==8,"All grid sizes with actual profile budgets");
   static constexpr bool constrained=ProfileIndex==8;
+  DeviceUiLimits scene_limits{limits};
   Arena arena; Styles styles; Platform platform; PageNetworkStatusSource network;
   PageCountedArena counted{arena};
   lv_obj_t* root;
@@ -332,8 +334,9 @@ struct ProfileHarness {
   using Scene=PageNativeScene<slots,image_slots>;
   alignas(Scene) std::array<uint8_t,sizeof(Scene)> memory{};
   Scene* scene{nullptr};
-  explicit ProfileHarness(bool elastic_state=false, bool production_budget=false, PageCardTranslate translate=nullptr) {
+  explicit ProfileHarness(bool elastic_state=false, bool production_budget=false, PageCardTranslate translate=nullptr, bool nested=false) {
     static_assert(image_slots<=6);
+    if(nested)scene_limits.max_navigation_depth=2;
     columns.fill(LV_GRID_FR(1));columns.back()=LV_GRID_TEMPLATE_LAST;
     rows.fill(LV_GRID_FR(1));rows.back()=LV_GRID_TEMPLATE_LAST;
     root=lv_obj_create(lv_screen_active());
@@ -358,7 +361,7 @@ struct ProfileHarness {
           {cards*40,cards*40,constrained?128u*1024:512u*1024,32*1024,4096},
           {cards,cards,16*1024,HA_TEXT_SENSOR_STATE_MAX_LEN}},constrained?128u*1024:256u*1024}
       : PageNativeSceneBudget{{128,16384,{1024,512,65536,SIZE_MAX,elastic_state?size_t{1024}:SIZE_MAX},{128,128,8192}},65536};
-    scene=new(memory.data()) Scene(limits,counted,budget,
+    scene=new(memory.data()) Scene(scene_limits,counted,budget,
       widgets,{limits.slot_count,limits.grid_columns},theme,page_timezone_resolver(),{},nullptr,styles,platform,network);
     assert(!scene->ready() && !scene->initialize(images,image_slots,&modal,false));
     assert(scene->initialize(images,image_slots,&modal,true) && scene->initialize(images,image_slots,&modal,true));
@@ -970,6 +973,53 @@ void initial_appearance() {
   h.platform.shown=true;h.scene->loop();
   for(size_t i=0;i<9;++i) assert(h.scene->valid(h.scene->binding(i))==(i<6));
 }
+void nested_remote_navigation() {
+  for(unsigned scenario=0;scenario<3;++scenario) {
+    Harness h(false,false,nullptr,true);
+    auto records=test::authored_nested(h.scene_limits);
+    records[3].field_mask|=1<<1;records[3].fields[1]=79;
+    for(auto &row:records)if(row.kind==test::K::STRING) {
+      if(row.id==74)row.text="Nested";
+      if(row.id==75)row.text="climate_control";
+      if(row.id==76)row.text="climate.nested";
+      if(row.id==71)row.text=scenario==2?"3,2":"2,3";
+    }
+    test::Row rooms;rooms.kind=test::K::STRING;rooms.id=79;rooms.text="Rooms";records.push_back(rooms);
+    if(scenario) {
+      auto root=records[3];root.id=60020;root.second=3;root.fields[1]=scenario==1?74:80;
+      test::Row other;other.kind=test::K::STRING;other.id=80;other.text="Other";
+      test::Row page;page.kind=test::K::PAGE;page.id=62002;page.second=root.id;page.third=72;
+      test::Row nav;nav.kind=test::K::NAVIGATION;nav.id=root.id;nav.first=page.id;
+      records.insert(records.end(),{root,other,page,nav});
+      if(scenario==2) {
+        auto owner=records[4];owner.id=62001;owner.first=page.id;
+        test::Row nested;nested.kind=test::K::PAGE;nested.id=62003;nested.first=page.id;nested.second=owner.id;
+        test::Row nested_nav;nested_nav.kind=test::K::NAVIGATION;nested_nav.id=owner.id;nested_nav.first=nested.id;
+        records.insert(records.end(),{owner,nested,nested_nav});
+      }
+    }
+    const auto source=test::wire(std::move(records));
+    assert(h.scene->prepare(2,source.data(),source.size()));
+    assert(h.scene->activate_prepared(18,2,source.data(),source.size()));
+    h.scene->loop();h.scene->loop();h.scene->loop();
+    auto &navigation=static_cast<ApplicationSceneNavigation&>(*h.scene);
+    assert(navigation.can_open_modal("climate.nested") && navigation.open_modal("climate.nested"));
+    h.scene->loop();assert(h.styles.page==(scenario?3:2) && h.scene->active_page()==0);
+    navigation.close_modal();h.scene->loop();
+    assert(navigation.can_open_subpage(" nEsTeD ") && navigation.open_subpage("Nested"));
+    h.scene->loop();
+    const PageId expected=scenario==2?4:2;
+    if(h.scene->active_page()!=expected)std::fprintf(stderr,"nested remote scenario %u: expected page %u, got %u\n",scenario,expected,h.scene->active_page());
+    assert(h.scene->active_page()==expected);
+    assert(navigation.close_subpage());h.scene->loop();assert(h.scene->active_page()==0);
+    // navigate retains its home-only targeting; close_subpage returns Home,
+    // while tapping Back from a nested page returns its actual parent.
+    if(scenario!=1)assert(!navigation.navigate("Nested"));
+    assert(navigation.open_subpage("Nested"));h.scene->loop();
+    click(h.widgets[0].button);h.scene->loop();
+    assert(h.scene->active_page()==(scenario==1?0:scenario==2?2:1));
+  }
+}
 void remote_navigation() {
   Document doc(DEVICE_UI_PROFILES[8]);Harness h;
   auto& navigation=static_cast<ApplicationSceneNavigation&>(*h.scene);
@@ -1202,17 +1252,20 @@ void maximum_p4_climate_cache_replacements() {
 }
 
 int main(int argc,char** argv) {
+  const bool nested=argc==2&&std::string_view(argv[1])=="--nested";
   const bool maximum_p4=argc==2&&std::string_view(argv[1])=="--maximum-p4";
   const bool six=argc==2&&std::string_view(argv[1])=="--six-slot";
   const bool fifteen=argc==2&&std::string_view(argv[1])=="--fifteen-slot";
-  assert(argc==1||maximum_p4||six||fifteen);
+  assert(argc==1||maximum_p4||six||fifteen||nested);
   lv_init();auto* display=lv_display_create(six?480:fifteen?1024:maximum_p4?1280:480,six?800:fifteen?600:maximum_p4?800:480);assert(display);
   lv_timer_pause(lv_display_get_refr_timer(display));
   static std::array<uint16_t,1280*32> pixels{};
   lv_display_set_buffers(display,pixels.data(),nullptr,sizeof(pixels),LV_DISPLAY_RENDER_MODE_PARTIAL);
   lv_display_set_flush_cb(display,[](lv_display_t* d,const lv_area_t*,uint8_t*) { lv_display_flush_ready(d); });
   native_dispatch_safe=[] { return lv_is_initialized() && !page_lvgl_dispatching() && !modal_callback_dispatching(); };
-  if(six) {
+  if(nested) {
+    nested_remote_navigation();
+  } else if(six) {
     queued_image_refresh<2>();
     queued_producer_content_refresh<2>();queued_producer_forecast_refresh<2>();
     maximum_profile_disjoint_replacements<2>();

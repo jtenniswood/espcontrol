@@ -13,7 +13,8 @@ from device_ui_limits import profile_flag, render_header
 
 
 # Pin the existing product capacities independently of the generator. Increasing
-# these is a separate feature, not a side effect of the architecture migration.
+# these needs explicit admission work. Reader depth is independent of the
+# durable writer and editor placement policy.
 EXPECTED = {
     "guition-esp32-p4-jc1060p470": (15, 6, 8),
     "guition-esp32-p4-jc1060p470-v2": (15, 6, 8),
@@ -40,7 +41,7 @@ int main() {
   static_assert(limits.max_first_level_subpages == EXPECTED_SLOTS);
   static_assert(limits.cards_per_subpage == EXPECTED_SLOTS - 1);
   static_assert(limits.max_cards() == EXPECTED_SLOTS * EXPECTED_SLOTS);
-  static_assert(limits.max_navigation_depth == 1);
+  static_assert(limits.max_navigation_depth == 2);
   static_assert(limits.image_slot_count == EXPECTED_IMAGES);
   static_assert(limits.legacy_subpage_chunks == EXPECTED_CHUNKS);
   static_assert(limits.legacy_text_bytes == 255);

@@ -67,8 +67,8 @@ class PageStore {
       const DeviceUiLimits &limits, uint32_t generation,
       void *arena, size_t arena_capacity, PageStore *output);
   // V2 is read directly, without building an intermediate v1 document. The
-  // caller owns disjoint, aligned scratch, released after staging. The current
-  // runtime still admits only root -> child navigation, including inactive data.
+  // caller owns disjoint, aligned scratch, released after staging. Graph depth
+  // is bounded by the supplied limits; inactive subtrees remain owned data.
   static PageStoreStatus v2_workspace_bytes(const uint8_t *document,
       size_t document_size, size_t *bytes);
   static PageStoreStatus stage_v2(const uint8_t *document, size_t document_size,
@@ -102,6 +102,16 @@ class PageStore {
   }
   const PageDefinition *page(ConfigurationHandle handle) const {
     return handle.generation == generation_ ? page(handle.index) : nullptr;
+  }
+  // Root is depth zero. Invalid ancestry never becomes a navigation target.
+  uint16_t page_depth(PageId id) const {
+    uint16_t depth = 0;
+    while (id != 0) {
+      const auto *definition = page(id);
+      if (!definition || ++depth >= page_count_) return NO_PAGE;
+      id = definition->parent;
+    }
+    return page_count_ ? depth : NO_PAGE;
   }
   std::string_view string(StringId id) const;
   std::string_view field(const CardDefinition &card, CardField field) const {

@@ -2,7 +2,16 @@
 
 This follows the architecture programme in issue #1825. The feature is
 Home → Subpage → Nested subpage, with the root at depth zero and a maximum
-depth of two. Production remains at depth one until the prerequisites pass.
+depth of two. Production writes and editor creation remain at depth one until
+the compatibility and delivery prerequisites pass.
+
+The runtime prerequisite in PR #2400 has user-confirmed layout coverage on the
+6-, 9-, 15- and 20-slot grids. The follow-up adds depth-bounded direct readers,
+prepared navigation, descendant indicators and remote lookup, with an editable
+browser graph codec and subtree-transfer planning. Generated reader limits are
+depth two; the advertised writable depth remains one. Editor creation, clipboard
+persistence, backups and durable-v2 release enablement remain separate gates.
+No nested-page candidate has been flashed to a physical device yet.
 
 ## Agreed behaviour
 

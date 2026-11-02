@@ -11,12 +11,14 @@
 #include "page_store_runtime.h"
 #include "page_store_goldens.h"
 #include "panel_config_import.h"
+#include "nested_page_fixture.h"
 
 using namespace espcontrol;
 using namespace espcontrol::pages;
 using namespace espcontrol::configuration;
 using K = PanelConfigV2Kind;
 using Row = PanelConfigV2Record;
+using namespace espcontrol::pages::test;
 using Bytes = std::vector<uint8_t>;
 using Arena = std::vector<uint64_t>;
 
@@ -91,31 +93,35 @@ void parity(const Bytes &source, const DeviceUiLimits &limits) {
   equal_store(old, current); // No retained dictionary, grouping or input pointers.
   ++cases;
 }
-Bytes wire(std::vector<Row> records) {
-  Bytes result(32 * 1024); PanelConfigV2Writer writer(result.data(), result.size());
-  assert(writer.begin() == PanelConfigStatus::OK);
-  // Wire order and IDs differ deliberately from runtime order and indices.
-  std::reverse(records.begin(), records.end());
-  for (const auto &record : records) assert(writer.append(record) == PanelConfigStatus::OK);
-  Arena scratch((writer.workspace_bytes() + 7) / 8); size_t size = 0;
-  assert(writer.finish(scratch.data(), scratch.size() * 8, &size) == PanelConfigStatus::OK);
-  result.resize(size); return result;
-}
-std::vector<Row> authored(const DeviceUiLimits &limits) {
-  Row profile; profile.kind = K::DEVICE_PROFILE; profile.text = limits.device_profile;
-  Row root; root.kind = K::PAGE; root.first = root.second = UINT16_MAX; root.third = 71;
-  Row page; page.kind = K::PAGE; page.id = 63000; page.second = 61000; page.third = 72;
-  Row folder; folder.kind = K::CARD; folder.id = 61000; folder.second = 2;
-  folder.field_mask = 1 << 6; folder.fields[6] = 73;
-  Row child; child.kind = K::CARD; child.id = 62000; child.first = page.id; child.second = 1;
-  child.field_mask = (1 << 0) | (1 << 1) | (1 << 6); child.fields[0] = 65000; child.fields[1] = 74; child.fields[6] = 75;
-  Row navigation; navigation.kind = K::NAVIGATION; navigation.id = folder.id; navigation.first = page.id;
-  Row entity; entity.kind = K::ENTITY; entity.id = 65000; entity.first = 76;
-  std::vector<Row> records{profile, root, page, folder, child, navigation, entity};
-  for (auto value : std::array<std::pair<uint16_t, const char *>, 6>{{{71,"2"},{72,"B,1w"},{73,"subpage"},{74,"温度 🌡️"},{75,"sensor"},{76,"sensor.temperature"}}}) {
-    Row text; text.kind = K::STRING; text.id = value.first; text.text = value.second; records.push_back(text);
+void nested_depth_two() {
+  for(const auto& profile:DEVICE_UI_PROFILES) {
+    auto limits=profile;limits.max_navigation_depth=2;
+    auto records=authored_nested(limits);auto source=wire(records);
+    auto old_limits=limits;old_limits.max_navigation_depth=1;
+    Arena arena(16384),other(16384),scratch;PageStore store;
+    assert(stage(source,old_limits,other,scratch,store)==PageStoreStatus::INVALID_DOCUMENT);
+    assert(stage(source,limits,arena,scratch,store)==PageStoreStatus::OK);
+    assert(store.page_count()==3 && store.card_count()==limits.slot_count+2);
+    const CardId folder=limits.slot_count,leaf=folder+1;
+    assert(store.page(1)->parent==0 && store.page(1)->owner==1);
+    assert(store.card(1)->target==1 && store.card(folder)->target==2);
+    assert(store.page(2)->parent==1 && store.page(2)->owner==folder);
+    assert(store.page(2)->first_card==leaf && store.page(2)->card_count==1 && store.page(2)->navigable);
+    assert(store.string(store.page(2)->order)=="B=Back%20Up:112233,1");
+    assert(store.field(*store.card(leaf),CardField::LABEL)=="Nested Leaf");
+    const auto original=source;
+    std::fill(source.begin(),source.end(),0);std::fill(scratch.begin(),scratch.end(),UINT64_MAX);
+    assert(store.field(*store.card(leaf),CardField::LABEL)=="Nested Leaf");
+    assert(std::memcmp(store.source_document(),original.data(),original.size())==0);
+    // A retained root outside the active profile keeps its complete subtree,
+    // while acquiring no active navigation targets or state dependencies.
+    records[3].second=32;const auto inactive=wire(records);PageStore dormant;
+    assert(stage(inactive,limits,other,scratch,dormant)==PageStoreStatus::OK);
+    assert(dormant.card_count()==34 && !dormant.page(1)->navigable && !dormant.page(2)->navigable);
+    assert(!dormant.runtime_card(32) && !dormant.runtime_card(33));
+    assert(dormant.field(*dormant.card(33),CardField::LABEL)=="Nested Leaf");
+    ++cases;
   }
-  return records;
 }
 void corpus() {
   for (const auto &limits : DEVICE_UI_PROFILES) {
@@ -208,6 +214,37 @@ void replacement_and_failures() {
   }
 }
 
+void nested_write_admission() {
+  for (const auto &profile : DEVICE_UI_PROFILES) {
+    auto limits = profile;
+    limits.max_navigation_depth = 2;
+    std::vector<DeviceCardTypeSupport> types(profile.card_types, profile.card_types + profile.card_type_count);
+    for (auto &type : types) if (std::strcmp(type.type, "subpage") == 0) type.allow_in_subpage = true;
+    limits.card_types = types.data();
+    const auto source = wire(authored_nested(limits));
+    Allocator allocator;
+    {
+      PageStoreRuntime runtime(limits, allocator, 128 * 1024);
+      assert(runtime.prepare_write(2, source.data(), source.size()));
+      assert(runtime.activate_prepared(1, 2, source.data(), source.size()));
+      assert(runtime.active().page_depth(0) == 0 && runtime.active().page_depth(1) == 1 &&
+             runtime.active().page_depth(2) == 2 && runtime.active().page_depth(NO_PAGE) == NO_PAGE);
+      const auto *active = runtime.active().source_document();
+      const auto retained = allocator.live;
+      // One first-level folder can own a nested folder; it is not two root folders.
+      limits.max_first_level_subpages = 1;
+      assert(runtime.prepare_write(2, source.data(), source.size()));
+      runtime.discard_prepared();
+      limits.cards_per_subpage = 0;
+      assert(!runtime.prepare_write(2, source.data(), source.size()));
+      assert(runtime.last_stage_status() == PageStoreStatus::CAPACITY_EXCEEDED);
+      assert(runtime.active().source_document() == active && allocator.live == retained);
+    }
+    assert(allocator.live == 0);
+    ++cases;
+  }
+}
+
 void hostile_and_bounds() {
   const auto &limits = DEVICE_UI_PROFILES[8]; const auto source = wire(authored(limits));
   Arena arena(16384), other(arena.size()), scratch; PageStore store;
@@ -234,7 +271,8 @@ void hostile_and_bounds() {
     auto records = authored(limits);
     if (scenario == 0) { records[2].id = 63001; records[2].first = 63000; records[2].second = 62000;
       Row first; first.kind=K::PAGE; first.id=63000; first.second=61000; records.push_back(first);
-      records[4].first=63000; records[5].first=63000; }
+      records[4].first=63000; records[5].first=63000;
+      records[4].fields[6]=73; } // Nested folder without its required NAV record.
     if (scenario == 1) records[4].second = 2; // Sparse children cannot round-trip to v1.
     if (scenario == 2) records[3].second = 33;
     if (scenario == 3) { records[4].flags=PANEL_CONFIG_V2_RAW_SOURCE; records[4].raw_source=74; }
@@ -273,6 +311,7 @@ void dormant_and_owned_source() {
 }
 } // namespace
 int main() {
+  nested_depth_two(); nested_write_admission();
   corpus(); replacement_and_failures(); hostile_and_bounds(); dormant_and_owned_source();
   std::cout << "PASS direct v2 PageStore parity/normalization/identities/admission/atomic replacement " << cases << " cases\n";
 }

@@ -173,7 +173,9 @@ class PageRendererRuntime final : public PageRuntimeResources {
     for(PageId page=0;page<store.page_count();++page) {
       const auto *definition=store.page(page);
       if(!definition->navigable)continue;
-      if(page!=0 && (definition->parent!=0 || limits_.max_navigation_depth<1))return fail();
+      const auto depth=store.page_depth(page);
+      if(depth==NO_PAGE || depth>limits_.max_navigation_depth ||
+         (page!=0 && (!store.page(definition->parent) || !store.page(definition->parent)->navigable)))return fail();
       if(!add(label_bytes,store.string(definition->order).size()))return fail();
     }
     size_t bytes=0;
@@ -237,14 +239,28 @@ class PageRendererRuntime final : public PageRuntimeResources {
   Layout *layouts()const{return static_cast<Layout *>(active_arena_);}
   PageId restored_page(const PageStore &next)const {
     if(active_page_==NO_PAGE || active_page_==0)return 0;
-    const auto *old_page=active_store_.page(active_page_);
-    const auto *old_owner=old_page==nullptr?nullptr:active_store_.card(old_page->owner);
-    if(old_owner==nullptr || old_owner->slot==0 || old_owner->slot>next.page(0)->card_count)return 0;
-    const auto *owner=next.card(next.page(0)->first_card+old_owner->slot-1);
-    if(owner==nullptr || owner->target==NO_PAGE || owner->target>=next.page_count() ||
-       !next.page(owner->target)->navigable)return 0;
-    return owner->target;
+    const auto depth=active_store_.page_depth(active_page_);
+    if(depth==NO_PAGE || depth>2)return 0;
+    std::array<uint16_t,2> path{};
+    PageId old=active_page_;
+    for(size_t index=depth;index>0;--index) {
+      const auto *page=active_store_.page(old);
+      const auto *owner=page?active_store_.card(page->owner):nullptr;
+      if(!owner)return 0;
+      path[index-1]=owner->slot;old=page->parent;
+    }
+    PageId target=0;
+    for(size_t index=0;index<depth;++index) {
+      const auto *page=next.page(target);
+      if(!page || !path[index] || path[index]>page->runtime_card_count)return 0;
+      const auto *owner=next.card(page->first_card+path[index]-1);
+      if(!owner || owner->target==NO_PAGE)return 0;
+      target=owner->target;
+      if(!next.page(target) || !next.page(target)->navigable)return 0;
+    }
+    return target;
   }
+
   void unbind_view() {
     view_binding_=0;
     for(size_t shell=0;shell<Slots;++shell) {

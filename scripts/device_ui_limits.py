@@ -47,7 +47,7 @@ def render_header() -> str:
         chunks = profile["firmware"]["package"].get("subpageConfigChunks", 8)
         subpages = slots if "subpage" not in web_config(profile).get("disabledCardTypes", []) else 0
         values = [layout["cols"], layout["rows"], slots, subpages,
-                  slots - 1, 1, profile["capabilities"]["imageSlots"], chunks, 255]
+                  slots - 1, 2, profile["capabilities"]["imageSlots"], chunks, 255]
         lines.append(f"    {{{json.dumps(profile['slug'])}, " + ", ".join(map(str, values)) +
                      f", DEVICE_UI_CARD_TYPES_{table}, " +
                      f"sizeof(DEVICE_UI_CARD_TYPES_{table}) / sizeof(DeviceCardTypeSupport)" + "},")
