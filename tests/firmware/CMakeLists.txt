@@ -1239,6 +1239,19 @@ target_compile_options(panel_config_legacy_adapter_test PRIVATE -Wall -Wextra -W
 target_include_directories(panel_config_legacy_adapter_test PRIVATE ../../components/espcontrol)
 add_test(NAME panel_config_legacy_adapter_test COMMAND panel_config_legacy_adapter_test)
 
+add_executable(panel_config_legacy_writer_test
+  panel_config_legacy_writer_test.cpp
+  ../../components/espcontrol/configuration_store.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/panel_config_legacy_adapter.cpp
+  ../../components/espcontrol/panel_config_text_bindings.cpp
+)
+target_compile_features(panel_config_legacy_writer_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_legacy_writer_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_legacy_writer_test PRIVATE ../../components/espcontrol)
+target_link_libraries(panel_config_legacy_writer_test PRIVATE Threads::Threads)
+add_test(NAME panel_config_legacy_writer_test COMMAND panel_config_legacy_writer_test)
+
 add_executable(espcontrol_app_core_test
   espcontrol_app_core_test.cpp
   ../../components/espcontrol/espcontrol_app_core.cpp

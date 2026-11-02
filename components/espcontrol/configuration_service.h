@@ -44,6 +44,12 @@ class LegacyConfigurationAdapter {
   virtual ~LegacyConfigurationAdapter() = default;
 
   virtual LegacyLoadResult load(uint8_t *output, size_t output_capacity) = 0;
+  // Import into the release's selected durable format. Existing adapters keep
+  // their own representation unless they explicitly support conversion.
+  virtual LegacyLoadResult load_for_write(uint16_t, uint8_t *output,
+                                          size_t output_capacity) {
+    return load(output, output_capacity);
+  }
   // Optional compatibility edit projection. A false changed result means that
   // an appearance refresh need not rebuild the native scene or write storage.
   virtual LegacyLoadResult merge(uint16_t, const uint8_t *, size_t, uint8_t *,
@@ -51,6 +57,11 @@ class LegacyConfigurationAdapter {
     if (changed)
       *changed = false;
     return {LegacyStatus::READ_FAILED};
+  }
+  virtual LegacyLoadResult merge_for_write(uint16_t, uint16_t version,
+      const uint8_t *native, size_t native_size, uint8_t *output,
+      size_t output_capacity, bool *changed) {
+    return merge(version, native, native_size, output, output_capacity, changed);
   }
   // Refresh compatibility views after activation, independently of persistent
   // downgrade mirroring. This may allocate text storage and must not be part

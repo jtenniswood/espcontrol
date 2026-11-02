@@ -15,6 +15,43 @@ LegacyLoadResult PanelConfigLegacyAdapter::load(uint8_t *output,
   return {LegacyStatus::OK, PANEL_CONFIG_DOCUMENT_VERSION, document_size};
 }
 
+LegacyLoadResult PanelConfigLegacyAdapter::convert_for_write(
+    uint16_t target, LegacyLoadResult source, uint8_t *output,
+    size_t output_capacity) {
+  if (source.status != LegacyStatus::OK || source.document_version == target)
+    return source;
+  PanelConfigRepresentation converted(allocate_, release_);
+  const auto status = converted.convert(source.document_version, target,
+      output, source.document_size, output_capacity);
+  if (status != PanelConfigRepresentationStatus::OK) {
+    const auto failure = status == PanelConfigRepresentationStatus::UNAVAILABLE
+        ? LegacyStatus::ALLOCATION_FAILED
+        : (status == PanelConfigRepresentationStatus::TOO_LARGE
+               ? LegacyStatus::BUFFER_TOO_SMALL : LegacyStatus::READ_FAILED);
+    return {failure, target, 0};
+  }
+  std::memcpy(output, converted.data(), converted.size());
+  return {LegacyStatus::OK, target, converted.size()};
+}
+
+LegacyLoadResult PanelConfigLegacyAdapter::load_for_write(
+    uint16_t target, uint8_t *output, size_t output_capacity) {
+  return convert_for_write(target, load(output, output_capacity), output,
+                           output_capacity);
+}
+
+LegacyLoadResult PanelConfigLegacyAdapter::merge_for_write(
+    uint16_t target, uint16_t version, const uint8_t *native, size_t native_size,
+    uint8_t *output, size_t output_capacity, bool *changed) {
+  if (changed) *changed = false;
+  bool edited = false;
+  auto result = merge(version, native, native_size, output, output_capacity, &edited);
+  if (edited && result.status == LegacyStatus::OK)
+    result = convert_for_write(target, result, output, output_capacity);
+  if (changed && result.status == LegacyStatus::OK) *changed = edited;
+  return result;
+}
+
 LegacyLoadResult
 PanelConfigLegacyAdapter::merge(uint16_t version, const uint8_t *native,
                                 size_t native_size, uint8_t *output,
@@ -60,8 +97,8 @@ PanelConfigLegacyAdapter::merge(uint16_t version, const uint8_t *native,
     ++replacements;
   if (changed)
     *changed = matches != originals || matches != replacements;
-  // Actual compatibility edits remain durable v1 during the dual-reader
-  // release. An unchanged v2 view returns changed=false and is never rewritten.
+  // The legacy projection is v1; merge_for_write selects its durable format.
+  // An unchanged v2 view returns changed=false and is never rewritten.
   return {LegacyStatus::OK, PANEL_CONFIG_DOCUMENT_VERSION, size};
 }
 

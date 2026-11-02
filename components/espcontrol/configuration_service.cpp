@@ -331,7 +331,7 @@ ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
 
   if (!import_legacy) return {ServiceStatus::EMPTY, stored.status};
   fallback.reset();
-  const LegacyLoadResult legacy = legacy_.load(output, output_capacity);
+  const LegacyLoadResult legacy = legacy_.load_for_write(write_version(), output, output_capacity);
   if (legacy.status == LegacyStatus::EMPTY) {
     return {ServiceStatus::EMPTY, stored.status};
   }
@@ -387,6 +387,9 @@ ServiceLoadResult ConfigurationService::refresh_legacy_shadow_unlocked(
     return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT};
   }
 
+  // This old whole-shadow utility is not the native import/merge path. Keep
+  // the source representation so a future v2 writer cannot authorize a
+  // converted flat shadow over an existing graph.
   const LegacyLoadResult legacy = legacy_.load(output, output_capacity);
   if (legacy.status == LegacyStatus::EMPTY) {
     return {ServiceStatus::EMPTY, StoreStatus::EMPTY};
@@ -489,8 +492,8 @@ ConfigurationService::synchronize_legacy_runtime(uint8_t *output,
     return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT};
   bool changed = false;
   const auto legacy =
-      legacy_.merge(loaded.document_version, output, loaded.document_size,
-                    merged, capacity, &changed);
+      legacy_.merge_for_write(write_version(), loaded.document_version,
+                              output, loaded.document_size, merged, capacity, &changed);
   if (legacy.status == LegacyStatus::ALLOCATION_FAILED)
     return {ServiceStatus::ALLOCATION_FAILED, loaded.store_status,
             loaded.document_version, loaded.generation, loaded.document_size};

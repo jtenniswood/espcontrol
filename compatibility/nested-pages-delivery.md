@@ -29,6 +29,14 @@ declares depth-two reading; format-two support alone is insufficient proof.
 Reader depth is generated from that contract. This branch still declares
 reader depth two, writer depth one, durable format one and no reader floor.
 
+Legacy first-boot import and flat compatibility edits now request the selected
+durable format from the adapter. Test-only v2-writer coverage exercises the real
+service, text bindings and validator without enabling the production writer.
+Conversion failures leave storage unchanged; unchanged native documents keep
+their original bytes and generation. Flat edits retain inactive records and
+unknown settings, and still carry v1 source provenance so they cannot replace
+a nested graph. The v1 import path adds no conversion allocation.
+
 `GET /api/v1/backup` now preflights both native formats before sending JSON.
 Graph exports use outer format three with exact native-v2 bytes and structured
 pages, including inactive subtrees; native-v1 exports keep outer format two
