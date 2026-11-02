@@ -299,3 +299,8 @@ wind_south=South
 wind_south_west=South West
 wind_west=West
 wind_north_west=North West
+
+# Home Assistant connection repair
+ha_disconnected_title=Home Assistant disconnected
+ha_disconnected_instructions=Check this device in Home Assistant\nfor an encryption key or connection alert
+ha_disconnected_path=Settings > Devices & Services\n> ESPHome

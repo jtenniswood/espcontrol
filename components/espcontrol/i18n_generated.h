@@ -5752,6 +5752,9 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "wind_south_west") == 0) return "South West";
   if (std::strcmp(key, "wind_west") == 0) return "West";
   if (std::strcmp(key, "wind_north_west") == 0) return "North West";
+  if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant disconnected";
+  if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Check this device in Home Assistant\nfor an encryption key or connection alert";
+  if (std::strcmp(key, "ha_disconnected_path") == 0) return "Settings > Devices & Services\n> ESPHome";
   return key;
 }
 
