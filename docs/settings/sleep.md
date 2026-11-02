@@ -34,7 +34,7 @@ Open **Screen > Sleep & Schedule > Cover Art Screen Saver** on your [device setu
 | **Keep Screen Awake During Playback** | Prevent normal screensaver sleep while playing. On by default; applies only with Show Cover Art enabled. |
 | **Show After** | Choose how long to wait after the last touch before showing artwork. |
 | **Show Track Details For** | Set the detail timeout on 4-inch square panels, including Never and Always. |
-| **Persistent Play/Pause Control** | Show or hide the playback button on 4-inch square panels. Larger panels always show it. |
+| **Persistent Play/Pause Control** | Show or hide the playback button on 4-inch square panels. Larger panels show it whenever playback control is allowed by PIN protection. |
 
 With Keep Screen Awake off, Timer or Sensor screensaver mode can still show eligible artwork when sleep activates. With Screensaver Disabled, artwork uses Show After. A time-based [Night Schedule](/settings/sleep#night-schedule) takes priority during night hours.
 
@@ -165,8 +165,9 @@ In **Screen > Sleep & Schedule > Pin Protection**, enable **Require PIN after wa
 
 - **Save** also changes an existing PIN. **Clear** removes it and disables protection; switching the toggle off keeps the PIN for later.
 - **Randomize keypad layout** shuffles the digits each time the keypad opens (off by default).
+- **Allow Cover Art play/pause while locked** lets anyone pause or resume music using the artwork button without entering the PIN (off by default). Other touchscreen controls still require the PIN. On square panels, **Persistent Play/Pause Control** must also be enabled. This preference is shared with the Screen Lock card and saved on the panel.
 - The [Screen Lock card](/card-types/screen-lock) shares this PIN and keypad setting, and works with automatic wake protection off.
 
-After a screensaver or manual sleep, enter the PIN and press the checkmark to unlock. An incorrect PIN keeps the panel locked. **X** clears digits; with no digits entered, it closes the keypad without unlocking. All wake methods use this protection, and Cover Art playback controls remain blocked until unlocked.
+After a screensaver or manual sleep, enter the PIN and press the checkmark to unlock. An incorrect PIN keeps the panel locked. **X** clears digits; with no digits entered, it closes the keypad without unlocking. All wake methods use this protection, and the Cover Art playback button is hidden until unlocked unless **Allow Cover Art play/pause while locked** is enabled.
 
 The PIN protects local touchscreen controls only. Secure web setup separately with [web authentication](/getting-started/manual-esphome-setup#advanced-password-protect-the-web-page), as anyone with setup access can change or clear the PIN. PINs persist across restarts but are excluded from backups; importing a backup clears the destination panel's PIN, so set it again afterward.

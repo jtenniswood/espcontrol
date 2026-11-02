@@ -5,12 +5,14 @@ export interface ScreensaverPinInfo {
   has_pin: boolean;
   pin_length: number;
   randomize_keypad?: boolean;
+  allow_cover_art_playback?: boolean;
 }
 
 interface ScreensaverPinSettings {
   enabled: boolean;
   pin?: string;
   randomize_keypad?: boolean;
+  allow_cover_art_playback?: boolean;
 }
 
 export async function screensaverPinRequest(
@@ -32,6 +34,7 @@ export async function screensaverPinRequest(
     ? info.pin_length
     : info.has_pin ? 8 : 0;
   return { enabled: info.enabled, has_pin: info.has_pin, pin_length: pinLength,
+    ...(typeof info.allow_cover_art_playback === "boolean" ? { allow_cover_art_playback: info.allow_cover_art_playback } : {}),
     ...(typeof info.randomize_keypad === "boolean" ? { randomize_keypad: info.randomize_keypad } : {}) };
 }
 
@@ -76,6 +79,11 @@ export function buildScreensaverPinSettings(
   controls.hidden = true;
   const randomizeToggle = fields.toggleRow("Randomize keypad layout", idPrefix + "-randomize", false);
   const randomize = randomizeToggle.input as HTMLInputElement;
+  const playbackToggle = fields.toggleRow("Allow Cover Art play/pause while locked", idPrefix + "-allow-playback", false);
+  const playback = playbackToggle.input as HTMLInputElement;
+  const playbackField = document.createElement("div");
+  playbackField.className = "sp-field";
+  playbackField.append(playbackToggle.row);
   const label = fields.fieldLabel("PIN", idPrefix);
   const pin = fields.textInput(idPrefix, "", "1–16 digits") as HTMLInputElement;
   pin.type = "password";
@@ -105,7 +113,7 @@ export function buildScreensaverPinSettings(
   const pinField = document.createElement("div");
   pinField.className = "sp-field";
   pinField.append(label, row);
-  controls.append(pinField, randomizeToggle.row);
+  controls.append(pinField, randomizeToggle.row, playbackField);
   if (!options.requirePin) body.append(toggle.row);
   body.append(controls, errorNotice);
   let info: ScreensaverPinInfo | null = null;
@@ -125,8 +133,10 @@ export function buildScreensaverPinSettings(
     badge?.classList.toggle("sp-hidden", !(info?.enabled && info.has_pin));
     if (!busy) enabled.checked = pendingSetup || !!(info?.enabled && info.has_pin);
     if (!busy && !pendingSetup) randomize.checked = info?.randomize_keypad ?? false;
+    if (!busy && !pendingSetup) playback.checked = info?.allow_cover_art_playback ?? false;
     randomizeToggle.row.hidden = typeof info?.randomize_keypad !== "boolean";
-    enabled.disabled = randomize.disabled = save.disabled = clear.disabled = pin.disabled = busy || loading || !info;
+    playbackField.hidden = typeof info?.allow_cover_art_playback !== "boolean";
+    enabled.disabled = randomize.disabled = playback.disabled = save.disabled = clear.disabled = pin.disabled = busy || loading || !info;
     clear.disabled = busy || loading || !info?.has_pin;
     pin.placeholder = info?.has_pin ? "•".repeat(info.pin_length) : "1–16 digits";
     controls.hidden = !enabled.checked && !options.requirePin;
@@ -170,6 +180,10 @@ export function buildScreensaverPinSettings(
     if (!info?.has_pin) return; // Keep the layout choice local until the first PIN is saved.
     void update({ enabled: enabled.checked, randomize_keypad: randomize.checked });
   });
+  playback.addEventListener("change", () => {
+    if (!info?.has_pin) return;
+    void update({ enabled: enabled.checked, allow_cover_art_playback: playback.checked });
+  });
   save.addEventListener("click", () => {
     if (!/^[0-9]{1,16}$/.test(pin.value)) {
       showError(pin.value ? "Enter a PIN containing 1–16 digits." : "Enter a PIN before saving.");
@@ -177,6 +191,7 @@ export function buildScreensaverPinSettings(
       return;
     }
     void update({ enabled: enabled.checked, pin: pin.value,
+      ...(typeof info?.allow_cover_art_playback === "boolean" ? { allow_cover_art_playback: playback.checked } : {}),
       ...(typeof info?.randomize_keypad === "boolean" ? { randomize_keypad: randomize.checked } : {}) });
   });
   clear.addEventListener("click", () => { void update({ enabled: false, pin: "" }); });
@@ -199,7 +214,7 @@ export function buildScreensaverPinSettings(
       loading = false;
       badge?.classList.add("sp-hidden");
       setVisible(true);
-      enabled.disabled = randomize.disabled = save.disabled = clear.disabled = pin.disabled = true;
+      enabled.disabled = randomize.disabled = playback.disabled = save.disabled = clear.disabled = pin.disabled = true;
       showError((error as Error).message);
     }
   }
