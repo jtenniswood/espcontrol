@@ -109,7 +109,9 @@ async def register_backup(panel_config, cg, core_config):
         elif domain == "light":
             value = f"std::max(1L, std::lround({entity}->remote_values.get_brightness() * 100.0f))"
         assignment = f'{section}["{field}"] = {value};'
-        if domain != "light":
+        # Configured text entities may have an empty state without has_state().
+        # Export the empty string so restoring clears an old destination value.
+        if domain not in ("light", "text"):
             assignment = f"if ({entity}->has_state()) {{ {assignment} }}"
         statements.append(assignment)
     writer = cg.RawExpression("[=](JsonObject settings, JsonObject screen) { " + " ".join(statements) + " }")
