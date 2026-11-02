@@ -81,12 +81,9 @@ export function buildScreensaverPinSettings(
   const randomize = randomizeToggle.input as HTMLInputElement;
   const playbackToggle = fields.toggleRow("Allow Cover Art play/pause while locked", idPrefix + "-allow-playback", false);
   const playback = playbackToggle.input as HTMLInputElement;
-  const playbackHelp = document.createElement("div");
-  playbackHelp.className = "sp-field-hint";
-  playbackHelp.textContent = "Allow music to be paused or resumed from Cover Art without entering the PIN. Other touchscreen controls stay locked.";
   const playbackField = document.createElement("div");
   playbackField.className = "sp-field";
-  playbackField.append(playbackToggle.row, playbackHelp);
+  playbackField.append(playbackToggle.row);
   const label = fields.fieldLabel("PIN", idPrefix);
   const pin = fields.textInput(idPrefix, "", "1–16 digits") as HTMLInputElement;
   pin.type = "password";
