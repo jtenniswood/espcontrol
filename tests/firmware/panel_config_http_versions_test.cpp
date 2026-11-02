@@ -196,8 +196,9 @@ struct Fixture {
   ConfigurationService service;ConfigurationMainLoop queue;Arena arena;
   RendererPort port;std::unique_ptr<PageRuntimeResources> render_resources;PageRuntimeResourcesGroup<1> resources;
   PageStoreRuntime runtime;PanelConfigReadHandler reader;PanelConfigWriteHandler writer;
-  explicit Fixture(const DeviceUiLimits &limits,const ConfigurationDocumentValidator*policy=nullptr):legacy(limits),
-      service(store,legacy,policy?policy:&validator),port(limits),render_resources(renderer(limits,arena,port)),
+  explicit Fixture(const DeviceUiLimits &limits,const ConfigurationDocumentValidator*policy=nullptr,
+      LegacyConfigurationMode mode=LegacyConfigurationMode::DUAL_WRITE):legacy(limits),
+      service(store,legacy,policy?policy:&validator,nullptr,0,mode),port(limits),render_resources(renderer(limits,arena,port)),
       resources({{render_resources.get()}}),runtime(limits,arena,128*1024,&resources) {
     service.set_runtime_adapter(&runtime);
     bind_panel_config_http_context(service,queue,40*1024,allocate,release,"user","password");
@@ -513,7 +514,7 @@ void stored_v2_reads_and_replacements() {
   assert(future.service.synchronize_legacy_runtime(output.data(),output.size()).status==ServiceStatus::LEGACY_MIRROR_FAILED);
   assert(future.service.retry_compatibility(output.data(),output.size()).status==ServiceStatus::LEGACY_MIRROR_FAILED);
   const auto compatibility=future.service.compatibility_state();
-  assert(compatibility.publication==CompatibilityStatus::NOT_REPRESENTABLE &&
+  assert(compatibility.publication==CompatibilityStatus::NATIVE_ONLY &&
          compatibility.persistence==CompatibilityStatus::NOT_REPRESENTABLE && !compatibility.retry_pending());
   assert(future.get("2").response==source && future.legacy.preference_writes()==preferences);
 }
@@ -606,6 +607,39 @@ void original_format_survives_a_future_writer_conversion() {
     assert(fixture.legacy.preference_writes()==preferences);
   }
 }
+void native_graph_publication_returns_success() {
+  FutureGraphWriter policy;
+  Fixture fixture(DEVICE_UI_PROFILES[8],&policy,LegacyConfigurationMode::READ_IMPORT_ONLY);
+  const auto old=fixture.get("1").response;
+  const auto source=nested_document();
+  auto colored=[&](std::string_view color) {
+    std::vector<uint64_t> index(source.size());PanelConfigV2Reader reader(source.data(),source.size());
+    assert(reader.validate(index.data(),index.size()*8)==PanelConfigStatus::OK);
+    Bytes output(4096);PanelConfigV2Writer writer(output.data(),output.size());
+    assert(writer.begin()==PanelConfigStatus::OK);PanelConfigV2Record row;
+    for(size_t i=0;i<reader.record_count();++i){assert(reader.record(i,&row));assert(writer.append(row)==PanelConfigStatus::OK);}
+    row={};row.kind=PanelConfigV2Kind::STRING;row.id=2;row.text="button_on_color";assert(writer.append(row)==PanelConfigStatus::OK);
+    row.id=3;row.text=color;assert(writer.append(row)==PanelConfigStatus::OK);
+    row={};row.kind=PanelConfigV2Kind::SETTING;row.id=2;row.first=3;assert(writer.append(row)==PanelConfigStatus::OK);
+    size_t size=0;assert(writer.finish(index.data(),index.size()*8,&size)==PanelConfigStatus::OK);
+    output.resize(size);return output;
+  };
+  const auto preferences=fixture.legacy.preference_writes();
+  const auto first=colored("AABBCC");
+  const auto saved=fixture.put(first,"2","\"v2-1\"");
+  assert(status(saved)==204&&saved.sent_headers.at("X-Panel-Config-Durable-Version")=="2");
+  assert(fixture.legacy.color.state=="AABBCC"&&fixture.get("2").response==first);
+  assert(fixture.runtime.active().page_count()==3&&fixture.runtime.active().page(2)->parent==1);
+  Bytes output(40*1024);
+  const auto boot=fixture.service.load_and_apply_runtime(output.data(),output.size());
+  assert(boot.ok()&&boot.document_version==2&&boot.generation==2);
+  const auto second=colored("CCDDEE");
+  assert(status(fixture.put(second,"2","\"v2-2\""))==204);
+  assert(fixture.legacy.color.state=="CCDDEE"&&fixture.get("2").response==second);
+  assert(status(fixture.get("1"))==422&&status(fixture.put(old,"1","\"3\""))==422);
+  assert(fixture.get("2").response==second&&fixture.legacy.preference_writes()==preferences);
+  assert(!fixture.service.compatibility_state().retry_pending());
+}
 void compressed_compatibility_growth() {
   Bytes input(32768);PanelConfigV2Writer writer(input.data(),input.size());assert(writer.begin()==PanelConfigStatus::OK);
   auto append=[&](const PanelConfigV2Record &row){assert(writer.append(row)==PanelConfigStatus::OK);};
@@ -650,6 +684,7 @@ int main() {
   legacy_fixed_write_limits();
   shared_image_write_limits();
   stored_v2_reads_and_replacements();old_format_cannot_replace_nested_data();replacement_check_and_commit_share_the_generation();original_format_survives_a_future_writer_conversion();compressed_compatibility_growth();
+  native_graph_publication_returns_success();
   profiles_and_cas();rejection_and_failure();authentication_and_request_limits();converted_owner_boundaries();
   assert(allocations.empty()&&live_bytes==0&&peak_bytes<3*PANEL_CONFIG_V2_HTTP_MAX_BYTES);
   std::printf("HTTP v1/v2: all nine maximum profiles, shared-generation CAS, request/allocator/storage/runtime rejection; host HTTP allocation peak=%zu bytes; retained=%zu bytes\n",peak_bytes,live_bytes);

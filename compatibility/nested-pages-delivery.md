@@ -37,6 +37,15 @@ their original bytes and generation. Flat edits retain inactive records and
 unknown settings, and still carry v1 source provenance so they cannot replace
 a nested graph. The v1 import path adds no conversion allocation.
 
+For a graph without a complete legacy representation, native publication
+validates and updates only the live root order and shared active colour. It
+preserves per-card/subpage text, writes no preference mirror, and reports
+`NATIVE_ONLY` separately from a complete legacy view. Saves, boot restore and
+publication repair accept that outcome only after mirror retirement. Appearance
+refreshes restore those globals from the native document without importing
+stale text or committing another generation. Releases still promising a
+downgrade mirror retain their full-mirror admission and replacement fences.
+
 `GET /api/v1/backup` now preflights both native formats before sending JSON.
 Graph exports use outer format three with exact native-v2 bytes and structured
 pages, including inactive subtrees; native-v1 exports keep outer format two

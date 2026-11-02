@@ -51,10 +51,14 @@ struct Backend : StorageBackend {
 struct Text : PanelConfigTextValue {
   std::string state;
   size_t writes = 0;
+  bool fail_publish = false;
   explicit Text(std::string value) : state(std::move(value)) {}
   const std::string& value() const override { return state; }
   bool set_value(const char* value, size_t size) override { state.assign(value, size); ++writes; return true; }
-  bool publish_value(const char* value, size_t size) override { state.assign(value, size); return true; }
+  bool publish_value(const char* value, size_t size) override {
+    if (fail_publish) return false;
+    state.assign(value, size); return true;
+  }
 };
 struct Runtime : ConfigurationRuntimeAdapter {
   size_t activations = 0;
@@ -320,6 +324,133 @@ void merge_allocation_failures(const DeviceUiLimits& limits) {
     assert(f.order.writes == 0 && f.color.writes == 0 && f.button.writes == 0);
   }
 }
+
+std::vector<Row> nested_globals(const DeviceUiLimits& limits, const char* color = "77AA11") {
+  auto rows = authored_nested(limits);
+  Row key; key.kind = K::STRING; key.id = 88; key.text = "button_on_color";
+  Row value; value.kind = K::STRING; value.id = 89; value.text = color;
+  Row setting; setting.kind = K::SETTING; setting.id = key.id; setting.first = value.id;
+  rows.insert(rows.end(), {key, value, setting});
+  return rows;
+}
+
+void native_global_publication(const DeviceUiLimits& limits) {
+  Fixture f(limits);
+  Text child{"old child"};
+  std::array<PanelConfigTextValue*, PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS> chunks{};
+  chunks[0] = &child;
+  assert(f.bindings.set_button(1, &f.button, chunks));
+  const auto original = wire(nested_globals(limits));
+  const auto saved = f.service.save(2, original.data(), original.size());
+  assert(saved.ok());
+  assert(f.order.state == "2" && f.color.state == "77AA11");
+  assert(f.service.compatibility_state().publication == CompatibilityStatus::NATIVE_ONLY);
+  assert(!f.service.compatibility_state().retry_pending());
+  assert(f.button.state == "light.room;Room;Auto;Auto;;;;;" && child.state == "old child");
+  assert(f.order.writes == 0 && f.color.writes == 0 && f.button.writes == 0 && child.writes == 0);
+  const auto writes = f.backend.writes;
+  Bytes output(32768);
+  // The native graph is authoritative. Repair does not rewrite storage or
+  // pretend that the old per-card/subpage text fields contain the graph.
+  assert(f.service.retry_compatibility(output.data(), output.size()).ok());
+  assert(f.backend.writes == writes && read(f) == original);
+  f.order.state = "stale"; f.color.state = "stale";
+  ConfigurationService reboot(f.store, f.legacy, &f.future, nullptr, 0, LegacyConfigurationMode::READ_IMPORT_ONLY);
+  reboot.set_buffer_allocator(allocate, release);
+  reboot.set_runtime_adapter(&f.runtime);
+  const auto boot = reboot.load_and_apply_runtime(output.data(), output.size());
+  assert(boot.ok() && boot.generation == saved.generation);
+  assert(f.order.state == "2" && f.color.state == "77AA11" && child.state == "old child");
+  assert(f.backend.writes == writes && read(f) == original);
+  // Colour changes arrive as complete native documents through the existing
+  // shared web API. They must succeed and retain all nested/inactive records.
+  const auto recolored = wire(nested_globals(limits, "AABBCC"));
+  const auto edited = reboot.save_if_generation(saved.generation, 2, recolored.data(), recolored.size());
+  assert(edited.ok() && edited.generation == saved.generation + 1);
+  assert(f.color.state == "AABBCC" && f.order.state == "2" && read(f) == recolored);
+  const auto activations = f.runtime.activations;
+  const auto writes_after = f.backend.writes;
+  f.button.state = "light.old;Unsafe legacy edit";
+  f.order.state = "stale"; f.color.state = "stale";
+  assert(reboot.synchronize_legacy_runtime(output.data(), output.size()).ok());
+  assert(f.order.state == "2" && f.color.state == "AABBCC");
+  assert(read(f) == recolored && f.backend.writes == writes_after && f.runtime.activations == activations);
+  assert(f.legacy.mirror_status(2, recolored.data(), recolored.size()) == CompatibilityStatus::NOT_REPRESENTABLE);
+  assert(f.order.writes == 0 && f.color.writes == 0 && f.button.writes == 0 && child.writes == 0);
+  // Releases still promising a complete downgrade mirror continue to reject
+  // this layout before any durable publication.
+  ConfigurationService dual(f.store, f.legacy, &f.future);
+  dual.set_runtime_adapter(&f.runtime);
+  dual.set_buffer_allocator(allocate, release);
+  assert(dual.save(2, recolored.data(), recolored.size()).status == ServiceStatus::CAPACITY_EXCEEDED);
+  assert(f.backend.writes == writes_after && f.runtime.activations == activations && read(f) == recolored);
+  assert(live.empty());
+}
+
+void native_global_publication_failures(const DeviceUiLimits& limits) {
+  const auto original = wire(nested_globals(limits));
+  Fixture f(limits);
+  calls = 0;
+  assert(f.legacy.publish_status(2, original.data(), original.size()) == CompatibilityStatus::NATIVE_ONLY);
+  const auto count = calls;
+  assert(count > 0 && live.empty());
+  for (size_t failure = 1; failure <= count; ++failure) {
+    f.order.state = "old order"; f.color.state = "old color";
+    calls = 0; fail_at = failure;
+    const auto status = f.legacy.publish_status(2, original.data(), original.size());
+    fail_at = 0;
+    assert(status == CompatibilityStatus::RETRYABLE_FAILURE && live.empty());
+    assert(f.order.state == "old order" && f.color.state == "old color");
+    assert(f.legacy.publish_status(2, original.data(), original.size()) == CompatibilityStatus::NATIVE_ONLY);
+  }
+  f.order.state = "old order"; f.color.state = "old color";
+  auto wrong_profile = nested_globals(limits);
+  wrong_profile[0].text = "wrong-device";
+  const auto wrong = wire(wrong_profile);
+  assert(f.legacy.publish_status(2, wrong.data(), wrong.size()) == CompatibilityStatus::NOT_REPRESENTABLE);
+  auto inconsistent = nested_globals(limits);
+  Row key; key.kind = K::STRING; key.id = 92; key.text = "button_order";
+  Row value; value.kind = K::STRING; value.id = 93; value.text = "1";
+  Row setting; setting.kind = K::SETTING; setting.id = key.id; setting.first = value.id;
+  inconsistent.insert(inconsistent.end(), {key, value, setting});
+  const auto conflict = wire(inconsistent);
+  assert(f.legacy.publish_status(2, conflict.data(), conflict.size()) == CompatibilityStatus::NOT_REPRESENTABLE);
+  auto corrupt = original; corrupt[0] = 'X';
+  assert(f.legacy.publish_status(2, corrupt.data(), corrupt.size()) == CompatibilityStatus::NOT_REPRESENTABLE);
+  assert(f.order.state == "old order" && f.color.state == "old color");
+  assert(f.backend.writes == 0 && f.runtime.activations == 0 && live.empty());
+  const auto no_color = wire(authored_nested(limits));
+  assert(f.legacy.publish_status(2, no_color.data(), no_color.size()) == CompatibilityStatus::NATIVE_ONLY);
+  assert(f.order.state == "2" && f.color.state.empty());
+  assert(f.order.writes == 0 && f.color.writes == 0 && f.button.writes == 0);
+
+  for (bool order_failure : {false, true}) {
+    Fixture p(limits);
+    auto& failed_field = order_failure ? p.order : p.color;
+    failed_field.fail_publish = true;
+    const auto saved = p.service.save(2, original.data(), original.size());
+    assert(saved.status == ServiceStatus::LEGACY_MIRROR_FAILED && saved.durable());
+    assert(p.runtime.active == original && p.runtime.activations == 1);
+    assert(p.service.compatibility_state().retry_pending());
+    const auto writes = p.backend.writes;
+    Bytes output(32768);
+    assert(p.service.retry_compatibility(output.data(), output.size()).status == ServiceStatus::LEGACY_MIRROR_FAILED);
+    failed_field.fail_publish = false;
+    const auto repaired = p.service.retry_compatibility(output.data(), output.size());
+    assert(repaired.ok() && repaired.generation == saved.generation);
+    assert(p.service.compatibility_state().publication == CompatibilityStatus::NATIVE_ONLY);
+    assert(!p.service.compatibility_state().retry_pending());
+    assert(p.order.state == "2" && p.color.state == "77AA11");
+    assert(p.backend.writes == writes && p.runtime.activations == 1 && read(p) == original);
+    failed_field.state = "stale"; failed_field.fail_publish = true;
+    assert(p.service.synchronize_legacy_runtime(output.data(), output.size()).status == ServiceStatus::LEGACY_MIRROR_FAILED);
+    assert(p.service.compatibility_state().retry_pending());
+    failed_field.fail_publish = false;
+    assert(p.service.retry_compatibility(output.data(), output.size()).ok());
+    assert(p.backend.writes == writes && p.runtime.activations == 1 && read(p) == original);
+    assert(p.order.writes == 0 && p.color.writes == 0 && p.button.writes == 0 && live.empty());
+  }
+}
 }
 
 int main(int argc, char**) {
@@ -330,8 +461,10 @@ int main(int argc, char**) {
       bootstrap(limits, false); bootstrap(limits, true);
       preserve_flat_native(limits); unchanged_arbitrary_ids(limits);
       allocation_failures(limits); legacy_source_still_fenced(limits);
+      native_global_publication(limits);
     }
     merge_allocation_failures(DEVICE_UI_PROFILES[0]);
+    native_global_publication_failures(DEVICE_UI_PROFILES[0]);
   }
   assert(live.empty());
 }

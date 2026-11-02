@@ -233,7 +233,7 @@ ServiceLoadResult ConfigurationService::load_and_apply_runtime(
       legacy_.publish_status(loaded.document_version, output, loaded.document_size);
   compatibility_publication_current_ =
       compatibility_state_.publication == CompatibilityStatus::OK;
-  if (!compatibility_publication_current_) {
+  if (!native_publication_ready()) {
     ServiceLoadResult failed = loaded;
     failed.status = ServiceStatus::LEGACY_MIRROR_FAILED;
     return failed;
@@ -245,6 +245,12 @@ void ConfigurationService::select_compatibility_generation(uint32_t generation) 
   if (compatibility_state_.known && compatibility_state_.generation == generation) return;
   compatibility_state_ = {generation, true, CompatibilityStatus::RETRYABLE_FAILURE,
       legacy_writes_enabled() ? CompatibilityStatus::RETRYABLE_FAILURE : CompatibilityStatus::OK};
+}
+
+bool ConfigurationService::native_publication_ready() const {
+  return compatibility_publication_current_ ||
+      (!legacy_writes_enabled() &&
+       compatibility_state_.publication == CompatibilityStatus::NATIVE_ONLY);
 }
 
 ConfigurationCompatibilityState ConfigurationService::compatibility_state() const {
@@ -269,7 +275,7 @@ ServiceLoadResult ConfigurationService::retry_compatibility(uint8_t *output, siz
   compatibility_publication_current_ = compatibility_state_.publication == CompatibilityStatus::OK;
   if (compatibility_state_.persistence == CompatibilityStatus::RETRYABLE_FAILURE)
     compatibility_state_.persistence = legacy_.mirror_status(loaded.document_version, output, loaded.document_size);
-  if (!compatibility_publication_current_ || compatibility_state_.persistence != CompatibilityStatus::OK)
+  if (!native_publication_ready() || compatibility_state_.persistence != CompatibilityStatus::OK)
     loaded.status = ServiceStatus::LEGACY_MIRROR_FAILED;
   return loaded;
 }
@@ -472,6 +478,17 @@ ConfigurationService::synchronize_legacy_runtime(uint8_t *output,
   if (!loaded.ok())
     return loaded;
   if (!compatibility_publication_current_) {
+    if (!legacy_writes_enabled() &&
+        compatibility_state_.publication == CompatibilityStatus::NATIVE_ONLY) {
+      // No flat layout can describe this graph. Refresh only its native
+      // globals, rather than importing stale/partial legacy text as an edit.
+      // Equal values do not republish or schedule another appearance refresh.
+      compatibility_state_.publication = legacy_.publish_status(
+          loaded.document_version, output, loaded.document_size);
+      compatibility_publication_current_ =
+          compatibility_state_.publication == CompatibilityStatus::OK;
+      if (native_publication_ready()) return loaded;
+    }
     auto failed = loaded;
     failed.status = ServiceStatus::LEGACY_MIRROR_FAILED;
     return failed;
@@ -581,7 +598,7 @@ ServiceSaveResult ConfigurationService::save_unlocked(
   compatibility_publication_current_ = compatibility_state_.publication == CompatibilityStatus::OK;
   compatibility_state_.persistence = legacy_writes_enabled()
       ? legacy_.mirror_status(document_version, document, document_size) : CompatibilityStatus::OK;
-  const bool published = compatibility_publication_current_;
+  const bool published = native_publication_ready();
   const bool mirrored = compatibility_state_.persistence == CompatibilityStatus::OK;
   if (!applied) {
     return {ServiceStatus::RUNTIME_APPLY_FAILED, committed.status,
@@ -656,7 +673,7 @@ ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
   compatibility_publication_current_ = compatibility_state_.publication == CompatibilityStatus::OK;
   compatibility_state_.persistence = legacy_writes_enabled()
       ? legacy_.mirror_status(document_version, document, document_size) : CompatibilityStatus::OK;
-  const bool published = compatibility_publication_current_;
+  const bool published = native_publication_ready();
   const bool mirrored = compatibility_state_.persistence == CompatibilityStatus::OK;
   if (!applied) {
     return {ServiceStatus::RUNTIME_APPLY_FAILED, committed.status,

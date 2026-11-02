@@ -37,6 +37,7 @@ class PanelConfigLegacyAdapter final : public LegacyConfigurationAdapter {
  private:
   LegacyLoadResult convert_for_write(uint16_t target, LegacyLoadResult source,
                                      uint8_t *output, size_t output_capacity);
+  CompatibilityStatus publish_v2_globals(const uint8_t *document, size_t size);
   PanelConfigTextBindings &bindings_;
   ConfigurationBuffer::Allocate allocate_;
   ConfigurationBuffer::Release release_;

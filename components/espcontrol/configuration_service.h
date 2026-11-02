@@ -292,6 +292,7 @@ class ConfigurationService {
                                              size_t document_size);
   bool supports_version(uint16_t document_version) const;
   bool supports_write_version(uint16_t document_version) const;
+  bool native_publication_ready() const;
   ServiceStatus document_validation_status(uint16_t document_version,
       const uint8_t *document, size_t document_size) const;
   uint8_t *encoded_buffer(size_t required_size,

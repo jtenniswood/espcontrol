@@ -129,7 +129,42 @@ CompatibilityStatus PanelConfigLegacyAdapter::publish_status(uint16_t version, c
   if (!bindings_.configured()) return CompatibilityStatus::NOT_REPRESENTABLE;
   PanelConfigCompatibilityView view(allocate_, release_);
   const auto status = projection_status(view.load(version, document, size));
+  if (version == PANEL_CONFIG_DOCUMENT_VERSION_2 &&
+      status == CompatibilityStatus::NOT_REPRESENTABLE)
+    return publish_v2_globals(document, size);
   return status == CompatibilityStatus::OK ? bindings_.publish_document_status(view.data(), view.size()) : status;
+}
+
+CompatibilityStatus PanelConfigLegacyAdapter::publish_v2_globals(
+    const uint8_t *document, size_t size) {
+  if (size > PANEL_CONFIG_V2_HTTP_MAX_BYTES)
+    return CompatibilityStatus::NOT_REPRESENTABLE;
+  PanelConfigV2Reader reader(document, size);
+  size_t needed = 0;
+  if (reader.workspace_bytes(&needed) != PanelConfigStatus::OK ||
+      !needed || needed > PANEL_CONFIG_CONVERSION_MAX_WORKSPACE)
+    return CompatibilityStatus::NOT_REPRESENTABLE;
+  ConfigurationBuffer index(allocate_, release_);
+  auto *workspace = index.allocate(needed);
+  if (!workspace) return CompatibilityStatus::RETRYABLE_FAILURE;
+  if (reader.validate(workspace, needed) != PanelConfigStatus::OK)
+    return CompatibilityStatus::NOT_REPRESENTABLE;
+  PanelConfigV2Record profile, root, row;
+  if (!reader.record(PanelConfigV2Kind::DEVICE_PROFILE, 0, &profile) ||
+      !reader.record(PanelConfigV2Kind::PAGE, 0, &root))
+    return CompatibilityStatus::NOT_REPRESENTABLE;
+  const auto order = reader.string(root.third);
+  std::string_view color;
+  for (size_t i = 0; i < reader.record_count(); ++i) {
+    reader.record(i, &row);
+    if (row.kind != PanelConfigV2Kind::SETTING) continue;
+    const auto key = reader.string(row.id);
+    if (key == "button_on_color") color = reader.string(row.first);
+    if (key == "button_order" && reader.string(row.first) != order)
+      return CompatibilityStatus::NOT_REPRESENTABLE;
+  }
+  const auto status = bindings_.publish_global_values(profile.text, order, color);
+  return status == CompatibilityStatus::OK ? CompatibilityStatus::NATIVE_ONLY : status;
 }
 
 CompatibilityStatus PanelConfigLegacyAdapter::mirror_status(uint16_t version, const uint8_t *document, size_t size) {
