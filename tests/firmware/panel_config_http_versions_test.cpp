@@ -191,6 +191,11 @@ struct FutureGraphWriter:ConfigurationDocumentValidator {
   bool validate(uint16_t version,const uint8_t*bytes,size_t size)const override{return content.validate(version,bytes,size);}
   ServiceStatus validation_status(uint16_t version,const uint8_t*bytes,size_t size)const override{return content.validation_status(version,bytes,size);}
 };
+struct FutureFlatWriter:FutureGraphWriter {
+  ServiceStatus write_validation_status(uint16_t version,const uint8_t*bytes,size_t size)const override {
+    return content.write_validation_status(version,bytes,size);
+  }
+};
 struct Fixture {
   Backend backend;ConfigurationStore store{backend};Legacy legacy;PanelConfigDocumentValidator validator{allocate,release};
   ConfigurationService service;ConfigurationMainLoop queue;Arena arena;
@@ -640,6 +645,23 @@ void native_graph_publication_returns_success() {
   assert(fixture.get("2").response==second&&fixture.legacy.preference_writes()==preferences);
   assert(!fixture.service.compatibility_state().retry_pending());
 }
+void flat_v2_writer_rejects_nested_http_publication() {
+  FutureFlatWriter policy;
+  Fixture fixture(DEVICE_UI_PROFILES[8],&policy,LegacyConfigurationMode::READ_IMPORT_ONLY);
+  const auto original=fixture.get("2").response;
+  const auto nested=nested_document();
+  const auto writes=fixture.backend.writes,preparations=fixture.arena.calls;
+  assert(status(fixture.put(nested,"2","\"v2-1\""))==422);
+  assert(fixture.backend.writes==writes&&fixture.arena.calls==preparations&&fixture.get("2").response==original);
+  fixture.seed_v2(nested);
+  Bytes output(40*1024);
+  assert(fixture.service.load_and_apply_runtime(output.data(),output.size()).ok());
+  assert(fixture.get("2").response==nested);
+  const auto current_writes=fixture.backend.writes,current_preparations=fixture.arena.calls;
+  assert(status(fixture.put(nested,"2","\"v2-2\""))==422);
+  assert(fixture.backend.writes==current_writes&&fixture.arena.calls==current_preparations);
+  assert(fixture.get("2").response==nested);
+}
 void compressed_compatibility_growth() {
   Bytes input(32768);PanelConfigV2Writer writer(input.data(),input.size());assert(writer.begin()==PanelConfigStatus::OK);
   auto append=[&](const PanelConfigV2Record &row){assert(writer.append(row)==PanelConfigStatus::OK);};
@@ -685,6 +707,7 @@ int main() {
   shared_image_write_limits();
   stored_v2_reads_and_replacements();old_format_cannot_replace_nested_data();replacement_check_and_commit_share_the_generation();original_format_survives_a_future_writer_conversion();compressed_compatibility_growth();
   native_graph_publication_returns_success();
+  flat_v2_writer_rejects_nested_http_publication();
   profiles_and_cas();rejection_and_failure();authentication_and_request_limits();converted_owner_boundaries();
   assert(allocations.empty()&&live_bytes==0&&peak_bytes<3*PANEL_CONFIG_V2_HTTP_MAX_BYTES);
   std::printf("HTTP v1/v2: all nine maximum profiles, shared-generation CAS, request/allocator/storage/runtime rejection; host HTTP allocation peak=%zu bytes; retained=%zu bytes\n",peak_bytes,live_bytes);

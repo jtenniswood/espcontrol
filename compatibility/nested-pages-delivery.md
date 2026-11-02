@@ -28,6 +28,11 @@ published reader floor whose entire supported downgrade range explicitly
 declares depth-two reading; format-two support alone is insufficient proof.
 Reader depth is generated from that contract. This branch still declares
 reader depth two, writer depth one, durable format one and no reader floor.
+The service applies separate write validation to imports, shadow writes and
+both save entry points. The declared write depth also constrains a future
+flat-v2 writer: it may restore an existing nested document for reading, but
+cannot publish a nested replacement while writable depth is one. Host tests
+cover this distinction and reject writes before runtime or storage changes.
 
 Legacy first-boot import and flat compatibility edits now request the selected
 durable format from the adapter. Test-only v2-writer coverage exercises the real

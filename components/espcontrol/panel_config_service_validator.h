@@ -46,6 +46,12 @@ public:
       return ServiceStatus::INVALID_DOCUMENT;
     return inspect_v2(document, size, false);
   }
+  ServiceStatus write_validation_status(uint16_t version, const uint8_t *document,
+      size_t size) const override {
+    return version == PANEL_CONFIG_DOCUMENT_VERSION_2
+        ? inspect_v2(document, size, PANEL_CONFIG_STORAGE_WRITE_NAVIGATION_DEPTH < 2)
+        : validation_status(version, document, size);
+  }
  private:
   ServiceStatus inspect_v2(const uint8_t *document, size_t size, bool protect_nested) const {
     if (size > PANEL_CONFIG_V2_HTTP_MAX_BYTES) return ServiceStatus::INVALID_DOCUMENT;

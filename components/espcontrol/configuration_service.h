@@ -194,6 +194,12 @@ class ConfigurationDocumentValidator {
     return validate(document_version, document, document_size)
         ? ServiceStatus::OK : ServiceStatus::INVALID_DOCUMENT;
   }
+  // Readers can precede writers for both formats and navigation depth.
+  // Every durable publication must use the stricter write policy.
+  virtual ServiceStatus write_validation_status(uint16_t version,
+      const uint8_t *document, size_t size) const {
+    return validation_status(version, document, size);
+  }
 };
 
 // Owns the transition between legacy preference fields and the versioned,
@@ -294,6 +300,8 @@ class ConfigurationService {
   bool supports_write_version(uint16_t document_version) const;
   bool native_publication_ready() const;
   ServiceStatus document_validation_status(uint16_t document_version,
+      const uint8_t *document, size_t document_size) const;
+  ServiceStatus document_write_validation_status(uint16_t document_version,
       const uint8_t *document, size_t document_size) const;
   uint8_t *encoded_buffer(size_t required_size,
                           ConfigurationBuffer *fallback) const;

@@ -81,6 +81,13 @@ struct FutureWriter : ConfigurationDocumentValidator {
   bool validate(uint16_t v, const uint8_t* data, size_t size) const override { return content.validate(v, data, size); }
   ServiceStatus validation_status(uint16_t v, const uint8_t* data, size_t size) const override { return content.validation_status(v, data, size); }
 };
+// Select the future v2 storage format while retaining the real product's
+// declared depth-one write validation and depth-two reader.
+struct FlatFutureWriter : FutureWriter {
+  ServiceStatus write_validation_status(uint16_t version, const uint8_t* data, size_t size) const override {
+    return content.write_validation_status(version, data, size);
+  }
+};
 struct Fixture {
   Backend backend;
   ConfigurationStore store{backend};
@@ -451,6 +458,28 @@ void native_global_publication_failures(const DeviceUiLimits& limits) {
     assert(p.order.writes == 0 && p.color.writes == 0 && p.button.writes == 0 && live.empty());
   }
 }
+
+void flat_writer_preserves_nested_reading(const DeviceUiLimits& limits) {
+  Fixture f(limits);
+  const auto nested = wire(nested_globals(limits));
+  assert(f.service.save(2, nested.data(), nested.size()).ok());
+  const auto writes = f.backend.writes;
+  FlatFutureWriter policy;
+  ConfigurationService service(f.store, f.legacy, &policy, nullptr, 0, LegacyConfigurationMode::READ_IMPORT_ONLY);
+  service.set_buffer_allocator(allocate, release);
+  service.set_runtime_adapter(&f.runtime);
+  Bytes output(32768);
+  const auto boot = service.load_and_apply_runtime(output.data(), output.size());
+  assert(boot.ok() && boot.document_version == 2 && f.runtime.active == nested);
+  const auto activations = f.runtime.activations;
+  assert(service.save(2, nested.data(), nested.size()).status == ServiceStatus::INCOMPATIBLE_REPLACEMENT);
+  assert(service.save_if_generation(boot.generation, 2, nested.data(), nested.size()).status == ServiceStatus::INCOMPATIBLE_REPLACEMENT);
+  assert(f.backend.writes == writes && f.runtime.activations == activations && read(f) == nested);
+  // An explicitly complete, flat replacement is within this writer's depth.
+  const auto flat = native_flat(limits);
+  assert(service.save_if_generation(boot.generation, 2, flat.data(), flat.size()).ok());
+  assert(read(f) == flat && f.runtime.active == flat && live.empty());
+}
 }
 
 int main(int argc, char**) {
@@ -462,6 +491,7 @@ int main(int argc, char**) {
       preserve_flat_native(limits); unchanged_arbitrary_ids(limits);
       allocation_failures(limits); legacy_source_still_fenced(limits);
       native_global_publication(limits);
+      flat_writer_preserves_nested_reading(limits);
     }
     merge_allocation_failures(DEVICE_UI_PROFILES[0]);
     native_global_publication_failures(DEVICE_UI_PROFILES[0]);

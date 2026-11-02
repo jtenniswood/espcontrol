@@ -98,6 +98,12 @@ ServiceStatus ConfigurationService::document_validation_status(
                     : ServiceStatus::OK;
 }
 
+ServiceStatus ConfigurationService::document_write_validation_status(
+    uint16_t document_version, const uint8_t *document, size_t document_size) const {
+  return validator_ ? validator_->write_validation_status(document_version, document, document_size)
+                    : ServiceStatus::OK;
+}
+
 ConfigurationService::ReplacementAdmission ConfigurationService::admit_replacement(
     uint16_t incoming, const uint32_t *expected_generation) {
   ReplacementAdmission admission;
@@ -364,7 +370,7 @@ ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
             stored.status, legacy.document_version, 0,
             legacy.document_size};
   }
-  const auto validation = document_validation_status(legacy.document_version, output, legacy.document_size);
+  const auto validation = document_write_validation_status(legacy.document_version, output, legacy.document_size);
   if (validation != ServiceStatus::OK) {
     return {validation, stored.status,
             legacy.document_version, 0, legacy.document_size};
@@ -412,7 +418,7 @@ ServiceLoadResult ConfigurationService::refresh_legacy_shadow_unlocked(
             legacy.document_version, 0, legacy.document_size};
   }
   const auto validation = supports_write_version(legacy.document_version)
-      ? document_validation_status(legacy.document_version, output, legacy.document_size)
+      ? document_write_validation_status(legacy.document_version, output, legacy.document_size)
       : ServiceStatus::UNSUPPORTED_VERSION;
   if (validation != ServiceStatus::OK) {
     return {validation,
@@ -557,7 +563,7 @@ ServiceSaveResult ConfigurationService::save_unlocked(
     return {ServiceStatus::UNSUPPORTED_VERSION, StoreStatus::INVALID_ARGUMENT,
             document_version, 0, document_size};
   }
-  const auto validation = document_validation_status(document_version, document, document_size);
+  const auto validation = document_write_validation_status(document_version, document, document_size);
   if (validation != ServiceStatus::OK) {
     return {validation, StoreStatus::INVALID_ARGUMENT,
             document_version, 0, document_size};
@@ -631,7 +637,7 @@ ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
     return {ServiceStatus::UNSUPPORTED_VERSION, StoreStatus::INVALID_ARGUMENT,
             document_version, 0, document_size};
   }
-  const auto validation = document_validation_status(document_version, document, document_size);
+  const auto validation = document_write_validation_status(document_version, document, document_size);
   if (validation != ServiceStatus::OK) {
     return {validation, StoreStatus::INVALID_ARGUMENT,
             document_version, 0, document_size};
