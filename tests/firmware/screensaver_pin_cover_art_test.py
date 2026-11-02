@@ -13,7 +13,8 @@ Loader.add_constructor('!lambda', lambda loader, node: loader.construct_scalar(n
 text = (ROOT / 'common/device/screen_cover_art.yaml').read_text()
 scripts = {script['id']: script for script in yaml.load(text[text.index('script:\n'):], Loader)['script']}
 wake = scripts['cover_art_handle_touch']['then'][0]['if']['condition']['lambda']
-toggle = scripts['cover_art_toggle_playback']['then'][0]['lambda'].replace('${cover_art_square_overlay}', 'false')
+toggle = scripts['cover_art_toggle_playback']['then'][0]['lambda'].replace('${cover_art_square_overlay}', 'square_panel')
+refresh = scripts['cover_art_update_playback_control']['then'][-1]['lambda'].replace('${cover_art_square_overlay}', 'square_panel')
 source = r'''
 #include <cassert>
 #include <cstdio>
@@ -22,9 +23,16 @@ source = r'''
 #include "display_mode_controller.h"
 #define id(value) value
 constexpr int LV_OBJ_FLAG_HIDDEN = 1;
-struct Widget {} widget;
+constexpr int LV_OPA_50 = 128, LV_OPA_COVER = 255;
+struct Widget { bool hidden = false; } widget, button, icon;
 Widget *cover_art_screensaver = &widget;
-bool lv_obj_has_flag(Widget *, int) { return false; }
+Widget *cover_art_playback_button = &button, *cover_art_playback_icon = &icon;
+bool lv_obj_has_flag(Widget *obj, int) { return obj->hidden; }
+void lv_obj_add_flag(Widget *obj, int) { obj->hidden = true; }
+void lv_obj_clear_flag(Widget *obj, int) { obj->hidden = false; }
+void lv_label_set_text(Widget *, const char *) {}
+void lv_obj_set_style_opa(Widget *, int, int) {}
+bool square_panel = false;
 bool screensaver_wake_touch_guard_active = false;
 struct Setting { bool state = true; } cover_art_playback_control_enabled;
 struct App { espcontrol::DisplayModeController controller; auto &display() { return controller; } } espcontrol_app;
@@ -38,10 +46,13 @@ bool ha_send_entity_action(const std::string &, const char *) { ++sent; return t
 struct Control {
   auto begin(const std::string &, const std::string &, uint32_t) { return espcontrol::cover_art::PlaybackCommand::PAUSE; }
   void cancel_pending() {}
+  void expire(uint32_t) {}
+  bool pending() { return false; }
 } cover_art_playback_control;
 struct Script { void execute() {} } cover_art_update_playback_control;
 bool uses_wake_path() { WAKE_LAMBDA }
 void toggle_playback() { TOGGLE_LAMBDA }
+void refresh_playback() { REFRESH_LAMBDA }
 int main() {
   auto &pin = espcontrol::screensaver_pin();
   pin.setup();
@@ -55,7 +66,17 @@ int main() {
     std::fprintf(stderr, "Protected cover art bypass: wake=%d, commands=%d\n", uses_wake_path(), sent);
     return 1;
   }
+  refresh_playback();
+  assert(button.hidden); // Locked artwork must not advertise an unavailable action.
+  assert(pin.submit(code));
+  refresh_playback();
+  assert(!button.hidden); // Unlocking restores the control without changing layout.
+  pin.arm();
+  refresh_playback();
+  assert(button.hidden); // A later sleep hides it again.
   assert(pin.save(false, nullptr));
+  refresh_playback();
+  assert(!button.hidden); // Disabling protection restores the control too.
   assert(!uses_wake_path());
   toggle_playback();
   assert(sent == 1); // Unprotected playback keeps its existing direct action.
@@ -65,8 +86,26 @@ int main() {
   assert(!uses_wake_path());
   toggle_playback();
   assert(sent == 2); // No PIN preserves existing screensaver behavior too.
+  refresh_playback();
+  assert(!button.hidden);
+  for (bool square : {false, true}) {
+    square_panel = square;
+    cover_art_playback_control_enabled.state = false;
+    refresh_playback();
+    assert(button.hidden == square); // Only square panels allow hiding it in settings.
+    cover_art_playback_control_enabled.state = true;
+    refresh_playback();
+    assert(!button.hidden);
+    assert(pin.save(false, &code));
+    assert(pin.lock()); // Manual screen lock also applies with automatic protection off.
+    refresh_playback();
+    assert(button.hidden);
+    assert(pin.submit(code));
+    refresh_playback();
+    assert(!button.hidden);
+  }
 }
-'''.replace('WAKE_LAMBDA', wake).replace('TOGGLE_LAMBDA', toggle)
+'''.replace('WAKE_LAMBDA', wake).replace('TOGGLE_LAMBDA', toggle).replace('REFRESH_LAMBDA', refresh)
 with tempfile.TemporaryDirectory() as directory:
     cpp, binary = Path(directory) / 'test.cpp', Path(directory) / 'test'
     cpp.write_text(source)
@@ -75,4 +114,4 @@ with tempfile.TemporaryDirectory() as directory:
                     '-I', str(ROOT / 'tests/firmware/screensaver_pin_stubs'), str(cpp),
                     str(ROOT / 'components/espcontrol/screensaver_pin.cpp'), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)
-print('Protected artwork wakes without playback commands; disabled/empty PIN keeps direct playback')
+print('Locked artwork hides playback; unlocking restores controls and preserves square-panel settings')
