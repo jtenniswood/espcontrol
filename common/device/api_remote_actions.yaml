@@ -26,7 +26,7 @@ script:
           condition:
             lambda: |-
               return espcontrol_can_open_modal(entity_id,
-                !id(connectivity_setup_display_active) &&
+                !id(connectivity_setup_display_active) && !id(ha_connection_warning_active) &&
                 grid_phase2_complete() &&
                 !navigation_home_targets().empty());
           then:
@@ -36,7 +36,7 @@ script:
                 condition:
                   lambda: |-
                     return espcontrol_open_modal(entity_id,
-                      !id(connectivity_setup_display_active) &&
+                      !id(connectivity_setup_display_active) && !id(ha_connection_warning_active) &&
                       grid_phase2_complete() &&
                       !navigation_home_targets().empty());
                 then:
@@ -54,7 +54,7 @@ script:
           condition:
             lambda: |-
               return espcontrol_can_open_subpage(label,
-                !id(connectivity_setup_display_active) &&
+                !id(connectivity_setup_display_active) && !id(ha_connection_warning_active) &&
                 grid_phase2_complete() &&
                 !navigation_home_targets().empty());
           then:
@@ -64,13 +64,13 @@ script:
                 condition:
                   lambda: |-
                     return espcontrol_can_open_subpage(label,
-                      !id(connectivity_setup_display_active) &&
+                      !id(connectivity_setup_display_active) && !id(ha_connection_warning_active) &&
                       grid_phase2_complete() &&
                       !navigation_home_targets().empty());
                 then:
                   - lambda: |-
                       espcontrol_open_subpage(label,
-                        !id(connectivity_setup_display_active) &&
+                        !id(connectivity_setup_display_active) && !id(ha_connection_warning_active) &&
                         grid_phase2_complete() &&
                         !navigation_home_targets().empty(),
                         id(main_page)->obj);

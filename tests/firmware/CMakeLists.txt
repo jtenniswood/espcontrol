@@ -755,6 +755,12 @@ target_compile_options(rainfall_card_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(rainfall_card_test PRIVATE ../../components/espcontrol)
 add_test(NAME rainfall_card_test COMMAND rainfall_card_test)
 
+add_executable(ha_connection_warning_test ha_connection_warning_test.cpp)
+target_compile_features(ha_connection_warning_test PRIVATE cxx_std_17)
+target_compile_options(ha_connection_warning_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(ha_connection_warning_test PRIVATE ../../components/espcontrol)
+add_test(NAME ha_connection_warning_test COMMAND ha_connection_warning_test)
+
 add_executable(panel_backup_test panel_backup_test.cpp)
 target_compile_features(panel_backup_test PRIVATE cxx_std_17)
 target_compile_options(panel_backup_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
