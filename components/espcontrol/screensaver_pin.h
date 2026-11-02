@@ -17,6 +17,11 @@ class ScreensaverPin {
   bool has_pin() const { Guard guard(mutex_); return !pin_.empty(); }
   std::size_t pin_length() const { Guard guard(mutex_); return pin_.size(); }
   bool randomize_keypad() const { Guard guard(mutex_); return randomize_keypad_; }
+  bool allow_cover_art_playback() const { Guard guard(mutex_); return allow_cover_art_playback_; }
+  bool cover_art_playback_allowed() const {
+    Guard guard(mutex_);
+    return allow_cover_art_playback_ || !((locked_ || manual_locked_) && !pin_.empty());
+  }
   bool locked() const { Guard guard(mutex_); return (locked_ || manual_locked_) && !pin_.empty(); }
   bool keypad_requested() const { Guard guard(mutex_); return (locked_ || manual_locked_) && !wait_for_touch_; }
   DisplayMode return_mode() const { Guard guard(mutex_); return return_mode_; }
@@ -53,7 +58,8 @@ class ScreensaverPin {
     return_mode_ = DisplayMode::ACTIVE;
     return true;
   }
-  bool save(bool enabled, const std::string *pin, const bool *randomize_keypad = nullptr);
+  bool save(bool enabled, const std::string *pin, const bool *randomize_keypad = nullptr,
+            const bool *allow_cover_art_playback = nullptr);
   static bool valid_pin(const std::string &pin) {
     if (pin.size() > 16) return false;
     for (char c : pin) if (c < '0' || c > '9') return false;
@@ -68,6 +74,7 @@ class ScreensaverPin {
   bool wait_for_touch_{false};
   DisplayMode return_mode_{DisplayMode::ACTIVE};
   bool randomize_keypad_{false};
+  bool allow_cover_art_playback_{false};
 };
 ScreensaverPin &screensaver_pin();
 }  // namespace espcontrol
