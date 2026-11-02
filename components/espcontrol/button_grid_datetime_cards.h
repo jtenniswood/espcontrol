@@ -1,5 +1,7 @@
 #pragma once
 
+#include "external_memory_allocator.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 struct CalendarCardRef {
@@ -266,8 +268,10 @@ inline TimezoneCardState &timezone_card_state() {
 }
 
 inline TimezoneCardRef *timezone_card_refs() {
-  static TimezoneCardRef refs[MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS];
-  return refs;
+  // Fixed capacity keeps card references stable while storing metadata in PSRAM.
+  static std::vector<TimezoneCardRef, EspControlExternalAllocator<TimezoneCardRef>>
+      refs(MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS);
+  return refs.data();
 }
 
 inline int &timezone_card_count() {
