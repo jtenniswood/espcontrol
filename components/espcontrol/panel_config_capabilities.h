@@ -15,12 +15,17 @@ constexpr uint16_t PANEL_CONFIG_WEB_ASSET_VERSION = 2;
 constexpr size_t PANEL_CONFIG_CAPABILITIES_MAX_JSON_BYTES = 896;
 // Reader depth and writable depth are separate rollout capabilities. A
 // depth-two reader must ship before a release can enable durable graph writes.
+struct PanelConfigResourceLimits {
+  size_t cards{0}, pages{0}, page_store_bytes{0}, state_metadata_bytes{0}, ha_state_bytes{0};
+};
 #ifdef ESPCONTROL_DEVICE_UI_SLOT_COUNT
 constexpr unsigned PANEL_CONFIG_READ_NAVIGATION_DEPTH = DEVICE_UI_LIMITS.max_navigation_depth;
-constexpr const DeviceUiLimits* PANEL_CONFIG_UI_LIMITS = &DEVICE_UI_LIMITS;
+constexpr PanelConfigResourceLimits PANEL_CONFIG_RESOURCE_LIMITS{
+    DEVICE_UI_LIMITS.max_cards(), DEVICE_UI_LIMITS.max_pages(), DEVICE_UI_LIMITS.page_store_bytes,
+    DEVICE_UI_LIMITS.state_metadata_bytes, DEVICE_UI_LIMITS.ha_state_bytes};
 #else
 constexpr unsigned PANEL_CONFIG_READ_NAVIGATION_DEPTH = 2;
-constexpr const DeviceUiLimits* PANEL_CONFIG_UI_LIMITS = nullptr;
+constexpr PanelConfigResourceLimits PANEL_CONFIG_RESOURCE_LIMITS{};
 #endif
 constexpr unsigned PANEL_CONFIG_WRITE_NAVIGATION_DEPTH =
     PANEL_CONFIG_DURABLE_WRITE_VERSION == 2 ? PANEL_CONFIG_READ_NAVIGATION_DEPTH : 1;
@@ -63,11 +68,11 @@ inline bool write_panel_config_capabilities_json(char *output,
       static_cast<unsigned>(PANEL_CONFIG_V2_HTTP_MAX_BYTES),
       PANEL_CONFIG_READ_NAVIGATION_DEPTH,
       PANEL_CONFIG_WRITE_NAVIGATION_DEPTH,
-      static_cast<unsigned>(PANEL_CONFIG_UI_LIMITS ? PANEL_CONFIG_UI_LIMITS->max_cards() : 0),
-      static_cast<unsigned>(PANEL_CONFIG_UI_LIMITS ? PANEL_CONFIG_UI_LIMITS->max_pages() : 0),
-      static_cast<unsigned>(PANEL_CONFIG_UI_LIMITS ? PANEL_CONFIG_UI_LIMITS->page_store_bytes : 0),
-      static_cast<unsigned>(PANEL_CONFIG_UI_LIMITS ? PANEL_CONFIG_UI_LIMITS->state_metadata_bytes : 0),
-      static_cast<unsigned>(PANEL_CONFIG_UI_LIMITS ? PANEL_CONFIG_UI_LIMITS->ha_state_bytes : 0),
+      static_cast<unsigned>(PANEL_CONFIG_RESOURCE_LIMITS.cards),
+      static_cast<unsigned>(PANEL_CONFIG_RESOURCE_LIMITS.pages),
+      static_cast<unsigned>(PANEL_CONFIG_RESOURCE_LIMITS.page_store_bytes),
+      static_cast<unsigned>(PANEL_CONFIG_RESOURCE_LIMITS.state_metadata_bytes),
+      static_cast<unsigned>(PANEL_CONFIG_RESOURCE_LIMITS.ha_state_bytes),
       panel_config_read_supported() ? "true" : "false",
       panel_config_write_supported() ? "true" : "false",
       static_cast<unsigned>(PANEL_CONFIG_MAX_RECORD_BODY_BYTES),

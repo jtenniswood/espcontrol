@@ -5,6 +5,21 @@ enable_testing()
 include(CheckCXXSourceCompiles)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+# Exercise the version-pinned native subscription bridge against the repository
+# SDK pin. A hard-coded test version can hide a broken firmware build after a
+# pin update, even when all simulated subscription lifetimes still pass.
+set(ESPCONTROL_SDK_PIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../../.github/esphome.env")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${ESPCONTROL_SDK_PIN_FILE}")
+file(STRINGS "${ESPCONTROL_SDK_PIN_FILE}" ESPCONTROL_SDK_PIN REGEX "^ESPHOME_VERSION=")
+if(NOT ESPCONTROL_SDK_PIN MATCHES "^ESPHOME_VERSION=([0-9]+)\\.([0-9]+)\\.([0-9]+)$")
+  message(FATAL_ERROR "A stable ESPHome SDK pin is required for native bridge tests")
+endif()
+set(ESPCONTROL_SDK_MAJOR "${CMAKE_MATCH_1}")
+set(ESPCONTROL_SDK_MINOR "${CMAKE_MATCH_2}")
+set(ESPCONTROL_SDK_PATCH "${CMAKE_MATCH_3}")
+configure_file(owned_ha_stubs/esphome/core/version.h.in
+  owned_ha_version/esphome/core/version.h @ONLY)
+
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/configuration_psram_allocator_test.cpp
   COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_configuration_psram_allocator_test.py
           ${CMAKE_CURRENT_BINARY_DIR}/configuration_psram_allocator_test.cpp
@@ -1261,7 +1276,8 @@ add_executable(home_assistant_transport_runtime_test home_assistant_transport_ru
 target_compile_features(home_assistant_transport_runtime_test PRIVATE cxx_std_17)
 target_compile_definitions(home_assistant_transport_runtime_test PRIVATE USE_API_HOMEASSISTANT_STATES)
 target_compile_options(home_assistant_transport_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
-target_include_directories(home_assistant_transport_runtime_test PRIVATE owned_ha_stubs stubs ../../components/espcontrol)
+target_include_directories(home_assistant_transport_runtime_test PRIVATE
+  ${CMAKE_CURRENT_BINARY_DIR}/owned_ha_version owned_ha_stubs stubs ../../components/espcontrol)
 add_test(NAME home_assistant_transport_runtime_test COMMAND home_assistant_transport_runtime_test)
 
 add_executable(artwork_controller_test artwork_controller_test.cpp)
@@ -1738,7 +1754,8 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   target_compile_features(page_label_refresh_test_support PRIVATE cxx_std_17)
   target_compile_options(page_label_refresh_test_support PRIVATE -Wall -Wextra -Werror)
   target_compile_definitions(page_label_refresh_test_support PRIVATE USE_LVGL)
-  target_include_directories(page_label_refresh_test_support PRIVATE owned_ha_stubs ../../components/espcontrol)
+  target_include_directories(page_label_refresh_test_support PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}/owned_ha_version owned_ha_stubs ../../components/espcontrol)
   target_include_directories(page_label_refresh_test_support INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(page_label_refresh_test_support PUBLIC lvgl::lvgl)
   if(APPLE)
