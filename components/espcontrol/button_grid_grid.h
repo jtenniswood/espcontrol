@@ -1,6 +1,7 @@
 #pragma once
 
 #include "card_curve.h"
+#include "external_memory_allocator.h"
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
@@ -1913,6 +1914,14 @@ inline void grid_clear_navigation_targets(BtnSlot *slots, int slot_count) {
   }
 }
 
+// Button callbacks retain pointers to these strings across grid updates.
+// Allocate the full capacity once so addresses remain stable in PSRAM.
+inline std::string *subpage_toggle_entity_ids() {
+  static std::vector<std::string, EspControlExternalAllocator<std::string>>
+      ids(MAX_SUBPAGE_ITEMS);
+  return ids.data();
+}
+
 inline void grid_phase2(
     BtnSlot *slots, const GridConfig &cfg,
     esphome::text::Text **sp_configs,
@@ -1951,7 +1960,7 @@ inline void grid_phase2(
   static const char* icon_off_cp[MAX_GRID_SLOTS] = {};
   static const char* icon_on_cp[MAX_GRID_SLOTS] = {};
 
-  static std::string sp_entity_ids[MAX_SUBPAGE_ITEMS];
+  std::string *sp_entity_ids = subpage_toggle_entity_ids();
   static int sp_entity_alloc_idx = 0;
   static espcontrol::cards::NavigationDriverChildIndicators
     navigation_child_indicators;
