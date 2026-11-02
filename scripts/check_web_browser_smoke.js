@@ -518,6 +518,7 @@ async function installRoutes(context, slug, options = {}) {
         /^\/(?:number|select|switch|sensor|text_sensor|light|button|update)\/[^/]+$/.test(requestUrl.pathname)) {
       // This SSE fixture does not expose these optional REST entities.
       // A missing entity is 404, not a successful empty JSON response.
+      options.expectedMissingEntityUrls?.add(requestUrl.href);
       await route.fulfill({ status: 404, body: "Not found" });
       return;
     }
@@ -6798,7 +6799,8 @@ async function assertTimerEntityValidation(page) {
 
 async function runCase(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
-  await installRoutes(context, testCase.slug);
+  const expectedMissingEntityUrls = new Set();
+  await installRoutes(context, testCase.slug, { expectedMissingEntityUrls });
   const page = await context.newPage();
   const errors = [];
   const posts = [];
@@ -6806,6 +6808,9 @@ async function runCase(browser, testCase) {
 
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
+    if (message.type() === "error" &&
+        message.text() === "Failed to load resource: the server responded with a status of 404 (Not Found)" &&
+        expectedMissingEntityUrls.has(message.location().url)) return;
     if (message.type() === "error" || message.type() === "warning")
       errors.push(`[${message.type()}] ${message.text()}`);
   });
