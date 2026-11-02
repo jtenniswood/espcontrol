@@ -38,13 +38,17 @@ struct Setting { bool state = true; } cover_art_playback_control_enabled;
 struct App { espcontrol::DisplayModeController controller; auto &display() { return controller; } } espcontrol_app;
 std::string cover_art_active_media_player_entity = "media_player.room";
 std::string cover_art_last_playback_state = "playing";
-bool ha_api_state_connected() { return true; }
+bool connected = true;
+bool ha_api_state_connected() { return connected; }
 uint32_t millis() { return 1234; }
 namespace espcontrol::cover_art { enum class PlaybackCommand { NONE, PAUSE, PLAY }; }
 int sent = 0;
-bool ha_send_entity_action(const std::string &, const char *) { ++sent; return true; }
+std::string last_service;
+bool ha_send_entity_action(const std::string &, const char *service) { ++sent; last_service = service; return true; }
 struct Control {
-  auto begin(const std::string &, const std::string &, uint32_t) { return espcontrol::cover_art::PlaybackCommand::PAUSE; }
+  auto begin(const std::string &, const std::string &state, uint32_t) {
+    return state == "paused" ? espcontrol::cover_art::PlaybackCommand::PLAY : espcontrol::cover_art::PlaybackCommand::PAUSE;
+  }
   void cancel_pending() {}
   void expire(uint32_t) {}
   bool pending() { return false; }
@@ -68,6 +72,42 @@ int main() {
   }
   refresh_playback();
   assert(button.hidden); // Locked artwork must not advertise an unavailable action.
+  bool allow = true;
+  assert(pin.save(true, nullptr, nullptr, &allow));
+  refresh_playback();
+  assert(pin.locked() && !button.hidden && !uses_wake_path());
+  toggle_playback();
+  assert(sent == 1 && last_service == "media_player.media_pause" && pin.locked());
+  cover_art_last_playback_state = "paused";
+  toggle_playback();
+  assert(sent == 2 && last_service == "media_player.media_play" && pin.locked());
+  screensaver_wake_touch_guard_active = true;
+  assert(uses_wake_path());
+  toggle_playback();
+  assert(sent == 2); // The original dark-screen wake tap still cannot control music.
+  screensaver_wake_touch_guard_active = false;
+  connected = false;
+  toggle_playback();
+  assert(sent == 2);
+  connected = true;
+  widget.hidden = true;
+  assert(uses_wake_path());
+  toggle_playback();
+  assert(sent == 2); // No actions through a hidden artwork view.
+  widget.hidden = false;
+  espcontrol_app.display().clear(espcontrol::DisplayRequestSource::MEDIA_PLAYBACK);
+  assert(uses_wake_path());
+  toggle_playback();
+  assert(sent == 2); // The exception applies only to artwork, never normal controls.
+  espcontrol_app.display().request(espcontrol::DisplayRequestSource::MEDIA_PLAYBACK,
+                                  espcontrol::DisplayMode::COVER_ART);
+  allow = false;
+  assert(pin.save(true, nullptr, nullptr, &allow));
+  refresh_playback();
+  assert(button.hidden && uses_wake_path() && pin.locked());
+  toggle_playback();
+  assert(sent == 2); // Turning the exception off protects playback immediately.
+  sent = 0;
   assert(pin.submit(code));
   refresh_playback();
   assert(!button.hidden); // Unlocking restores the control without changing layout.
@@ -100,6 +140,19 @@ int main() {
     assert(pin.lock()); // Manual screen lock also applies with automatic protection off.
     refresh_playback();
     assert(button.hidden);
+    allow = true;
+    assert(pin.save(false, nullptr, nullptr, &allow));
+    refresh_playback();
+    assert(!button.hidden && pin.locked() && !uses_wake_path());
+    const int before = sent;
+    toggle_playback();
+    assert(sent == before + 1 && pin.locked());
+    cover_art_playback_control_enabled.state = false;
+    refresh_playback();
+    assert(button.hidden == square);
+    cover_art_playback_control_enabled.state = true;
+    allow = false;
+    assert(pin.save(false, nullptr, nullptr, &allow));
     assert(pin.submit(code));
     refresh_playback();
     assert(!button.hidden);
@@ -114,4 +167,4 @@ with tempfile.TemporaryDirectory() as directory:
                     '-I', str(ROOT / 'tests/firmware/screensaver_pin_stubs'), str(cpp),
                     str(ROOT / 'components/espcontrol/screensaver_pin.cpp'), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)
-print('Locked artwork hides playback; unlocking restores controls and preserves square-panel settings')
+print('Artwork playback respects PIN policy, opt-in control, wake guards and square-panel settings')

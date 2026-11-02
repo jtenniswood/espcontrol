@@ -113,7 +113,8 @@ int main() {
   auto &pin = espcontrol::screensaver_pin();
   pin.setup();
   std::string code = "04";
-  assert(pin.save(true, &code));
+  bool allow_playback = true;
+  assert(pin.save(true, &code, nullptr, &allow_playback));
   pin.arm();
   lv_font_t header_font;
   screensaver_pin_refresh(true, nullptr, nullptr, nullptr, true, &header_font);

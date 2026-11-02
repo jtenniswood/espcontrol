@@ -344,10 +344,12 @@ async function installRoutes(context, slug, options = {}) {
         pin.enabled = settings.enabled;
         if (typeof settings.pin === "string") pin.pin = settings.pin;
         if (typeof settings.randomize_keypad === "boolean") pin.randomize = settings.randomize_keypad;
+        if (typeof settings.allow_cover_art_playback === "boolean") pin.allowPlayback = settings.allow_cover_art_playback;
       }
       await route.fulfill({ status: 200, contentType: "application/json",
         body: JSON.stringify({ enabled: pin.enabled, has_pin: !!pin.pin, pin_length: pin.pin.length,
-          randomize_keypad: pin.randomize ?? true }) });
+          randomize_keypad: pin.randomize ?? true,
+          ...(typeof pin.allowPlayback === "boolean" ? { allow_cover_art_playback: pin.allowPlayback } : {}) }) });
       return;
     }
     if (nativeState && requestUrl.pathname.startsWith("/api/v1/")) {
@@ -7106,7 +7108,7 @@ async function assertPanelNaming(browser) {
 async function assertScreensaverPinSettings(browser) {
   const testCase = ACTIVE_CASES[0];
   const context = await browser.newContext({ viewport: testCase.viewport });
-  const pin = { enabled: false, pin: "", randomize: true, posts: [], failSave: false };
+  const pin = { enabled: false, pin: "", randomize: true, allowPlayback: false, posts: [], failSave: false };
   const resetState = { epoch: 3, pending: false, requests: [] };
   await installRoutes(context, testCase.slug, { screensaverPinState: pin, resetState });
   const page = await context.newPage();
@@ -7168,6 +7170,20 @@ async function assertScreensaverPinSettings(browser) {
     assert.strictEqual(pin.randomize, true, "saved PIN layout can be changed independently");
     assert.strictEqual(pin.pin, "0042", "layout update preserves stored PIN");
     assert.strictEqual(await input.inputValue(), "004200", "layout update preserves an unsaved replacement PIN");
+    const playback = page.locator("#sp-set-screensaver-pin-allow-playback");
+    const playbackTrack = page.locator("#sp-set-screensaver-pin-allow-playback + .sp-toggle-track");
+    assert.strictEqual(await playback.isChecked(), false, "playback exception defaults off");
+    pin.failSave = true;
+    await playbackTrack.click();
+    await card.getByRole("alert").waitFor();
+    assert.strictEqual(pin.allowPlayback, false, "failed setting change keeps protection");
+    assert.strictEqual(await playback.isChecked(), false, "failed save restores the toggle");
+    pin.failSave = false;
+    await playbackTrack.click();
+    await page.waitForFunction(() => !document.querySelector("#sp-set-screensaver-pin-allow-playback").disabled);
+    assert.strictEqual(pin.allowPlayback, true, "playback exception can be enabled independently");
+    assert.strictEqual(pin.pin, "0042", "playback preference preserves the PIN");
+    assert.strictEqual(await input.inputValue(), "004200", "playback preference preserves unsaved replacement PIN");
     await enable.click();
     await page.waitForFunction(() => !document.querySelector("#sp-set-screensaver-pin-enabled").disabled);
     assert.strictEqual(pin.enabled, false);
@@ -7205,6 +7221,8 @@ async function assertScreensaverPinSettings(browser) {
     await lockInput.waitFor({ state: "visible" });
     await page.waitForFunction(() => !document.querySelector('.sp-settings-modal input[type="password"]').disabled);
     assert.strictEqual(await lockSettings.locator('input[id$="-randomize"]').isChecked(), false);
+    assert.strictEqual(await lockSettings.locator('input[id$="-allow-playback"]').isChecked(), true,
+      'Screen Lock editor reads the shared playback preference');
     assert.strictEqual(await lockSettings.getByText('Require PIN after wake', { exact: true }).count(), 0,
       'manual Screen Lock always requires its saved PIN');
     assert.strictEqual(await lockSettings.getByRole('button', { name: 'Clear', exact: true }).count(), 0);
@@ -7233,6 +7251,10 @@ async function assertScreensaverPinSettings(browser) {
     await page.waitForFunction(() => document.querySelector('.sp-settings-modal input[type="password"]').value === "");
     assert.strictEqual(pin.pin, "123456");
     assert.strictEqual(pin.enabled, false, "card PIN can be saved without enabling automatic wake protection");
+    await lockSettings.locator('input[id$="-allow-playback"] + .sp-toggle-track').click();
+    await page.waitForFunction(() => !document.querySelector('.sp-settings-modal input[id$="-allow-playback"]').disabled);
+    assert.strictEqual(pin.allowPlayback, false);
+    assert.strictEqual(await playback.isChecked(), false, 'Screen Lock changes synchronize PIN Protection settings');
     assert.strictEqual(await input.getAttribute("placeholder"), "••••••", "card save updates screensaver PIN controls");
     await page.locator('.sp-settings-modal input[id$="screensaver-on-lock"] + .sp-toggle-track').click();
     await page.locator(".sp-settings-modal .sp-save-btn").click();
@@ -8013,6 +8035,11 @@ async function assertRainfallEditor(browser) {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_PIN_ONLY === "1") {
+      await assertScreensaverPinSettings(browser);
+      console.log("PIN settings browser checks passed.");
+      return;
+    }
     await assertWindSensorEditor(browser);
     if (process.env.ESPCONTROL_WIND_ONLY === "1") return;
     if (process.env.ESPCONTROL_RAINFALL_ONLY === "1") { await assertRainfallEditor(browser); return; }

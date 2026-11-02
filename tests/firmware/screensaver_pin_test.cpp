@@ -7,7 +7,7 @@
 #include "display_mode_controller.h"
 
 void invalid_records_can_be_replaced() {
-  struct Record { uint32_t version{2}; char pin[17]{"0042"}; uint8_t enabled{1}; uint8_t randomize{0}; };
+  struct Record { uint32_t version{3}; char pin[17]{"0042"}; uint8_t enabled{1}; uint8_t randomize{0}; uint8_t allow_playback{0}; };
   static_assert(sizeof(Record) == 24);
   auto bytes = [](const Record &record) {
     const auto *first = reinterpret_cast<const uint8_t *>(&record);
@@ -18,6 +18,7 @@ void invalid_records_can_be_replaced() {
   record.version = 99; invalid.push_back(bytes(record));
   record = {}; record.enabled = 2; invalid.push_back(bytes(record));
   record = {}; record.randomize = 2; invalid.push_back(bytes(record));
+  record = {}; record.allow_playback = 2; invalid.push_back(bytes(record));
   record = {}; record.pin[1] = 'x'; invalid.push_back(bytes(record));
   record = {}; std::memset(record.pin, '1', sizeof(record.pin)); invalid.push_back(bytes(record));
   record = {};
@@ -53,8 +54,43 @@ void invalid_records_can_be_replaced() {
   identity_flash.clear();
 }
 
+void playback_preference_persists_and_upgrades() {
+  // The old record's padding must never accidentally grant playback access.
+  struct Record { uint32_t version; char pin[17]{"0042"}; uint8_t enabled{1}; uint8_t randomize{1}; uint8_t padding{255}; };
+  static_assert(sizeof(Record) == 24);
+  for (uint32_t version : {1u, 2u}) {
+    Record record{version};
+    const auto *bytes = reinterpret_cast<const uint8_t *>(&record);
+    identity_flash.assign(bytes, bytes + sizeof(record));
+    espcontrol::ScreensaverPin settings;
+    settings.setup();
+    assert(settings.locked() && !settings.allow_cover_art_playback() && !settings.cover_art_playback_allowed());
+    assert(settings.randomize_keypad() == (version == 2));
+    bool allow = true;
+    fail_commit = true;
+    assert(!settings.save(true, nullptr, nullptr, &allow));
+    assert(!settings.allow_cover_art_playback() && !settings.cover_art_playback_allowed());
+    fail_commit = false;
+    assert(settings.save(true, nullptr, nullptr, &allow));
+    assert(settings.locked() && settings.cover_art_playback_allowed());
+    // Changes from an older client omit the new preference and preserve it.
+    assert(settings.save(false, nullptr));
+    espcontrol::ScreensaverPin rebooted;
+    rebooted.setup();
+    assert(!rebooted.enabled() && rebooted.has_pin() && rebooted.allow_cover_art_playback());
+    assert(rebooted.randomize_keypad() == (version == 2));
+    assert(rebooted.lock() && rebooted.cover_art_playback_allowed() && rebooted.locked());
+    allow = false;
+    assert(rebooted.save(false, nullptr, nullptr, &allow));
+    assert(rebooted.locked() && !rebooted.cover_art_playback_allowed());
+    assert(rebooted.submit("0042") && rebooted.cover_art_playback_allowed());
+  }
+  identity_flash.clear();
+}
+
 int main() {
   invalid_records_can_be_replaced();
+  playback_preference_persists_and_upgrades();
   using espcontrol::ScreensaverPin;
   ScreensaverPin pin;
   pin.setup();
