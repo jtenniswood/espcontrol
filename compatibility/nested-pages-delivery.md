@@ -19,7 +19,14 @@ exact native-v2 bytes in outer format three so older editors reject them;
 flat exports retain outer format two/native v1. Restore checks writer support
 and publishes the whole graph before other settings. Physical nested testing and
 durable-v2 release enablement remain separate gates.
-No nested-page candidate has been flashed to a physical device yet.
+A private, labelled S3 qualification image has now exercised the actual
+embedded editor: creation inside an existing subpage, nested card save/reload,
+immediate-parent Back, creation limited to two subpage levels, subtree code paste/delete
+and exact native backup export/import. An old-format replacement is rejected
+without changing the nested document or generation. These checks use an
+unpublished test-only v2 writer; the production release contract is unchanged.
+Long navigation/reconnect/resource checks, matched memory workloads, final
+rollback and the remaining device/visual checks are still required.
 
 The release contract records `panelConfigReadNavigationDepth` separately from
 `panelConfigWriteNavigationDepth`. A flat native-v2 writer does not enable
