@@ -31,6 +31,7 @@ export function createAppConfigEventsFeature(
         return state.subpageRaw[slot];
     }
     function applyButtonConfigStateEvent(this: any, slot?: any, val?: any) {
+        if (state.nativeHasNestedPages) return;
         var b: any = state.buttons[slot - 1];
         var migrateConfig: any = buttonConfigNeedsMigration(val || "");
         var parsed: any = parseButtonConfig(val || "");
@@ -43,11 +44,12 @@ export function createAppConfigEventsFeature(
         b.type = parsed.type;
         b.precision = parsed.precision;
         b.options = parsed.options;
-        if (migrateConfig)
+        if (migrateConfig && !state.nativeConfigLoading)
             configPersistence.saveButtonConfig(slot);
         renderQueue.schedule();
     }
     function applySubpageConfigStateEvent(this: any, slot?: any, key?: any, val?: any) {
+        if (state.nativeHasNestedPages) return;
         ensureSubpageRaw(slot)[key] = val || "";
         applySubpageRaw(slot);
     }

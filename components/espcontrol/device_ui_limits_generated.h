@@ -42,7 +42,7 @@ inline constexpr DeviceCardTypeSupport DEVICE_UI_CARD_TYPES_0[] = {
     {"sensor", true},
     {"local_sensor", true},
     {"slider", true},
-    {"subpage", false},
+    {"subpage", true},
     {"timezone", true},
     {"weather", true},
     {"image", true},

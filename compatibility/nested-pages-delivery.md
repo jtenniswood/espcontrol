@@ -9,8 +9,11 @@ The runtime prerequisite in PR #2400 has user-confirmed layout coverage on the
 6-, 9-, 15- and 20-slot grids. The follow-up adds depth-bounded direct readers,
 prepared navigation, descendant indicators and remote lookup, with an editable
 browser graph codec and subtree-transfer planning. Generated reader limits are
-depth two; the advertised writable depth remains one. Editor creation, clipboard
-persistence, backups and durable-v2 release enablement remain separate gates.
+depth two; the advertised writable depth remains one. The web editor now loads
+and navigates the graph and offers creation only at negotiated writable depths.
+Browser fixtures cover creation, rejection rollback, reload and reconnect on all
+four grid sizes. Clipboard persistence, backups, physical nested testing and
+durable-v2 release enablement remain separate gates.
 No nested-page candidate has been flashed to a physical device yet.
 
 ## Agreed behaviour

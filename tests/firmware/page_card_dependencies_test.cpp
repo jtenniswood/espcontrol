@@ -79,6 +79,11 @@ void nested_ancestor_indicators() {
   // Explicit intermediate state does not stop the automatic ancestor from
   // reserving the leaf state used by its descendant summary.
 }
+void unlinked_legacy_child_folder_is_rejected() {
+  Document doc(DEVICE_UI_PROFILES[8]);doc.button(1,";Root;;;;;subpage");
+  doc.child(1,"~B,1|G,,Unlinked");auto store=doc.finish();Sink sink;
+  assert(!PageCardDependencies().enumerate(store,sink));
+}
 void sensor_fields_and_modes() {
   assert(declarations("sensor.unused;Name;Auto;Auto;;;sensor;1;").empty());
   assert(declarations(";Name;Auto;Auto;sensor.temperature;°C;sensor;1;")==std::set<std::string>{"sensor.temperature/"});
@@ -277,7 +282,7 @@ void maximum_live_sensor_dependencies() {
 }
 }  // namespace
 int main() {
-  nested_ancestor_indicators();
+  nested_ancestor_indicators();unlinked_legacy_child_folder_is_rejected();
   alarm_name_dependencies();
   sensor_fields_and_modes();
   actions_and_numeric_controls();

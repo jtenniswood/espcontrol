@@ -134,7 +134,7 @@ void corpus() {
       const auto &type = limits.card_types[i];
       const std::string card = "light.test;Label;Auto;Auto;sensor.other;°C;" + std::string(type.type) + ";1;card_on_color=FF8000";
       parity(make_v1(limits, card), limits);
-      if (type.allow_in_subpage) parity(make_v1(limits, ";Folder;;;;;subpage",
+      if (type.allow_in_subpage && std::strcmp(type.type, "subpage") != 0) parity(make_v1(limits, ";Folder;;;;;subpage",
           "B,,1w|light.test:Label:Auto:Auto:sensor.other:°C:" + std::string(type.type) + ":1:card_on_color=FF8000"), limits);
     }
     for (const auto &golden : PAGE_STORE_GOLDENS) parity(make_v1(limits, golden.input), limits);
@@ -214,13 +214,19 @@ void replacement_and_failures() {
   }
 }
 
+void legacy_child_folders_need_explicit_targets() {
+  const auto &limits=DEVICE_UI_PROFILES[8];
+  const auto source=make_v1(limits,";Root;;;;;subpage","~B,1|G,,Unlinked");
+  Allocator allocator;PageStoreRuntime runtime(limits,allocator,128*1024);
+  assert(!runtime.prepare_write(1,source.data(),source.size()));
+  assert(runtime.last_stage_status()==PageStoreStatus::CAPACITY_EXCEEDED);
+  assert(!runtime.active().page_count() && allocator.live==0);
+}
+
 void nested_write_admission() {
   for (const auto &profile : DEVICE_UI_PROFILES) {
     auto limits = profile;
     limits.max_navigation_depth = 2;
-    std::vector<DeviceCardTypeSupport> types(profile.card_types, profile.card_types + profile.card_type_count);
-    for (auto &type : types) if (std::strcmp(type.type, "subpage") == 0) type.allow_in_subpage = true;
-    limits.card_types = types.data();
     const auto source = wire(authored_nested(limits));
     Allocator allocator;
     {
@@ -311,7 +317,7 @@ void dormant_and_owned_source() {
 }
 } // namespace
 int main() {
-  nested_depth_two(); nested_write_admission();
+  nested_depth_two(); nested_write_admission(); legacy_child_folders_need_explicit_targets();
   corpus(); replacement_and_failures(); hostile_and_bounds(); dormant_and_owned_source();
   std::cout << "PASS direct v2 PageStore parity/normalization/identities/admission/atomic replacement " << cases << " cases\n";
 }

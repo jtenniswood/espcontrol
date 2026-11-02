@@ -18,7 +18,7 @@ const {
   activeCardColor,
   decodeConfigField,
 } = loadTypeScriptModule(path.join(ROOT, "src", "webserver", "model", "index.ts"));
-const { convertNativeV1ToV2, convertNativeV2ToV1 } = loadTypeScriptModule(
+const { convertNativeV1ToV2, convertNativeV2ToV1, encodePanelPageDocument, decodePanelPageDocument } = loadTypeScriptModule(
   path.join(ROOT, "src", "webserver", "model", "panel_config_conversion.ts"),
 );
 const MANIFEST_PATH = path.join(ROOT, "devices", "manifest.json");
@@ -379,7 +379,10 @@ async function installRoutes(context, slug, options = {}) {
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
           configuration: { read: true, write: true, document_versions: nativeState.documentVersions || [1],
             preserves_inactive_records: nativeState.preservesInactiveRecords,
-            max_record_body_bytes: nativeState.maxRecordBodyBytes, max_v2_document_bytes: 524288 },
+            max_record_body_bytes: nativeState.maxRecordBodyBytes, max_v2_document_bytes: 524288,
+            max_navigation_depth: nativeState.readDepth,
+            writable_navigation_depth: nativeState.writeDepth,
+            durable_document_version: nativeState.durableVersion },
           web_assets: { versions: [1] },
         }),
       });
@@ -416,6 +419,10 @@ async function installRoutes(context, slug, options = {}) {
       }
       const etag = () => `"${version === 2 ? "v2-" : ""}${nativeState.generation}"`;
       if (route.request().method() === "PUT") {
+        if (nativeState.rejectNextStatus) {
+          const status = nativeState.rejectNextStatus; delete nativeState.rejectNextStatus;
+          await route.fulfill({status,body:"configuration rejected"});return;
+        }
         const expected = etag();
         const supplied = route.request().headers()["if-match"];
         if (supplied !== expected) {
@@ -425,7 +432,8 @@ async function installRoutes(context, slug, options = {}) {
         const body = route.request().postDataBuffer();
         assert(body, `${slug}: native configuration PUT has a binary body`);
         const input = new Uint8Array(body);
-        nativeState.document = decodePanelConfig(version === 2 ? convertNativeV2ToV1(input) : input);
+        nativeState.document = version === 2 && nativeState.readDepth === 2
+          ? decodePanelPageDocument(input) : decodePanelConfig(version === 2 ? convertNativeV2ToV1(input) : input);
         nativeState.generation += 1;
         nativeState.puts.push({
           generation: nativeState.generation,
@@ -442,7 +450,8 @@ async function installRoutes(context, slug, options = {}) {
         status: 200,
         contentType: "application/vnd.espcontrol.panel-config",
         headers: { ETag: etag(), "X-Panel-Config-Version": String(version) },
-        body: Buffer.from(version === 2 ? convertNativeV1ToV2(encodePanelConfig(nativeState.document)) : encodePanelConfig(nativeState.document)),
+        body: Buffer.from(version === 2 && nativeState.readDepth === 2 ? encodePanelPageDocument(nativeState.document)
+          : version === 2 ? convertNativeV1ToV2(encodePanelConfig(nativeState.document)) : encodePanelConfig(nativeState.document)),
       });
       return;
     }
@@ -8283,6 +8292,98 @@ async function assertWeatherReadingEditors(browser) {
   }
 }
 
+async function assertNestedPageEditor(browser, testCase) {
+  const { slug } = testCase;
+  const nativeState = { ...nativeConfigState(slug), documentVersions: [1,2], readDepth: 2, writeDepth: 2, durableVersion: 2,
+    document: { deviceProfile: slug, buttons: {1:";Root;;;;;subpage"},
+      subpages: {1:"~B,1|G,,Child",33:"~B=Parent%20Page:ABCDEF,1|,light.leaf,Leaf"}, settings:{button_order:"1",future:"opaque 🌡️"} } };
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(context, slug, { nativeState });
+  const page = await context.newPage(); await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${slug}?events=1`, { waitUntil:"domcontentloaded" });
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Root"));
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    assert((await page.locator('.sp-main [data-slot="1"]').textContent()).includes("Root"), "legacy SSE cannot overwrite the authoritative nested root");
+    await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+    await page.waitForFunction(() => document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Root");
+    await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+    await page.waitForFunction(() => document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Child");
+    assert((await page.locator('.sp-main').textContent()).includes("Leaf"));
+    await page.locator('.sp-back-btn .sp-back-hit').click();
+    await page.waitForFunction(() => document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Root");
+    await page.locator('.sp-main .sp-empty-cell').first().click();
+    await page.getByRole("button", {name:"Subpage card type",exact:true}).click();
+    if (!await page.getByLabel("Label", {exact:true}).isVisible())
+      await page.getByRole("button", {name:"Card Settings",exact:true}).click();
+    await page.getByLabel("Label", {exact:true}).fill("Created");
+    await page.getByRole("button", {name:"Save",exact:true}).click();
+    await page.waitForSelector('.sp-settings-overlay.sp-visible', {state:"detached"});
+    assert(nativeState.puts.length === 1 && Object.hasOwn(nativeState.document.subpages,34), "creating a child folder persists its explicit empty nested target");
+    await page.locator('.sp-main [data-slot="2"] .sp-subpage-badge').click();
+    await page.waitForFunction(() => document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Created");
+    await page.locator('.sp-main .sp-empty-cell').first().click();
+    assert.strictEqual(await page.getByRole("button", {name:"Subpage card type",exact:true}).count(),0,"third-level creation is not offered");
+    await page.getByRole("button",{name:"Switch card type",exact:true}).click();
+    if (!await page.getByLabel("Entity", {exact:true}).isVisible())
+      await page.getByRole("button", {name:"Card Settings",exact:true}).click();
+    await page.getByLabel("Entity",{exact:true}).fill("light.deep");
+    if (!await page.getByLabel("Label", {exact:true}).isVisible())
+      await page.getByRole("button", {name:"Card Settings",exact:true}).click();
+    await page.getByLabel("Label",{exact:true}).fill("Deep");
+    const beforeRejectedSave = JSON.stringify(nativeState.document);
+    nativeState.rejectNextStatus = 422;
+    await page.getByRole("button", {name:"Save",exact:true}).click();
+    await page.waitForFunction(() => document.querySelector('.sp-banner.sp-error')?.textContent.includes("Nested pages cannot be saved"));
+    assert(await page.locator('.sp-settings-overlay.sp-visible').isVisible(),"a rejected nested save keeps the draft open");
+    assert.strictEqual(JSON.stringify(nativeState.document),beforeRejectedSave,"a rejected nested save preserves every page and setting");
+    await page.getByRole("button", {name:"Save",exact:true}).click();
+    await page.waitForSelector('.sp-settings-overlay.sp-visible',{state:"detached"});
+    assert(nativeState.document.subpages[34].includes("light.deep"),"nested cards save through the graph path");
+    assert.strictEqual(nativeState.document.subpages[33],"~B=Parent%20Page:ABCDEF,1|,light.leaf,Leaf","sibling raw fields and custom Back appearance are retained exactly");
+    assert.strictEqual(nativeState.document.settings.future,"opaque 🌡️","unknown settings survive nested editing");
+    await page.reload({waitUntil:"domcontentloaded"});
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Root"));
+    await page.evaluate(events => window.__seedEspState(events),seededEvents());
+    await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+    await page.locator('.sp-main [data-slot="2"] .sp-subpage-badge').click();
+    await page.waitForFunction(() => document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Created");
+    assert((await page.locator('.sp-main').textContent()).includes("Deep"),"nested cards survive reload");
+    fs.mkdirSync(FAILURE_DIR,{recursive:true});await page.screenshot({path:path.join(FAILURE_DIR,`nested-${slug}.png`)});
+    nativeState.document.buttons[1]=";Reconnected Root;;;;;subpage";
+    await page.evaluate(() => {const source=window.__eventSources.at(-1);source.dispatch("error",{});source.dispatch("open",{});});
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Reconnected Root"));
+    console.log(`${slug}: nested graph load, parent Back/title, child creation/save/reload, third-level block and reconnect passed`);
+  } catch(error) {
+    fs.mkdirSync(FAILURE_DIR,{recursive:true});await page.screenshot({path:path.join(FAILURE_DIR,`nested-failure-${slug}.png`)});throw error;
+  } finally { await context.close(); }
+}
+
+async function assertNestedWriterLimits(browser,testCase) {
+  for(const nested of [false,true]) {
+    const nativeState={...nativeConfigState(testCase.slug),documentVersions:[1,2],readDepth:2,writeDepth:1,durableVersion:1,
+      document:{deviceProfile:testCase.slug,buttons:{1:";Reader Root;;;;;subpage"},subpages:nested?{1:"~B,1|G,,Child",33:"~B,1|,light.leaf,Leaf"}:{1:"~B"},settings:{button_order:"1"}}};
+    const context=await browser.newContext({viewport:testCase.viewport});await installRoutes(context,testCase.slug,{nativeState});
+    const page=await context.newPage();await installFakeEventSource(page);
+    try {
+      await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`,{waitUntil:"domcontentloaded"});
+      await page.waitForFunction(()=>document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Reader Root"));
+      if(nested) {
+        assert.strictEqual(await page.locator('.sp-main').getAttribute('aria-disabled'),'true','reader-only nested configurations are locked for editing');
+        assert.strictEqual(nativeState.puts.length,0);
+      } else {
+        await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+        await page.locator('.sp-main .sp-empty-cell').first().click();
+        assert.strictEqual(await page.getByRole("button",{name:"Subpage card type",exact:true}).count(),0,'reader support alone cannot enable nested creation');
+      }
+    } finally {await context.close();}
+  }
+}
+
+function nestedEditorCases() {
+  return [...new Map(ACTIVE_CASES.map(testCase => [testCase.slots,testCase])).values()];
+}
+
 (async function main() {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
@@ -8305,6 +8406,11 @@ async function assertWeatherReadingEditors(browser) {
     await assertWindSensorEditor(browser);
     if (process.env.ESPCONTROL_WIND_ONLY === "1") return;
     if (process.env.ESPCONTROL_RAINFALL_ONLY === "1") { await assertRainfallEditor(browser); return; }
+    if (process.env.ESPCONTROL_NESTED_PAGES_ONLY === "1") {
+      for(const testCase of nestedEditorCases())
+        { await assertNestedPageEditor(browser,testCase); await assertNestedWriterLimits(browser,testCase); }
+      return;
+    }
     if (process.env.ESPCONTROL_BACKUP_ADMISSION_ONLY === "1") {
       await assertRetainedBackupAdmission(browser, ACTIVE_CASES.find(testCase => testCase.slug === "guition-esp32-s3-4848s040") || ACTIVE_CASES[0]);
       console.log("Retained backup browser admission checks passed for missing/false/malformed/current-v1/current-v2/legacy capabilities.");
@@ -8415,6 +8521,10 @@ async function assertWeatherReadingEditors(browser) {
     if (!acceptanceOnly) {
       await assertPageTitleEvents(browser);
       await assertRotationStartupOrdering(browser);
+    }
+    for (const testCase of nestedEditorCases()) {
+      await assertNestedPageEditor(browser,testCase);
+      await assertNestedWriterLimits(browser,testCase);
     }
     await assertHostedCompatibility(browser);
     await assertFirmwareRetryFeedback(browser);

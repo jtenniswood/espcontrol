@@ -50,7 +50,7 @@ int main() {
   assert(limits.supports_card_type(""));
   assert(limits.supports_card_type("sensor", true));
   assert(limits.supports_card_type("subpage"));
-  assert(!limits.supports_card_type("subpage", true));
+  assert(limits.supports_card_type("subpage", true));
   assert(!limits.supports_card_type("unknown"));
   assert(!limits.supports_card_type(nullptr));
   assert(limits.supports_card_type("image"));

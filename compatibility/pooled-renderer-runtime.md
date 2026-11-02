@@ -4,8 +4,9 @@
 used by the concrete [pooled application](pooled-application-owner.md).
 Generated device profiles select that application at compile time, including
 startup or allocation failure. Standalone consumers without a generated
-profile retain their explicit boot selection. No nesting or capacity change
-is enabled by the generated profiles. Depth-two host fixtures exercise
+profile retain their explicit boot selection. Generated card support includes
+linked child folders, while writable depth and total resource budgets retain
+their release gates. Depth-two host fixtures exercise
 immediate-parent Back, restoration by owner path and allocation-free navigation;
 writable depth remains one until the nested-page delivery gates pass.
 

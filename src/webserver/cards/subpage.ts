@@ -25,7 +25,7 @@ export function registerSubpageCardTypes(
 ): void {
     const { renderButtonSettings } = cardUi;
     const { cardSensorPreviewHtml, condField } = fields;
-    const { enterSubpage } = codec;
+    const { enterChildSubpage } = codec;
     const { subpageStateDisplayMode } = core;
     // Navigation folder: tap opens a nested grid screen with its own button layout
     var SUBPAGE_CARD_METADATA: any = {
@@ -122,7 +122,8 @@ export function registerSubpageCardTypes(
     };
     registry.register("subpage", {
         label: "Subpage",
-        allowInSubpage: false,
+        allowInSubpage: true,
+        isAvailable: () => codec.canCreateSubpage(),
         hideLabel: true,
         labelPlaceholder: "e.g. Lighting",
         cardMetadata: SUBPAGE_CARD_METADATA,
@@ -354,7 +355,8 @@ export function registerSubpageCardTypes(
             };
         },
         contextMenuItems: function (this: any, slot?: any, b?: any, helpers?: any) {
-            helpers.addCtxItem("cog", "Edit Subpage", function (this: any) { enterSubpage(slot); });
+            const parent = state.editingSubpage;
+            helpers.addCtxItem("cog", "Edit Subpage", function (this: any) { enterChildSubpage(parent, slot); });
         },
     });
     function subpageBadgeLabelHtml(this: any, helpers?: any, label?: any) {
@@ -368,7 +370,8 @@ export function registerSubpageCardTypes(
         var configBtn: any = document.createElement("button");
         configBtn.className = "sp-action-btn sp-edit-subpage-btn";
         configBtn.textContent = "Edit Subpage";
-        configBtn.addEventListener("click", function (this: any) { selection.closeSettings(); enterSubpage(slot); });
+        const parent = state.editingSubpage;
+        configBtn.addEventListener("click", function (this: any) { selection.closeSettings(); enterChildSubpage(parent, slot); });
         panel.appendChild(configBtn);
     }
 }

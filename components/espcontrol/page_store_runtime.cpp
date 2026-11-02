@@ -30,6 +30,7 @@ bool PageStoreRuntime::prepared_within_limits() const {
     for (size_t index = 0; index < page->runtime_card_count; ++index) {
       const auto *card = staged_.card(page->first_card + index);
       const auto type = staged_.field(*card, CardField::TYPE);
+      if (type == "subpage" && card->target == NO_PAGE) return false;
       for (size_t support = 0; support < limits_.card_type_count; ++support)
         if (type == limits_.card_types[support].type && !limits_.card_types[support].allow_in_subpage) return false;
     }

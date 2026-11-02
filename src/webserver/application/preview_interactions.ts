@@ -71,7 +71,7 @@ export function createPreviewInteractionsFeature(
         getSubpage,
         buildSubpageGrid,
         serializeSubpageGrid,
-        enterSubpage,
+        enterChildSubpage,
         exitSubpage,
         saveSubpageConfig,
         subpageFirstFreeSlot,
@@ -238,7 +238,7 @@ export function createPreviewInteractionsFeature(
                 var btnEl: any = e.target.closest("[data-slot]");
                 if (btnEl) {
                     var badgeSlot: any = parseInt(btnEl.getAttribute("data-slot"), 10);
-                    enterSubpage(badgeSlot);
+                    enterChildSubpage(state.editingSubpage, badgeSlot);
                     return;
                 }
             }

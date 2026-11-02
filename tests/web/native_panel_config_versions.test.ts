@@ -2,6 +2,7 @@ import { createNativePanelConfigClient, type NativePanelConfigRequest, type Nati
 import { decodePanelConfig, encodePanelConfig, type PanelConfigDocument } from "../../src/webserver/model/panel_config";
 import { convertNativeV1ToV2, convertNativeV2ToV1 } from "../../src/webserver/model/panel_config_conversion";
 import { decodeNativeV2, encodeNativeV2, NativeV2Kind, type NativeV2Record } from "../../src/webserver/model/panel_config_v2";
+import { NativePanelConfigController } from "../../src/webserver/controllers/native_panel_config_controller";
 
 function check(value: unknown, message: string): asserts value { if (!value) throw new Error(message); }
 function same(actual: unknown, expected: unknown, message: string): void {
@@ -24,6 +25,53 @@ function capabilities(versions = [1, 2], max = 524288): NativePanelConfigRespons
   } }) };
 }
 const selected = (request?: NativePanelConfigRequest) => Number(request?.headers?.["X-Panel-Config-Version"] ?? 1);
+
+export async function runNativeSnapshotCancellationTests(): Promise<void> {
+  for (const priorOutcome of ["saved", "failed"] as const) {
+    let started!: () => void;
+    const firstStarted = new Promise<void>(resolve => { started = resolve; });
+    const events: string[] = [];
+    let reads = 0, persisted: PanelConfigDocument | undefined;
+    const controller = new NativePanelConfigController({
+      fetch: async (path, request) => {
+        if (path.endsWith("capabilities")) return capabilities();
+        if (request?.method === "PUT") {
+          events.push("write");
+          same(request.headers?.["If-Match"], '"v2-3"', "queued save uses its fresh generation");
+          persisted = model(request.body!, 2);
+          return response(204);
+        }
+        events.push(`read:${++reads}`);
+        if (reads === 1) {
+          check(request?.signal, "snapshot forwards its cancellation signal to fetch");
+          const signal = request.signal;
+          return new Promise<NativePanelConfigResponse>((_resolve, reject) => {
+            signal.addEventListener("abort", () => reject(new Error("Disconnected")), { once: true });
+            started();
+          });
+        }
+        return response(200, bytes(initial, 2), 2, `"v2-${reads}"`);
+      },
+      deviceProfile: () => "panel-a", slotCount: () => 9,
+      entityName: name => name, entityNameForSlot: (name, slot) => `${name}_${slot}`,
+      normalizeHexColor: value => value, showBanner: () => {}, delay: callback => callback(),
+    });
+    controller.saveQueue = Promise.resolve(priorOutcome);
+    const abort = new AbortController();
+    const obsolete = controller.readSnapshot(abort.signal).then(() => false, () => true);
+    await firstStarted;
+    const replacement = controller.readSnapshot();
+    same(reads, 1, "replacement snapshot waits for the active read");
+    abort.abort();
+    check(await obsolete, "cancelled snapshot rejects rather than applying a partial document");
+    const current = await replacement;
+    same([current?.document, current?.etag], [initial, '"v2-2"'], "reconnect receives a complete fresh snapshot");
+    same(await controller.saveQueue, priorOutcome, "cancelled and successful reads preserve the previous save outcome");
+    same(await controller.schedule(update), "saved", "cancellation releases the serialized queue for later edits");
+    same(persisted, update(initial), "later edit retains dormant records and opaque settings");
+    same(events, ["read:1", "read:2", "read:3", "write"], "no legacy fallback, extra writes or stale read reuse");
+  }
+}
 function bytes(document: PanelConfigDocument, version: number): Uint8Array {
   const v1 = encodePanelConfig(document); return version === 2 ? convertNativeV1ToV2(v1) : v1;
 }

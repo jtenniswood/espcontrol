@@ -30,6 +30,7 @@ export interface NativePanelConfigRequest {
   readonly credentials?: "include";
   readonly headers?: Record<string, string>;
   readonly body?: Uint8Array;
+  readonly signal?: AbortSignal;
 }
 
 export type NativePanelConfigFetch = (
@@ -204,16 +205,18 @@ export class NativePanelConfigClient {
   }
 
   /** Read the authoritative editable graph; no legacy entity reconstruction. */
-  async readSnapshot(deviceProfile: string): Promise<NativePanelConfigSnapshot | null> {
+  async readSnapshot(deviceProfile: string, signal?: AbortSignal): Promise<NativePanelConfigSnapshot | null> {
     if (!await this.discover()) {
       if (this.confirmedUnsupported_) return null;
       throw new Error("Configuration discovery is unavailable.");
     }
     for (let attempt = 0; attempt < 2; ++attempt) {
+      if (signal?.aborted) throw new Error("Configuration load was cancelled.");
       const version = this.documentVersion_;
       const response = await this.fetch_("/api/v1/config", {
-        cache: "no-store", headers: this.representationHeaders(version),
+        cache: "no-store", headers: this.representationHeaders(version), ...(signal ? { signal } : {}),
       });
+      if (signal?.aborted) throw new Error("Configuration load was cancelled.");
       if (response.status === 406 && this.fallbackToV1(version)) continue;
       if (!response.ok) throw new Error("Could not read the saved configuration.");
       const returnedVersion = response.headers.get("X-Panel-Config-Version");
@@ -224,6 +227,7 @@ export class NativePanelConfigClient {
       const input = new Uint8Array(await response.arrayBuffer());
       if (version === V2_DOCUMENT_VERSION && input.length > this.maxV2DocumentBytes_)
         throw new Error("Configuration exceeds the advertised byte limit.");
+      if (signal?.aborted) throw new Error("Configuration load was cancelled.");
       const document = this.decodeDocument(input, version);
       if (document.deviceProfile !== deviceProfile) throw new Error("The device configuration profile changed.");
       return { document, etag, version };

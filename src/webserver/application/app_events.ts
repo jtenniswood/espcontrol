@@ -1,3 +1,4 @@
+import type { NativePageEditorLoader } from "../features/page_editor";
 import { state } from "../state/app_instance";
 import { applySseHandlerAliases } from "../state/event_aliases";
 import {
@@ -48,6 +49,7 @@ export function createAppEventsFeature(
     shell: Pick<ControlsShellFeature, "setConfigLocked" | "showBanner">,
     stateLoader: Pick<StateLoaderFeature, "refreshFirmwareVersion" | "refreshScreensaverTimeout" | "eventStreamEnabled" | "loadInitialState">,
     gridMigration: Pick<GridMigrationFeature, "schedule">,
+    nativePages?: Pick<NativePageEditorLoader, "refresh" | "invalidate">,
 ): AppEventsFeature {
     const { rememberEntityPostPath } = entityState;
     const { setConfigLocked, showBanner } = shell;
@@ -62,24 +64,24 @@ export function createAppEventsFeature(
     } = c6Firmware;
     // ── SSE ────────────────────────────────────────────────────────────────
     function connectEvents(this: any) {
+        nativePages?.invalidate();
+        void nativePages?.refresh();
         function markConnected(this: any) {
             resetStateForConnection(state);
             runtime.orderReceived = false;
             setConfigLocked(false);
             if (els.banner)
                 els.banner.className = "sp-banner";
-            els.root.querySelectorAll(".sp-apply-btn").forEach(function (this: any, btn?: any) {
-                btn.disabled = false;
-                btn.textContent = "Apply Configuration";
-            });
             clearTimeout(runtime.migrationTimer as any);
             runtime.migrationTimer = setTimeout(gridMigration.schedule, 5000);
             clearTimeout(runtime.sliderMigrationTimer as any);
             runtime.pendingSliderSubpageMigrations = {};
             stateLoader.refreshFirmwareVersion();
             stateLoader.refreshScreensaverTimeout();
+            void nativePages?.refresh();
         }
         function handleDisconnected(this: any) {
+            nativePages?.invalidate();
             setConfigLocked(true, "Reconnecting to device\u2026");
             showBanner("Reconnecting to device\u2026", "offline");
         }

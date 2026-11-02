@@ -30,6 +30,7 @@ export interface NativePanelConfigControllerDependencies {
 export class NativePanelConfigController {
   private client_: NativePanelConfigClient | null;
   private saveQueue_: Promise<NativePanelConfigSaveOutcome> = Promise.resolve("saved");
+  private revision_ = 0;
   private legacyFallback_ = false;
   private retryDelayMs_ = 250;
   // P4 panels can still be completing their deferred native-configuration
@@ -68,12 +69,14 @@ export class NativePanelConfigController {
     return this.client_?.supported() ?? false;
   }
 
+  markLocalEdit(): void { ++this.revision_; }
+  changeRevision(): number { return this.revision_; }
   readNavigationDepth(): number { return this.client_?.readNavigationDepth() ?? 1; }
   writableNavigationDepth(): number { return this.client_?.writableNavigationDepth() ?? 1; }
 
-  readSnapshot(): Promise<NativePanelConfigSnapshot | null> {
+  readSnapshot(signal?: AbortSignal): Promise<NativePanelConfigSnapshot | null> {
     const precedingSave = this.saveQueue_, client = this.client_;
-    const read = precedingSave.then(() => client?.readSnapshot(this.dependencies.deviceProfile()) ?? null);
+    const read = precedingSave.then(() => client?.readSnapshot(this.dependencies.deviceProfile(), signal) ?? null);
     // A refresh may recover visible state after a failed save, but cannot erase
     // that failure from the queue or race with the next edit.
     this.saveQueue_ = read.then(() => precedingSave, () => precedingSave);
@@ -132,6 +135,7 @@ export class NativePanelConfigController {
   schedule(update: NativePanelConfigUpdate): Promise<NativePanelConfigSaveOutcome> | null {
     const client = this.client_;
     if (!client) return null;
+    ++this.revision_;
     const save = this.saveQueue_
       .then(async () => this.supported() || await this.waitForDiscovery())
       .then(async (supported) => supported === "legacy-fallback" || supported === "failed"

@@ -161,7 +161,8 @@ describe("browserless application contracts", () => {
     assert.match(preview, /export interface AppStatusPreviewFeature/);
     assert.match(preview, /export function createAppStatusPreviewFeature/);
     assert.match(preview, /sp-clockbar-subpage-title/);
-    assert.match(preview, /state\.buttons\[state\.editingSubpage - 1\]/);
+    assert.match(preview, /editorPageOwner\(state\.editingSubpage, state\.buttons, state\.subpages\)/);
+    assert.doesNotMatch(preview, /state\.buttons\[state\.editingSubpage - 1\]/);
     assert.match(entry, /statusPreview = createAppStatusPreviewFeature\(runtime, core, layout, environment, clockBarState\)/);
     assert.doesNotMatch(entry, /installAppStatusPreviewModule|appStatusPreviewCompatibilityGlobals/);
     assert.doesNotMatch(preview, /GlobalDescriptors|staticGlobal|appStatusPreviewCompatibilityGlobals/);
@@ -233,7 +234,7 @@ describe("browserless application contracts", () => {
     const globals = fs.readFileSync(path.join(ROOT, "src/webserver/runtime/application_globals.d.ts"), "utf8");
     assert.equal(fs.existsSync(path.join(ROOT, "src/webserver/runtime/layout_compatibility.ts")), false);
     assert.doesNotMatch(globals, /\bvar (?:NUM_SLOTS|TOTAL_SLOTS|GRID_COLS|GRID_ROWS):/);
-    assert.match(entry, /grid = createGridFeature\(configurationCodec, runtime, layout, entityState, requestApi, renderQueue\)/);
+    assert.match(entry, /grid = createGridFeature\(configurationCodec, runtime, layout, entityState, requestApi, renderQueue, \(\) => nativePanelConfig\.markLocalEdit\(\)\)/);
     assert.doesNotMatch(entry, /gridCompatibilityGlobals/);
     assert.doesNotMatch(grid, /GlobalDescriptors|staticGlobal|gridCompatibilityGlobals/);
     assert.doesNotMatch(globals, /\bvar (?:ctx|scheduleMainGridSave|cancelMainGridSave|applyButtonOrderValue|applyImportedButtonOrder|parseOrder|resolveIcon|serializeGrid|sizeClass|btnDisplayName):/);

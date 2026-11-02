@@ -424,13 +424,16 @@ export function createButtonSettingsFeature(
             return true;
         }
         function saveResultSucceeded(this: any, result?: any) {
-            return result !== "authentication-required" && result !== "conflict" &&
-                result !== "too-large" && result !== "failed" && result !== "unsupported";
+            return typeof result === "string" ? result === "saved" || result === "mirror-failed" : result !== false;
         }
         function applySettingsDraft(this: any) {
             if (!state.settingsDraft || state.settingsDraft.key !== draftKey)
                 return Promise.resolve(false);
             var draft: any = state.settingsDraft;
+            if (draft.button.type === "subpage" && !codec.canCreateSubpage(c.isSub ? state.editingSubpage : null)) {
+                showBanner("Subpages are not available at this level on this firmware.", "error");
+                return Promise.resolve(false);
+            }
             var originalGrid: any = c.grid.slice();
             var originalButtons: any = c.buttons.map(cloneButtonConfig);
             var originalSizes: any = Object.assign({}, c.sizes || {});

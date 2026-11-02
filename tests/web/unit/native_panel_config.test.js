@@ -33,3 +33,7 @@ test("negotiated editing preserves compatible backups and future graphs", async 
 test("nested snapshots and saves require explicit reader and writer depth capabilities", async () => {
   await loadTypescriptTest("tests/web/native_panel_config_versions.test.ts").runNativeNestedPageClientTests();
 });
+
+test("disconnect cancels an active snapshot and releases queued refreshes and saves", { timeout: 5000 }, async () => {
+  await loadTypescriptTest("tests/web/native_panel_config_versions.test.ts").runNativeSnapshotCancellationTests();
+});

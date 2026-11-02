@@ -96,6 +96,7 @@ import { createAppStateEventHandlersFeature } from "./application/app_state_even
 import { createAppEventsFeature, type AppEventsFeature } from "./application/app_events";
 import { createAppFeature, type AppFeature } from "./application/app";
 import { startApp } from "./application/app_start";
+import { createNativePageEditorFeature } from "./application/native_page_editor";
 import { createReconnectController } from "./features/reconnect";
 import { registerActionCardTypes } from "./cards/action";
 import { registerAlarmCardTypes } from "./cards/alarm";
@@ -499,7 +500,7 @@ function composeApplicationContext(): ApplicationContext {
   const clockBarPostApi = createClockBarPostApiFeature(entityState, requestApi);
   configurationPersistence.connectRequestApi(requestApi);
   configurationCodec.connectRequestApi(requestApi);
-  const grid = createGridFeature(configurationCodec, runtime, layout, entityState, requestApi, renderQueue);
+  const grid = createGridFeature(configurationCodec, runtime, layout, entityState, requestApi, renderQueue, () => nativePanelConfig.markLocalEdit());
   fields = createControlsFieldsFeature(cards, configurationOptions, shell, requestApi);
   const placement = createPreviewGridPlacementFeature({
     controller: previewPlacement,
@@ -689,6 +690,12 @@ function composeApplicationContext(): ApplicationContext {
     shell, requestApi, grid, iconPicker, selection, preview, interactions, fields,
   );
   const configEvents = createAppConfigEventsFeature(configurationPersistence, configurationCodec, layout, renderQueue);
+  const nativePages = createNativePageEditorFeature({ native: nativePanelConfig, codec: configurationCodec, layout, runtime,
+    document: dom.document, shell, closeSettings: selection.closeSettings,
+    render: () => { preview.render(); buttonSettings.render(); },
+    canApply: () => !grid.hasPendingMainGridSave(),
+  });
+  configurationCodec.connectNativePageRefresh(() => nativePages.refresh());
   const stateEventHandlers = createAppStateEventHandlersFeature(
     runtime,
     core,
@@ -866,6 +873,7 @@ function composeApplicationContext(): ApplicationContext {
     shell,
     stateLoader,
     gridMigration,
+    nativePages,
   );
   publicFirmwareInstall = createPublicFirmwareInstallFeature(
     deviceApi,
@@ -1006,7 +1014,10 @@ function startEspControl(): void {
   // session even though the API becomes available a few seconds later.
   const discoverNativeCards = () => {
     void context.configuration.native.waitForDiscovery().then((result) => {
-      if (result === true) context.controllers.buttonSettings.render();
+      if (result === true) {
+        void context.configuration.codec.refreshNativePages();
+        context.controllers.buttonSettings.render();
+      }
     });
   };
   if (context.dom.document.readyState === "loading") {

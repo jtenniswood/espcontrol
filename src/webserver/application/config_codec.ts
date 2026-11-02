@@ -1,3 +1,4 @@
+import { childPageKey, pageDepth, parentPageKey } from "../model/page_keys";
 import { state } from "../state/app_instance";
 import * as EspControlModel from "../model";
 import {
@@ -97,12 +98,15 @@ export function createConfigCodecFeature(
     accessOptions: ConfigAccessClimateAlarmOptionsFeature,
     confirmationOptions: ConfigConfirmationOptionsFeature,
     layout: ApplicationLayoutState,
-    configPersistence: Pick<ConfigPersistenceFeature, "saveSubpageEntity" | "scheduleSliderSubpageMigration">,
+    configPersistence: Pick<ConfigPersistenceFeature, "saveSubpageEntity" | "scheduleSliderSubpageMigration" | "writableNavigationDepth">,
     renderQueue: ButtonSettingsRenderQueueFeature,
     rendering: { renderPreview(): void; renderButtonSettings(force?: boolean): void },
 ) {
     const { renderPreview, renderButtonSettings } = rendering;
     const { saveSubpageEntity, scheduleSliderSubpageMigration } = configPersistence;
+    let nativePageRefresh: (() => Promise<boolean>) | undefined;
+    function connectNativePageRefresh(refresh: () => Promise<boolean>) { nativePageRefresh = refresh; }
+    function refreshNativePages(): Promise<boolean> { return nativePageRefresh?.() ?? Promise.resolve(false); }
     let requestApi: Pick<ApplicationApiFeature, "postText"> | undefined;
     function connectRequestApi(value: Pick<ApplicationApiFeature, "postText">) {
         requestApi = value;
@@ -996,7 +1000,8 @@ export function createConfigCodecFeature(
         return EspControlModel.serializeSubpageGrid(sp.grid, sp.sizes || {}, sp.backLabel || "Back", sp.backColor);
     }
     function enterSubpage(this: any, homeSlot?: any) {
-        state.editingSubpage = homeSlot;
+        if (!pageDepth(Number(homeSlot))) return;
+        state.editingSubpage = Number(homeSlot);
         state.subpageSelectedSlots = [];
         state.subpageLastClicked = -1;
         var sp: any = getSubpage(homeSlot);
@@ -1004,8 +1009,14 @@ export function createConfigCodecFeature(
         renderPreview();
         renderButtonSettings();
     }
+    function canCreateSubpage(parent: number | null = state.editingSubpage): boolean {
+        return pageDepth(parent ?? 0) + 1 <= configPersistence.writableNavigationDepth();
+    }
+    function enterChildSubpage(parent: number | null, slot: number) {
+        return enterSubpage(childPageKey(parent ?? 0, slot));
+    }
     function exitSubpage(this: any) {
-        state.editingSubpage = null;
+        state.editingSubpage = state.editingSubpage ? parentPageKey(state.editingSubpage) || null : null;
         state.subpageSelectedSlots = [];
         state.subpageLastClicked = -1;
         renderPreview();
@@ -1045,6 +1056,10 @@ export function createConfigCodecFeature(
         });
     }
     const feature = {
+        connectNativePageRefresh,
+        refreshNativePages,
+        enterChildSubpage,
+        canCreateSubpage,
         normalizeWithRegisteredCardType,
         normalizeButtonConfig,
         cardRequiresSquareSize,

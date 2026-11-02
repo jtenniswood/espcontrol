@@ -1,3 +1,4 @@
+import type { PanelConfigDocument } from "../model/panel_config";
 import type { CardConfig } from "../contracts/types";
 import type { ClipboardEntry } from "../features/clipboard";
 import type { SlotSizeMap } from "../model/grid";
@@ -278,6 +279,10 @@ export interface AppState {
   clockBarTempRestoreIndoor: boolean;
   clockBarTempRestoreOutdoor: boolean;
   clockBarTempRestoreEntities: string[];
+  nativePanelDocument: PanelConfigDocument | null;
+  nativeHasNestedPages: boolean;
+  nativeConfigReadOnly: boolean;
+  nativeConfigLoading: boolean;
   subpages: Record<string, RuntimeSubpage>;
   subpageRaw: Record<string, Record<string, string>>;
   subpageSavePending: Record<string, string>;

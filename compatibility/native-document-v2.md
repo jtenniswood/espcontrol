@@ -347,7 +347,14 @@ The native browser client can read a graph snapshot with its version and ETag.
 Nested saves require all of depth-two reading, depth-two writing and durable v2
 to be explicitly advertised. Reader-only releases cannot invoke an edit callback
 on nested data; graph rejection cannot fall back to a v1 PUT. These client
-operations still need connecting to the editor's initial load/reconnect flow.
+operations now drive the editor's initial load and reconnect flow. Initial
+loading locks edits; later responses cannot replace dirty drafts, pending grid
+moves or newer local changes. Disconnect cancels an obsolete snapshot request
+so it cannot hold up the next refresh or save. While a nested graph is active, stale legacy
+button/subpage/order/colour events cannot overwrite its editor state. Back and
+the clock-bar title resolve the immediate parent/owner path. The picker requires
+explicit writable depth and excludes a third level; rejected saves retain the
+draft and restore the previous layout.
 
 ## Staged compatibility conversion
 
@@ -363,8 +370,8 @@ retain two levels as an editable graph. Their numeric editor paths are separate
 from wire IDs: 1–32 identify first-level owners; 33–1056 identify a root owner
 and child owner slot. They preserve inactive page data and reject orphaned or
 third-level pages. The flat-v1 projector remains strict. These graph entry
-points are not yet connected to editor creation, clipboard persistence or
-backups. `page_subtree.ts` can capture and stage complete folder trees, remap
+points support editor creation with negotiated writable depth. Clipboard
+persistence and backups are still unfinished. `page_subtree.ts` can capture and stage complete folder trees, remap
 paths during copy/move and validate the whole candidate before returning it;
 failed transfers leave their input unchanged.
 
