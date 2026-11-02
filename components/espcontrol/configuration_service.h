@@ -116,6 +116,7 @@ enum class ServiceStatus : uint8_t {
   RUNTIME_PREPARE_FAILED,
   ALLOCATION_FAILED,
   CAPACITY_EXCEEDED,
+  INCOMPATIBLE_REPLACEMENT,
 };
 
 struct ServiceLoadResult {
@@ -162,6 +163,12 @@ class ConfigurationDocumentValidator {
   virtual bool supports_write_version(uint16_t document_version) const {
     return supports_version(document_version);
   }
+  // Format-specific downgrade protection runs against durable data, including
+  // before boot has activated a runtime. Unrelated validators keep their path.
+  virtual bool checks_replacements(uint16_t) const { return false; }
+  virtual bool replacement_needs_document(uint16_t, uint16_t) const { return false; }
+  virtual ServiceStatus replacement_status(uint16_t, const uint8_t *, size_t,
+                                          uint16_t) const { return ServiceStatus::OK; }
   virtual bool validate(uint16_t document_version, const uint8_t *document,
                         size_t document_size) const = 0;
   virtual ServiceStatus validation_status(uint16_t document_version,
@@ -248,6 +255,13 @@ class ConfigurationService {
   ServiceSaveResult save_if_generation_unlocked(
       uint32_t expected_generation, uint16_t document_version,
       const uint8_t *document, size_t document_size);
+  struct ReplacementAdmission {
+    ServiceStatus status{ServiceStatus::OK};
+    StoreStatus store_status{StoreStatus::OK};
+    uint32_t generation{0};
+    bool checked{false};
+  };
+  ReplacementAdmission admit_replacement(uint16_t version, const uint32_t *expected_generation);
   CommitResult commit_document(uint16_t document_version,
                                const uint8_t *document,
                                size_t document_size);

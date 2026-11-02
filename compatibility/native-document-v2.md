@@ -331,6 +331,24 @@ protocol tests separately exercise old firmware, refusal and fallback paths.
 Physical dual-reader qualification and versioned backup rollout remain separate
 work; negotiation does not establish a released durable-v2 downgrade floor.
 
+The service rejects a v1 replacement of stored nested v2 data before runtime
+preparation or compatibility writes, including before boot activation. This
+also covers negotiated v2 requests converted to v1 during the current writer
+phase. The API returns 422 without changing the durable generation or old-format
+preferences. Ordinary flat-v2 to v1 compatibility saves remain supported.
+
+The check selects the durable generation using a checksum-verified eight-byte
+envelope prefix. Only cross-format checks reserve the exact old payload and a
+bounded v2 index, both released before runtime preparation. The later commit
+compares the inspected generation, including for non-HTTP saves, so a concurrent
+nested configuration cannot be overwritten after an earlier flat check.
+
+The native browser client can read a graph snapshot with its version and ETag.
+Nested saves require all of depth-two reading, depth-two writing and durable v2
+to be explicitly advertised. Reader-only releases cannot invoke an edit callback
+on nested data; graph rejection cannot fall back to a v1 PUT. These client
+operations still need connecting to the editor's initial load/reconnect flow.
+
 ## Staged compatibility conversion
 
 `panel_config_conversion.ts` imports v1 into explicit graph records and projects

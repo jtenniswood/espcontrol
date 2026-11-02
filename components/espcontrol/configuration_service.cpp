@@ -1,5 +1,6 @@
 #include "configuration_service.h"
 
+#include <array>
 #include <cstring>
 
 namespace espcontrol::configuration {
@@ -40,6 +41,7 @@ bool supported_version(uint16_t version) {
 }
 
 ServiceStatus store_failure(StoreStatus status) {
+  if (status == StoreStatus::GENERATION_CONFLICT) return ServiceStatus::GENERATION_CONFLICT;
   return status == StoreStatus::ALLOCATION_FAILED
              ? ServiceStatus::ALLOCATION_FAILED
              : ServiceStatus::STORE_FAILED;
@@ -94,6 +96,52 @@ ServiceStatus ConfigurationService::document_validation_status(
     uint16_t document_version, const uint8_t *document, size_t document_size) const {
   return validator_ ? validator_->validation_status(document_version, document, document_size)
                     : ServiceStatus::OK;
+}
+
+ConfigurationService::ReplacementAdmission ConfigurationService::admit_replacement(
+    uint16_t incoming, const uint32_t *expected_generation) {
+  ReplacementAdmission admission;
+  if (!validator_ || !validator_->checks_replacements(incoming)) return admission;
+  admission.checked = true;
+  std::array<uint8_t, CONFIGURATION_DOCUMENT_HEADER_SIZE> header{};
+  const auto prefix = store_.load_prefix(header.data(), header.size());
+  admission.generation = prefix.generation;
+  if (prefix.status != StoreStatus::EMPTY && !prefix.ok()) {
+    admission.status = store_failure(prefix.status); admission.store_status = prefix.status; return admission;
+  }
+  if (expected_generation && *expected_generation != prefix.generation) {
+    admission.status = ServiceStatus::GENERATION_CONFLICT;
+    admission.store_status = StoreStatus::GENERATION_CONFLICT; return admission;
+  }
+  if (prefix.status == StoreStatus::EMPTY) return admission;
+  if (prefix.payload_size < header.size() || read_u32(header.data()) != DOCUMENT_MAGIC ||
+      read_u16(header.data() + DOCUMENT_HEADER_SIZE_OFFSET) != header.size()) {
+    admission.status = ServiceStatus::INVALID_DOCUMENT; return admission;
+  }
+  const auto current_version = read_u16(header.data() + DOCUMENT_VERSION_OFFSET);
+  if (!supports_version(current_version)) { admission.status = ServiceStatus::UNSUPPORTED_VERSION; return admission; }
+  if (!validator_->replacement_needs_document(current_version, incoming)) return admission;
+  // Only a cross-format replacement borrows the exact old payload. It is
+  // released before runtime preparation, compatibility writes or commit.
+  ConfigurationBuffer current(allocate_, release_);
+  auto *bytes = current.allocate(prefix.payload_size);
+  if (!bytes) { admission.status = ServiceStatus::ALLOCATION_FAILED; return admission; }
+  const auto loaded = store_.load(bytes, prefix.payload_size);
+  if ((loaded.ok() || loaded.status == StoreStatus::BUFFER_TOO_SMALL || loaded.status == StoreStatus::EMPTY) &&
+      loaded.generation != prefix.generation) {
+    admission.status = ServiceStatus::GENERATION_CONFLICT;
+    admission.store_status = StoreStatus::GENERATION_CONFLICT;
+    admission.generation = loaded.generation; return admission;
+  }
+  if (!loaded.ok()) {
+    admission.status = store_failure(loaded.status); admission.store_status = loaded.status; return admission;
+  }
+  if (loaded.payload_size < header.size() || std::memcmp(bytes, header.data(), header.size()) != 0) {
+    admission.status = ServiceStatus::INVALID_DOCUMENT; return admission;
+  }
+  admission.status = validator_->replacement_status(current_version,
+      bytes + header.size(), loaded.payload_size - header.size(), incoming);
+  return admission;
 }
 
 uint8_t *
@@ -499,6 +547,9 @@ ServiceSaveResult ConfigurationService::save_unlocked(
     return {ServiceStatus::STORE_FAILED, StoreStatus::PAYLOAD_TOO_LARGE,
             document_version, 0, document_size};
   }
+  const auto replacement = admit_replacement(document_version, nullptr);
+  if (replacement.status != ServiceStatus::OK)
+    return {replacement.status, replacement.store_status, document_version, replacement.generation, document_size};
   if (legacy_writes_enabled()) {
     const auto admission = legacy_.admit_write(document_version, document, document_size);
     if (admission != CompatibilityStatus::OK)
@@ -513,7 +564,9 @@ ServiceSaveResult ConfigurationService::save_unlocked(
   }
 
   const CommitResult committed =
-      commit_document(document_version, document, document_size);
+      replacement.checked
+        ? commit_document_if_generation(replacement.generation, document_version, document, document_size)
+        : commit_document(document_version, document, document_size);
   if (!committed.ok()) {
     return {store_failure(committed.status), committed.status, document_version,
             committed.generation, document_size};
@@ -567,6 +620,9 @@ ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
     return {ServiceStatus::STORE_FAILED, StoreStatus::PAYLOAD_TOO_LARGE,
             document_version, 0, document_size};
   }
+  const auto replacement = admit_replacement(document_version, &expected_generation);
+  if (replacement.status != ServiceStatus::OK)
+    return {replacement.status, replacement.store_status, document_version, replacement.generation, document_size};
   if (legacy_writes_enabled()) {
     const auto admission = legacy_.admit_write(document_version, document, document_size);
     if (admission != CompatibilityStatus::OK)

@@ -1,4 +1,5 @@
 #include <atomic>
+#include <functional>
 #include <cassert>
 #include <chrono>
 #include <cstdlib>
@@ -156,7 +157,8 @@ struct RendererPort:PageRendererPort {
   const DeviceUiLimits& limits;
   explicit RendererPort(const DeviceUiLimits& value):limits(value){}
   PageViewGeometry geometry(const PageStore&)const override{return {limits.slot_count,limits.grid_columns};}
-  bool prepare(const PageStore&,size_t)override{return true;}
+  std::function<void()> on_prepare;
+  bool prepare(const PageStore&,size_t)override{if(on_prepare)on_prepare();return true;}
   void discard_prepared()override{}
   void activate_prepared(const PageStore&)override{}
   void retire_active()override{}
@@ -494,6 +496,50 @@ void stored_v2_reads_and_replacements() {
          compatibility.persistence==CompatibilityStatus::NOT_REPRESENTABLE && !compatibility.retry_pending());
   assert(future.get("2").response==source && future.legacy.preference_writes()==preferences);
 }
+void old_format_cannot_replace_nested_data() {
+  for(bool restored:{false,true}) {
+    Fixture fixture(DEVICE_UI_PROFILES[8]);
+    const auto old=fixture.get().response;
+    const auto old_v2=fixture.get("2").response;
+    const auto nested=nested_document();fixture.seed_v2(nested);
+    if(restored) {
+      Bytes output(40*1024);
+      assert(fixture.service.load_and_apply_runtime(output.data(),output.size()).status==ServiceStatus::LEGACY_MIRROR_FAILED);
+    }
+    const auto generation=fixture.runtime.active().generation();
+    const auto preferences=fixture.legacy.preference_writes();
+    const auto publications=fixture.legacy.publications,mirrors=fixture.legacy.mirrors;
+    assert(status(fixture.put(old,"1","\"2\""))==422);
+    assert(status(fixture.put(old_v2,"2","\"v2-2\""))==422);
+    assert(status(fixture.put(old,"1","\"1\""))==409);
+    assert(fixture.get("2").response==nested && fixture.runtime.active().generation()==generation);
+    assert(fixture.legacy.preference_writes()==preferences && fixture.legacy.publications==publications && fixture.legacy.mirrors==mirrors);
+    // Non-HTTP callers and early boot must obey the same durable-data fence.
+    assert(fixture.service.save_current(old.data(),old.size()).status==ServiceStatus::INCOMPATIBLE_REPLACEMENT);
+    assert(fixture.get("2").response==nested);
+    fixture.service.set_buffer_allocator(allocate,release);
+    for(size_t failure=1;failure<=2;++failure) {
+      fail_at=allocation_calls+failure;
+      assert(fixture.service.save_current(old.data(),old.size()).status==ServiceStatus::ALLOCATION_FAILED);
+      fail_at=0;
+      assert(allocations.empty() && fixture.get("2").response==nested);
+    }
+    fixture.service.set_buffer_allocator(ConfigurationBuffer::allocate_host,ConfigurationBuffer::release_host);
+  }
+}
+void replacement_check_and_commit_share_the_generation() {
+  for(bool http:{false,true}) {
+    Fixture fixture(DEVICE_UI_PROFILES[8]);const auto old=fixture.get().response;
+    const auto nested=nested_document();bool replaced=false;
+    const auto preferences=fixture.legacy.preference_writes();
+    fixture.port.on_prepare=[&] {if(!replaced){replaced=true;fixture.seed_v2(nested);}};
+    if(http)assert(status(fixture.put(old,"1","\"1\""))==409);
+    else assert(fixture.service.save_current(old.data(),old.size()).status==ServiceStatus::GENERATION_CONFLICT);
+    assert(replaced && fixture.get("2").response==nested && fixture.runtime.active().generation()==1);
+    assert(fixture.legacy.preference_writes()==preferences);
+    assert(status(fixture.put(old,"1","\"2\""))==422);
+  }
+}
 void compressed_compatibility_growth() {
   Bytes input(32768);PanelConfigV2Writer writer(input.data(),input.size());assert(writer.begin()==PanelConfigStatus::OK);
   auto append=[&](const PanelConfigV2Record &row){assert(writer.append(row)==PanelConfigStatus::OK);};
@@ -537,7 +583,7 @@ int main() {
   profile_capacity_write_limits();
   legacy_fixed_write_limits();
   shared_image_write_limits();
-  stored_v2_reads_and_replacements();compressed_compatibility_growth();
+  stored_v2_reads_and_replacements();old_format_cannot_replace_nested_data();replacement_check_and_commit_share_the_generation();compressed_compatibility_growth();
   profiles_and_cas();rejection_and_failure();authentication_and_request_limits();converted_owner_boundaries();
   assert(allocations.empty()&&live_bytes==0&&peak_bytes<3*PANEL_CONFIG_V2_HTTP_MAX_BYTES);
   std::printf("HTTP v1/v2: all nine maximum profiles, shared-generation CAS, request/allocator/storage/runtime rejection; host HTTP allocation peak=%zu bytes; retained=%zu bytes\n",peak_bytes,live_bytes);

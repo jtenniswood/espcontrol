@@ -7,8 +7,10 @@ import {
   type NativePanelConfigClient,
   type NativePanelConfigFetch,
   type NativePanelConfigSaveResult,
+  type NativePanelConfigSnapshot,
 } from "../features/native_panel_config";
 import type { PanelConfigDocument } from "../model";
+import { pageDepth, parentPageKey } from "../model/page_keys";
 
 export type NativePanelConfigUpdate = (document: PanelConfigDocument) => PanelConfigDocument;
 export type NativePanelConfigSaveOutcome = NativePanelConfigSaveResult | "legacy-fallback";
@@ -66,6 +68,18 @@ export class NativePanelConfigController {
     return this.client_?.supported() ?? false;
   }
 
+  readNavigationDepth(): number { return this.client_?.readNavigationDepth() ?? 1; }
+  writableNavigationDepth(): number { return this.client_?.writableNavigationDepth() ?? 1; }
+
+  readSnapshot(): Promise<NativePanelConfigSnapshot | null> {
+    const precedingSave = this.saveQueue_, client = this.client_;
+    const read = precedingSave.then(() => client?.readSnapshot(this.dependencies.deviceProfile()) ?? null);
+    // A refresh may recover visible state after a failed save, but cannot erase
+    // that failure from the queue or race with the next edit.
+    this.saveQueue_ = read.then(() => precedingSave, () => precedingSave);
+    return read;
+  }
+
   private report(result: NativePanelConfigSaveOutcome): NativePanelConfigSaveOutcome {
     if (result === "conflict") {
       this.dependencies.showBanner("Configuration changed in another browser. Reload before saving again.", "error");
@@ -75,6 +89,8 @@ export class NativePanelConfigController {
       this.dependencies.showBanner("This firmware requires web authentication for Wifi Sharing passwords. Sign in, enable web_server_auth, or update the panel firmware.", "error");
     } else if (result === "too-large") {
       this.dependencies.showBanner("Configuration exceeds this panel's storage capacity. Update the panel firmware for more space, or reduce the saved settings.", "error");
+    } else if (result === "nested-pages-unavailable") {
+      this.dependencies.showBanner("Nested pages cannot be saved on this firmware. No settings were changed.", "error");
     } else if (result === "firmware-update-required") {
       this.dependencies.showBanner(NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE, "error");
     } else if (result === "failed") {
@@ -201,7 +217,10 @@ export class NativePanelConfigController {
   }
 
   writeSubpage(slot: number, value: string): Promise<NativePanelConfigSaveOutcome> | false | null {
-    if (!Number.isInteger(slot) || slot < 1 || slot > this.dependencies.slotCount()) return false;
+    try {
+      const depth = pageDepth(slot);
+      if (!depth || (depth === 1 ? slot : parentPageKey(slot)) > this.dependencies.slotCount()) return false;
+    } catch { return false; }
     return this.schedule((current) => updateNativePanelConfigDocument(
       current, this.dependencies.deviceProfile(), "subpages", slot, value,
     ));

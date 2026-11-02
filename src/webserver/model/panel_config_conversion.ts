@@ -27,6 +27,15 @@ function fieldsFromRaw(raw: string, child: boolean, compact: boolean): string[] 
   if (child) { fields[2] ||= "Auto"; fields[3] ||= "Auto"; }
   return fields;
 }
+/** Includes explicit paths and folders whose empty target is synthesized. */
+export function panelPageDocumentDepth(document: PanelConfigDocument): number {
+  if (Object.keys(document.subpages).some((key) => Number(key) > 32)) return 2;
+  for (const raw of Object.values(document.subpages)) {
+    const compact = raw.startsWith("~"), parts = (compact ? raw.slice(1) : raw).split("|");
+    if (parts.slice(1).some((value) => fieldsFromRaw(value, true, compact)[6] === "subpage")) return 2;
+  }
+  return 1;
+}
 function childDefaults(fields: readonly string[]): string[] {
   const copy = [...fields]; copy[2] ||= "Auto"; copy[3] ||= "Auto"; return copy;
 }

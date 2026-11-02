@@ -186,6 +186,11 @@ class PanelConfigWriteHandler final
                   "Panel configuration changed on the device");
       return;
     }
+    if (response == PanelConfigWriteResponse::INCOMPATIBLE_REPLACEMENT) {
+      send_status(raw_request, "422 Unprocessable Content",
+                  "This configuration contains nested pages; use a compatible editor and graph writer. No settings were changed");
+      return;
+    }
     if (response == PanelConfigWriteResponse::CAPACITY_EXCEEDED) {
       send_status(raw_request, "413 Content Too Large",
                   "Configuration exceeds this display's page, image or text limits; previous configuration remains active");

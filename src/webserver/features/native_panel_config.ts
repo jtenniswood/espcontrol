@@ -5,7 +5,7 @@ import {
   encodePanelConfig,
   type PanelConfigDocument,
 } from "../model";
-import { convertNativeV1ToV2, convertNativeV2ToV1 } from "../model/panel_config_conversion";
+import { convertNativeV1ToV2, convertNativeV2ToV1, decodePanelPageDocument, encodePanelPageDocument, panelPageDocumentDepth } from "../model/panel_config_conversion";
 
 const V2_DOCUMENT_VERSION = 2;
 const MAX_V2_DOCUMENT_BYTES = 512 * 1024;
@@ -16,6 +16,12 @@ export interface NativePanelConfigResponse {
   readonly headers: { get(name: string): string | null };
   json(): Promise<unknown>;
   arrayBuffer(): Promise<ArrayBuffer>;
+}
+
+export interface NativePanelConfigSnapshot {
+  readonly document: PanelConfigDocument;
+  readonly etag: string;
+  readonly version: number;
 }
 
 export interface NativePanelConfigRequest {
@@ -31,7 +37,7 @@ export type NativePanelConfigFetch = (
   request?: NativePanelConfigRequest,
 ) => Promise<NativePanelConfigResponse>;
 
-export type NativePanelConfigSaveResult = "saved" | "unsupported" | "conflict" | "mirror-failed" | "authentication-required" | "too-large" | "firmware-update-required" | "failed";
+export type NativePanelConfigSaveResult = "saved" | "unsupported" | "conflict" | "mirror-failed" | "authentication-required" | "too-large" | "firmware-update-required" | "nested-pages-unavailable" | "failed";
 export const NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE = "This backup needs newer panel firmware to restore all saved cards and settings. Update the panel before importing it. No backup settings were changed.";
 export class NativePanelConfigCompatibilityError extends Error {}
 export function nativeBackupHasInactiveRecords(document: PanelConfigDocument, slotCount: number): boolean {
@@ -46,6 +52,9 @@ interface Capabilities {
     document_versions?: unknown;
     max_record_body_bytes?: unknown;
     max_v2_document_bytes?: unknown;
+    max_navigation_depth?: unknown;
+    writable_navigation_depth?: unknown;
+    durable_document_version?: unknown;
     preserves_inactive_records?: unknown;
   };
 }
@@ -95,11 +104,19 @@ export class NativePanelConfigClient {
   private v1Available_ = false;
   private maxV2DocumentBytes_ = MAX_V2_DOCUMENT_BYTES;
   private preservesInactiveRecords_ = false;
+  private readDepth_ = 1;
+  private writeDepth_ = 1;
 
   constructor(private readonly fetch_: NativePanelConfigFetch) {}
 
   supported(): boolean { return this.supported_; }
   preservesInactiveRecords(): boolean { return this.supported_ && this.preservesInactiveRecords_; }
+  readNavigationDepth(): number {
+    return this.supported_ && this.documentVersion_ === V2_DOCUMENT_VERSION ? this.readDepth_ : 1;
+  }
+  writableNavigationDepth(): number {
+    return this.supported_ && this.documentVersion_ === V2_DOCUMENT_VERSION ? this.writeDepth_ : 1;
+  }
   maxConfigValueBytes(): number | null {
     return this.supported_ && this.maxRecordBodyBytes_ !== null
       ? this.maxRecordBodyBytes_ - 1 : null;
@@ -141,6 +158,9 @@ export class NativePanelConfigClient {
         this.v1Available_ = supported === true && versions.includes(PANEL_CONFIG_DOCUMENT_VERSION);
         this.documentVersion_ = supported === true && versions.includes(V2_DOCUMENT_VERSION)
           ? V2_DOCUMENT_VERSION : PANEL_CONFIG_DOCUMENT_VERSION;
+        this.readDepth_ = configuration?.max_navigation_depth === 2 ? 2 : 1;
+        this.writeDepth_ = this.readDepth_ === 2 && configuration?.writable_navigation_depth === 2 &&
+          configuration?.durable_document_version === V2_DOCUMENT_VERSION ? 2 : 1;
         const v2Limit = configuration?.max_v2_document_bytes;
         this.maxV2DocumentBytes_ = Number.isInteger(v2Limit) && Number(v2Limit) > 0
           ? Math.min(Number(v2Limit), MAX_V2_DOCUMENT_BYTES) : MAX_V2_DOCUMENT_BYTES;
@@ -175,6 +195,40 @@ export class NativePanelConfigClient {
     if (version !== V2_DOCUMENT_VERSION || !this.v1Available_) return false;
     this.documentVersion_ = PANEL_CONFIG_DOCUMENT_VERSION;
     return true;
+  }
+
+  private decodeDocument(input: Uint8Array, version: number): PanelConfigDocument {
+    return version === V2_DOCUMENT_VERSION
+      ? this.readNavigationDepth() === 2 ? decodePanelPageDocument(input) : decodePanelConfig(convertNativeV2ToV1(input))
+      : decodePanelConfig(input);
+  }
+
+  /** Read the authoritative editable graph; no legacy entity reconstruction. */
+  async readSnapshot(deviceProfile: string): Promise<NativePanelConfigSnapshot | null> {
+    if (!await this.discover()) {
+      if (this.confirmedUnsupported_) return null;
+      throw new Error("Configuration discovery is unavailable.");
+    }
+    for (let attempt = 0; attempt < 2; ++attempt) {
+      const version = this.documentVersion_;
+      const response = await this.fetch_("/api/v1/config", {
+        cache: "no-store", headers: this.representationHeaders(version),
+      });
+      if (response.status === 406 && this.fallbackToV1(version)) continue;
+      if (!response.ok) throw new Error("Could not read the saved configuration.");
+      const returnedVersion = response.headers.get("X-Panel-Config-Version");
+      const etag = response.headers.get("ETag");
+      if (!etag || (returnedVersion !== null && returnedVersion !== String(version)) ||
+          (version === V2_DOCUMENT_VERSION && returnedVersion !== String(version)))
+        throw new Error("Configuration snapshot version or generation is unavailable.");
+      const input = new Uint8Array(await response.arrayBuffer());
+      if (version === V2_DOCUMENT_VERSION && input.length > this.maxV2DocumentBytes_)
+        throw new Error("Configuration exceeds the advertised byte limit.");
+      const document = this.decodeDocument(input, version);
+      if (document.deviceProfile !== deviceProfile) throw new Error("The device configuration profile changed.");
+      return { document, etag, version };
+    }
+    throw new Error("A compatible configuration representation is unavailable.");
   }
 
   /** Backups must retain records that this editor does not understand. */
@@ -228,8 +282,12 @@ export class NativePanelConfigClient {
             (responseVersion !== null && responseVersion !== String(version))) return "failed";
         const input = new Uint8Array(await current.arrayBuffer());
         if (version === V2_DOCUMENT_VERSION && input.length > this.maxV2DocumentBytes_) return "too-large";
-        const currentDocument = decodePanelConfig(version === V2_DOCUMENT_VERSION ? convertNativeV2ToV1(input) : input);
+        const currentDocument = this.decodeDocument(input, version);
+        const currentDepth = panelPageDocumentDepth(currentDocument);
+        if (currentDepth > this.writableNavigationDepth()) return "nested-pages-unavailable";
         const updated = update(currentDocument);
+        const updatedDepth = panelPageDocumentDepth(updated);
+        if (updatedDepth > this.writableNavigationDepth()) return "nested-pages-unavailable";
         const limit = this.maxRecordBodyBytes_ ?? 2048;
         const byteLength = (value: string) => new TextEncoder().encode(value).length;
         if (Object.values(updated.buttons).some((value) => byteLength(value) + 1 > limit) ||
@@ -237,8 +295,9 @@ export class NativePanelConfigClient {
             Object.entries(updated.settings).some(([key, value]) => byteLength(key) + byteLength(value) + 1 > limit)) {
           return "too-large";
         }
-        const v1 = encodePanelConfig(updated);
-        const body = version === V2_DOCUMENT_VERSION ? convertNativeV1ToV2(v1) : v1;
+        const body = version === V2_DOCUMENT_VERSION && this.writableNavigationDepth() === 2
+          ? encodePanelPageDocument(updated)
+          : version === V2_DOCUMENT_VERSION ? convertNativeV1ToV2(encodePanelConfig(updated)) : encodePanelConfig(updated);
         if (version === V2_DOCUMENT_VERSION && body.length > this.maxV2DocumentBytes_) return "too-large";
         const next = await this.fetch_("/api/v1/config", {
           method: "PUT",
@@ -252,7 +311,9 @@ export class NativePanelConfigClient {
         });
         // Reload before applying the edit through v1, so the fallback never
         // reuses a v2 ETag or overwrites a concurrent change from an old read.
+        if (next.status === 415 && (currentDepth > 1 || updatedDepth > 1)) return "nested-pages-unavailable";
         if (next.status === 415 && this.fallbackToV1(version)) continue;
+        if (next.status === 422) return "nested-pages-unavailable";
         // A 202 means the document itself is safe, but firmware could not
         // update its legacy entity mirror. Treat it as a failed compatibility
         // save so callers do not claim that an older firmware can restore it.

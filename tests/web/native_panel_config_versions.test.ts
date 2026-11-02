@@ -192,3 +192,64 @@ export async function runNativeNegotiatedBackupTests(): Promise<void> {
   same(await future.save(update), "failed", "unprojectable future graph rejects the edit");
   same(writes, 0, "unsupported future graph remains intact");
 }
+
+export async function runNativeNestedPageClientTests(): Promise<void> {
+  const { childPageKey } = await import("../../src/webserver/model/page_keys");
+  const { encodePanelPageDocument, decodePanelPageDocument } = await import("../../src/webserver/model/panel_config_conversion");
+  const child = childPageKey(2, 1);
+  const nested: PanelConfigDocument = { deviceProfile: "panel-a", buttons: { 2: ";Rooms;;;;;subpage" },
+    subpages: { 2: "~B,1|subpage,,Child", [child]: "~B,1|,light.leaf,Leaf" }, settings: { button_order: "2", opaque: "kept" } };
+  const wire = encodePanelPageDocument(nested);
+  const announced = (extra: Record<string, unknown>): NativePanelConfigResponse => ({ ...response(200), json: async () => ({ configuration: {
+    read: true, write: true, document_versions: [1, 2], max_record_body_bytes: 4096,
+    max_navigation_depth: 2, writable_navigation_depth: 1, durable_document_version: 1, ...extra,
+  } }) });
+  for (const extra of [{}, { writable_navigation_depth: 2 }, { durable_document_version: 2 },
+      { writable_navigation_depth: 2, durable_document_version: "2" },
+      { writable_navigation_depth: 2, durable_document_version: 2, max_navigation_depth: 1 }]) {
+    let writes = 0, edits = 0;
+    const client = createNativePanelConfigClient(async (path, request) => {
+      if (path.endsWith("capabilities")) return announced(extra);
+      if (request?.method === "PUT") { ++writes; return response(204); }
+      return response(200, wire, 2, '"v2-5"');
+    });
+    await client.discover();
+    same(client.writableNavigationDepth(), 1, "partial or malformed capability combinations cannot enable nested writes");
+    same(await client.save((current) => { ++edits; return update(current); }),
+      extra.max_navigation_depth === 1 ? "failed" : "nested-pages-unavailable", "reader-only release never edits or writes a nested document");
+    same([writes, edits], [0, 0], "unsupported nested editing has no callback or PUT side effects");
+  }
+  let saved: PanelConfigDocument | undefined;
+  const capable = createNativePanelConfigClient(async (path, request) => {
+    if (path.endsWith("capabilities")) return announced({ writable_navigation_depth: 2, durable_document_version: 2 });
+    if (request?.method === "PUT") {
+      check(selected(request) === 2 && request.headers?.["If-Match"] === '"v2-5"', "nested saves keep graph negotiation and CAS");
+      saved = decodePanelPageDocument(request.body!); return response(204);
+    }
+    return response(200, wire, 2, '"v2-5"');
+  });
+  const snapshot = await capable.readSnapshot("panel-a");
+  same(snapshot?.document, nested, "snapshot preserves both page levels and opaque settings");
+  same([snapshot?.etag, snapshot?.version, capable.readNavigationDepth(), capable.writableNavigationDepth()],
+    ['"v2-5"', 2, 2, 2], "capable snapshot and both limits are explicit");
+  same(await capable.save(update), "saved", "capable writer saves graph without a v1 projection");
+  same(saved, update(nested), "ordinary edits retain nested descendants");
+  for (const status of [415, 422]) {
+    const events: number[] = [];
+    const client = createNativePanelConfigClient(async (path, request) => {
+      if (path.endsWith("capabilities")) return announced({ writable_navigation_depth: 2, durable_document_version: 2 });
+      events.push(selected(request));
+      return request?.method === "PUT" ? response(status) : response(200, wire, 2, '"v2-5"');
+    });
+    same(await client.save(() => ({ ...initial, buttons: { 1: "light.one;Flat restore" } })), "nested-pages-unavailable",
+      "rejected graph restore cannot retry through a legacy representation");
+    same(events, [2, 2], "no legacy fallback after reading nested data");
+  }
+  const limited = createNativePanelConfigClient(async (path, request) => {
+    if (path.endsWith("capabilities")) return announced({});
+    check(request?.method !== "PUT", "implicit empty nested targets are rejected before PUT");
+    return response(200, bytes(initial, 2), 2, '"v2-1"');
+  });
+  same(await limited.save(() => ({ ...initial, buttons: { 2: ";Rooms;;;;;subpage" }, subpages: { 2: "~B,1|subpage,,Empty" } })),
+    "nested-pages-unavailable", "an empty child folder still requires nested write support");
+}
