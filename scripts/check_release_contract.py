@@ -10,6 +10,7 @@ from urllib.request import Request, urlopen
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from firmware_release import current_web_bundle
+from panel_config_navigation_policy import navigation_depths, reader_floor_releases, validate_navigation_reader_floor
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,14 +53,9 @@ def compatibility_policy(contract: dict) -> dict:
 def validate_release_history(contract: dict, releases: list[dict]) -> None:
     """Require published manifests before advancing past the dual-write window."""
     policy = compatibility_policy(contract)
+    validate_navigation_reader_floor(contract, releases)
     if contract["panelConfigDocumentVersion"] > 1:
-        floor = contract.get("panelConfigMinimumReaderRelease")
-        assert isinstance(floor, str) and re.fullmatch(r"v\d+\.\d+\.\d+", floor), (
-            "durable v2 requires an explicit stable minimum reader release"
-        )
-        floor_index = next((i for i, release in enumerate(releases) if release.get("tagName") == floor), None)
-        assert floor_index is not None, "minimum reader release is not published with an immutable manifest"
-        for release in releases[:floor_index + 1]:
+        for release in reader_floor_releases(contract, releases):
             versions = release["manifest"].get("releaseContract", {}).get("panelConfigReadVersions", [])
             assert contract["panelConfigDocumentVersion"] in versions, (
                 "supported downgrade floor includes a release without the required document reader"
@@ -137,6 +133,7 @@ def github_release_history(repository: str) -> list[dict]:
 def verify(*, product_model_path: Path = PRODUCT_MODEL,
            compatibility_policy_path: Path = COMPATIBILITY_POLICY) -> dict:
     contract = read_json(CONTRACT)
+    read_depth, write_depth = navigation_depths(contract)
     assert contract["schemaVersion"] == 1, "release contract schema version must be 1"
     product_model = read_json(product_model_path)
     assert product_model["modelVersion"] == contract["productModelVersion"], (
@@ -155,6 +152,13 @@ def verify(*, product_model_path: Path = PRODUCT_MODEL,
     )
     assert constant(compatibility_policy_path, "PANEL_CONFIG_DURABLE_WRITE_VERSION") == document_version == contract.get("panelConfigWriteVersion"), (
         "durable write policy disagrees with release contract"
+    )
+    assert constant(compatibility_policy_path, "PANEL_CONFIG_STORAGE_READ_NAVIGATION_DEPTH") == read_depth and \
+        constant(compatibility_policy_path, "PANEL_CONFIG_STORAGE_WRITE_NAVIGATION_DEPTH") == write_depth, (
+        "firmware navigation depths disagree with release contract"
+    )
+    assert re.search(r"PANEL_CONFIG_WRITE_NAVIGATION_DEPTH\s*=\s*PANEL_CONFIG_STORAGE_WRITE_NAVIGATION_DEPTH;", capabilities), (
+        "firmware writable navigation depth must follow its explicit release policy"
     )
     reads = contract.get("panelConfigReadVersions")
     match = re.search(r"PANEL_CONFIG_STORAGE_READ_VERSIONS\s*=\s*\{([\d,\s]+)\}", compatibility_policy_path.read_text(encoding="utf-8"))

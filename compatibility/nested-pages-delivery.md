@@ -21,6 +21,23 @@ and publishes the whole graph before other settings. Physical nested testing and
 durable-v2 release enablement remain separate gates.
 No nested-page candidate has been flashed to a physical device yet.
 
+The release contract records `panelConfigReadNavigationDepth` separately from
+`panelConfigWriteNavigationDepth`. A flat native-v2 writer does not enable
+nested placement. Depth-two writes require legacy-mirror retirement and a
+published reader floor whose entire supported downgrade range explicitly
+declares depth-two reading; format-two support alone is insufficient proof.
+Reader depth is generated from that contract. This branch still declares
+reader depth two, writer depth one, durable format one and no reader floor.
+
+`GET /api/v1/backup` now preflights both native formats before sending JSON.
+Graph exports use outer format three with exact native-v2 bytes and structured
+pages, including inactive subtrees; native-v1 exports keep outer format two
+and retain inactive records outside the readable grid. The request owns its
+validation index, releases it on failure or disconnect, and streams escaped
+fields/base64 in bounded chunks. Host HTTP tests and actual C++ output passed
+through the browser importer cover these paths; physical backup qualification
+remains part of the device gate.
+
 The generated contract now describes the logical two-level shape separately
 from memory admission. The 6-, 9-, 15- and 20-slot grids allow at most
 37/186, 82/657, 226/3,165 and 401/7,620 pages/cards respectively, including Home.

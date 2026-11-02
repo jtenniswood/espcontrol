@@ -199,7 +199,11 @@ in this release. HTTP v2 saves still project to v1. The release contract declare
 stored readers `[1,2]`, writer/default 1 and no minimum dual-reader release yet.
 Enabling durable v2 requires an explicit stable downgrade floor proven against
 published immutable release manifests; missing manifests or readers fail that
-gate. Compatibility retirement additionally requires two distinct consecutive
+gate. Release contracts also declare reader and writer navigation depths.
+Enabling nested writes requires explicit depth-two reader proof for the floor
+and every supported downgrade, plus legacy-mirror retirement. A flat durable-v2
+writer can retain writable depth one. Missing historical depth metadata cannot
+qualify a nested reader. Compatibility retirement additionally requires two distinct consecutive
 stable dual-write releases after the durable-v2 rollout, followed by the retained
 import-only phase. The release-contract checks run in ordinary CI as well as
 release validation, with negative controls isolated from source files.

@@ -1179,6 +1179,8 @@ target_compile_features(panel_config_capabilities_test PRIVATE cxx_std_17)
 target_compile_options(panel_config_capabilities_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(panel_config_capabilities_test PRIVATE ../../components/espcontrol)
 add_test(NAME panel_config_capabilities_test COMMAND panel_config_capabilities_test)
+add_test(NAME panel_config_navigation_policy_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/panel_config_navigation_policy_test.py)
 
 add_executable(panel_config_http_etag_test panel_config_http_etag_test.cpp)
 target_compile_features(panel_config_http_etag_test PRIVATE cxx_std_17)
@@ -1766,6 +1768,7 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   endif()
   # All optional LVGL executables share this library, including the modal test,
   # because the pinned label translation unit is routed through its wrappers.
+  get_directory_property(ESPCONTROL_LINK_LIBRARIES_BEFORE_LVGL LINK_LIBRARIES)
   link_libraries(page_label_refresh_test_support)
 
   set(NATIVE_SCENE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_native_scene_test.cpp)
@@ -2201,4 +2204,13 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
     set_tests_properties(${target} PROPERTIES TIMEOUT 60)
     math(EXPR CLIMATE_PROFILE_INDEX "${CLIMATE_PROFILE_INDEX}+1")
   endforeach()
+  # Pure protocol tests below do not provide the LVGL custom allocator hooks.
+  set_property(DIRECTORY PROPERTY LINK_LIBRARIES "${ESPCONTROL_LINK_LIBRARIES_BEFORE_LVGL}")
 endif()
+foreach(backup_target panel_graph_backup_test panel_backup_document_test)
+  add_executable(${backup_target} ${backup_target}.cpp)
+  target_compile_features(${backup_target} PRIVATE cxx_std_17)
+  target_compile_options(${backup_target} PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+  target_include_directories(${backup_target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ../../components/espcontrol)
+  add_test(NAME ${backup_target} COMMAND ${backup_target})
+endforeach()

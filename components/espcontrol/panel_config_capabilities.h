@@ -20,15 +20,16 @@ struct PanelConfigResourceLimits {
 };
 #ifdef ESPCONTROL_DEVICE_UI_SLOT_COUNT
 constexpr unsigned PANEL_CONFIG_READ_NAVIGATION_DEPTH = DEVICE_UI_LIMITS.max_navigation_depth;
+static_assert(PANEL_CONFIG_READ_NAVIGATION_DEPTH == PANEL_CONFIG_STORAGE_READ_NAVIGATION_DEPTH);
 constexpr PanelConfigResourceLimits PANEL_CONFIG_RESOURCE_LIMITS{
     DEVICE_UI_LIMITS.max_cards(), DEVICE_UI_LIMITS.max_pages(), DEVICE_UI_LIMITS.page_store_bytes,
     DEVICE_UI_LIMITS.state_metadata_bytes, DEVICE_UI_LIMITS.ha_state_bytes};
 #else
-constexpr unsigned PANEL_CONFIG_READ_NAVIGATION_DEPTH = 2;
+constexpr unsigned PANEL_CONFIG_READ_NAVIGATION_DEPTH = PANEL_CONFIG_STORAGE_READ_NAVIGATION_DEPTH;
 constexpr PanelConfigResourceLimits PANEL_CONFIG_RESOURCE_LIMITS{};
 #endif
 constexpr unsigned PANEL_CONFIG_WRITE_NAVIGATION_DEPTH =
-    PANEL_CONFIG_DURABLE_WRITE_VERSION == 2 ? PANEL_CONFIG_READ_NAVIGATION_DEPTH : 1;
+    PANEL_CONFIG_STORAGE_WRITE_NAVIGATION_DEPTH;
 constexpr const char *PANEL_CONFIG_WEB_ASSET_DELIVERY = "manifest";
 
 inline bool &panel_config_read_supported() {
