@@ -138,7 +138,10 @@ class PageStoreBuilder {
       page.order = intern(subpage_order(raw));
       const auto children = parse_subpage_config(raw);
       page.card_count = children.size();
-      page.runtime_card_count = page.navigable ? page.card_count : 0;
+      // Back consumes one grid position. Older layouts may retain additional
+      // records; keep their source fields without binding off-grid cards.
+      page.runtime_card_count = page.navigable
+          ? std::min<size_t>(page.card_count, limits.slot_count - 1) : 0;
       for (size_t child = 0; child < children.size(); ++child) {
         // This is precisely the existing subpage-to-grid interpretation,
         // including generated card normalization and compact field decoding.
@@ -334,7 +337,8 @@ class PageStoreBuilder {
       const auto &parent_page=pages[target.parent];
       target.navigable=navigable && parent_page.navigable && target.owner>=parent_page.first_card &&
         target.owner-parent_page.first_card<parent_page.runtime_card_count;
-      target.runtime_card_count=target.navigable?target.card_count:0;
+      target.runtime_card_count=target.navigable
+        ?std::min<size_t>(target.card_count,limits.slot_count-1):0;
       if(target.navigable)cards[target.owner].target=index;
     }
     for(size_t i=0;i<position_count;++i) {

@@ -79,6 +79,19 @@ live PSRAM reservations. See the
   948,591-byte representation exceeds the advertised transport ceiling.
   Original dashboard data and all 79 settings/PIN/reset status are retained;
   original-firmware recovery and the other P4 tests remain in progress.
+- The actual 10-inch embedded editor also passes creation inside an existing
+  folder, a Sensor leaf bound through its Sensor field, reload, immediate-parent
+  Back and the two-level creation limit. Both saves are atomic; root records,
+  native settings, a sibling folder and stored inactive page remain unchanged.
+- The 4.3-inch reader bridge boots with its exact original native-v1 dashboard,
+  all 79 settings/PIN/reset status and a complete v2 read projection. The initial
+  nested candidate rejects saving that dashboard: its folders retain six and
+  seven records behind a five-card grid. Both v1 and v2 host reproduction fail
+  write admission before the fix. PageStore now retains all records while
+  binding only the grid prefix after Back, including making descendants of an
+  off-grid folder inactive. Sanitized regression coverage passes on all nine
+  profiles; physical qualification of this fix remains required. No dashboard
+  replacement was committed on the 4.3-inch panel during the rejected checks.
 
 ## Remaining gates
 

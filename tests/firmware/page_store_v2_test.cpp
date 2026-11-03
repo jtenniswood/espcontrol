@@ -223,6 +223,52 @@ void legacy_child_folders_need_explicit_targets() {
   assert(!runtime.active().page_count() && allocator.live==0);
 }
 
+void retained_off_grid_subpage_cards() {
+  for (const auto &limits : DEVICE_UI_PROFILES) {
+    std::string children = "B,1";
+    for (size_t slot = 1; slot <= limits.cards_per_subpage + size_t{2}; ++slot)
+      children += "|:Stored:Auto:Auto:sensor.retained_" + std::to_string(slot) + "::sensor";
+    const auto legacy = make_v1(limits, ";Folder;;;;;subpage", children);
+    for (uint16_t version : {1, 2}) {
+      const auto document = version == 1 ? legacy : imported(legacy);
+      Allocator allocator;
+      {
+        PageStoreRuntime runtime(limits, allocator, 128 * 1024);
+        assert(runtime.prepare_write(version, document.data(), document.size()));
+        assert(runtime.activate_prepared(1, version, document.data(), document.size()));
+        const auto &store = runtime.active();
+        const auto *page = store.page(1);
+        assert(page->card_count == limits.cards_per_subpage + size_t{2});
+        assert(page->runtime_card_count == limits.cards_per_subpage);
+        assert(store.runtime_card(page->first_card + limits.cards_per_subpage - 1));
+        assert(!store.runtime_card(page->first_card + limits.cards_per_subpage));
+        const auto *hidden = store.card(page->first_card + limits.cards_per_subpage);
+        assert(store.field(*hidden, CardField::SENSOR) ==
+          "sensor.retained_" + std::to_string(limits.cards_per_subpage + 1));
+        assert(store.source_size() == document.size() &&
+          std::memcmp(store.source_document(), document.data(), document.size()) == 0);
+      }
+      assert(allocator.live == 0);
+    }
+    auto records = authored_nested(limits);
+    records[4].second = limits.slot_count; // Stored folder beyond the Back-limited grid.
+    for (uint16_t slot = 1; slot < limits.slot_count; ++slot) {
+      auto card = records[4];
+      card.id = 62000 + slot; card.second = slot; card.fields[6] = 75;
+      records.push_back(card);
+    }
+    const auto document = wire(records);
+    Arena arena(16384), scratch; PageStore store;
+    assert(stage(document, limits, arena, scratch, store) == PageStoreStatus::OK);
+    assert(store.page(1)->navigable && !store.page(2)->navigable);
+    const CardId hidden_folder = store.page(1)->first_card + limits.slot_count - 1;
+    assert(!store.runtime_card(hidden_folder) && store.card(hidden_folder)->target == NO_PAGE);
+    assert(!store.runtime_card(store.page(2)->first_card));
+    assert(store.field(*store.card(store.page(2)->first_card), CardField::LABEL) == "Nested Leaf");
+    ++cases;
+  }
+}
+
 void nested_write_admission() {
   for (const auto &profile : DEVICE_UI_PROFILES) {
     auto limits = profile;
@@ -318,6 +364,7 @@ void dormant_and_owned_source() {
 } // namespace
 int main() {
   nested_depth_two(); nested_write_admission(); legacy_child_folders_need_explicit_targets();
+  retained_off_grid_subpage_cards();
   corpus(); replacement_and_failures(); hostile_and_bounds(); dormant_and_owned_source();
   std::cout << "PASS direct v2 PageStore parity/normalization/identities/admission/atomic replacement " << cases << " cases\n";
 }

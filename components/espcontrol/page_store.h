@@ -35,7 +35,7 @@ struct PageDefinition {
   // Legacy documents can retain a subpage behind a non-folder card. Keep its
   // data without making it a navigable target.
   bool navigable{false};
-  // Retained root definitions may extend beyond this device's capacity.
+  // Retained definitions may extend beyond this device's visible capacity.
   // Runtime owners use this prefix; serialization keeps card_count unchanged.
   uint16_t runtime_card_count{0};
 };
