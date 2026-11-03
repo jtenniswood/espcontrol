@@ -153,9 +153,22 @@ compacting before resources borrow the model. The existing admission ceiling,
 source bytes and allocation-free activation remain unchanged. Host checks pass
 small v1/v2 replacements on all nine profiles with an 8 KiB maximum allocation,
 larger-layout growth and failed-reservation rollback. All four grid-size scene
-integrations pass. Updated firmware builds and physical retesting of this
-reservation change remain required; earlier compile/device results below apply
-to their recorded source revisions.
+integrations pass. CI also passes at `43a914249` (run `41645151214`). Updated
+factory builds are in progress; earlier compile/device results below apply to
+their recorded source revisions.
+
+The same SDK2 S3 protocol is repeated with private `3a7c4e0a1`, whose only
+changes from `d496ecdbd` are the public `43a914249` staging implementation and
+project label. Both runs use identical synthetic configuration/image fixtures,
+diagnostics and phase boundaries. The original save returns HTTP 204 with no
+failed scene reservations in both runs. During that phase, minimum free PSRAM
+increases from 103,280 to 190,316 bytes (+87,036 bytes, about 85 KiB); the internal
+minimum changes from 75,391 to 75,359 bytes. PNG/GIF phase PSRAM minima are
+925,784/190,140 bytes afterward, versus 926,636/193,496 before. This is one pair
+of diagnostic phase windows, not a new idle-memory or instantaneous combined
+heap comparison. Exact upgraded firmware, original native-v1 data at generation
+1052 and all protected settings/PIN/reset/sleep/update preferences are verified
+restored. Other physical image/modal/delayed-transfer combinations remain open.
 
 ## Physical checks and recovery
 
@@ -258,8 +271,9 @@ After these tests, the separately authorized SDK-update task installed ESPHome
 2026.10.2 on the local displays and verified the saved dashboard generations
 unchanged. It corrected the replacement 7-inch panel to the V2 profile and
 verified its dashboard byte-for-byte. Further qualification must preserve those
-newer images as recovery targets. The measurements above remain a 2026.10.1
-comparison. The native API subscription bridge has been audited against both
+newer images as recovery targets. The paired idle-memory measurements remain a
+2026.10.1 comparison; the separate SDK2 diagnostics retain their own scopes.
+The native API subscription bridge has been audited against both
 patches; matching API sources are byte-identical and guard tests accept only
 those two audited versions.
 The user confirms the replacement 7-inch V2 is unavailable for now. Remaining
@@ -278,6 +292,6 @@ Compilation does not establish physical layout parity or qualify the full
 feature on ESPHome 2026.10.2. The original-dashboard memory investigation,
 nested visual confirmation, remaining P4 qualification, further replacement/
 delayed-event/modal/takeover checks, populated HA caches on other P4 profiles, burst replay,
-image peaks and physical storage-failure
+remaining image/decode combinations and physical storage-failure
 qualification remain open. Published-reader and mirror-retirement gates in
 [the delivery plan](nested-pages-delivery.md) still apply before release enablement.
