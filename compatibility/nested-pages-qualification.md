@@ -621,6 +621,58 @@ firmware/native bytes, protected settings, PIN/reset and update preferences
 are verified restored at generation 138. This establishes the P4 native lookup
 path for this cohort; broader P4 workload and pixel gates retain their scope.
 
+Private completed-image probe `7a1587cbf`, based on `0c40d159c`, holds one real
+adapter callback after decode and descriptor publication. Image downloaders,
+decoders and the public runtime receiver remain unchanged; private read-only
+lease reports and a fixed callback record make the delayed boundary observable.
+ASan/UBSan host checks cover current/stale results, modal reopening and teardown;
+removing only the receiver's request-cookie equality makes the stale-pending
+negative control fail.
+
+The S3 PNG run replays nine actual callbacks: two current-result positive
+controls update their leases, while seven stale results leave request, pending,
+ready, failure, asset and revision fields unchanged within the replay call.
+Cases include a new request held behind a server gate, an already-ready image,
+folder navigation, disjoint configuration replacement, modal close/reopen,
+a failed result and display-off/wake. No callback target is destroyed or
+silently dropped instead of replayed, and no scene allocation/accounting errors
+occur. The exact original SDK2 firmware/native bytes and all protected
+settings, PIN/reset and sleep/update preferences are restored at generation
+1112. An initial same-binding protocol waits for a refresh that intentionally
+coalesces behind the pending result; it is excluded and restores generation
+1109 before the accepted rebinding run. These checks qualify the PNG
+adapter/runtime boundary, not panel pixels or production heap usage; the
+private instrumentation has its own footprint.
+
+The same private image exercises the actual decoder with a 480 × 480,
+369,953-byte GIF. An initial run passes changing tile frames and stale
+completions after page rebinding and disjoint configuration, but the expanded
+view does not advance after its current completion is artificially held and
+released. That run remains failed for animation resumption; its exact original
+firmware/data/settings recovery passes at generation 1115. A diagnostic attempt
+then stops before the expanded view because its capture check incorrectly
+requires an already-retired request to remain current; it is excluded and
+restores generation 1117.
+
+A separate run with normal, immediate callbacks passes changing decoded frames
+in both the tile and expanded view after navigation and configuration changes.
+It reports no allocation or GIF-frame errors and restores the exact original
+firmware/data/settings at generation 1120. Its lowest sampled free PSRAM is
+218,972 bytes during expanded playback; this is neither an isolated peak nor a
+production before/after measurement. Normal playback does not resolve the
+forced-delay animation failure above.
+
+The targeted modal follow-up replays two actual completed GIF callbacks after
+close/reopen onto a new PNG and after disjoint configuration/new opening.
+Both leave request, pending, ready, failure, asset and revision unchanged
+within the replay call; both captured requests are current at capture, and
+neither target is dropped. No allocation or GIF-frame errors are reported.
+Exact original SDK2 firmware/native bytes and all protected settings, PIN/reset
+and sleep/update preferences are verified restored at generation 1123.
+Together these runs qualify the recorded GIF stale-result boundaries and
+normal decoded-frame playback on S3, not delayed-current animation resumption,
+panel pixels, other formats or P4 parity.
+
 A browser follow-up separates saved card identities from visible cell count
 in both transfer validation and preview rendering. Five model regressions cover
 retained cards above all four grid capacities and the saved-ID boundary 32;
