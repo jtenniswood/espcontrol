@@ -24,6 +24,14 @@ physical dependency check reported zero registered channels. Their measurements
 do not qualify sensor workloads; corrected paired runs are required. Only the
 valid original-dashboard and empty rows from that initial cohort are shown here.
 
+A fresh corrected before cohort has since completed all four workloads, with
+three settled samples each. Reverse HA registration checks verify all nine and
+72 expected Sensor states before sampling. The observer waits for delayed grid
+refresh and drains the complete registration stream before retrying; an earlier
+attempt restarted that stream too soon and is excluded. The paired after run
+uses updated private source `8de157565`, based on the off-grid fix `95037c8c3`,
+and remains in progress. No completed comparison from this new pair is claimed.
+
 | Workload | Internal heap free, before → after | PSRAM free, before → after | Combined free change |
 | --- | ---: | ---: | ---: |
 | Original dashboard | 75.3 → 79.9 KiB | 2276.3 → 2284.4 KiB | +12.7 KiB |
@@ -83,6 +91,15 @@ live PSRAM reservations. See the
   folder, a Sensor leaf bound through its Sensor field, reload, immediate-parent
   Back and the two-level creation limit. Both saves are atomic; root records,
   native settings, a sibling folder and stored inactive page remain unchanged.
+- The timing-only 10-inch image `d7f300074` completes 1,000 cycles, 3,000 actual
+  page changes and three API reconnects. All 21 retained-resource fields stay
+  unchanged; exact configuration bytes/generation and all 79 settings/PIN/reset
+  checks pass. Full resource snapshots occur only while stopped at Home.
+  Each request waits for the renderer's page-change acknowledgment. This does
+  not establish a reliable fixed 500 ms request interval: an earlier sender
+  missed 11 of 300 transitions. The completed-transition run has a median
+  acknowledgment latency of 522 ms, 95th percentile 544 ms and maximum 2,126 ms,
+  including network and polling time. These counters do not prove pixel stability.
 - The 4.3-inch reader bridge boots with its exact original native-v1 dashboard,
   all 79 settings/PIN/reset status and a complete v2 read projection. The initial
   nested candidate rejects saving that dashboard: its folders retain six and
