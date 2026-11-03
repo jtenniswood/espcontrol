@@ -112,7 +112,9 @@ Never display the secrets file, include its contents in command output, or add i
 Use the project wrapper so a flash always uses the ESPHome version pinned by
 `.github/esphome.env`. It stops before compiling if the installed executable is
 older or newer than the release version. The wrapper also builds from the local
-repository checkout:
+repository checkout. It also rejects a `run` or `upload` to the known 7-inch V2
+target `192.168.6.102` unless the YAML is inside
+`devices/guition-esp32-p4-jc1060p470-v2`:
 
 ```bash
 python3 scripts/local_esphome.py <yaml-file> run --device <target> --no-logs
