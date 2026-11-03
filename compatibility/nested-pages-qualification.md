@@ -553,8 +553,8 @@ A private borrowed-row lookup prototype preserves exact matching and native
 callback order in differential host tests, including forced hash collisions,
 foreign/once registrations, null/empty attributes, stale indexes and reentry.
 ASan/UBSan checks pass; its 7,600-entry table uses 60,800 bytes and queries
-allocate nothing. It has no native SDK integration, owning-buffer lifecycle,
-firmware build or physical optimization qualification yet.
+allocate nothing. At that checkpoint it had no native SDK integration,
+owning-buffer lifecycle, firmware build or physical optimization qualification.
 
 The subsequent private integration `6b8add896` passes fallible ownership,
 retry/rollover, exact-capacity, source-identity and teardown tests. Tests compile
@@ -586,14 +586,50 @@ SDK version, MCU and both original/wrapper ELF symbols are verified for every
 profile. Production-source physical qualification remains separate from the
 private-image results above.
 
+Public component checkpoint `4783dc76c` then passes the same S3 cohort using
+private overlay `08b8ca0fc`, which changes only the S3 development YAML to add
+on-demand owner/member/index reports. All compiled project component sources
+and the unchanged SDK API sources are hash-verified. There are no private timing
+hooks, image-memory instrumentation or production writer-policy changes.
+All five ordinary ten-second bursts pass: 2.644, 2.357, 2.343, 2.424 and
+2.472 seconds. Each delivers exactly 1,440 fast frames with zero stock fallback
+or interruption; the 11,624-byte table remains unchanged within each feed.
+Four same/disjoint replacements fill the full 128 KiB value cache, exercise two
+folder round trips each, and preserve every checked retained scene owner.
+The tracked scene arena remains 291,000 bytes across those replacements;
+the native lookup table is counted separately. These are cohort ownership
+measurements, not an uninstrumented original-dashboard heap comparison.
+The exact original SDK2 firmware/native bytes and all protected settings,
+PIN/reset and temporary sleep/update preferences are verified restored at
+generation 1107.
+
+The same public component checkpoint passes the actual 4.3-inch P4 RISC-V
+lookup cohort through YAML-only overlay `e00e28f70`. All declared external
+component sources match the public checkpoint; the API and built-in MIPI DSI
+driver match the pinned SDK. Four same/disjoint replacements and reconnect
+deliver exactly 600 fast frames per stream with no stock fallback/interruption
+during each feed: 0.657, 0.816, 0.679, 0.683 and 0.711 seconds. Each replacement
+checks two folder round trips and unchanged retained owners. The table uses
+4,920 bytes for 615 native registrations, including 15 foreign registrations;
+the tracked scene arena remains 138,796 bytes. This cohort fills 48 KiB of
+values in a 64 KiB elastic allocation, not the profile's full 512 KiB ceiling.
+An initial host attempt incorrectly expected the full ceiling to be reserved;
+the corrected exact-fixture host check passes and the failed expectation is
+excluded. Host-client timezone notices from separate event loops do not qualify
+timezone behaviour in this synthetic climate cohort. Exact original SDK2
+firmware/native bytes, protected settings, PIN/reset and update preferences
+are verified restored at generation 138. This establishes the P4 native lookup
+path for this cohort; broader P4 workload and pixel gates retain their scope.
+
 A browser follow-up separates saved card identities from visible cell count
 in both transfer validation and preview rendering. Five model regressions cover
 retained cards above all four grid capacities and the saved-ID boundary 32;
 inactive siblings, Back appearance and complete subtrees stay intact. Browser
 journeys exercise actual copy, duplicate, cut and delete menus on all four grids.
-All 262 web-unit checks, types and generated-bundle freshness pass. C++ sources
-are unchanged from the completed `d3cb407ae` factory matrix; this follow-up's
-rebuilt web assets have separate browser qualification.
+All 262 web-unit checks, types and generated-bundle freshness pass. The complete
+nine-layout browser suite also passes at `4783dc76c`, as does required CI.
+C++ sources are unchanged from the completed `d3cb407ae` factory matrix;
+this follow-up's rebuilt web assets have separate browser qualification.
 
 ## Remaining gates
 
