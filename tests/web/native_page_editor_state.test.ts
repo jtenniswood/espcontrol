@@ -4,6 +4,8 @@ import { createNativePageEditorFeature } from "../../src/webserver/application/n
 import { createAppConfigEventsFeature } from "../../src/webserver/application/app_config_events";
 import { createControlsShellFeature } from "../../src/webserver/application/controls_shell";
 import { createPreviewInteractionsFeature } from "../../src/webserver/application/preview_interactions";
+import { createAppStateEventHandlersFeature } from "../../src/webserver/application/app_state_event_handlers";
+import { createAppEventsFeature } from "../../src/webserver/application/app_events";
 import { parseRawButtonConfig, parseRawSubpageConfig, buildSubpageGrid } from "../../src/webserver/model";
 
 function check(value: unknown, message: string): void { if (!value) throw new Error(message); }
@@ -13,6 +15,31 @@ function initialize(): void {
   globals.__ESPCONTROL_DEVICE_PROFILES__ = { test: { slots: 9 } };
   globals.__ESPCONTROL_TIMEZONE_OPTIONS__ = [];
   initializeDeviceConfig(); initializeAppState();
+}
+
+export function runNativeRootSettingsEventTests(): void {
+  initialize();
+  const noop = new Proxy({}, { get: () => () => undefined }) as any;
+  for (const snapshotLoaded of [false, true]) {
+    state.nativePageSnapshotLoaded = snapshotLoaded;
+    state.nativeHasNestedPages = false;
+    state.nativePanelDocument = { deviceProfile: "test", buttons: {}, subpages: {}, settings: {} };
+    state.onColor = "112233";
+    const orders: string[] = [];
+    let refreshes = 0, connected: any;
+    const runtime = { els: {} } as any;
+    const events = createAppStateEventHandlersFeature(runtime, noop, noop, noop, noop, noop, noop,
+      noop, noop, noop, noop, noop, { applyButtonOrderValue: (value: string) => orders.push(value) } as any, noop, noop);
+    createAppEventsFeature({ connect: (value: unknown) => { connected = value; } } as any, events,
+      { patterns: () => [] }, runtime, noop, noop, noop, noop, noop, noop,
+      { eventStreamEnabled: () => false } as any, noop,
+      { invalidate() {}, refresh: async () => false, refreshAfterChange() { ++refreshes; } }).connect();
+    connected.onState({ id: "text-button_order", state: "2" });
+    connected.onState({ id: "text/Button On Color", state: "AA0000" });
+    check(orders.length === (snapshotLoaded ? 0 : 1), "only a complete snapshot supersedes legacy root order");
+    check(state.onColor === (snapshotLoaded ? "112233" : "AA0000"), "late legacy accent cannot override a flat native snapshot");
+    check(refreshes === (snapshotLoaded ? 2 : 0), "named root events refresh native state, including normalized entity aliases");
+  }
 }
 export function runNativeEditorStateTests(): void {
   initialize();

@@ -460,6 +460,7 @@ async function installRoutes(context, slug, options = {}) {
         });
         return;
       }
+      if (nativeState.beforeRead) await nativeState.beforeRead();
       await route.fulfill({
         status: 200,
         contentType: "application/vnd.espcontrol.panel-config",
@@ -8452,7 +8453,7 @@ async function assertNestedPageEditor(browser, testCase) {
 async function assertNestedWriterLimits(browser,testCase) {
   for(const nested of [false,true]) {
     const nativeState={...nativeConfigState(testCase.slug),documentVersions:[1,2],readDepth:2,writeDepth:1,durableVersion:1,
-      document:{deviceProfile:testCase.slug,buttons:{1:";Reader Root;;;;;subpage"},subpages:nested?{1:"~B,1|G,,Child",33:"~B,1|,light.leaf,Leaf",2:"~B,1|,light.hidden,Hidden"}:{1:"~B,1|,light.flat,Flat leaf"},settings:{button_order:"1"}}};
+      document:{deviceProfile:testCase.slug,buttons:{1:";Reader Root;;;;;subpage",2:";Other Root;;;;;subpage"},subpages:nested?{1:"~B,1|G,,Child",33:"~B,1|,light.leaf,Leaf",2:"~B,1|,light.hidden,Hidden"}:{1:"~B,1|,light.flat,Flat leaf",2:"~B"},settings:{button_order:"1",button_on_color:"112233"}}};
     const context=await browser.newContext({viewport:testCase.viewport});await installRoutes(context,testCase.slug,{nativeState});
     const page=await context.newPage();await installFakeEventSource(page);
     try {
@@ -8483,6 +8484,26 @@ async function assertNestedWriterLimits(browser,testCase) {
         assert.deepStrictEqual(Array.from(decodeNativeConfigBackupPayload(exported.native_config)),Array.from(encodePanelPageDocument(nativeState.document)),"reader-only export retains exact graph bytes and inactive pages after the firmware's v1 HTTP422");
         assert.strictEqual(nativeState.puts.length,0,"reader-only backup performs no writes");
       } else {
+        let heldReads=0,releaseRead;
+        const held=new Promise(resolve=>{releaseRead=resolve;});
+        nativeState.beforeRead=async()=>{++heldReads;await held;};
+        await page.evaluate(()=>window.__seedEspState([
+          {id:'text-button_order',state:'2'},
+          {id:'text/Button On Color',state:'AA0000'},
+        ]));
+        await waitForNativeState(nativeState,()=>heldReads>0,"named root events request native refresh");
+        assert.strictEqual(await page.locator('.sp-main [data-pos="0"][data-slot="1"]').count(),1,"late legacy order cannot replace the flat native snapshot while refresh is pending");
+        assert.strictEqual(await page.locator('#sp-set-on-color input[type="color"]').inputValue(),"#112233","late legacy colour cannot replace the native accent");
+        delete nativeState.beforeRead;releaseRead();
+        nativeState.document.settings.button_order="2,1";
+        nativeState.document.settings.button_on_color="445566";nativeState.generation+=1;
+        await page.evaluate(()=>window.__seedEspState([{id:'text-button_order',state:'2,1'}]));
+        await page.waitForFunction(()=>document.querySelector('.sp-main [data-pos="0"]')?.getAttribute('data-slot')==='2'&&document.querySelector('#sp-set-on-color input[type="color"]')?.value==='#445566');
+        nativeState.document.settings.button_order="1";
+        nativeState.document.settings.button_on_color="778899";nativeState.generation+=1;
+        await page.evaluate(()=>window.__seedEspState([{id:'text/Button On Color',state:'AA0000'}]));
+        await page.waitForFunction(()=>document.querySelector('.sp-main [data-pos="0"]')?.getAttribute('data-slot')==='1'&&document.querySelector('#sp-set-on-color input[type="color"]')?.value==='#778899');
+        assert.strictEqual(nativeState.puts.length,0,"external root settings refresh without a write");
         await page.evaluate(()=>window.__seedEspState([
           {id:'text-subpage_1_config_ext',state:''},
           {id:'text-subpage_1_config_ext_2',state:'stale fragment'},

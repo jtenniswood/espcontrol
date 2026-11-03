@@ -125,7 +125,7 @@ export function createAppStateEventHandlersFeature(
     const createSseHandlers: SseHandlerFactory = () => {
         return {
             "text-button_order": function (this: any, val?: any) {
-                if (state.nativeHasNestedPages) return;
+                if (state.nativePageSnapshotLoaded || state.nativeHasNestedPages) return;
                 if (gridPreviewBlockedByRotationStartup() || state.screenRotationInitialFallbackActive) {
                     runtime.orderReceived = !!(val && val.trim());
                     state.pendingButtonOrderRaw = val;
@@ -136,7 +136,7 @@ export function createAppStateEventHandlersFeature(
                 applyButtonOrderValue(val);
             },
             "text-button_on_color": function (this: any, val?: any) {
-                if (state.nativeHasNestedPages) return;
+                if (state.nativePageSnapshotLoaded || state.nativeHasNestedPages) return;
                 state.onColor = val;
                 syncColorUi();
                 renderPreview();

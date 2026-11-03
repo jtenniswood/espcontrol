@@ -722,7 +722,7 @@ function composeApplicationContext(): ApplicationContext {
   const configEvents = createAppConfigEventsFeature(configurationPersistence, configurationCodec, layout, renderQueue);
   const nativePages = createNativePageEditorFeature({ native: nativePanelConfig, codec: configurationCodec, layout, runtime,
     document: dom.document, shell, closeSettings: selection.closeSettings,
-    render: () => { preview.render(); buttonSettings.render(); },
+    render: () => { preview.render(); buttonSettings.render(); appearance.syncColorUi(); },
     canApply: () => !grid.hasPendingMainGridSave(),
   });
   configurationCodec.connectNativePageRefresh(() => nativePages.refresh());

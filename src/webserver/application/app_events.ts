@@ -95,7 +95,11 @@ export function createAppEventsFeature(
             var val: any = d.state != null ? String(d.state) : "";
             for (var ki: any = 0; ki < keys.length; ki++) {
                 if (sseHandlers[keys[ki]]) {
-                    sseHandlers[keys[ki]](val, d, keys[ki]);
+                    const handler = sseHandlers[keys[ki]];
+                    handler.call(sseHandlers, val, d, keys[ki]);
+                    if (state.nativePageSnapshotLoaded &&
+                        (handler === sseHandlers["text-button_order"] || handler === sseHandlers["text-button_on_color"]))
+                        nativePages?.refreshAfterChange();
                     return;
                 }
             }

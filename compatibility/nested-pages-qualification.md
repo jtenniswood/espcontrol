@@ -508,6 +508,16 @@ C-string lengths during comparison, making that path the next investigation
 target. No SDK/framework optimization has been implemented. Exact original
 firmware/data/settings are verified restored at generation 1085.
 
+A browser-only review follow-up extends complete-snapshot authority to flat
+native root order and accent settings. Named legacy events request a native
+refresh, including normalized entity aliases, while older depth-one native
+writers retain legacy loading. Native publication also synchronizes the accent
+picker. All 257 web-unit checks, type checking and bundle freshness pass.
+Focused browser journeys on all four grid sizes hold the native response while
+stale legacy values arrive, then verify independent order/colour refreshes
+without writes. The full nine-layout browser run is in progress; C++ firmware,
+configuration and SDK sources remain unchanged from `ede961755`.
+
 ## Remaining gates
 
 All nine production factory profiles compile at `c05fde64f` with the current
