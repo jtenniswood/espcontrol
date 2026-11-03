@@ -226,6 +226,13 @@ export function createPreviewInteractionsFeature(
             if (isConfigLocked()) {
                 e.preventDefault();
                 e.stopPropagation();
+                if (state.nativeConfigReadOnly && state.nativePanelDocument && !state.configLocked && !state.nativeConfigLoading) {
+                    const target = e.target.closest("[data-slot]");
+                    const slot = Number(target?.getAttribute("data-slot"));
+                    if (slot === -2) exitSubpage();
+                    else if (slot > 0 && ctx().buttons[slot - 1]?.type === "subpage")
+                        enterChildSubpage(state.editingSubpage, slot);
+                }
                 return;
             }
             if (e.target.closest(".sp-card-name-input")) return;

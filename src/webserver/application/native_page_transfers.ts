@@ -28,12 +28,12 @@ export function createNativePageTransfersFeature(options: {
   shell: Pick<ControlsShellFeature, "isConfigLocked" | "syncConfigLockUi" | "showBanner">;
   validate(entries: readonly PageTransferCard[], page: number, moving: boolean): void;
 }): NativePageTransfersFeature {
-  const layout = { slots: options.layout.previewSlots, columns: options.layout.gridCols };
+  const currentLayout = () => ({ slots: options.layout.previewSlots, columns: options.layout.gridCols });
   let busy = false;
   let unappliedSave: ReturnType<NativePanelConfigController["schedule"]> = null;
   const available = () => options.native.writableNavigationDepth() === 2;
   const page = () => state.editingSubpage ?? 0;
-  async function run(action: () => Promise<void>): Promise<boolean> {
+  async function run(action: (layout: ReturnType<typeof currentLayout>) => Promise<void>): Promise<boolean> {
     if (!available() || busy || options.shell.isConfigLocked()) return false;
     if (state.settingsDraft?.dirty || state.settingsDraft?.isNew) {
       options.shell.showBanner("Save or cancel the open card before transferring cards.", "warning"); return false;
@@ -50,7 +50,7 @@ export function createNativePageTransfersFeature(options: {
       if (options.api.postQueueHadError() || (previous !== "saved" && previous !== "mirror-failed" && options.native.saveQueue !== unappliedSave))
         throw new Error("The previous change did not save. Retry it or reload before transferring cards.");
       if (state.configLocked) throw new Error("The connection changed. Try again after reconnecting.");
-      await action();
+      await action(currentLayout());
       return true;
     } catch (error) {
       options.shell.showBanner(error instanceof Error ? error.message : "The cards could not be transferred.", "error");
@@ -64,7 +64,7 @@ export function createNativePageTransfersFeature(options: {
     if (!document) throw new Error("Reload the saved pages before transferring cards.");
     return document;
   }
-  function unchanged(current: PanelConfigDocument, origin: PageTransferOrigin): void {
+  function unchanged(current: PanelConfigDocument, origin: PageTransferOrigin, layout: ReturnType<typeof currentLayout>): void {
     if (capturePageCards(current, origin.page, origin.slots, layout).origin.fingerprint !== origin.fingerprint)
       throw new PageTransferConflict("The selected cards changed. Reload before trying again.");
   }
@@ -86,11 +86,11 @@ export function createNativePageTransfersFeature(options: {
   async function capture(slots: readonly number[]): Promise<PageCardClipboard | null> {
     const sourcePage = page();
     let captured: PageCardClipboard | null = null;
-    await run(async () => {
+    await run(async layout => {
       const expected = capturePageCards(savedDocument(), sourcePage, slots, layout).origin;
       const snapshot = await options.native.readSnapshot();
       if (!snapshot) throw new Error("Could not read the saved cards.");
-      unchanged(snapshot.document, expected);
+      unchanged(snapshot.document, expected, layout);
       captured = capturePageCards(snapshot.document, sourcePage, slots, layout);
     });
     return captured;
@@ -109,7 +109,7 @@ export function createNativePageTransfersFeature(options: {
     if (!entries) return { ok: false, resized: 0 };
     const move = supplied ? undefined : clipboard?.native?.cut ? clipboard.native.origin : undefined;
     let resized = 0;
-    const ok = await run(async () => {
+    const ok = await run(async layout => {
       options.validate(entries, target, !!move);
       await save(current => {
         const plan = planPageCardPaste(current, target, position, entries, layout, move);
@@ -122,18 +122,18 @@ export function createNativePageTransfersFeature(options: {
   }
   async function duplicate(slot: number): Promise<boolean> {
     const sourcePage = page(), pos = options.grid.ctx().grid.indexOf(slot);
-    return run(async () => {
+    return run(async layout => {
       const captured = capturePageCards(savedDocument(), sourcePage, [slot], layout);
       options.validate(captured.entries, sourcePage, false);
       await save(current => {
-        unchanged(current, captured.origin);
+        unchanged(current, captured.origin, layout);
         return planPageCardPaste(current, sourcePage, (pos + 1) % layout.slots, captured.entries, layout).document;
       });
     });
   }
   async function remove(slots: readonly number[]): Promise<boolean> {
     const sourcePage = page();
-    return run(async () => {
+    return run(async layout => {
       const origin = capturePageCards(savedDocument(), sourcePage, slots, layout).origin;
       await save(current => planPageCardDelete(current, origin, layout));
     });

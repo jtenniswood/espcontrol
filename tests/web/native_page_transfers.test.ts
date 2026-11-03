@@ -4,6 +4,7 @@ import { initializeAppState, state } from "../../src/webserver/state/app_instanc
 import { initializeDeviceConfig } from "../../src/webserver/device_config";
 import { encodePanelPageDocument, decodePanelPageDocument } from "../../src/webserver/model/panel_config_conversion";
 import type { PanelConfigDocument } from "../../src/webserver/model/panel_config";
+import { capturePageCards, planPageCardPaste, planPageCardDelete } from "../../src/webserver/model/page_card_transfer";
 import type { ApplicationLayoutState } from "../../src/webserver/application/application_context";
 import type { NativePageEditorLoader } from "../../src/webserver/features/page_editor";
 
@@ -47,14 +48,16 @@ export async function runNativePageTransferTests(): Promise<void> {
   await native.begin(); native.client!.acceptSnapshot(persisted);
   state.configLocked = false; state.nativeConfigLoading = false; state.settingsDraft = null; state.editingSubpage = null; state.clipboard = null;
   const clipboard = () => state.clipboard;
+  const layout = { previewSlots: 9, gridCols: 5 } as ApplicationLayoutState;
   const feature = createNativePageTransfersFeature({ native,
     editor: () => ({ invalidate() {}, replace(document: PanelConfigDocument) { visible = document; } }) as NativePageEditorLoader,
-    layout: { previewSlots: 9, gridCols: 3 } as ApplicationLayoutState,
+    layout,
     api: { postQueueIdle: async () => {}, postQueueHadError: () => false },
     grid: { flushMainGridSave() {}, ctx: () => ({ grid: [1, 0, 0, 0, 0, 0, 0, 0, 0] }) },
     shell: { isConfigLocked: () => state.configLocked || state.nativeConfigLoading, syncConfigLockUi() {}, showBanner: message => banners.push(message) },
     validate() {},
   });
+  layout.gridCols = 3; // Orientation changes after application composition.
   check(await feature.copy([1], true), "cut captures the whole saved tree");
   check(writes === 0 && clipboard()?.native?.cut, "cut cannot delete before its paste transaction");
   const before = JSON.stringify(persisted); rejected = true;
@@ -90,4 +93,20 @@ export async function runNativePageTransferTests(): Promise<void> {
   check(!!copied, "resize fixture captures its source");
   const pasted = await feature.paste(8, 0, [{ ...copied!.entries[0]!, size: 4 }]);
   check(pasted.ok && pasted.resized === 1 && writes === 5, "paste reports the successful size adjustment so its caller can explain it");
+  // A wide unrelated card at a portrait row boundary exposes stale columns:
+  // startup geometry would retain a two-cell span across the wrong row.
+  persisted = snapshot(); persisted.buttons[2] = "light.wide;Wide";
+  persisted.settings.button_order = "1,,,2w";
+  visible = persisted; native.client!.acceptSnapshot(persisted); native.saveQueue = Promise.resolve("saved");
+  layout.gridCols = 2;
+  const geometry = { slots: 9, columns: 2 };
+  const expectedCapture = capturePageCards(persisted, 0, [2], geometry);
+  const rotatedCapture = await feature.capture([2]);
+  check(JSON.stringify(rotatedCapture) === JSON.stringify(expectedCapture), "capture reads the rotated geometry");
+  const expectedPaste = planPageCardPaste(persisted, 0, 7, expectedCapture.entries, geometry).document;
+  check((await feature.paste(7, 0, expectedCapture.entries)).ok, "paste after rotation succeeds");
+  check(JSON.stringify(persisted) === JSON.stringify(expectedPaste), "paste preserves unrelated cards using current columns");
+  const expectedDelete = planPageCardDelete(persisted, capturePageCards(persisted, 0, [2], geometry).origin, geometry);
+  check(await feature.delete([2]), "delete after rotation succeeds");
+  check(JSON.stringify(persisted) === JSON.stringify(expectedDelete), "delete uses the current layout");
 }

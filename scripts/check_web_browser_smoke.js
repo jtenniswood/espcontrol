@@ -8431,14 +8431,27 @@ async function assertNestedPageEditor(browser, testCase) {
 async function assertNestedWriterLimits(browser,testCase) {
   for(const nested of [false,true]) {
     const nativeState={...nativeConfigState(testCase.slug),documentVersions:[1,2],readDepth:2,writeDepth:1,durableVersion:1,
-      document:{deviceProfile:testCase.slug,buttons:{1:";Reader Root;;;;;subpage"},subpages:nested?{1:"~B,1|G,,Child",33:"~B,1|,light.leaf,Leaf",2:"~B,1|,light.hidden,Hidden"}:{1:"~B"},settings:{button_order:"1"}}};
+      document:{deviceProfile:testCase.slug,buttons:{1:";Reader Root;;;;;subpage"},subpages:nested?{1:"~B,1|G,,Child",33:"~B,1|,light.leaf,Leaf",2:"~B,1|,light.hidden,Hidden"}:{1:"~B,1|,light.flat,Flat leaf"},settings:{button_order:"1"}}};
     const context=await browser.newContext({viewport:testCase.viewport});await installRoutes(context,testCase.slug,{nativeState});
     const page=await context.newPage();await installFakeEventSource(page);
     try {
       await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`,{waitUntil:"domcontentloaded"});
       await page.waitForFunction(()=>document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Reader Root"));
       if(nested) {
-        assert.strictEqual(await page.locator('.sp-main').getAttribute('aria-disabled'),'true','reader-only nested configurations are locked for editing');
+        assert.strictEqual(await page.locator('.sp-main').getAttribute('aria-disabled'),'false','reader-only nested configurations remain browsable');
+        assert(await page.locator('.sp-apply-btn').evaluateAll(buttons=>buttons.every(button=>button.disabled)), 'read-only configuration writes remain disabled');
+        await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+        await page.waitForFunction(()=>document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Reader Root");
+        await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+        await page.waitForFunction(()=>document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Child");
+        assert((await page.locator('.sp-main').textContent()).includes('Leaf'));
+        await page.locator('.sp-main [data-slot="1"]').click();
+        await page.locator('.sp-main .sp-empty-cell').first().click();
+        assert.strictEqual(await page.locator('.sp-settings-overlay.sp-visible').count(),0,'read-only leaf and empty cells cannot open an editor');
+        await page.locator('.sp-back-btn .sp-back-hit').click();
+        await page.waitForFunction(()=>document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Reader Root");
+        await page.locator('.sp-back-btn .sp-back-hit').click();
+        await page.waitForFunction(()=>!document.querySelector('.sp-clockbar-subpage-title'));
         assert.strictEqual(nativeState.puts.length,0);
         await page.evaluate(events=>window.__seedEspState(events),seededEvents());
         await openBackupControls(page);
@@ -8449,7 +8462,12 @@ async function assertNestedWriterLimits(browser,testCase) {
         assert.deepStrictEqual(Array.from(decodeNativeConfigBackupPayload(exported.native_config)),Array.from(encodePanelPageDocument(nativeState.document)),"reader-only export retains exact graph bytes and inactive pages after the firmware's v1 HTTP422");
         assert.strictEqual(nativeState.puts.length,0,"reader-only backup performs no writes");
       } else {
+        await page.evaluate(()=>window.__seedEspState([
+          {id:'text-subpage_1_config_ext',state:''},
+          {id:'text-subpage_1_config_ext_2',state:'stale fragment'},
+        ]));
         await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+        await page.waitForFunction(()=>document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes('Flat leaf'));
         await page.locator('.sp-main .sp-empty-cell').first().click();
         assert.strictEqual(await page.getByRole("button",{name:"Subpage card type",exact:true}).count(),0,'reader support alone cannot enable nested creation');
       }

@@ -31,7 +31,7 @@ export function createAppConfigEventsFeature(
         return state.subpageRaw[slot];
     }
     function applyButtonConfigStateEvent(this: any, slot?: any, val?: any) {
-        if (state.nativeHasNestedPages) return;
+        if (state.nativePanelDocument || state.nativeHasNestedPages) return;
         var b: any = state.buttons[slot - 1];
         var migrateConfig: any = buttonConfigNeedsMigration(val || "");
         var parsed: any = parseButtonConfig(val || "");
@@ -49,7 +49,10 @@ export function createAppConfigEventsFeature(
         renderQueue.schedule();
     }
     function applySubpageConfigStateEvent(this: any, slot?: any, key?: any, val?: any) {
-        if (state.nativeHasNestedPages) return;
+        // Native snapshots are complete transactions. Late legacy chunks can
+        // belong to the initial read or an older generation and must not be
+        // combined with a newly accepted snapshot.
+        if (state.nativePanelDocument || state.nativeHasNestedPages) return;
         ensureSubpageRaw(slot)[key] = val || "";
         applySubpageRaw(slot);
     }

@@ -273,11 +273,13 @@ export function createControlsShellFeature(
         return !!state.configLocked || !!state.nativeConfigReadOnly || !!state.nativeConfigLoading;
     }
     function syncConfigLockUi(this: any) {
+        const previewLocked = !!state.configLocked || !!state.nativeConfigLoading ||
+            (!!state.nativeConfigReadOnly && !state.nativePanelDocument);
         if (els.root) {
-            els.root.classList.toggle("sp-config-locked", isConfigLocked());
+            els.root.classList.toggle("sp-config-locked", previewLocked);
         }
         if (els.previewMain) {
-            els.previewMain.setAttribute("aria-disabled", isConfigLocked() ? "true" : "false");
+            els.previewMain.setAttribute("aria-disabled", previewLocked ? "true" : "false");
         }
         if (els.root) {
             var text: any = state.nativeConfigReadOnly ? "Read-only configuration" : state.nativeConfigLoading ? "Loading pages\u2026" : "Waiting for device\u2026";

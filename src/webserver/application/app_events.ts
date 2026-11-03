@@ -155,6 +155,9 @@ export function createAppEventsFeature(
                     var m: any = keys[pk].match(ssePatterns[i].re);
                     if (m) {
                         ssePatterns[i].fn(m, val, d);
+                        // Entity events still announce external legacy edits,
+                        // but native-loaded pages refresh as a whole document.
+                        if (state.nativePanelDocument) void nativePages?.refresh();
                         return;
                     }
                 }
