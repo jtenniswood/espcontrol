@@ -1175,9 +1175,10 @@ void qr_images_and_transactions() {
   assert(!h.scene->preparation_allocation_failed());
 }
 
-void maximum_p4_climate_cache_replacements() {
-  constexpr const auto &limits=DEVICE_UI_PROFILES[6];
-  constexpr size_t channels=7600, quota=512*1024;
+template<size_t ProfileIndex>
+void maximum_climate_cache_replacements() {
+  constexpr const auto &limits=DEVICE_UI_PROFILES[ProfileIndex];
+  constexpr size_t channels=limits.max_child_cards()*20, quota=limits.ha_state_bytes;
   const auto a=maximum_profile_document('a',limits,true);
   const auto b=maximum_profile_document('b',limits,true);
   const std::map<std::string,std::string> common{
@@ -1201,13 +1202,14 @@ void maximum_p4_climate_cache_replacements() {
       {"swing_mode", "off"},
       {"swing_horizontal_mode", "off"},
       {"friendly_name", "Qualification 1-1 µµµµµµµ"}};
-  ProfileHarness<6> h(false,true);
+  ProfileHarness<ProfileIndex> h(false,true);
   size_t stable_bytes=0, stable_objects=0;
   std::function<void(Coordinator::State)> stale;
   for(unsigned iteration=0;iteration<4;++iteration) {
     // A,A,B,B exercises full shared-cache copies and fully disjoint sets.
     h.apply(iteration<2?a:b,100+iteration);
-    assert(h.scene->active().card_count()==400&&h.scene->active().page_count()==21);
+    assert(h.scene->active().card_count()==limits.max_first_level_cards()&&
+           h.scene->active().page_count()==1+limits.max_first_level_subpages);
     assert(h.scene->memory().state.active_channels==channels&&coordinator.entries.size()==channels);
     const size_t copied=iteration%2?quota:0;
     assert(h.scene->memory().state.active_state_bytes==copied);
@@ -1275,12 +1277,13 @@ int main(int argc,char** argv) {
     queued_producer_content_refresh<6>();queued_producer_forecast_refresh<6>();
     live_palette_policy<6>();
     maximum_profile_disjoint_replacements<6>();
-    maximum_p4_climate_cache_replacements();
+    maximum_climate_cache_replacements<6>();
   } else {
     selected_scene_write_admission();
     queued_image_pool_admission();
     queued_image_refresh<8>();
     queued_producer_content_refresh<8>();queued_producer_forecast_refresh<8>();
+    maximum_climate_cache_replacements<8>();
     navigation_and_state();live_temperature_policy();elastic_state_scene_transactions();maximum_profile_disjoint_replacements<8>();panels_and_retirement();mode_and_feedback();source_styles();slider_input();slider_background_hit_testing();appearance_transactions();live_palette_policy<8>();initial_appearance();appearance_wake_without_intermediate_maintenance();remote_navigation();
     assert(!application_scene_navigation());
     remote_selection_order();qr_images_and_transactions();
