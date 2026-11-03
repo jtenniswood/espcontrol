@@ -556,6 +556,33 @@ ASan/UBSan checks pass; its 7,600-entry table uses 60,800 bytes and queries
 allocate nothing. It has no native SDK integration, owning-buffer lifecycle,
 firmware build or physical optimization qualification yet.
 
+The subsequent private integration `6b8add896` passes fallible ownership,
+retry/rollover, exact-capacity, source-identity and teardown tests. Tests compile
+the actual wrapper/transport delivery code, checking stock fallback, foreign
+callbacks, state termination, net-zero replacements, interrupted delivery and
+zero per-frame allocation under ASan/UBSan. The integrated lookup uses 11,624
+bytes for 1,453 native registrations, including 13 foreign registrations.
+Its instrumented ELF adds 200 bytes of DRAM data/BSS/noinit and 3,120 OTA bytes
+against the stock-handler probe; these are not settled heap measurements.
+
+The two matching controlled S3 workloads complete in 2.531 and 2.518 seconds,
+against 12.064 and 11.620 seconds with the stock handler. Indexed delivery scopes
+total 0.375 and 0.379 seconds. Each stream records 1,440 fast-path deliveries
+and callbacks, zero fallback/interruption and the full 128 KiB cache. The
+ordinary client, without timing-counter activation or a timing observer, then
+passes all four same/disjoint replacements and reconnect/refill within the
+unchanged ten-second limit: 2.836, 2.277, 2.390, 2.226 and 3.006 seconds. It also
+passes folder round trips and unchanged retained-owner/table checks. Exact
+original firmware/native bytes and all protected settings are restored at
+generation 1102. The S3 burst gate passes for this private source.
+
+The production port retains the same generic lookup and buffer owner, removing
+private timing/services and retaining version/signature guards. Six focused
+production-source checks pass, including the existing ownership bridge and
+expanded SDK guard; the actual production wrapper/transport also passes
+ASan/UBSan. All-profile builds and production-source physical qualification
+remain separate from the private-image results above.
+
 ## Remaining gates
 
 All nine production factory profiles compile at `c05fde64f` with the current

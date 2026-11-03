@@ -1287,6 +1287,29 @@ target_compile_options(owned_ha_subscriptions_test PRIVATE -Wall -Wextra -Werror
 target_include_directories(owned_ha_subscriptions_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME owned_ha_subscriptions_test COMMAND owned_ha_subscriptions_test)
 
+add_executable(native_ha_subscription_index_test native_ha_subscription_index_test.cpp)
+target_compile_features(native_ha_subscription_index_test PRIVATE cxx_std_17)
+target_compile_options(native_ha_subscription_index_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(native_ha_subscription_index_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME native_ha_subscription_index_test COMMAND native_ha_subscription_index_test)
+
+add_executable(prepared_native_ha_subscription_index_test prepared_native_ha_subscription_index_test.cpp)
+target_compile_features(prepared_native_ha_subscription_index_test PRIVATE cxx_std_17)
+target_compile_options(prepared_native_ha_subscription_index_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(prepared_native_ha_subscription_index_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME prepared_native_ha_subscription_index_test COMMAND prepared_native_ha_subscription_index_test)
+
+add_executable(native_ha_index_transport_test native_ha_index_transport_test.cpp
+  ../../components/espcontrol/home_assistant_transport_runtime.cpp
+  ../../components/espcontrol/native_ha_state_dispatch.cpp)
+target_compile_features(native_ha_index_transport_test PRIVATE cxx_std_17)
+target_compile_definitions(native_ha_index_transport_test PRIVATE USE_API_HOMEASSISTANT_STATES
+  ESPCONTROL_UI_PROFILE_GUITION_ESP32_S3_4848S040)
+target_compile_options(native_ha_index_transport_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(native_ha_index_transport_test PRIVATE
+  ${CMAKE_CURRENT_BINARY_DIR}/owned_ha_version owned_ha_stubs stubs ../../components/espcontrol)
+add_test(NAME native_ha_index_transport_test COMMAND native_ha_index_transport_test)
+
 add_executable(home_assistant_transport_runtime_test home_assistant_transport_runtime_test.cpp
   ../../components/espcontrol/home_assistant_transport_runtime.cpp)
 target_compile_features(home_assistant_transport_runtime_test PRIVATE cxx_std_17)

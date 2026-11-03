@@ -58,6 +58,25 @@ The bridge explicitly accepts both audited patches. A host regression runs the
 real transport behaviour under each version and verifies that the next,
 unaudited patch fails compilation. The repository SDK pin is managed separately.
 
+Large native subscription sets also use a prepared lookup over the SDK's own
+registration positions. Each row uses eight bytes; names and callbacks retain
+their existing ownership. Preparation runs outside delivery, uses fallible
+external-first allocation, and releases a stale table before resizing. Small,
+unprepared or stale sets retain the original SDK handler. Exhaustion retries
+are bounded and do not reject configuration or allocate during delivery.
+
+The version/signature-pinned linker wrapper preserves the SDK's authentication
+and decoding path. It uses public active-client membership to establish the
+owning server, without protected-member offsets, and preserves state termination,
+exact entity/attribute matching and native callback order, including foreign and
+one-shot registrations. Hash collisions still require exact text matching.
+Native size/data changes invalidate the lookup; project compaction also advances
+an epoch to cover replacements with unchanged size and buffer address. Delivery
+guards defer maintenance for both indexed and original-handler callbacks.
+The maintenance log reports `lookup_bytes` separately from registry storage.
+The [qualification record](nested-pages-qualification.md) distinguishes the
+tested S3 candidate from production-source build and device checks.
+
 The native protocol has no remote-unsubscribe message. Home Assistant may keep
 announcing retired entities until its next reconnect; those replies are ignored.
 This stage reclaims device-owned registrations, not Home Assistant's own memory.

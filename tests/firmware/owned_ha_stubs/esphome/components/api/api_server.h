@@ -5,7 +5,10 @@
 #include "esphome/core/string_ref.h"
 
 namespace esphome::api {
+struct APIServer;
+struct HomeAssistantStateResponse;
 struct APIConnection {
+  APIServer *parent{nullptr};
   bool authenticated{true};
   bool removed{false};
   int cursor{-1};
@@ -13,6 +16,7 @@ struct APIConnection {
   bool home_assistant_states{false};
   bool is_marked_for_removal() const { return removed; }
   bool is_authenticated() const { return authenticated; }
+  void on_home_assistant_state_response(const HomeAssistantStateResponse &message);
   void on_subscribe_home_assistant_states_request() {
     cursor = 0;
     home_assistant_states = true;

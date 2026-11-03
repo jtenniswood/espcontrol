@@ -30,11 +30,18 @@ with tempfile.TemporaryDirectory(prefix="owned-ha-sdk-guard-") as temporary:
                    str(ROOT / "components/espcontrol/home_assistant_transport_runtime.cpp"),
                    "-o", str(binary)]
         result = subprocess.run(command, capture_output=True, text=True)
+        source_position = command.index(str(HERE / "home_assistant_transport_runtime_test.cpp"))
+        dispatch_command = command[:source_position] + [
+            "-fsyntax-only", str(ROOT / "components/espcontrol/native_ha_state_dispatch.cpp")]
+        dispatch_result = subprocess.run(dispatch_command, capture_output=True, text=True)
         if patch == 3:
             assert result.returncode != 0, "Unaudited SDK version must fail compilation"
             assert "Audit owned HA subscription removal" in result.stderr, result.stderr
+            assert dispatch_result.returncode != 0, "Unaudited native dispatch must fail compilation"
+            assert "Audit native HA state dispatch" in dispatch_result.stderr, dispatch_result.stderr
         else:
             assert result.returncode == 0, f"Audited SDK 2026.10.{patch}:\n{result.stderr}"
+            assert dispatch_result.returncode == 0, dispatch_result.stderr
             subprocess.run([str(binary)], check=True)
 
 print("PASS audited 2026.10.1/2 transport behaviour and unaudited-version rejection")
