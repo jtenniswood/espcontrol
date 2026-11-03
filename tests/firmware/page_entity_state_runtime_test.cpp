@@ -1055,7 +1055,38 @@ void registration_scratch_is_fallible_counted_and_released_after_the_batch() {
   assert(arena.live_bytes() == original_bytes);
 }
 
+void card_change_queries_ignore_unrelated_channels() {
+  Fixture fixture; Arena arena; Subscriptions transport; Source source;
+  source.items={{0,"sensor.one",""},{0,"sensor.one","unit_of_measurement"},
+                {1,"sensor.two",""},{1,"sensor.one",""}};
+  PageEntityStateRuntime state(source,arena,transport,{8,4,64});
+  assert(state.prepare(fixture.store)); state.activate_prepared(17);
+  const auto initial=state.revision();
+  transport.send("sensor.two","","10");
+  assert(!state.changed_since({17,0},initial));
+  assert(state.changed_since({17,1},initial));
+  assert(!state.changed_since({17,2},initial));
+  const auto first=state.revision();
+  for(int i=0;i<100;++i)transport.send("sensor.two","",std::to_string(i));
+  const auto latest=state.revision();
+  transport.send("sensor.one","unit_of_measurement","°C");
+  assert(state.changed_since({17,0},latest));
+  assert(!state.changed_since({17,1},latest));
+  assert(!state.changed_since({17,0},state.revision()));
+  transport.send("sensor.one","","on");
+  assert(state.changed_since({17,0},first)&&state.changed_since({17,1},latest));
+  const auto connected=state.revision(); ++transport.connection;
+  assert(state.changed_since({17,0},connected)&&state.changed_since({17,1},connected));
+  assert(!state.changed_since({17,2},connected));
+  const uint64_t wrap=uint64_t{1}<<32;
+  assert(page_entity_channel_changed_since(1,wrap+3,wrap-2));
+  assert(!page_entity_channel_changed_since(UINT32_MAX-1,wrap+3,wrap-2));
+  assert(page_entity_channel_changed_since(7,wrap+3,0));
+  assert(!page_entity_channel_changed_since(3,wrap+3,wrap+3));
+}
+
 int main() {
+  card_change_queries_ignore_unrelated_channels();
   registration_scratch_is_fallible_counted_and_released_after_the_batch();
   colliding_channel_names_keep_identity_and_card_ordinals();
   maximum_shared_state_replacement_is_atomic();

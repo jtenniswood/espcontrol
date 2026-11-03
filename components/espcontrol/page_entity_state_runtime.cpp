@@ -385,7 +385,7 @@ void PageEntityStateRuntime::release_slot(int index) {
 }
 void PageEntityStateRuntime::discard_prepared() { release_slot(staged_); staged_ = -1; }
 void PageEntityStateRuntime::retire_active() {
-  if (active_ >= 0) ++revision_;
+  if (active_ >= 0) advance_revision();
   release_slot(active_); active_ = -1;
 }
 void PageEntityStateRuntime::activate_prepared(uint32_t generation) {
@@ -395,7 +395,7 @@ void PageEntityStateRuntime::activate_prepared(uint32_t generation) {
   staged_ = -1;
   slots_[active_].generation = generation;
   release_slot(retired);
-  ++revision_;
+  advance_revision();
 }
 
 void PageEntityStateRuntime::remove_value(Slot &slot, Channel &channel) {
@@ -439,14 +439,13 @@ bool PageEntityStateRuntime::receive(Slot &slot, uint32_t revision,
           value)
     return true;
   if (entry.status == PageEntityStatus::AVAILABLE && entry.value_size == value.size()) {
-    ++revision_;++entry.revision;
+    entry.revision = advance_revision();
     if (!value.empty()) std::memmove(slot.values + entry.value_offset, value.data(), value.size());
     return true; // Equal-width updates need not move any neighbouring packed
                  // state.
   }
   const size_t available = budget_.state_bytes - (slot.values_used - entry.value_size);
-  ++revision_;
-  ++entry.revision;
+  entry.revision = advance_revision();
   if (value.size() > available || value.size() > budget_.channel_bytes) {
     remove_value(slot, entry);
     entry.status = PageEntityStatus::EXHAUSTED;
@@ -550,7 +549,7 @@ bool PageEntityStateRuntime::reserve_values(Slot &slot, size_t required) {
   return true;
 }
 void PageEntityStateRuntime::invalidate_disconnected_state() {
-  ++revision_;
+  const auto revision = advance_revision();
   connection_generation_ = subscriptions_.connection_generation();
   for (auto &slot : slots_) {
     slot.values_used = 0;
@@ -559,12 +558,34 @@ void PageEntityStateRuntime::invalidate_disconnected_state() {
       entry.value_offset = entry.value_size = 0;
       entry.status = PageEntityStatus::UNKNOWN;
       entry.percent_known=false;
-      ++entry.revision;
+      entry.revision = revision;
     }
   }
 }
 void PageEntityStateRuntime::synchronize_connection() {
   if (subscriptions_.connection_generation() != connection_generation_) invalidate_disconnected_state();
+}
+uint32_t PageEntityStateRuntime::advance_revision() {
+  ++revision_;
+  // Zero still means that a channel has never delivered a value.
+  if (static_cast<uint32_t>(revision_) == 0) ++revision_;
+  return static_cast<uint32_t>(revision_);
+}
+bool PageEntityStateRuntime::changed_since(ConfigurationHandle card, uint64_t revision) {
+  synchronize_connection();
+  if (revision == revision_) return false;
+  if (active_ < 0 || slots_[active_].generation != card.generation) return true;
+  const auto &slot = slots_[active_];
+  if (card.index >= slot.card_count) return true;
+  if (slot.edge_count == 0) return false;
+  const auto begin = slot.card_offsets[card.index], end = slot.card_offsets[card.index + 1];
+  if (begin == end) return false;
+  // Channel stamps reuse the existing 32-bit field. Subtraction handles a
+  // wrap; a gap spanning the entire range conservatively refreshes the card.
+  for (size_t edge = begin; edge < end; ++edge)
+    if (page_entity_channel_changed_since(slot.channels[slot.edges[edge].channel].revision,
+                                         revision_, revision)) return true;
+  return false;
 }
 size_t PageEntityStateRuntime::dependency_count(ConfigurationHandle card) const {
   if (active_ < 0 || slots_[active_].generation != card.generation) return 0;

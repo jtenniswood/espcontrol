@@ -454,6 +454,30 @@ All nine factory profiles compile at `7560bf91a` with ESPHome 2026.10.2.
 Completed logs, hashes and SDK markers are verified. The assertion-only follow-up
 and this record do not change those tested firmware or browser sources.
 
+A later instrumented awake S3 observation records 590 state callbacks in a
+30.062-second window: callback scopes total 0.128 seconds, while 61 application
+loop scopes total 1.767 seconds, including 522 card paints totalling 1.686 seconds.
+These scopes measure elapsed time, overlap and omit other framework/display
+work; they cannot be summed into a CPU attribution. The ordered response still
+times out at 30 seconds. Exact original firmware/data/settings are restored at
+generation 1079. Two earlier timing setups send no burst: one fails to enter
+sleep within its setup window (recovery 1075), and another opens the observer
+before closing its audit client, exceeding three API connections (recovery 1077).
+The accepted timing setup opens the observer only after audit disconnect.
+
+A host reproduction feeds the exact 1,440-channel fixture in 144 batches and
+counts 32,400 LVGL invalidation events on unchanged Home cards. A runtime
+follow-up checks visible cards' declared state channels before painting; folder
+indicators also check their descendant sources. It reuses existing channel
+revision storage and adds no per-card allocations. The reproduction then counts
+zero invalidations with the same 301,420 retained host scene bytes. Cache tests
+cover unrelated/shared channels, reconnects and revision wrap boundaries; full
+scene tests pass all four grid sizes, including visible-update and child-indicator
+positive controls. The new hidden-update regression fails against the isolated
+old renderer. Physical replay and fresh firmware qualification for this follow-up
+are pending; the preceding green CI and nine-profile matrix qualify earlier
+sources. No unpaced-burst performance pass is claimed yet.
+
 ## Remaining gates
 
 All nine production factory profiles compile at `c05fde64f` with the current

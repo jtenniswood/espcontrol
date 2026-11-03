@@ -384,6 +384,38 @@ struct ProfileHarness {
   }
 };
 using Harness=ProfileHarness<8>;
+template<size_t ProfileIndex> void hidden_state_does_not_redraw_home(bool indicator=false) {
+  constexpr auto limits=DEVICE_UI_PROFILES[ProfileIndex];
+  ProfileHarness<ProfileIndex> h;
+  Document document(limits);
+  PanelConfigWriter writer(document.bytes.data(),document.bytes.size());
+  assert(writer.begin()==PanelConfigStatus::OK);
+  assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),std::strlen(limits.device_profile))==PanelConfigStatus::OK);
+  const std::string folder=indicator?";Folder;Auto;Auto;indicator;;subpage;;":";Folder;Auto;Auto;;;subpage;;";
+  const std::string child="~B,1|,switch.hidden,Hidden,Auto,Auto,,,,";
+  assert(writer.append_button(1,reinterpret_cast<const uint8_t*>(folder.data()),folder.size())==PanelConfigStatus::OK);
+  assert(writer.append_subpage(1,reinterpret_cast<const uint8_t*>(child.data()),child.size())==PanelConfigStatus::OK);
+  const uint8_t order='1';
+  assert(writer.append_setting(reinterpret_cast<const uint8_t*>("button_order"),12,&order,1)==PanelConfigStatus::OK);
+  assert(writer.finish(&document.size)==PanelConfigStatus::OK);
+  h.apply(document);h.scene->loop();lv_refr_now(lv_display_get_default());
+  size_t invalidations=0;
+  const auto invalidated=[](lv_event_t* event){++*static_cast<size_t*>(lv_event_get_user_data(event));};
+  lv_display_add_event_cb(lv_display_get_default(),invalidated,LV_EVENT_INVALIDATE_AREA,&invalidations);
+  const auto allocations=h.counted.memory().allocation_calls;
+  for(unsigned i=0;i<64;++i) {
+    coordinator.report("switch.hidden","",i%2?"off":"on");
+    h.scene->loop();lv_refr_now(lv_display_get_default());
+  }
+  assert((indicator?invalidations>0:invalidations==0)&&h.counted.memory().allocation_calls==allocations);
+  coordinator.report("switch.hidden","","on");
+  assert(h.scene->navigate("slot:1"));h.scene->loop();lv_refr_now(lv_display_get_default());
+  assert(lv_obj_has_state(h.widgets[1].button,LV_STATE_CHECKED));
+  invalidations=0;coordinator.report("switch.hidden","","off");
+  h.scene->loop();lv_refr_now(lv_display_get_default());
+  assert(invalidations>0&&!lv_obj_has_state(h.widgets[1].button,LV_STATE_CHECKED));
+  lv_display_remove_event_cb_with_user_data(lv_display_get_default(),invalidated,&invalidations);
+}
 void navigation_and_state() {
   Document doc(DEVICE_UI_PROFILES[8]); Harness h; h.apply(doc);
   assert(h.scene->active_page()==0 && h.platform.page==0);
@@ -1265,20 +1297,25 @@ int main(int argc,char** argv) {
   if(nested) {
     nested_remote_navigation();
   } else if(six) {
+    hidden_state_does_not_redraw_home<2>();
     queued_image_refresh<2>();
     queued_producer_content_refresh<2>();queued_producer_forecast_refresh<2>();
     maximum_profile_disjoint_replacements<2>();
   } else if(fifteen) {
+    hidden_state_does_not_redraw_home<0>();
     queued_image_refresh<0>();
     queued_producer_content_refresh<0>();queued_producer_forecast_refresh<0>();
     maximum_profile_disjoint_replacements<0>();
   } else if(maximum_p4) {
+    hidden_state_does_not_redraw_home<6>();
     queued_image_refresh<6>();
     queued_producer_content_refresh<6>();queued_producer_forecast_refresh<6>();
     live_palette_policy<6>();
     maximum_profile_disjoint_replacements<6>();
     maximum_climate_cache_replacements<6>();
   } else {
+    hidden_state_does_not_redraw_home<8>();
+    hidden_state_does_not_redraw_home<8>(true);
     selected_scene_write_admission();
     queued_image_pool_admission();
     queued_image_refresh<8>();
