@@ -36,6 +36,7 @@ export function createNativePageEditorFeature(options: {
       state.buttons = prepared.buttons;
       state.subpages = prepared.subpages;
       state.nativePanelDocument = prepared.source;
+      state.nativePageSnapshotLoaded = true;
       native.client?.acceptSnapshot(prepared.source);
       state.nativeHasNestedPages = prepared.nested;
       state.nativeConfigReadOnly = prepared.nested && native.writableNavigationDepth() < 2;

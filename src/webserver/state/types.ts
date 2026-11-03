@@ -282,6 +282,7 @@ export interface AppState {
   clockBarTempRestoreOutdoor: boolean;
   clockBarTempRestoreEntities: string[];
   nativePanelDocument: PanelConfigDocument | null;
+  nativePageSnapshotLoaded: boolean;
   nativeHasNestedPages: boolean;
   nativeConfigReadOnly: boolean;
   nativeConfigLoading: boolean;

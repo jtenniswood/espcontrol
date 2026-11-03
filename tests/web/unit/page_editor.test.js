@@ -65,6 +65,24 @@ test("coalesced graph loading applies one complete snapshot", async () => {
   assert.equal(await first, true);
   assert.equal(fixture.applied.length, 1);
 });
+test("configuration events during a pending read coalesce one fresh follow-up", async () => {
+  const fixture = loader(), first = fixture.instance.refresh(); await settle();
+  fixture.instance.refreshAfterChange(); fixture.instance.refreshAfterChange();
+  fixture.reads[0].resolve(snapshot(source()));
+  assert.equal(await first, true); await settle();
+  assert.equal(fixture.reads.length, 2);
+  const latest = {...source(), settings: {marker: "latest"}};
+  fixture.reads[1].resolve(snapshot(latest)); await settle();
+  assert.equal(fixture.applied.at(-1).settings.marker, "latest");
+  assert.equal(fixture.reads.length, 2);
+});
+test("disconnect cancels a queued configuration refresh", async () => {
+  const fixture = loader(), first = fixture.instance.refresh(); await settle();
+  fixture.instance.refreshAfterChange(); fixture.instance.invalidate();
+  fixture.reads[0].resolve(snapshot(source()));
+  assert.equal(await first, false); await settle();
+  assert.equal(fixture.reads.length, 1);
+});
 test("edits and dirty drafts prevent a late snapshot from changing the editor", async () => {
   for (const action of ["edit", "dirty"]) {
     const fixture = loader(), pending = fixture.instance.refresh();

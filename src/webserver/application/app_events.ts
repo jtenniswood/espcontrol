@@ -49,7 +49,7 @@ export function createAppEventsFeature(
     shell: Pick<ControlsShellFeature, "setConfigLocked" | "showBanner">,
     stateLoader: Pick<StateLoaderFeature, "refreshFirmwareVersion" | "refreshScreensaverTimeout" | "eventStreamEnabled" | "loadInitialState">,
     gridMigration: Pick<GridMigrationFeature, "schedule">,
-    nativePages?: Pick<NativePageEditorLoader, "refresh" | "invalidate">,
+    nativePages?: Pick<NativePageEditorLoader, "refresh" | "invalidate" | "refreshAfterChange">,
 ): AppEventsFeature {
     const { rememberEntityPostPath } = entityState;
     const { setConfigLocked, showBanner } = shell;
@@ -157,7 +157,7 @@ export function createAppEventsFeature(
                         ssePatterns[i].fn(m, val, d);
                         // Entity events still announce external legacy edits,
                         // but native-loaded pages refresh as a whole document.
-                        if (state.nativePanelDocument) void nativePages?.refresh();
+                        if (state.nativePageSnapshotLoaded) nativePages?.refreshAfterChange();
                         return;
                     }
                 }

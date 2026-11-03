@@ -355,7 +355,10 @@ A new sequential all-nine factory matrix is running for this correction.
 Browser correction `d540f39fc` keeps complete native snapshots authoritative over late
 legacy chunks, refreshes the native snapshot after configuration events, allows
 read-only folder/Back navigation while preserving write protection, and captures
-the current orientation for each card transfer. Type checking, 252 browser-unit
+the current orientation for each card transfer. A follow-up distinguishes a complete editor snapshot from the cache of a
+successful save on older depth-one native firmware, whose legacy events must
+remain enabled. Configuration events arriving during a read queue one fresh
+follow-up; disconnect cancels it. Type checking, 254 browser-unit
 checks, generated-bundle freshness and focused real-browser nested journeys on
 all four grid sizes pass. The full browser run exposed the obsolete expectation
 that read-only previews disable all interaction; the corrected focused checks

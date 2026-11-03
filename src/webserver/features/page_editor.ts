@@ -57,9 +57,16 @@ export class NativePageEditorLoader {
   private epoch = 0;
   private abort: AbortController | null = null;
   private pending: Promise<boolean> | null = null;
+  private refreshAgain = false;
   constructor(private readonly options: NativePageEditorLoaderOptions) {}
-  invalidate(): void { ++this.epoch; this.abort?.abort(); this.abort = null; this.pending = null; }
+  invalidate(): void { ++this.epoch; this.abort?.abort(); this.abort = null; this.pending = null; this.refreshAgain = false; }
   replace(document: PanelConfigDocument): void { this.invalidate(); this.options.apply(document); }
+  refreshAfterChange(): void {
+    // A pending response may predate the event. Coalesce events into one
+    // subsequent read instead of accepting that response as the latest state.
+    if (this.pending) this.refreshAgain = true;
+    else void this.refresh();
+  }
   refresh(): Promise<boolean> {
     if (this.pending) return this.pending;
     const abort = new AbortController();
@@ -77,7 +84,10 @@ export class NativePageEditorLoader {
         if (epoch === this.epoch) this.options.failed(error);
         return false;
       } finally {
-        if (epoch === this.epoch) { this.pending = null; this.abort = null; this.options.loading?.(false); }
+        if (epoch === this.epoch) {
+          this.pending = null; this.abort = null; this.options.loading?.(false);
+          if (this.refreshAgain) { this.refreshAgain = false; void this.refresh(); }
+        }
       }
     })();
     this.pending = task;

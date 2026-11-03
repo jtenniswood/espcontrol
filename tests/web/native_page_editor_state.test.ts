@@ -30,6 +30,11 @@ export function runNativeEditorStateTests(): void {
   state.configLocked = false;
   events.applySubpageConfigStateEvent(1, "main", "~B,1|,light.old,Old");
   check(appliedLegacy === 1, "legacy-only loading still accepts chunks");
+  // Depth-one native writers cache their successful saves too, but do not
+  // load the editor through the graph snapshot path.
+  state.nativePanelDocument = { deviceProfile: "test", buttons: {}, subpages: {}, settings: {} };
+  events.applySubpageConfigStateEvent(1, "ext", "old-reader extension");
+  check(appliedLegacy === 2, "a depth-one native save cannot disable legacy state updates");
   const editor = createNativePageEditorFeature({ native: { client: { acceptSnapshot() {} }, writableNavigationDepth: () => 1 } as any,
     codec, layout, runtime, document: { activeElement: null } as any,
     shell: { showBanner() {}, syncConfigLockUi() {} }, closeSettings() {}, render() {}, canApply: () => true });
@@ -39,7 +44,7 @@ export function runNativeEditorStateTests(): void {
   for (const [key, value] of [["ext", ""], ["ext2", "stale fragment"], ["main", "~B,1|,light.old,Old"]])
     events.applySubpageConfigStateEvent(1, key!, value!);
   events.applyButtonConfigStateEvent(1, ";Obsolete;;;;;subpage");
-  check(JSON.stringify(state.subpages) === complete && appliedLegacy === 1, "late empty/nonempty legacy chunks cannot replace complete native pages");
+  check(JSON.stringify(state.subpages) === complete && appliedLegacy === 2, "late empty/nonempty legacy chunks cannot replace complete native pages");
   check(state.buttons[0]!.label === "Folder", "late root events cannot overwrite the native transaction");
 
   const classes: Record<string, boolean> = {}, attributes: Record<string, string> = {}, apply = { disabled: false, textContent: "" };
