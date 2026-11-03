@@ -27,6 +27,14 @@ bool PageStoreRuntime::prepared_within_limits() const {
     if (depth == NO_PAGE || depth > limits_.max_navigation_depth || !parent || !parent->navigable ||
         (depth == 1 && ++first_level_pages > limits_.max_first_level_subpages) ||
         page->runtime_card_count > limits_.cards_per_subpage) return false;
+    if (page->card_count > limits_.cards_per_subpage) {
+      // Extra stored records are inactive preservation data only when their
+      // requested layout still fits this grid, including the Back position.
+      const auto order = staged_.string(page->order);
+      const size_t cells = order.empty() ? 0 :
+          1 + static_cast<size_t>(std::count(order.begin(), order.end(), ','));
+      if (cells > limits_.slot_count) return false;
+    }
     for (size_t index = 0; index < page->runtime_card_count; ++index) {
       const auto *card = staged_.card(page->first_card + index);
       const auto type = staged_.field(*card, CardField::TYPE);

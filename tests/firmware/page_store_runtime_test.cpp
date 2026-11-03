@@ -252,7 +252,8 @@ void write_admission_preserves_boot_and_inactive_source() {
     void activate_prepared(const PageStore&)override{}
     void retire_active()override{}
   };
-  for(const auto& limits:DEVICE_UI_PROFILES)for(bool inactive:{false,true}) {
+  for(const auto& limits:DEVICE_UI_PROFILES)for(bool inactive:{false,true})
+      for(bool overfull_order:{false,true}) {
     Allocator backing;PageCountedArena arena(backing);ResourcesSpy resources;
     const auto original=document(limits,"Original");
     std::array<uint8_t,8192> bytes{};PanelConfigWriter writer(bytes.data(),bytes.size());
@@ -261,6 +262,9 @@ void write_admission_preserves_boot_and_inactive_source() {
     const std::string root=inactive?"light.one;Dormant;Auto;Auto;;;;;":";Folder;Auto;Auto;;;subpage;;";
     assert(writer.append_button(1,reinterpret_cast<const uint8_t*>(root.data()),root.size())==PanelConfigStatus::OK);
     std::string children="~B";
+    if (overfull_order)
+      for (size_t i = 1; i <= limits.cards_per_subpage + size_t{1}; ++i)
+        children += "," + std::to_string(i);
     for(size_t i=0;i<=limits.cards_per_subpage;++i)children+="|,switch.child_"+std::to_string(i)+",Child,Auto,Auto,,,,";
     assert(writer.append_subpage(1,reinterpret_cast<const uint8_t*>(children.data()),children.size())==PanelConfigStatus::OK);
     size_t size=0;assert(writer.finish(&size)==PanelConfigStatus::OK);
@@ -273,19 +277,21 @@ void write_admission_preserves_boot_and_inactive_source() {
       const auto reserved=arena.memory().reserved_bytes,prepares=resources.prepares;
       const auto* source=version==1?bytes.data():converted.data();const size_t source_size=version==1?size:converted.size();
       const bool admitted=runtime.prepare_write(version,source,source_size);
-      if(inactive) {
+      if(inactive || !overfull_order) {
         assert(admitted&&!runtime.preparation_capacity_exceeded());runtime.discard_prepared();
       } else {
         assert(!admitted&&runtime.preparation_capacity_exceeded()&&!runtime.preparation_allocation_failed());
         assert(resources.prepares==prepares&&arena.memory().reserved_bytes==reserved&&runtime.active().generation()==1);
       }
-      // The read/boot path keeps the complete historical document and its
-      // prior semantics. Strict write admission never clips the saved source.
+      // Both paths retain every source record. Only the visible prefix binds;
+      // writes reject an order that explicitly requests too many positions.
       assert(runtime.prepare(version,source,source_size));
       assert(!runtime.preparation_capacity_exceeded());
       assert(runtime.activate_prepared(2,version,source,source_size));
       assert(runtime.active().source_size()==source_size&&std::memcmp(runtime.active().source_document(),source,source_size)==0);
       assert(runtime.active().page(1)->card_count==limits.cards_per_subpage+1);
+      assert(runtime.active().page(1)->runtime_card_count ==
+        (inactive ? 0 : limits.cards_per_subpage));
     }
     assert(backing.allocations.empty()&&arena.memory().reserved_bytes==0&&arena.memory().accounting_errors==0);
   }

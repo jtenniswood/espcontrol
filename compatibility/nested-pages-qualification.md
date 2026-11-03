@@ -106,7 +106,9 @@ live PSRAM reservations. See the
   seven records behind a five-card grid. Both v1 and v2 host reproduction fail
   write admission before the fix. PageStore now retains all records while
   binding only the grid prefix after Back, including making descendants of an
-  off-grid folder inactive. Sanitized regression coverage passes on all nine
+  off-grid folder inactive. An explicitly overfull visible order is still
+  rejected; stored inactive rows and requested grid positions are checked
+  separately. Sanitized regression coverage passes on all nine
   profiles; physical qualification of this fix remains required. No dashboard
   replacement was committed on the 4.3-inch panel during the rejected checks.
 

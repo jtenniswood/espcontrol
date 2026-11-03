@@ -229,6 +229,11 @@ void retained_off_grid_subpage_cards() {
     for (size_t slot = 1; slot <= limits.cards_per_subpage + size_t{2}; ++slot)
       children += "|:Stored:Auto:Auto:sensor.retained_" + std::to_string(slot) + "::sensor";
     const auto legacy = make_v1(limits, ";Folder;;;;;subpage", children);
+    std::string overfull_order = "B";
+    for (size_t slot = 1; slot <= limits.slot_count; ++slot)
+      overfull_order += "," + std::to_string(slot);
+    const auto overfull = make_v1(limits, ";Folder;;;;;subpage",
+      overfull_order + children.substr(children.find('|')));
     for (uint16_t version : {1, 2}) {
       const auto document = version == 1 ? legacy : imported(legacy);
       Allocator allocator;
@@ -246,6 +251,12 @@ void retained_off_grid_subpage_cards() {
         assert(store.field(*hidden, CardField::SENSOR) ==
           "sensor.retained_" + std::to_string(limits.cards_per_subpage + 1));
         assert(store.source_size() == document.size() &&
+          std::memcmp(store.source_document(), document.data(), document.size()) == 0);
+        const auto rejected = version == 1 ? overfull : imported(overfull);
+        const auto retained = allocator.live;
+        assert(!runtime.prepare_write(version, rejected.data(), rejected.size()));
+        assert(runtime.preparation_capacity_exceeded());
+        assert(store.generation() == 1 && allocator.live == retained &&
           std::memcmp(store.source_document(), document.data(), document.size()) == 0);
       }
       assert(allocator.live == 0);
