@@ -103,6 +103,25 @@ def build_esphome_command(
     ]
 
 
+def ensure_known_ota_hardware(yaml_path: Path, command: str, command_args: list[str]) -> None:
+    if command not in {"run", "upload"}:
+        return
+
+    targets = []
+    for index, arg in enumerate(command_args):
+        if arg == "--device" and index + 1 < len(command_args):
+            targets.append(command_args[index + 1])
+        elif arg.startswith("--device="):
+            targets.append(arg.split("=", 1)[1])
+
+    v2_directory = ROOT / "devices" / "guition-esp32-p4-jc1060p470-v2"
+    if "192.168.6.102" in targets and not yaml_path.resolve().is_relative_to(v2_directory.resolve()):
+        raise LocalEsphomeError(
+            "The 7-inch display at 192.168.6.102 is V2 hardware. "
+            "Use a YAML file inside devices/guition-esp32-p4-jc1060p470-v2."
+        )
+
+
 def resolve_esphome_bin(esphome_bin: str, cwd: Path | None = None) -> str:
     if os.sep not in esphome_bin and (not os.altsep or os.altsep not in esphome_bin):
         return esphome_bin
@@ -140,6 +159,7 @@ def parse_args(argv: list[str]) -> tuple[bool, Path, str, list[str]]:
 
 def run(argv: list[str]) -> int:
     dry_run, yaml_path, command, command_args = parse_args(argv)
+    ensure_known_ota_hardware(yaml_path, command, command_args)
     version = local_version_for(yaml_path)
     esphome_bin = resolve_esphome_bin(os.environ.get("ESPHOME_BIN", "esphome"))
 
@@ -208,6 +228,24 @@ class LocalEsphomeTests(unittest.TestCase):
                 "192.168.1.10",
             ],
         )
+
+    def test_rejects_wrong_hardware_for_known_7inch_v2_target(self) -> None:
+        yaml_path = ROOT / "devices" / "guition-esp32-p4-jc1060p470" / "dev.yaml"
+        for command in ("run", "upload"):
+            for args in (["--device", "192.168.6.102"], ["--device=192.168.6.102"]):
+                with self.subTest(command=command, args=args):
+                    with self.assertRaisesRegex(LocalEsphomeError, "V2 hardware"):
+                        run([str(yaml_path), command, *args, "--dry-run"])
+
+    def test_accepts_7inch_v2_for_known_target(self) -> None:
+        yaml_path = ROOT / "devices" / "guition-esp32-p4-jc1060p470-v2" / "dev.yaml"
+        ensure_known_ota_hardware(yaml_path, "run", ["--device", "192.168.6.102"])
+
+    def test_allows_explicit_7inch_v1_on_other_targets(self) -> None:
+        yaml_path = ROOT / "devices" / "guition-esp32-p4-jc1060p470" / "dev.yaml"
+        for target in ("192.168.6.110", "/dev/cu.usbmodem201301"):
+            with self.subTest(target=target):
+                ensure_known_ota_hardware(yaml_path, "run", ["--device", target])
 
     def test_keeps_esphome_command_name_for_path_lookup(self) -> None:
         self.assertEqual(resolve_esphome_bin("esphome"), "esphome")
