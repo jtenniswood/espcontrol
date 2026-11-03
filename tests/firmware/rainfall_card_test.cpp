@@ -70,4 +70,21 @@ int main() {
   emit("sensor.rainfall_today","10"); assert(reading.text=="0.025 in");
   --generation; reading.valid=false;
   emit("sensor.rainfall_today","20"); assert(reading.text=="0.025 in");
+
+  reading.valid=true;
+  subscriptions.clear(); channels.clear();
+  subscribe_rainfall_sensor(slot,"sensor.rainfall_today","in");
+  assert(!subscriptions.count("unit_of_measurement"));
+  emit("sensor.rainfall_today","2.40"); assert(reading.text=="2.4 in");
+  emit("sensor.rainfall_today","0"); assert(reading.text=="0 in");
+  emit("sensor.rainfall_today","unavailable"); assert(reading.text=="--");
+
+  subscriptions.clear(); channels.clear();
+  subscribe_rainfall_sensor(slot,"input_number.rainfall","mm");
+  emit("input_number.rainfall","3.5"); assert(reading.text=="3.5 mm");
+
+  subscriptions.clear(); channels.clear();
+  subscribe_rainfall_sensor(slot,"sensor.rainfall_today","");
+  emit("sensor.rainfall_today","1.2"); assert(reading.text=="1.2");
+  emit("sensor.rainfall_today:unit_of_measurement","mm"); assert(reading.text=="1.2 mm");
 }

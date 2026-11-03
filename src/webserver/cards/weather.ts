@@ -170,6 +170,15 @@ export function registerWeatherCardTypes(
                         domains: forecast ? ["weather"] : ["sensor", "input_number"],
                     },
                 });
+                if (!forecast) {
+                    helpers.renderCardTextField(group, b, helpers, {
+                        label: "Units",
+                        idSuffix: "unit",
+                        field: "unit",
+                        placeholder: "e.g. mm or in (blank uses sensor units)",
+                        rerender: true,
+                    });
+                }
                 return;
             }
             helpers.renderCardEntityField(panel, b, helpers, {
@@ -186,10 +195,11 @@ export function registerWeatherCardTypes(
                 };
             }
             if (b.precision === "rainfall") {
+                const unit = !rainfallUsesForecast(b) && b.unit ? helpers.escHtml(b.unit) : "mm";
                 return {
                     buttonClass: "sp-rainfall-card",
                     iconHtml: '<span class="sp-btn-icon mdi mdi-weather-rainy"></span>',
-                    labelHtml: '<span class="sp-btn-label">Rainfall<span class="sp-rainfall-value">2.4 mm</span></span>',
+                    labelHtml: '<span class="sp-btn-label">Rainfall<span class="sp-rainfall-value">2.4 ' + unit + '</span></span>',
                     labelEditable: false,
                 };
             }

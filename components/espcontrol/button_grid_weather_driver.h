@@ -87,7 +87,7 @@ inline bool weather_driver_bind_data(
     return true;
   }
   if (config.precision == "rainfall") {
-    if (!config.entity.empty()) subscribe_rainfall_sensor(slot, config.entity);
+    if (!config.entity.empty()) subscribe_rainfall_sensor(slot, config.entity, config.unit);
     return true;
   }
   if (!config.entity.empty()) {
