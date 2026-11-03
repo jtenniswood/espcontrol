@@ -538,15 +538,23 @@ including installed-pointer stability, retirement of a shared anchor and 200
 replacement batches. The refinement has no firmware or physical qualification.
 API burst handling remains open.
 
-A browser-only review follow-up extends complete-snapshot authority to flat
-native root order and accent settings. Named legacy events request a native
-refresh, including normalized entity aliases, while older depth-one native
-writers retain legacy loading. Native publication also synchronizes the accent
-picker. All 257 web-unit checks, type checking and bundle freshness pass.
-Focused browser journeys on all four grid sizes hold the native response while
-stale legacy values arrive, then verify independent order/colour refreshes
-without writes. The full nine-layout browser run is in progress; C++ firmware,
-configuration and SDK sources remain unchanged from `ede961755`.
+A forwarding-only SDK handler probe `54ecaf644` narrows that attribution.
+The built handler, header, generated dispatcher and StringRef match the pinned
+SDK sources exactly. The timer invokes the unchanged original method and
+records exactly 1,440 handler calls and coordinator callbacks for each of two
+disjoint full-cache workloads. Handler scopes total 9.592 and 9.583 seconds;
+their nested coordinator scopes total 0.309 and 0.297 seconds. Ordered responses
+take 12.064 and 11.620 seconds. These elapsed scopes include matching, registry
+dispatch and preemption; they are not isolated CPU/string-comparison times.
+Exact original firmware/native bytes and all protected settings are verified
+restored at generation 1094.
+
+A private borrowed-row lookup prototype preserves exact matching and native
+callback order in differential host tests, including forced hash collisions,
+foreign/once registrations, null/empty attributes, stale indexes and reentry.
+ASan/UBSan checks pass; its 7,600-entry table uses 60,800 bytes and queries
+allocate nothing. It has no native SDK integration, owning-buffer lifecycle,
+firmware build or physical optimization qualification yet.
 
 ## Remaining gates
 
