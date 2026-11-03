@@ -167,8 +167,10 @@ increase document admission or remove other preparation/image peak costs.
    downgrade floor and compatibility-mirror release gates from #1825.
 6. **Streaming persistence:** transient storage removes five full-slot buffers
    while preserving storage layout and atomic publication. Host coverage
-   injects power cuts/read/write failures for partition and NVS paths; physical
-   storage-failure qualification remains required.
+   injects power cuts/read/write failures for partition and NVS paths. S3
+   hardware coverage also injects NVS failures with a 16 KiB transient scratch
+   reservation and verifies fresh-handle recovery/cleanup. Raw-partition
+   failures and physical power interruptions retain separate qualification.
 7. **Nested-page feature:** only after the preceding memory and compatibility
    gates, enable depth two through the generated contract, editor, validators,
    navigation, subtree operations, backups and remote page lookup.

@@ -154,8 +154,9 @@ source bytes and allocation-free activation remain unchanged. Host checks pass
 small v1/v2 replacements on all nine profiles with an 8 KiB maximum allocation,
 larger-layout growth and failed-reservation rollback. All four grid-size scene
 integrations pass. CI also passes at `43a914249` (run `41645151214`). Updated
-factory builds are in progress; earlier compile/device results below apply to
-their recorded source revisions.
+factory builds subsequently pass on all nine profiles with ESPHome 2026.10.1;
+the SDK2 S3 diagnostic also compiles and runs this implementation. Earlier
+compile/device results below apply to their recorded source revisions.
 
 The same SDK2 S3 protocol is repeated with private `3a7c4e0a1`, whose only
 changes from `d496ecdbd` are the public `43a914249` staging implementation and
@@ -169,6 +170,40 @@ of diagnostic phase windows, not a new idle-memory or instantaneous combined
 heap comparison. Exact upgraded firmware, original native-v1 data at generation
 1052 and all protected settings/PIN/reset/sleep/update preferences are verified
 restored. Other physical image/modal/delayed-transfer combinations remain open.
+
+The same S3 stage probe also passes a disjoint replacement during an observed
+delayed GIF request. The server cancels that 369,953-byte response after sending
+57,344 bytes. A 409,840-byte parked PNG modal cache is present at write start
+and absent afterward; the disjoint graph initially contains no old cached
+values. Fresh observers receive exactly 1,126 registrations for each graph.
+After new PNGs load, no old GIF source/workspace/player/axis allocations remain.
+A timer takeover with an open modal releases every observed image buffer and
+modal context; waking reloads the current PNGs with all 14 checked retained
+fields equal (239,547 scene bytes, seven allocations, 81 widgets). Exact
+upgraded firmware, original data at generation 1057 and protected settings,
+PIN/reset, sleep values and update preference are verified restored. This
+qualifies cooperative in-flight cancellation and that takeover/wake path;
+completed-but-delayed callbacks and pixel content retain separate gates.
+An earlier attempt stops before replacement because it assumes optional cache
+retention is mandatory; that excluded attempt restores generation 1054. The
+accepted run lets image ownership settle before closing and records the cache
+actually present at write start.
+
+Private SDK2 S3 storage probe `e84ef5c78` passes 29 cases using the production
+two-slot store and transient NVS backend at the deployed 16 KiB scratch
+capacity. Real IDF NVS uses a separate guarded scratch namespace with 2,048/3,072-
+byte payloads spanning multiple I/O windows. The cases cover a normal commit,
+injected cuts before and after all ten write/sync boundaries, seven initial
+header/payload read failures and newest-payload checksum corruption. Fresh
+handles/backends select complete old or new payloads after cuts, preserve the
+old payload without mutations after initial read failures, and fall back to
+the older valid slot after corruption. Each operation returns the single
+16,384-byte scratch reservation; final scratch keys and live scratch bytes are
+zero. Exact upgraded firmware, unchanged original data/generation 1057 and all
+78 protected settings/PIN/reset/update preference are verified restored.
+These are hardware tests with injected faults, not physical power interruptions
+or raw-partition failure tests; clearing scratch keys is not a bitwise NVS
+partition rollback.
 
 ## Physical checks and recovery
 
@@ -222,7 +257,7 @@ restored. Other physical image/modal/delayed-transfer combinations remain open.
   nested candidate rejects saving that dashboard: its folders retain six and
   seven records behind a five-card grid. Both v1 and v2 host reproduction fail
   write admission before the fix. PageStore now retains all records while
-  binding only the grid prefix after Back, including making descendants of an
+  limiting active membership after Back, including making descendants of an
   off-grid folder inactive. An explicitly overfull visible order is still
   rejected; stored inactive rows and requested grid positions are checked
   separately. Sanitized regression coverage passes on all nine
@@ -276,13 +311,60 @@ newer images as recovery targets. The paired idle-memory measurements remain a
 The native API subscription bridge has been audited against both
 patches; matching API sources are byte-identical and guard tests accept only
 those two audited versions.
-The user confirms the replacement 7-inch V2 is unavailable for now. Remaining
-tests are held, with no qualification writes during this SDK2 phase. Earlier
-runtime layout testing on this panel remains a separate, user-confirmed result.
+The user subsequently makes the replacement 7-inch V2 available through the
+coordinated SDK-update task. Current SDK2 probe `fff8da163` uses the public
+`43a914249` runtime. It passes the complete v2 read projection of the original
+dashboard and 52 acknowledged Home/Devices transitions, with full resource
+snapshots only while stopped at Home. Retained owners remain equal, allowing
+the live HA value cache to grow within its budget. The user confirms cards,
+labels, icons, colours and Back are correct and stable without flashes or
+jitter. Exact upgraded firmware, unchanged original native-v1 data/generation
+2, all 78 protected settings/PIN/reset and both original automatic-update
+preferences are verified restored. This is original first-level navigation
+and visual coverage; it does not establish nested writes or maximum-load
+pixel stability.
+
+The same 7-inch V2 probe then passes four same/disjoint native-v1 replacements
+with 225 cards (15 folders and 210 climate controls), 4,200 exact state/attribute
+registrations, and 393,216 bytes of values in a 524,288-byte reservation. Each
+phase passes two folder round trips. All 18 retained fields remain equal:
+953,413 scene bytes, seven allocations and 135 widgets. A fresh API reconnect,
+exact raw-registration audit and cache refill also pass, with no scene
+allocation/accounting failures. The final workload snapshot has 353,655 free
+internal bytes and 21,334,348 free PSRAM bytes. Exact upgraded firmware,
+original native-v1 bytes at generation 7, all protected settings/PIN/reset and
+both original update preferences are verified restored. Inputs use ordered
+barriers every 64 reports. This is a populated 384 KiB cache within a 512 KiB
+reservation, not a full-value-capacity or burst-throughput claim; the separate
+original-dashboard visual confirmation does not establish maximum-load pixels.
+
+## Review corrections after device qualification
+
+Runtime correction `39a159354` uses explicit runtime membership when a page holds
+extra saved records. An order such as `B,15` can activate card 15 while retaining
+other rows without subscriptions. Shared iteration and membership also cover
+local producers, inherited state, modal styles, commands, descendant targets
+and restoration of the current navigation path. V1/v2 host regressions on all
+nine profiles verify the higher-numbered Sensor's rendered cell and exact
+subscription, hidden-row exclusion and activation of a reordered folder's
+subtree. The four store/dependency checks and all four complete grid-size scene
+integrations pass. This correction follows the recorded physical checkpoint;
+those measurements do not qualify the later membership change on hardware.
+A new sequential all-nine factory matrix is running for this correction.
+
+Browser correction `d540f39fc` keeps complete native snapshots authoritative over late
+legacy chunks, refreshes the native snapshot after configuration events, allows
+read-only folder/Back navigation while preserving write protection, and captures
+the current orientation for each card transfer. Type checking, 252 browser-unit
+checks, generated-bundle freshness and focused real-browser nested journeys on
+all four grid sizes pass. The full browser run exposed the obsolete expectation
+that read-only previews disable all interaction; the corrected focused checks
+verify navigation, disabled edits and graph backup export instead.
 
 ## Remaining gates
 
-All nine production factory profiles compile at `ac0fad1ff` with ESPHome
+All nine production factory profiles compile at implementation checkpoint
+`43a914249` with ESPHome 2026.10.1. Historical matrices also pass at `ac0fad1ff` with ESPHome
 2026.10.1 and at private `c61cda45b` with ESPHome 2026.10.2 (base `c28c5b43f`
 plus the SDK pin). The rebase onto main `6c10c3d5a` preserves the parent runtime
 branch and every tested firmware/browser source; its three changed files only
@@ -291,7 +373,7 @@ add main's host flashing guard and guidance. CI also passes at `36b5b9cd0` and
 Compilation does not establish physical layout parity or qualify the full
 feature on ESPHome 2026.10.2. The original-dashboard memory investigation,
 nested visual confirmation, remaining P4 qualification, further replacement/
-delayed-event/modal/takeover checks, populated HA caches on other P4 profiles, burst replay,
+delayed-event/modal/takeover checks, additional P4 workload coverage, burst replay,
 remaining image/decode combinations and physical storage-failure
 qualification remain open. Published-reader and mirror-retirement gates in
 [the delivery plan](nested-pages-delivery.md) still apply before release enablement.
