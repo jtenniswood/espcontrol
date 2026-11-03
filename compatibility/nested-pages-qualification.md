@@ -508,6 +508,36 @@ C-string lengths during comparison, making that path the next investigation
 target. No SDK/framework optimization has been implemented. Exact original
 firmware/data/settings are verified restored at generation 1085.
 
+Browser-only follow-up `a955299e9` also passes required CI, all 257 web-unit
+checks, type/bundle checks and the complete nine-layout browser suite. Its
+flat native root order/accent tests hold a snapshot response while stale legacy
+events arrive, then verify independent setting refreshes without writes. C++
+firmware, device configuration and SDK sources remain at the previously tested
+`ede961755` checkpoint; the regenerated web assets are checked separately.
+
+A private shared-entity-name experiment `9ee372c9f` keeps SDK, artwork and timing
+hooks unchanged from `c4c62a2f0`. Its grouped 1,440-report diagnostic completes
+in 9.948 seconds, with 6.323 seconds between callbacks. Unlike the baseline,
+it records 18 paints, two finishes and 0.891 seconds in LVGL timer scopes.
+This single observation does not establish an isolated causal effect or total
+heap improvement. Exact original recovery completes at generation 1087.
+The ordinary client then completes two full 128 KiB bursts in 9.107 and 8.969
+seconds, but the third, disjoint-entity burst exceeds the unchanged ten-second
+limit. The qualification fails. Exact original firmware/native bytes and all
+78 settings, PIN/reset and sleep/update preferences are restored at generation
+1091. No experimental registry change is promoted to production.
+
+Allocator-tracked host checks include every registry name, pool node and
+container allocation. The first sharing prototype saves 36,920 bytes in the
+72-entity climate fixture but adds 60,088 bytes for unique entities. A host-only
+pre-install batch-sharing refinement saves 36,848 bytes for the shared fixture
+with zero retained-byte difference for unique/empty-attribute fixtures. These
+are 64-bit host registry counts, excluding SDK storage and allocator headers,
+not device heap results. Ownership and actual transport checks pass ASan/UBSan,
+including installed-pointer stability, retirement of a shared anchor and 200
+replacement batches. The refinement has no firmware or physical qualification.
+API burst handling remains open.
+
 A browser-only review follow-up extends complete-snapshot authority to flat
 native root order and accent settings. Named legacy events request a native
 refresh, including normalized entity aliases, while older depth-one native
