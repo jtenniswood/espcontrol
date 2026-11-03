@@ -350,7 +350,9 @@ subscription, hidden-row exclusion and activation of a reordered folder's
 subtree. The four store/dependency checks and all four complete grid-size scene
 integrations pass. This correction follows the recorded physical checkpoint;
 those measurements do not qualify the later membership change on hardware.
-A new sequential all-nine factory matrix is running for this correction.
+A new sequential all-nine factory matrix passes at `39a159354` with ESPHome
+2026.10.1. Its firmware/configuration sources remain unchanged at the later
+browser-only follow-up.
 
 Browser correction `d540f39fc` keeps complete native snapshots authoritative over late
 legacy chunks, refreshes the native snapshot after configuration events, allows
@@ -360,9 +362,11 @@ successful save on older depth-one native firmware, whose legacy events must
 remain enabled. Configuration events arriving during a read queue one fresh
 follow-up; disconnect cancels it. Type checking, 254 browser-unit
 checks, generated-bundle freshness and focused real-browser nested journeys on
-all four grid sizes pass. The full browser run exposed the obsolete expectation
-that read-only previews disable all interaction; the corrected focused checks
-verify navigation, disabled edits and graph backup export instead.
+all four grid sizes pass. The full browser run passes on all nine generated layouts after the
+compatibility follow-up. It includes older native/legacy loading, current graph
+editing, read-only navigation with disabled edits, backups and reconnects.
+Earlier excluded runs exposed an obsolete read-only lock expectation and the
+need to distinguish older native-save caches from complete editor snapshots.
 
 ## Remaining gates
 
