@@ -580,8 +580,20 @@ The production port retains the same generic lookup and buffer owner, removing
 private timing/services and retaining version/signature guards. Six focused
 production-source checks pass, including the existing ownership bridge and
 expanded SDK guard; the actual production wrapper/transport also passes
-ASan/UBSan. All-profile builds and production-source physical qualification
-remain separate from the private-image results above.
+ASan/UBSan. Production checkpoint `d3cb407ae` passes required CI and all nine
+ESPHome 2026.10.2 factory builds. Log hashes, actual compiled lookup sources,
+SDK version, MCU and both original/wrapper ELF symbols are verified for every
+profile. Production-source physical qualification remains separate from the
+private-image results above.
+
+A browser follow-up separates saved card identities from visible cell count
+in both transfer validation and preview rendering. Five model regressions cover
+retained cards above all four grid capacities and the saved-ID boundary 32;
+inactive siblings, Back appearance and complete subtrees stay intact. Browser
+journeys exercise actual copy, duplicate, cut and delete menus on all four grids.
+All 262 web-unit checks, types and generated-bundle freshness pass. C++ sources
+are unchanged from the completed `d3cb407ae` factory matrix; this follow-up's
+rebuilt web assets have separate browser qualification.
 
 ## Remaining gates
 

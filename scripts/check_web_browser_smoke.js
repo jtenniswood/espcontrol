@@ -8450,6 +8450,68 @@ async function assertNestedPageEditor(browser, testCase) {
   } finally { await context.close(); }
 }
 
+async function assertRetainedNativeCardTransfers(browser,testCase) {
+  const slot=testCase.slots+1, child=32+slot;
+  const tokens=Array(slot).fill("");tokens[0]=",light.hidden,Inactive";tokens[slot-1]="G,,Retained";
+  const leaf="~B=Parent:123456,1|,light.retained_leaf,Leaf";
+  const initial={deviceProfile:testCase.slug,buttons:{1:";Root;;;;;subpage"},
+    subpages:{1:[`~B=Return:ABCDEF,${slot}`,...tokens].join("|"),[child]:leaf},
+    settings:{button_order:"1",future:"opaque 🌡️"}};
+  const nativeState={...nativeConfigState(testCase.slug),documentVersions:[1,2],readDepth:2,writeDepth:2,durableVersion:2,document:structuredClone(initial)};
+  const context=await browser.newContext({viewport:testCase.viewport});await installRoutes(context,testCase.slug,{nativeState});
+  const page=await context.newPage();await installFakeEventSource(page);
+  const enter=async()=>{
+    await page.waitForFunction(()=>document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Root"));
+    await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+    await page.waitForFunction(()=>document.querySelector('.sp-clockbar-subpage-title')?.textContent==="Root");
+    await page.locator(`.sp-main [data-slot="${slot}"]`).waitFor();
+  };
+  const action=async(id,name)=>{
+    await page.locator(`.sp-main [data-slot="${id}"]`).click({button:"right"});
+    await page.locator('.sp-ctx-menu').getByText(name,{exact:true}).click();
+  };
+  const paste=async()=>{
+    await page.waitForFunction(()=>document.querySelector('.sp-main')?.getAttribute('aria-disabled')==="false");
+    await page.locator('.sp-main .sp-empty-cell').first().click({button:"right"});
+    await page.locator('.sp-ctx-menu').getByText("Paste",{exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('.sp-main [data-slot="2"]')?.textContent.includes("Retained"));
+  };
+  const deleteCopy=async()=>{
+    await action(2,"Delete");await page.locator('.sp-main [data-slot="2"]').waitFor({state:"detached"});
+    assert(!Object.hasOwn(nativeState.document.subpages,34));
+  };
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`,{waitUntil:"domcontentloaded"});await enter();
+    await action(slot,"Copy");await paste();
+    assert.strictEqual(nativeState.document.subpages[34],leaf,"copy preserves the retained folder subtree");
+    assert.strictEqual(nativeState.document.subpages[child],leaf);
+    await deleteCopy();
+    await action(slot,"Duplicate");
+    await page.waitForFunction(()=>document.querySelector('.sp-main [data-slot="2"]')?.textContent.includes("Retained"));
+    assert.strictEqual(nativeState.document.subpages[34],leaf,"duplicate uses the displayed card identity");
+    await deleteCopy();
+    await action(slot,"Cut");await paste();
+    assert(!Object.hasOwn(nativeState.document.subpages,child),"move removes the old retained owner only when committed");
+    assert.strictEqual(nativeState.document.subpages[34],leaf);
+    await page.locator(`.sp-main [data-slot="${slot}"]`).waitFor({state:"detached"});
+    assert.strictEqual(nativeState.puts.length,5,"copy/duplicate cleanup and the move each commit atomically");
+    nativeState.document=structuredClone(initial);nativeState.generation+=1;
+    await page.reload({waitUntil:"domcontentloaded"});await enter();
+    await action(slot,"Delete");await page.locator(`.sp-main [data-slot="${slot}"]`).waitFor({state:"detached"});
+    assert(!Object.hasOwn(nativeState.document.subpages,child),"delete removes the retained folder subtree");
+    assert.strictEqual(nativeState.document.subpages[1].split("|")[1],tokens[0],"inactive raw sibling survives transfers");
+    assert.strictEqual(nativeState.document.settings.future,initial.settings.future);
+    assert.strictEqual(nativeState.puts.length,6);
+    console.log(`${testCase.slug}: displayed retained card${slot} copy/duplicate/cut/delete and subtree preservation passed`);
+  } catch(error) {
+    fs.mkdirSync(FAILURE_DIR,{recursive:true});
+    await page.screenshot({path:path.join(FAILURE_DIR,`retained-transfers-${testCase.slug}.png`)}).catch(()=>{});
+    const cards=await page.locator('.sp-main [data-slot]').evaluateAll(elements=>elements.map(element=>({slot:element.getAttribute('data-slot'),text:element.textContent}))).catch(()=>[]);
+    fs.writeFileSync(path.join(FAILURE_DIR,`retained-transfers-${testCase.slug}.json`),JSON.stringify({cards,puts:nativeState.puts.length},null,2));
+    throw error;
+  } finally {await context.close();}
+}
+
 async function assertNestedWriterLimits(browser,testCase) {
   for(const nested of [false,true]) {
     const nativeState={...nativeConfigState(testCase.slug),documentVersions:[1,2],readDepth:2,writeDepth:1,durableVersion:1,
@@ -8715,9 +8777,13 @@ async function assertNestedBackup(browser,testCase) {
       }
       return;
     }
+    if (process.env.ESPCONTROL_RETAINED_TRANSFER_ONLY === "1") {
+      for(const testCase of nestedEditorCases().filter(candidate=>ACTIVE_CASES.some(active=>active.slug===candidate.slug))) await assertRetainedNativeCardTransfers(browser,testCase);
+      return;
+    }
     if (process.env.ESPCONTROL_NESTED_PAGES_ONLY === "1") {
       for(const testCase of nestedEditorCases())
-        { await assertNestedPageEditor(browser,testCase); await assertNestedWriterLimits(browser,testCase); await assertNestedDurableByteLimit(browser,testCase); }
+        { await assertNestedPageEditor(browser,testCase); await assertRetainedNativeCardTransfers(browser,testCase); await assertNestedWriterLimits(browser,testCase); await assertNestedDurableByteLimit(browser,testCase); }
       return;
     }
     if (process.env.ESPCONTROL_BACKUP_ADMISSION_ONLY === "1") {
@@ -8833,6 +8899,7 @@ async function assertNestedBackup(browser,testCase) {
     }
     for (const testCase of nestedEditorCases()) {
       await assertNestedPageEditor(browser,testCase);
+      await assertRetainedNativeCardTransfers(browser,testCase);
       await assertNestedBackup(browser,testCase);
       await assertNestedWriterLimits(browser,testCase);
       await assertNestedDurableByteLimit(browser,testCase);

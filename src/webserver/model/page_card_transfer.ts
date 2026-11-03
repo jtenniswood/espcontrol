@@ -5,7 +5,7 @@ import { CARD_CONTRACT_SUBPAGE_TYPE_CODES, CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE }
 import { buildSubpageGrid, parseRawSubpageConfig, serializeSubpageGrid } from "./subpage";
 import { coveredCells, parseGridOrder, serializeGridOrder, type SlotSizeMap } from "./grid";
 import { findDuplicatePlacement, placeSlotAt } from "../features/preview_grid";
-import { PanelConfigError, type PanelConfigDocument } from "./panel_config";
+import { PANEL_CONFIG_MAX_SLOT_COUNT, PanelConfigError, type PanelConfigDocument } from "./panel_config";
 import { encodePanelPageDocument } from "./panel_config_conversion";
 import { capturePanelPageSubtree, type PanelPageSubtree } from "./page_subtree";
 import { childPageKey, pageDepth, pageOwnerSlot, parentPageKey } from "./page_keys";
@@ -37,8 +37,9 @@ function layoutCheck(layout: PageTransferLayout): void {
   check(Number.isInteger(layout.slots) && layout.slots > 1 && layout.slots <= 32 &&
     Number.isInteger(layout.columns) && layout.columns > 0 && layout.columns <= layout.slots, "Invalid transfer layout");
 }
-function cardSlot(slot: number, layout: PageTransferLayout): void {
-  check(Number.isInteger(slot) && slot >= 1 && slot <= layout.slots, "Invalid card slot");
+function cardSlot(slot: number): void {
+  // Saved card identities are independent of the number of visible cells.
+  check(Number.isInteger(slot) && slot >= 1 && slot <= PANEL_CONFIG_MAX_SLOT_COUNT, "Invalid card slot");
 }
 function pageExists(document: PanelConfigDocument, page: number): void {
   pageDepth(page);
@@ -79,7 +80,7 @@ export function capturePageCards(document: PanelConfigDocument, page: number, sl
   check(slots.length > 0 && new Set(slots).size === slots.length, "Choose distinct cards to copy");
   const source = pageGrid(document, page, layout);
   const entries = slots.map(slot => {
-    cardSlot(slot, layout);
+    cardSlot(slot);
     check(source.grid.includes(slot), "A copied card is no longer on this page");
     return { button: cloneCardConfig(source.buttons[slot - 1]), size: source.sizes[String(slot)] ?? 1,
       subtree: subtreeAt(document, page, slot) };
@@ -156,7 +157,7 @@ function clearGridSlots(grid: number[], sizes: SlotSizeMap, slots: readonly numb
 function deleteCards(document: PanelConfigDocument, page: number, slots: readonly number[], layout: PageTransferLayout): void {
   const source = pageGrid(document, page, layout);
   for (const slot of slots) {
-    cardSlot(slot, layout);
+    cardSlot(slot);
     check(source.grid.includes(slot), "A selected card is no longer on this page");
     if (pageDepth(page) < 2) removeTree(document, childPageKey(page, slot));
   }

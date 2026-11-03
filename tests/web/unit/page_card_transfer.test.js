@@ -18,6 +18,44 @@ const parsed = raw => model.parseRawSubpageConfig(raw, contract.cardContractSubp
 const comparable = value => JSON.parse(JSON.stringify(value));
 function valid(document) { assert.deepEqual(comparable(graph.decodePanelPageDocument(graph.encodePanelPageDocument(document))), comparable(document)); }
 
+for (const profile of [{ slots: 6, columns: 2 }, layout, { slots: 15, columns: 3 }, { slots: 20, columns: 4 },
+  { slots: 15, columns: 3, retainedSlot: 32 }]) {
+  const slot = profile.retainedSlot ?? profile.slots + 1;
+  test(`visible retained card ${slot} on ${profile.slots} cells can copy, duplicate, move and delete`, () => {
+    const document = source();
+    const tokens = Array(slot).fill("");
+    tokens[0] = ",light.hidden,Inactive";
+    tokens[slot - 1] = "subpage,,Retained";
+    document.subpages[1] = [`~B=Return:ABCDEF,${slot}`, ...tokens].join("|");
+    const leaf = "~B=Parent:123456,1|,light.retained_leaf,Leaf";
+    document.subpages[child(1, slot)] = leaf;
+    const before = JSON.stringify(document);
+    const clipboard = transfer.capturePageCards(document, 1, [slot], profile);
+    assert.equal(clipboard.entries[0].button.label, "Retained");
+    const copied = transfer.planPageCardPaste(document, 2, 2, clipboard.entries, profile);
+    assert.equal(copied.document.subpages[child(2, copied.slots[0])], leaf);
+    const duplicated = transfer.planPageCardPaste(document, 1, 2, clipboard.entries, profile);
+    assert.equal(duplicated.document.subpages[child(1, duplicated.slots[0])], leaf);
+    assert.equal(duplicated.document.subpages[child(1, slot)], leaf);
+    const moved = transfer.planPageCardPaste(document, 2, 2, clipboard.entries, profile, clipboard.origin);
+    assert.equal(moved.document.subpages[child(1, slot)], undefined);
+    assert.equal(moved.document.subpages[child(2, moved.slots[0])], leaf);
+    const deleted = transfer.planPageCardDelete(document, clipboard.origin, profile);
+    assert.equal(deleted.subpages[child(1, slot)], undefined);
+    assert.equal(parsed(deleted.subpages[1]).buttons[slot - 1].label, "");
+    for (const result of [copied.document, duplicated.document, moved.document, deleted]) {
+      assert.equal(result.subpages[1].split("|")[1], tokens[0], "inactive saved sibling is untouched");
+      assert.equal(parsed(result.subpages[1]).backLabel, "Return");
+      assert.equal(parsed(result.subpages[1]).backColor, "ABCDEF");
+      valid(result);
+    }
+    assert.equal(JSON.stringify(document), before);
+    assert.throws(() => transfer.capturePageCards(document, 1, [1], profile), /no longer on this page/);
+    for (const invalid of [0, 1.5, 33])
+      assert.throws(() => transfer.capturePageCards(document, 1, [invalid], profile), /Invalid card slot/);
+  });
+}
+
 for (const profile of [{ slots: 6, columns: 2 }, layout, { slots: 15, columns: 3 }, { slots: 20, columns: 4 }]) {
   test(`folder copy preserves descendants and inactive data on ${profile.slots} slots`, () => {
     const document = source(), before = JSON.stringify(document);
