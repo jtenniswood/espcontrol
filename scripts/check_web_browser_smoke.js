@@ -8329,6 +8329,27 @@ async function assertNestedPageEditor(browser, testCase) {
     await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
     await page.waitForFunction(() => document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Child");
     assert((await page.locator('.sp-main').textContent()).includes("Leaf"));
+    // A second browser changes only a nested page. No compatibility text
+    // entity changes, so the generation event must refresh the whole graph.
+    nativeState.document.subpages[33] = "~B=Parent%20Page:ABCDEF,1|,light.leaf,Remote leaf";
+    nativeState.generation += 1;
+    const notifyConfiguration = () => page.evaluate(() => window.__eventSources.at(-1).dispatch("panel-config", {data:'{"generation":1}'}));
+    await notifyConfiguration();
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Remote leaf"));
+    const name = page.getByRole("textbox", {name:"Card name",exact:true});
+    await page.locator('.sp-main [data-slot="1"] .sp-editable-title').click();
+    await name.fill("Local draft");
+    nativeState.document.subpages[33] = "~B=Parent%20Page:ABCDEF,1|,light.leaf,Latest remote leaf";
+    nativeState.generation += 1;
+    const readWhileFocused = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/config" && response.request().method() === "GET" && response.status() === 200);
+    await notifyConfiguration(); await readWhileFocused;
+    assert.strictEqual(await name.inputValue(),"Local draft","external notification preserves the focused title draft");
+    await name.press("Escape");
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Latest remote leaf"));
+    assert.strictEqual(nativeState.puts.length,0,"cancelled draft refreshes without a write");
+    nativeState.document.subpages[33] = "~B=Parent%20Page:ABCDEF,1|,light.leaf,Leaf";
+    nativeState.generation += 1; await notifyConfiguration();
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="1"] .sp-editable-title')?.textContent === "Leaf");
     await page.locator('.sp-back-btn .sp-back-hit').click();
     await page.waitForFunction(() => document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Root");
     await page.locator('.sp-main .sp-empty-cell').first().click();

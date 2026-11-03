@@ -41,13 +41,17 @@ test("a rejected snapshot has no partially applied document", () => {
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 function loader(overrides = {}) {
   const applied = [], failures = [], reads = [];
+  const timers = new Map(); let nextTimer = 0;
   let revision = 0, editable = true;
   const instance = new editor.NativePageEditorLoader({
     discover: async () => true, readDepth: () => 2, revision: () => revision,
     read: signal => { const item = {...deferred(),signal}; reads.push(item); return item.promise; },
-    canApply: () => editable, apply: document => applied.push(document), failed: error => failures.push(error), ...overrides,
+    canApply: () => editable, apply: document => applied.push(document), failed: error => failures.push(error),
+    schedule: callback => { const id = ++nextTimer; timers.set(id, callback); return id; },
+    cancel: id => timers.delete(id), ...overrides,
   });
-  return { instance, applied, failures, reads, edit() { ++revision; }, dirty() { editable = false; } };
+  return { instance, applied, failures, reads, timers, edit() { ++revision; }, dirty() { editable = false; },
+    idle() { editable = true; }, tick() { const pending = [...timers.values()]; timers.clear(); pending.forEach(callback => callback()); } };
 }
 const settle = async () => { await Promise.resolve(); await Promise.resolve(); };
 const snapshot = document => ({ document, etag: '"v2-2"', version: 2 });
@@ -89,6 +93,34 @@ test("edits and dirty drafts prevent a late snapshot from changing the editor", 
     await settle(); fixture[action](); fixture.reads[0].resolve(snapshot(source()));
     assert.equal(await pending, false);
     assert.equal(fixture.applied.length, 0);
+  }
+});
+test("blocked external refresh retries a fresh snapshot when the interaction ends", async () => {
+  for (const interaction of ["dirty", "edit"]) {
+    const fixture = loader(), pending = fixture.instance.refresh(); await settle();
+    fixture[interaction](); fixture.reads[0].resolve(snapshot(source()));
+    assert.equal(await pending, false);
+    assert.equal(fixture.timers.size, 1);
+    if (interaction === "dirty") {
+      fixture.tick(); await settle();
+      assert.equal(fixture.reads.length, 1, "do not poll HTTP during an active draft, drag or focused title");
+      assert.equal(fixture.timers.size, 1);
+    }
+    fixture.idle(); fixture.tick(); await settle();
+    assert.equal(fixture.reads.length, 2);
+    fixture.reads[1].resolve(snapshot({...source(), settings: { marker: "newest" }})); await settle();
+    assert.equal(fixture.applied.at(-1).settings.marker, "newest");
+    assert.equal(fixture.timers.size, 0);
+  }
+});
+test("disconnect and local replacement cancel a blocked refresh", async () => {
+  for (const action of ["invalidate", "replace"]) {
+    const fixture = loader(), pending = fixture.instance.refresh(); await settle();
+    fixture.dirty(); fixture.reads[0].resolve(snapshot(source())); await pending;
+    fixture.instance[action](source());
+    assert.equal(fixture.timers.size, 0);
+    fixture.idle(); fixture.tick(); await settle();
+    assert.equal(fixture.reads.length, 1);
   }
 });
 test("disconnect and reconnect discard superseded graph responses", async () => {

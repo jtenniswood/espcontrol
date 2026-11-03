@@ -205,6 +205,31 @@ These are hardware tests with injected faults, not physical power interruptions
 or raw-partition failure tests; clearing scratch keys is not a bitwise NVS
 partition rollback.
 
+Current SDK2 probe `105e108cf` also repeats the full-cache workload with a
+true unpaced 1,440-message send loop. The first ordered DeviceInfo response
+exceeds the client's default ten-second timeout. Its cleanup then encounters a
+connection timeout and cannot reconcile the still-running candidate; an
+independent identity/data check enables targeted recovery of exact original
+firmware, native-v1 bytes at generation 1062 and every protected preference.
+A separate diagnostic uses a sixty-second response observation window with
+sleep disabled and Home timeout zero. That response also times out; the asleep
+case is never reached. Its improved cleanup restores exact original firmware,
+data at generation 1064 and all settings, including both sleep overrides.
+Neither run supplies a post-burst cache/ownership snapshot or qualifies burst
+handling. Their source of delay remains unisolated; they do not establish an
+allocation failure or reboot. The earlier successful paced cache checks remain
+scoped to their recorded input protocol.
+
+A subsequent diagnostic compares individual writes with one grouped write of
+the same 1,440 messages. Both ordered responses remain pending after 30 seconds.
+Local macOS TCP counters show an established connection with about 106 KiB
+still queued for sending and an advertised receive window below 1 KiB near the
+end of each observation. Grouping does not resolve the slow drain; this does
+not yet attribute it to the firmware receive loop, rendering or transport.
+No packet payloads are captured. Exact original SDK2 firmware, native-v1 bytes
+at generation 1067, all 78 settings/PIN/reset/update preferences and temporary
+sleep overrides are verified restored.
+
 ## Physical checks and recovery
 
 - The earlier instrumented S3 image `10fd5ea69` completed 1,000 cycles, 3,000
@@ -368,6 +393,17 @@ editing, read-only navigation with disabled edits, backups and reconnects.
 Earlier excluded runs exposed an obsolete read-only lock expectation and the
 need to distinguish older native-save caches from complete editor snapshots.
 
+A further review correction announces the durable configuration generation
+through the event stream independently of compatibility text entities. This
+covers nested-only edits from another browser. Busy streams retry and coalesce
+to the latest generation. An editor blocked by a draft, drag or focused title
+keeps a deferred refresh and rereads once it can apply safely; disconnect and
+local replacement cancel it. Focused browser journeys on all four grid sizes
+verify nested-only updates and title-draft cancellation without a write.
+The event-stream lifecycle tests also cover notification delivery and retry
+under backpressure. A stale host-test assertion is updated for the already
+introduced 20-byte page record with its sparse-membership mask.
+
 Private SDK2 S3 probe `105e108cf` then qualifies the membership correction on
 hardware with a sparse `B,9` page containing eight retained Sensor rows and a
 visible ninth climate control. Fresh observers receive exactly 20 climate
@@ -386,13 +422,15 @@ original update preference are verified restored.
 Main `738840a02` brings in ESPHome 2026.10.2. Integration
 `c05fde64f` changes only the SDK pin, preserves parent runtime ancestry and
 passes all 13 wrapper tests; firmware/browser sources remain byte-identical to
-the tested corrections. A new sequential factory matrix is running on this
-current pin. The preceding all-nine SDK1 matrix remains a separate checkpoint.
+the tested corrections. A new sequential factory matrix passes all nine profiles on this
+current pin, with completed log hashes, SDK markers and unchanged sources
+verified. The preceding all-nine SDK1 matrix remains a separate checkpoint.
 
 ## Remaining gates
 
-All nine production factory profiles compile at implementation checkpoint
-`43a914249` with ESPHome 2026.10.1. Historical matrices also pass at `ac0fad1ff` with ESPHome
+All nine production factory profiles compile at `c05fde64f` with the current
+ESPHome 2026.10.2 pin. The `39a159354` and `43a914249` checkpoints also pass
+all nine profiles with ESPHome 2026.10.1. Historical matrices also pass at `ac0fad1ff` with ESPHome
 2026.10.1 and at private `c61cda45b` with ESPHome 2026.10.2 (base `c28c5b43f`
 plus the SDK pin). The rebase onto main `6c10c3d5a` preserves the parent runtime
 branch and every tested firmware/browser source; its three changed files only

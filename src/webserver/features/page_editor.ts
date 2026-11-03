@@ -51,6 +51,8 @@ export interface NativePageEditorLoaderOptions {
   apply(document: PanelConfigDocument): void;
   failed(error: unknown): void;
   loading?(active: boolean): void;
+  schedule?(callback: () => void): ReturnType<typeof setTimeout>;
+  cancel?(timer: ReturnType<typeof setTimeout>): void;
 }
 /** Ignore disconnected, superseded and locally edited snapshots. */
 export class NativePageEditorLoader {
@@ -58,8 +60,26 @@ export class NativePageEditorLoader {
   private abort: AbortController | null = null;
   private pending: Promise<boolean> | null = null;
   private refreshAgain = false;
+  private retry: ReturnType<typeof setTimeout> | null = null;
   constructor(private readonly options: NativePageEditorLoaderOptions) {}
-  invalidate(): void { ++this.epoch; this.abort?.abort(); this.abort = null; this.pending = null; this.refreshAgain = false; }
+  invalidate(): void {
+    ++this.epoch; this.abort?.abort(); this.abort = null; this.pending = null; this.refreshAgain = false;
+    this.cancelRetry();
+  }
+  private cancelRetry(): void {
+    if (this.retry !== null) (this.options.cancel ?? clearTimeout)(this.retry);
+    this.retry = null;
+  }
+  private deferRefresh(): void {
+    if (this.retry !== null) return;
+    const epoch = this.epoch;
+    this.retry = (this.options.schedule ?? (callback => setTimeout(callback, 250)))(() => {
+      this.retry = null;
+      if (epoch !== this.epoch) return;
+      if (!this.options.canApply()) this.deferRefresh();
+      else void this.refresh();
+    });
+  }
   replace(document: PanelConfigDocument): void { this.invalidate(); this.options.apply(document); }
   refreshAfterChange(): void {
     // A pending response may predate the event. Coalesce events into one
@@ -69,6 +89,7 @@ export class NativePageEditorLoader {
   }
   refresh(): Promise<boolean> {
     if (this.pending) return this.pending;
+    this.cancelRetry();
     const abort = new AbortController();
     this.abort = abort;
     this.options.loading?.(true);
@@ -77,7 +98,13 @@ export class NativePageEditorLoader {
       try {
         if (await this.options.discover() !== true || this.options.readDepth() < 2) return false;
         const snapshot = await this.options.read(abort.signal);
-        if (!snapshot || epoch !== this.epoch || revision !== this.options.revision() || !this.options.canApply()) return false;
+        if (!snapshot || epoch !== this.epoch) return false;
+        if (revision !== this.options.revision() || !this.options.canApply()) {
+          // Keep the notification while an edit is in progress. Read again
+          // after it ends; the discarded response may already be obsolete.
+          this.deferRefresh();
+          return false;
+        }
         this.options.apply(snapshot.document);
         return true;
       } catch (error) {

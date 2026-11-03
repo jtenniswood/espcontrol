@@ -350,6 +350,8 @@ class AsyncEventSourceResponse {
   std::string event_buffer_{""};
   size_t event_bytes_sent_{0};
   uint16_t consecutive_send_failures_{0};
+  uint32_t configuration_generation_{0};
+  bool configuration_generation_sent_{false};
   bool close_requested_{false};
   bool close_queued_{false};
   std::atomic<bool> close_work_pending_{false};

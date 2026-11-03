@@ -171,6 +171,7 @@ export function createAppEventsFeature(
             "onConnected": markConnected,
             "onDisconnected": handleDisconnected,
             "onPing": pageTitle.handleWebServerPingEvent,
+            "onConfigurationChange": () => nativePages?.refreshAfterChange(),
             "parseState": function (e: any) { return parseEntityEventData(e.data); },
             "onState": handleState,
         });

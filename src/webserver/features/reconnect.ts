@@ -10,6 +10,7 @@ export interface ReconnectHandlers<State> {
   readonly onPing: (event: { data?: string }) => void;
   readonly parseState: (event: { data?: string }) => State | null;
   readonly onState: (state: State) => void;
+  readonly onConfigurationChange?: () => void;
 }
 
 export interface ReconnectControllerOptions<State> {
@@ -41,6 +42,7 @@ export class ReconnectController<State> {
       const state = handlers.parseState(event);
       if (state !== null) handlers.onState(state);
     });
+    source.addEventListener("panel-config", () => handlers.onConfigurationChange?.());
     source.addEventListener("error", () => {
       handlers.onDisconnected();
       if (source.readyState !== 2) return;

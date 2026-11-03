@@ -33,6 +33,13 @@ template<typename... T> void log_message(T &&...) {}
 #define ESP_LOGE(...) log_message(__VA_ARGS__)
 #define CRLF_STR "\r\n"
 constexpr const char *TAG = "web_server_idf";
+bool configuration_known = false;
+uint32_t configuration_generation = 0;
+bool read_configuration_generation(uint32_t *value) {
+  *value = configuration_generation;
+  return configuration_known;
+}
+bool (*espcontrol_native_configuration_generation)(uint32_t *) = read_configuration_generation;
 using httpd_handle_t = void *;
 constexpr int ESP_OK = 0, ESP_FAIL = -1;
 constexpr int HTTP_GET = 1, HTTPD_SOCK_ERR_TIMEOUT = -3;
@@ -191,6 +198,27 @@ void retained_until_server_close(Connection &c) {
   c.server_closed();
 }
 int main() {
+  {
+    Connection c;
+    c.events.loop();
+    assert(received.empty());  // No native configuration yet.
+    configuration_known = true; configuration_generation = 7;
+    c.events.loop();
+    assert(received.find("event: panel-config\r\ndata: {\"generation\":7}") != std::string::npos);
+    received.clear(); c.events.loop();
+    assert(received.empty());  // Unchanged text and generation stay quiet.
+    send_result = HTTPD_SOCK_ERR_TIMEOUT;
+    c.session()->try_send_nodefer("busy", 4, "state");
+    configuration_generation = 8; c.events.loop();
+    assert(c.session()->configuration_generation_ == 7);
+    configuration_generation = 9; c.events.loop();
+    send_result = 100000; c.events.loop();
+    assert(received.find("{\"generation\":9}") != std::string::npos);
+    assert(received.find("{\"generation\":8}") == std::string::npos);
+    assert(c.session()->configuration_generation_ == 9);
+    // A newly connected browser gets the latest generation as well.
+    configuration_known = false;
+  }
   {
     Connection c;
     send_result = HTTPD_SOCK_ERR_FAIL;
