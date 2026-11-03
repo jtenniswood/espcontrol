@@ -1,0 +1,74 @@
+# Nested-page qualification
+
+Recorded on 3 November 2026 for PR #2424, following runtime PR #2400.
+Production still writes native v1 at depth one. Private qualification images
+enable native v2/depth two without declaring a published reader floor.
+
+## S3 memory comparison
+
+The before image rebuilds the starting development source `36f482d7c`; it is
+not a bitwise readback of the previously running flash. The uninstrumented
+after image is private source `d64c2829e`, based on `7c0abe97a`, labelled
+`lab-nested-05bf5c0f8`. Both use ESPHome 2026.10.1 and ESP-IDF 5.5.6 on the same
+physical 4-inch S3, with its saved settings and plaintext API.
+
+Both runs apply the same decoded flat workloads in the same order. Each waits
+130 seconds, then takes three existing standard memory-sensor publications
+61 seconds apart. No extra diagnostic RPC, browser session or synthetic HA
+feed runs during sampling. Values below are medians. Total means combined free
+internal heap plus free PSRAM; it does not mean firmware image size.
+
+| Workload | Internal heap free, before → after | PSRAM free, before → after | Combined free change |
+| --- | ---: | ---: | ---: |
+| Original dashboard | 75.3 → 79.9 KiB | 2276.3 → 2284.4 KiB | +12.7 KiB |
+| Empty | 88.7 → 81.4 KiB | 2349.0 → 2322.9 KiB | −33.4 KiB |
+| Nine sensors | 87.2 → 81.2 KiB | 2435.6 → 2409.3 KiB | −32.3 KiB |
+| Maximum flat: nine folders, 72 sensors | 54.6 → 76.9 KiB | 2251.8 → 2381.1 KiB | +151.6 KiB |
+
+The original-dashboard after samples span 2,421,007–2,429,347 combined free
+bytes; before samples span 2,407,891–2,408,067. Other workloads’ combined-free samples span at most
+52 bytes within a run. Largest free blocks remain 31,744 internal bytes and
+2,293,760 PSRAM bytes in every sample. These are settled idle measurements
+with the original settings, not a direct observation of display mode or a
+navigation/image-decode peak. Real HA values may update, and replacements can
+retain caches; subtracting rows does not isolate per-card allocation costs.
+
+The full candidate includes newer main changes and larger RGB bounce buffers,
+so this is an end-to-end build comparison. Static RAM falls from 206,455 to
+204,503 bytes. OTA image size grows from 5,019,968 to 5,260,560 bytes. ELF code
+and read-only sections grow by 240,716 bytes. Both configurations enable
+instruction/read-only-data copies into PSRAM, so code growth offsets runtime
+savings; the S3 also spends 19,200 more internal bytes on its 30-row RGB bounce
+buffers. Section sizes are separate accounting, not an exact measurement of
+live PSRAM reservations. See the
+[pinned IDF explanation](https://docs.espressif.com/projects/esp-idf/en/v5.5.6/esp32s3/api-guides/external-ram.html#move-instructions-in-flash-to-psram).
+
+## Physical checks and recovery
+
+- The earlier instrumented S3 image `10fd5ea69` completed 1,000 cycles, 3,000
+  actual page changes and three API reconnects. All 21 checked retained-resource
+  fields stayed unchanged; native bytes and generation also stayed unchanged.
+  This source predates the later backup-negotiation and byte-quota fixes.
+- The actual embedded editor exercised nested creation/save/reload,
+  immediate-parent Back, the depth limit, subtree code paste/delete and exact
+  graph backup import. An old-format replacement left bytes/generation intact.
+- Empty, 81-card flat and 97-card nested documents committed. The 55,997-byte,
+  657-card shape returned HTTP 413 without changing the preceding document.
+  The current candidate advertises the real 40,932-byte durable limit.
+- Direct rollback with stored v2 data left the old v1-only configuration API
+  unavailable (HTTP 503), without erasing the data. Recovery used a qualified
+  dual-reader/v1-writer bridge and an explicit save of the complete original
+  flat dashboard as v1 before installing the original-source image.
+- After both memory cohorts, the original-source firmware, exact original
+  native-v1 bytes, all 78 saved settings, PIN/reset status and original automatic
+  update setting were verified restored. This recovery of a known flat backup
+  does not make arbitrary nested data readable by old v1-only firmware.
+
+## Remaining gates
+
+All nine production factory profiles compile at `7c0abe97a`; its PR CI passes
+all 52 required tasks. Compilation does not establish physical layout parity.
+Nested visual confirmation, remaining P4 qualification, further replacement/
+delayed-event/modal/takeover checks, image peaks and physical storage-failure
+qualification remain open. Published-reader and mirror-retirement gates in
+[the delivery plan](nested-pages-delivery.md) still apply before release enablement.

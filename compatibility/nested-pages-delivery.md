@@ -25,8 +25,12 @@ immediate-parent Back, creation limited to two subpage levels, subtree code past
 and exact native backup export/import. An old-format replacement is rejected
 without changing the nested document or generation. These checks use an
 unpublished test-only v2 writer; the production release contract is unchanged.
-Long navigation/reconnect/resource checks, matched memory workloads, final
-rollback and the remaining device/visual checks are still required.
+The S3 subsequently completed 1,000 navigation cycles, three reconnects and
+bounded-resource checks, followed by matched before/after idle memory workloads
+and verified restoration of its original firmware, dashboard and settings.
+The [qualification record](nested-pages-qualification.md) gives the source scopes,
+memory results, required reader bridge for old-firmware recovery and remaining
+physical/visual gates. Release enablement remains unfinished.
 
 The release contract records `panelConfigReadNavigationDepth` separately from
 `panelConfigWriteNavigationDepth`. A flat native-v2 writer does not enable
