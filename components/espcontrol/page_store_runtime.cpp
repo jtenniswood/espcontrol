@@ -95,16 +95,6 @@ bool PageStoreRuntime::prepare_impl(uint16_t version, const uint8_t *document, s
     memory_.peak_reserved_bytes = std::max(memory_.peak_reserved_bytes,
         memory_.active_reserved_bytes + scratch_bytes);
   }
-  staged_arena_ = allocator_.allocate(arena_capacity_);
-  if (staged_arena_ == nullptr) {
-    preparation_allocation_failed_ = true;
-    last_stage_status_ = PageStoreStatus::BUFFER_TOO_SMALL;
-    ++memory_.preparation_failures;
-    return false;
-  }
-  memory_.staged_reserved_bytes = arena_capacity_;
-  memory_.peak_reserved_bytes = std::max(memory_.peak_reserved_bytes,
-      memory_.active_reserved_bytes + memory_.staged_reserved_bytes + scratch_bytes);
   auto stage = [&](const uint8_t *source, void *arena, size_t capacity, PageStore *store) {
     return version == configuration::PANEL_CONFIG_DOCUMENT_VERSION
         ? PageStore::stage_v1(source, size, limits_, UINT32_MAX, arena, capacity, store)
@@ -112,7 +102,32 @@ bool PageStoreRuntime::prepare_impl(uint16_t version, const uint8_t *document, s
                               scratch.data, scratch_bytes, store);
   };
   // Staged state is private until the service assigns the committed generation.
-  last_stage_status_ = stage(document, staged_arena_, arena_capacity_, &staged_);
+  // Small edits must not require one contiguous block as large as the profile's
+  // entire document budget. Grow private parsing storage only when necessary,
+  // releasing each unsuccessful attempt before reserving the next one. The
+  // final attempt still reaches the same admission ceiling.
+  size_t capacity = std::min(arena_capacity_, std::max(size_t{4096},
+      size > arena_capacity_ / 2 ? arena_capacity_ : size * 2));
+  while (true) {
+    staged_arena_ = allocator_.allocate(capacity);
+    if (staged_arena_ == nullptr) {
+      preparation_allocation_failed_ = true;
+      last_stage_status_ = PageStoreStatus::BUFFER_TOO_SMALL;
+      ++memory_.preparation_failures;
+      return false;
+    }
+    memory_.staged_reserved_bytes = capacity;
+    memory_.peak_reserved_bytes = std::max(memory_.peak_reserved_bytes,
+        memory_.active_reserved_bytes + capacity + scratch_bytes);
+    last_stage_status_ = stage(document, staged_arena_, capacity, &staged_);
+    if (last_stage_status_ != PageStoreStatus::BUFFER_TOO_SMALL || capacity == arena_capacity_)
+      break;
+    staged_ = {};
+    allocator_.release(staged_arena_, capacity);
+    staged_arena_ = nullptr;
+    memory_.staged_reserved_bytes = 0;
+    capacity = capacity > arena_capacity_ / 2 ? arena_capacity_ : capacity * 2;
+  }
   if (write && last_stage_status_ == PageStoreStatus::BUFFER_TOO_SMALL)
     last_stage_status_ = PageStoreStatus::CAPACITY_EXCEEDED;
   if (last_stage_status_ == PageStoreStatus::OK && write && !prepared_within_limits())
@@ -122,7 +137,7 @@ bool PageStoreRuntime::prepare_impl(uint16_t version, const uint8_t *document, s
     // Build the final view before any resources can borrow its strings. Rebuild
     // from the validated private source so no arena pointers need relocating.
     const size_t used = staged_.memory().arena_bytes;
-    if (used < arena_capacity_) {
+    if (used < memory_.staged_reserved_bytes) {
       void *compact_arena = allocator_.allocate(used);
       if (compact_arena == nullptr) {
         preparation_allocation_failed_ = true;

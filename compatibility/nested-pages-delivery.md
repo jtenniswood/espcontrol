@@ -30,8 +30,10 @@ bounded-resource checks, followed by an initial before/after idle memory cohort
 and verified restoration of its original firmware, dashboard and settings.
 Its initial synthetic Sensor fixtures were found to have unbound Sensor fields.
 A corrected final-build pair now verifies all expected registrations and the
-original firmware/data restoration. The original dashboard's memory regression
-and physical tests with populated HA state caches remain to investigate.
+original firmware/data restoration. Later SDK2 checks populate the complete S3
+128 KiB and 10-inch P4 512 KiB HA caches through same/disjoint replacements and
+API reconnects. The original dashboard's historical memory regression, image
+peaks and the remaining physical runtime gates still require investigation.
 The [qualification record](nested-pages-qualification.md) gives the source scopes,
 memory results, required reader bridge for old-firmware recovery and remaining
 physical/visual gates. Release enablement remains unfinished.
@@ -113,6 +115,12 @@ resolve that admission gap. Keep the v1 writer until a compatible storage or
 format-selection policy passes this migration case; an oversized replacement
 must leave the current dashboard intact.
 
+PageStore preparation now starts with a smaller private parsing reservation and
+grows within the existing profile ceiling, releasing an unsuccessful attempt
+before growing. It compacts before resources borrow model data. This avoids
+requiring a full 128/256 KiB contiguous block for a small edit; it does not
+increase document admission or remove other preparation/image peak costs.
+
 ## Agreed behaviour
 
 - Keep current grid sizes and one Back slot on every non-root page.
@@ -146,19 +154,21 @@ must leave the current dashboard intact.
    host and S3 replacement coverage. The
    [configuration-owned state owner](page-entity-state-runtime.md) now has staged
    host coverage. The [card dependency declarations](page-card-dependencies.md)
-   cover registered drivers in host tests; production ownership wiring, full
-   parity and renderer cutover remain.
+   cover registered drivers in host tests. The branch now wires these owners
+   into the selected native scene; full physical parity remains a release gate.
 4. **Reusable renderer:** the [prepared binding/navigation owner](pooled-renderer-runtime.md)
    has host cycle/transaction coverage. Give every real card driver bind/update/unbind operations;
    bound widgets, contexts and modals by the visible profile, and guard delayed
-   work with configuration/binding generations. Physically qualify the S3 and
-   a 20-slot P4, then check all remaining grid sizes.
+   work with configuration/binding generations. These paths are implemented;
+   qualify their physical steady/peak memory, delayed work and takeovers in
+   addition to the existing navigation/layout results.
 5. **Document v2:** negotiate explicit page/card/navigation records on the
    existing endpoint paths. Ship dual readers before durable v2; preserve the
    downgrade floor and compatibility-mirror release gates from #1825.
-6. **Streaming persistence:** remove five full-slot buffers while preserving
-   storage layout, atomic publication and power-loss recovery for partition
-   storage and NVS fallback.
+6. **Streaming persistence:** transient storage removes five full-slot buffers
+   while preserving storage layout and atomic publication. Host coverage
+   injects power cuts/read/write failures for partition and NVS paths; physical
+   storage-failure qualification remains required.
 7. **Nested-page feature:** only after the preceding memory and compatibility
    gates, enable depth two through the generated contract, editor, validators,
    navigation, subtree operations, backups and remote page lookup.

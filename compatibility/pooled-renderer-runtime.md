@@ -30,7 +30,8 @@ page, card and shell. Tokens become invalid before any unbind work. Delayed
 input/timer callbacks must carry their origin token, not read a replacement
 context's token when they execute. Suspend/resume invalidates gestures without
 creating new subscriptions. Exhausted binding revisions fail closed instead of
-reusing a token. Back is limited to the existing root/first-level hierarchy.
+reusing a token. Back follows the stored parent within the negotiated reader
+depth; writable nesting retains the separate release gate above.
 
 Replacement restores the currently open folder by its owning root slot when
 that folder survives, even if its PageId changes. Otherwise it returns Home.

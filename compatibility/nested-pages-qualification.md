@@ -100,6 +100,63 @@ original native-v1 bytes at generation 1044, all 78 settings/PIN/reset and the
 original automatic-update preference are verified restored. These checks do
 not establish pixel stability, image/decode peaks or physical P4 cache behavior.
 
+A mixed SDK2 S3 fixture has 56 climate controls, two image cards and seven
+folders, with exactly 1,126 raw subscriptions and 96 KiB of climate values in
+a 128 KiB cache reservation. With temporary sleep overrides tracked and later
+restored, two PNG tiles load at 150×139 (41,700 bytes each), and 12 expanded-PNG
+open/close cycles pass. The expanded image is 470×436 (409,840 bytes); its closed
+cache remains resident. Scene reservations return to 239,547 bytes and seven
+live allocations after each close, with no scene allocation failures.
+
+A following 480×480 GIF download reaches 290,052 observed free PSRAM bytes,
+below the diagnostic runner's 512 KiB stopping margin. The first original-data
+restore is rejected with HTTP 503 and leaves the test document at generation
+1047. A recovery observation then sees animation playing, 244,584 free PSRAM
+bytes, a 126,976-byte largest PSRAM block and one failed scene reservation.
+Normal display-off releases all observed image buffers/leases, returning free
+PSRAM to 1,704,896 bytes. The exact original native-v1 save then succeeds at
+generation 1048, and exact upgraded firmware, all 78 protected settings/PIN/reset,
+original sleep values and automatic-update preference are verified restored.
+These are sampled observations, not isolated image allocation peaks. The GIF
+modal and delayed-download replacement checks were not reached. An earlier
+attempt also remains excluded from modal qualification because the saved
+sleep policy interrupted its first opening; its recovery at generation 1046
+is preserved separately. The completed PNG checks do not qualify the GIF
+pressure case or pixel stability.
+
+Private SDK2 probe `d496ecdbd` adds owned GIF-source/workspace counters and
+explicit IDF local-minimum windows. With the same mixed fixture, it records:
+
+| Phase | Internal minimum free | PSRAM minimum free |
+| --- | ---: | ---: |
+| PNG modal open/close | 74,355 bytes | 926,636 bytes |
+| 480×480 GIF tile download/decode | 74,243 bytes | 193,496 bytes |
+| Original-dashboard save with GIF resident | 75,391 bytes | 103,280 bytes |
+
+The GIF plays and owns 921,600 canvas-workspace bytes, a 369,953-byte compressed
+source, a 17,500-byte player and 4,200 resampling-axis bytes, separately from
+its visible pixel buffers. The save returns HTTP 204 in this run, with no failed
+scene reservations; the earlier HTTP 503 does not reproduce. The first GIF
+observation has a 172,032-byte largest PSRAM block, whereas the earlier run has
+126,976 bytes. Source inspection confirms that preparation requests a full
+131,072-byte document arena before compacting even a small dashboard. This is
+an avoidable contiguous-allocation requirement; the earlier firmware did not
+record the failed request's size, so its exact failure site is unproven.
+The diagnostic restores exact upgraded firmware and original data at generation
+1050, with all protected settings/PIN/reset/sleep/update preferences verified.
+These windows exclude boot lows, but include diagnostic/network work and
+aggregate per-region minima. They are not a production before/after comparison.
+
+The follow-up runtime change starts with a smaller private parsing reservation
+and grows only when needed, releasing unsuccessful attempts before growth and
+compacting before resources borrow the model. The existing admission ceiling,
+source bytes and allocation-free activation remain unchanged. Host checks pass
+small v1/v2 replacements on all nine profiles with an 8 KiB maximum allocation,
+larger-layout growth and failed-reservation rollback. All four grid-size scene
+integrations pass. Updated firmware builds and physical retesting of this
+reservation change remain required; earlier compile/device results below apply
+to their recorded source revisions.
+
 ## Physical checks and recovery
 
 - The earlier instrumented S3 image `10fd5ea69` completed 1,000 cycles, 3,000

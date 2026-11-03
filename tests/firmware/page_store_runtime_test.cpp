@@ -20,7 +20,9 @@ namespace {
 class Allocator final : public PageArenaAllocator {
  public:
   void *allocate(size_t bytes) override {
-    if (fail || ++attempts == fail_at)
+    largest_request = std::max(largest_request, bytes);
+    requests.push_back(bytes);
+    if (fail || ++attempts == fail_at || bytes > maximum_request)
       return nullptr;
     void *arena = std::malloc(bytes);
     if (arena != nullptr) {
@@ -38,6 +40,8 @@ class Allocator final : public PageArenaAllocator {
   }
   bool fail{false};
   size_t attempts{0}, fail_at{0}, live_bytes{0}, peak_bytes{0};
+  size_t maximum_request{SIZE_MAX}, largest_request{0};
+  std::vector<size_t> requests;
   std::unordered_map<void *, size_t> allocations;
 };
 
@@ -176,7 +180,7 @@ void compact_preparation_and_failures() {
     assert(runtime.activate_prepared(1, 1, original.data(), original.size()));
     const size_t original_bytes = allocator.live_bytes;
     const auto *original_source = runtime.active().source_document();
-    // Fail the exact-size allocation, after a successful ceiling-sized parse.
+    // Fail the exact-size allocation, after a successful initial parse.
     allocator.fail_at = allocator.attempts + 2;
     assert(!runtime.prepare(1, replacement.data(), replacement.size()));
     assert(runtime.last_stage_status() == PageStoreStatus::BUFFER_TOO_SMALL);
@@ -190,7 +194,7 @@ void compact_preparation_and_failures() {
     const size_t replacement_bytes = runtime.memory().staged_reserved_bytes;
     assert(allocator.live_bytes == original_bytes + replacement_bytes);
     assert(runtime.memory().peak_reserved_bytes ==
-           original_bytes + 8192 + replacement_bytes);
+           original_bytes + 4096 + replacement_bytes);
     assert(runtime.memory().peak_reserved_bytes == allocator.peak_bytes);
     // Publication must need no additional arena allocation.
     allocator.fail = true;
@@ -356,6 +360,85 @@ void bounded_replacements_and_validation() {
   }
 }
 
+void small_edits_with_fragmented_memory() {
+  // A small dashboard must remain editable when no block can hold the full
+  // profile budget. Exercise both wire formats and every device contract.
+  for (const auto &limits : DEVICE_UI_PROFILES) for (uint16_t version : {1, 2}) {
+    Allocator allocator;
+    allocator.maximum_request = 8192;
+    const auto first = document(limits, "Original");
+    const auto next = document(limits, "Replacement");
+    PanelConfigRepresentation a(ConfigurationBuffer::allocate_host, ConfigurationBuffer::release_host);
+    PanelConfigRepresentation b(ConfigurationBuffer::allocate_host, ConfigurationBuffer::release_host);
+    const uint8_t *source = first.data(), *replacement = next.data();
+    size_t source_size = first.size(), replacement_size = next.size();
+    if (version == 2) {
+      assert(a.convert(1, 2, source, source_size, PANEL_CONFIG_V2_HTTP_MAX_BYTES) == PanelConfigRepresentationStatus::OK);
+      assert(b.convert(1, 2, replacement, replacement_size, PANEL_CONFIG_V2_HTTP_MAX_BYTES) == PanelConfigRepresentationStatus::OK);
+      source = a.data(); source_size = a.size();
+      replacement = b.data(); replacement_size = b.size();
+    }
+    {
+      PageStoreRuntime runtime(limits, allocator, limits.page_store_bytes);
+      assert(runtime.prepare_write(version, source, source_size));
+      assert(runtime.activate_prepared(1, version, source, source_size));
+      assert(runtime.prepare_write(version, replacement, replacement_size));
+      allocator.fail = true;
+      assert(runtime.activate_prepared(2, version, replacement, replacement_size));
+      allocator.fail = false;
+      assert(runtime.active().field(*runtime.active().card(0), CardField::LABEL) == "Replacement");
+      assert(allocator.largest_request <= allocator.maximum_request);
+      assert(runtime.memory().preparation_failures == 0);
+    }
+    assert(allocator.live_bytes == 0 && allocator.allocations.empty());
+  }
+}
+
+void parsing_growth_preserves_admission_and_rollback() {
+  const auto &limits = DEVICE_UI_PROFILES[8];
+  std::array<uint8_t, 8192> bytes{};
+  PanelConfigWriter writer(bytes.data(), bytes.size());
+  assert(writer.begin() == PanelConfigStatus::OK);
+  assert(writer.append_device_profile(reinterpret_cast<const uint8_t *>(limits.device_profile),
+      std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+  for (uint8_t slot = 1; slot <= limits.slot_count; ++slot) {
+    const std::string folder = ";F;Auto;Auto;;;subpage;;";
+    std::string children = "~B,1,2,3,4,5,6,7,8";
+    for (size_t child = 0; child < limits.cards_per_subpage; ++child)
+      children += "|HC,climate.x,C";
+    assert(writer.append_button(slot, reinterpret_cast<const uint8_t *>(folder.data()), folder.size()) == PanelConfigStatus::OK);
+    assert(writer.append_subpage(slot, reinterpret_cast<const uint8_t *>(children.data()), children.size()) == PanelConfigStatus::OK);
+  }
+  size_t size = 0;
+  assert(writer.finish(&size) == PanelConfigStatus::OK);
+  assert(size * 2 < 4096);
+  const auto original = document(limits, "Original");
+  Allocator allocator;
+  {
+    PageStoreRuntime runtime(limits, allocator, limits.page_store_bytes);
+    assert(runtime.prepare_write(1, original.data(), original.size()));
+    assert(runtime.activate_prepared(1, 1, original.data(), original.size()));
+    const auto retained = allocator.live_bytes;
+    allocator.maximum_request = 4096;
+    assert(!runtime.prepare_write(1, bytes.data(), size));
+    assert(runtime.preparation_allocation_failed());
+    assert(runtime.active().generation() == 1 && allocator.live_bytes == retained);
+    assert(runtime.memory().staged_reserved_bytes == 0);
+    allocator.maximum_request = SIZE_MAX;
+    allocator.requests.clear();
+    assert(runtime.prepare_write(1, bytes.data(), size));
+    assert(allocator.requests.size() >= 3);
+    assert(runtime.memory().staged_reserved_bytes > allocator.requests.front());
+    assert(allocator.largest_request < limits.page_store_bytes);
+    assert(runtime.activate_prepared(2, 1, bytes.data(), size));
+    assert(runtime.active().card_count() == 81 && runtime.active().page_count() == 10);
+    assert(runtime.active().source_size() == size &&
+           std::memcmp(runtime.active().source_document(), bytes.data(), size) == 0);
+    assert(runtime.memory().active_reserved_bytes == runtime.active().memory().arena_bytes);
+  }
+  assert(allocator.allocations.empty() && allocator.live_bytes == 0);
+}
+
 }  // namespace
 
 int main() {
@@ -363,4 +446,6 @@ int main() {
   staged_service_lifecycle();
   compact_preparation_and_failures();
   bounded_replacements_and_validation();
+  small_edits_with_fragmented_memory();
+  parsing_growth_preserves_admission_and_rollback();
 }

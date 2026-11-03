@@ -1,8 +1,10 @@
 # Configuration-owned entity state
 
-This is the next host-tested part of the page runtime migration. Production
-continues using the existing grid. No new state budget, card capacity or nested
-page capability is advertised by this change.
+The selected native scene on this branch uses this configuration-owned state
+runtime. It replaces widget-owned HA state for stored pages; physical parity
+and release qualification remain open. Current resource budgets and the
+separate nested-write gate are recorded in the
+[delivery plan](nested-pages-delivery.md).
 
 `PageEntityStateRuntime` prepares a card-to-entity/attribute graph from an
 explicit driver dependency source. Equal pairs share one channel; multiple
@@ -61,11 +63,13 @@ update timings, fixed owner size and retained arena size for maximum S3 and
 threshold and does not qualify device budgets or represent measured device
 heap use.
 
-The [card dependency declarations](page-card-dependencies.md) now cover the
-registered drivers and have host corpus/max-layout coverage. Before production
-wiring, finish physical parity for every mode, hidden-page behaviour, parent
-summaries and panel-level consumers. Qualify complete preparation peaks (including coordinator/native
-allocation behaviour), choose and advertise measured device budgets, and finish
-the reusable renderer. Keep the existing PageStore/renderer gate in place;
-retaining this graph alongside all eager page widgets is not the intended
-production architecture.
+The [card dependency declarations](page-card-dependencies.md) cover the
+registered drivers and have host corpus/max-layout coverage. Physical S3 and
+10-inch P4 checks also fill their complete HA caches through same/disjoint
+replacements and reconnects; see the
+[qualification record](nested-pages-qualification.md) for exact source and
+workload scopes. Finish physical parity for every mode, hidden-page behaviour,
+parent summaries and panel-level consumers. Complete preparation peaks,
+including coordinator/native allocations and image buffers, remain a release
+gate. The selected scene uses reusable visible widgets rather than retaining
+eager widgets for every stored page.
