@@ -65,6 +65,41 @@ heap measurement and does not isolate the media regression. No HA values were
 supplied in either that census or the settled Sensor fixtures; physical tests
 with populated state caches and real image buffers remain required.
 
+A later ESPHome 2026.10.2 attribution check uses private baseline `99b63a37b` (base
+`1963f016a`) and candidate `48c32de02` (base `bb94956b0`), both reading the exact
+original native-v1 dashboard. Three on-demand snapshots follow a 130-second
+settle. Both load a 310×288 tile with 178,560 pixel-buffer bytes; their other
+image pixel/download/retired buffers are empty. The candidate's scene arena
+reserves 34,172 bytes, its populated state cache uses 800 of 4,096 reserved
+bytes, and no scene allocation failures occur. Combined free medians are
+2,216,675 baseline and 2,241,619 candidate bytes, a 24.4 KiB improvement.
+Diagnostic logging, SDK, input format and uncontrolled live content differ
+from the earlier cohort. This does not replace that comparison or establish
+the cause of its regression; historical image-buffer observations are absent.
+Both probes restore the exact upgraded firmware, original dashboard/generation,
+78 settings, PIN/reset status and original automatic-update preference.
+
+Host coverage also fills the complete S3 128 KiB HA cache and P4 512 KiB cache
+through same/disjoint climate replacements, rejects stale-generation callbacks
+and navigates with new allocations disabled. The exact prepared S3 flat-v1
+climate fixtures independently pass with 1,440 channels and a full 131,072-byte
+cache across four replacements. These host proofs do not measure physical heap
+or pixel stability.
+
+The ESPHome 2026.10.2 S3 probe subsequently passes four physical flat-v1 climate replacements
+(same, then disjoint entities), each with 1,440 verified registrations and the
+complete 131,072-byte cache. Each replacement completes two folder round trips;
+an API reconnect and refill also pass. The scene arena remains at 290,960 bytes
+with seven live allocations, 81 borrowed widgets and no reported scene allocation
+failures. Internal heap remains about 78 KiB; the final snapshot has 1,651,444
+free PSRAM bytes and a 786,432-byte largest PSRAM block. Inputs use an ordered
+protocol response barrier after every 16 reports. An earlier unsynchronized
+burst times out awaiting the post-fill diagnostic response and is not credited;
+burst replay performance remains unqualified. The exact upgraded firmware,
+original native-v1 bytes at generation 1044, all 78 settings/PIN/reset and the
+original automatic-update preference are verified restored. These checks do
+not establish pixel stability, image/decode peaks or physical P4 cache behavior.
+
 ## Physical checks and recovery
 
 - The earlier instrumented S3 image `10fd5ea69` completed 1,000 cycles, 3,000
@@ -144,6 +179,7 @@ All nine production factory profiles compile at `ac0fad1ff` with ESPHome
 Compilation does not establish physical layout parity or qualify the full
 feature on ESPHome 2026.10.2. The original-dashboard memory investigation,
 nested visual confirmation, remaining P4 qualification, further replacement/
-delayed-event/modal/takeover checks, populated HA state caches, image peaks and physical storage-failure
+delayed-event/modal/takeover checks, populated P4 HA state caches, burst replay,
+image peaks and physical storage-failure
 qualification remain open. Published-reader and mirror-retirement gates in
 [the delivery plan](nested-pages-delivery.md) still apply before release enablement.
