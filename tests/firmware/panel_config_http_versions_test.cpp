@@ -14,6 +14,7 @@
 #include "page_runtime_resources_group.h"
 #include "panel_config_read_endpoint.h"
 #include "panel_config_write_endpoint.h"
+#include "panel_config_capabilities_endpoint.h"
 #include "panel_config_service_validator.h"
 #include "panel_config_legacy_adapter.h"
 
@@ -699,8 +700,48 @@ void compressed_compatibility_growth() {
     assert(!converted.data()&&!converted.size()&&allocations.empty()&&input==original);
   }
 }
+void durable_byte_boundary() {
+  Fixture f(DEVICE_UI_PROFILES[8]);
+  const auto original=f.get();
+  const auto exact=replace_record(original.response,PanelConfigRecordType::SETTING,0,"unknown_setting",std::string(128,'x'));
+  const auto over=replace_record(original.response,PanelConfigRecordType::SETTING,0,"unknown_setting",std::string(129,'x'));
+  const size_t capacity=exact.size()+CONFIGURATION_ENVELOPE_HEADER_SIZE+CONFIGURATION_DOCUMENT_HEADER_SIZE;
+  for(auto& slot:f.backend.slots)slot.resize(capacity);
+  assert(f.service.maximum_document_size()==exact.size() && over.size()==exact.size()+1);
+  const auto writes=f.backend.writes;
+  assert(status(f.put(over,"1","\"1\""))==413);
+  assert(f.backend.writes==writes && f.get().response==original.response && f.runtime.active().generation()==1);
+  const auto converted=f.get("2");
+  assert(status(converted)==200 && converted.response.size()>f.service.maximum_document_size());
+  assert(status(f.put(exact,"1","\"1\""))==204);
+  assert(f.get().response==exact && f.runtime.active().generation()==2);
+}
+void advertised_durable_bytes_follow_the_selected_backend() {
+  Fixture f(DEVICE_UI_PROFILES[8]);
+  set_panel_config_read_supported(true);set_panel_config_write_supported(true);
+  set_panel_config_http_context_initialization_complete(true);
+  auto capabilities=[&]() {
+    httpd_req_t raw;raw.path="/api/v1/capabilities";
+    esphome::web_server_idf::AsyncWebServerRequest request(raw);
+    PanelConfigCapabilitiesHandler handler;assert(handler.canHandle(&request));f.run(handler,request);
+    assert(status(raw)==200);
+    return std::string(raw.response.begin(),raw.response.end());
+  };
+  for(const size_t bytes:{size_t(16*1024),size_t(40*1024)}) {
+    for(auto& slot:f.backend.slots)slot.resize(bytes);
+    const size_t expected=bytes-CONFIGURATION_ENVELOPE_HEADER_SIZE-CONFIGURATION_DOCUMENT_HEADER_SIZE;
+    const auto json=capabilities();
+    assert(json.find("\"max_durable_document_bytes\":"+std::to_string(expected))!=std::string::npos);
+    assert(json.find("\"max_v2_document_bytes\":524288")!=std::string::npos);
+  }
+  panel_config_http_context().document_capacity=128;
+  assert(capabilities().find("\"max_durable_document_bytes\":128")!=std::string::npos);
+  panel_config_http_context().ready=false;assert(panel_config_writable_document_bytes()==0);
+}
 }
 int main() {
+  durable_byte_boundary();
+  advertised_durable_bytes_follow_the_selected_backend();
   historical_capacity_reads_and_child_folder_writes();
   profile_capacity_write_limits();
   legacy_fixed_write_limits();

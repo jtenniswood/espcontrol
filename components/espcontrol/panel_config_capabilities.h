@@ -54,13 +54,14 @@ inline void set_panel_config_write_supported(bool supported) {
 // understands the versioned web-asset manifest from earlier installations.
 inline bool write_panel_config_capabilities_json(char *output,
                                                  size_t output_capacity,
-                                                 size_t *output_size) {
+                                                 size_t *output_size,
+                                                 size_t durable_document_bytes = 0) {
   if (output == nullptr || output_size == nullptr || output_capacity == 0)
     return false;
   const int written = std::snprintf(
       output, output_capacity,
       "{\"screensaver_pin\":{\"version\":1},\"identity\":{\"version\":1},\"api\":{\"version\":%u},\"configuration\":{\"document_versions\":[%s],\"default_document_version\":1,\"durable_document_version\":%u,\"max_v2_document_bytes\":%u,\"max_navigation_depth\":%u,\"writable_navigation_depth\":%u,"
-      "\"max_runtime_cards\":%u,\"max_runtime_pages\":%u,\"max_page_store_bytes\":%u,\"max_state_metadata_bytes\":%u,\"max_ha_state_bytes\":%u,"
+      "\"max_durable_document_bytes\":%u,\"max_runtime_cards\":%u,\"max_runtime_pages\":%u,\"max_page_store_bytes\":%u,\"max_state_metadata_bytes\":%u,\"max_ha_state_bytes\":%u,"
       "\"read\":%s,\"write\":%s,\"max_record_body_bytes\":%u,\"preserves_inactive_records\":%s},\"web_assets\":{\"versions\":[%u],"
       "\"delivery\":\"%s\"},\"reset\":{\"modes\":[\"customization\",\"factory\"],\"status\":\"/api/v1/reset\"}}",
       static_cast<unsigned>(PANEL_CONFIG_API_VERSION),
@@ -69,6 +70,7 @@ inline bool write_panel_config_capabilities_json(char *output,
       static_cast<unsigned>(PANEL_CONFIG_V2_HTTP_MAX_BYTES),
       PANEL_CONFIG_READ_NAVIGATION_DEPTH,
       PANEL_CONFIG_WRITE_NAVIGATION_DEPTH,
+      static_cast<unsigned>(durable_document_bytes),
       static_cast<unsigned>(PANEL_CONFIG_RESOURCE_LIMITS.cards),
       static_cast<unsigned>(PANEL_CONFIG_RESOURCE_LIMITS.pages),
       static_cast<unsigned>(PANEL_CONFIG_RESOURCE_LIMITS.page_store_bytes),

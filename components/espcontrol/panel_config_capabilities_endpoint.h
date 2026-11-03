@@ -38,7 +38,8 @@ class PanelConfigCapabilitiesHandler final
     std::array<char, PANEL_CONFIG_CAPABILITIES_MAX_JSON_BYTES> response{};
     size_t response_size = 0;
     if (!write_panel_config_capabilities_json(response.data(), response.size(),
-                                              &response_size)) {
+                                              &response_size,
+                                              panel_config_writable_document_bytes())) {
       httpd_resp_send_err(raw_request, HTTPD_500_INTERNAL_SERVER_ERROR,
                           "Could not build capabilities response");
       return;

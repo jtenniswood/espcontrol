@@ -78,6 +78,11 @@ from memory admission. The 6-, 9-, 15- and 20-slot grids allow at most
 These are shape ceilings, not guaranteed full layouts. `/api/v1/capabilities`
 reports them as `max_runtime_pages` and `max_runtime_cards`. Inactive records
 remain preserved within the document budget rather than counting as runtime cards.
+`max_durable_document_bytes` reports the selected storage backend's actual
+saved-document limit, separately from the larger `max_v2_document_bytes`
+transfer/conversion ceiling. The existing 40 KiB slots (or 16 KiB NVS fallback)
+and storage headers are unchanged. A layout can fit the runtime arenas and still
+exceed its saved-document allowance; rejection preserves the active document.
 The same response advertises `max_page_store_bytes` (128 KiB S3, 256 KiB P4),
 `max_state_metadata_bytes` (512 KiB S3, 2 MiB P4) and `max_ha_state_bytes`
 (128 KiB S3, 512 KiB P4). State metadata covers the semantic models, graph

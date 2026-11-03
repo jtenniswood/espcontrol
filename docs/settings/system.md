@@ -110,6 +110,8 @@ A backup can contain cards or subpages outside the destination's visible grid, o
 
 Before installing older firmware, export a backup and check that the version supports your saved cards, settings and layout. Being able to read a backup file does not guarantee that older firmware can apply everything in it.
 
+A backup must also fit the destination panel's saved-configuration storage. If Import reports a capacity limit, keep the original backup and export a smaller layout from the source panel.
+
 ## Firmware
 
 Open **System > Firmware** on your [device setup page](/features/setup). [Export a backup](/settings/system#backup) before changing versions.

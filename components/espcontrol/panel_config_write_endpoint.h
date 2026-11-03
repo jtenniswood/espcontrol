@@ -166,7 +166,7 @@ class PanelConfigWriteHandler final
       }
       document = converted.data(); document_size = converted.size();
     }
-    if (document_size > context.document_capacity) {
+    if (document_size > panel_config_writable_document_bytes()) {
       send_status(raw_request, "413 Content Too Large", "Configuration exceeds the stored document byte limit");
       return;
     }

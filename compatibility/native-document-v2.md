@@ -29,6 +29,16 @@ the target has no native document support.
 
 ## Wire layout
 
+Capabilities distinguish the transfer ceiling `max_v2_document_bytes` from
+`max_durable_document_bytes`, the actual saved-document capacity of the selected
+backend and HTTP workspace. The latter excludes both storage headers: the
+existing 40 KiB partition slots and 16 KiB NVS fallback keep their current layout.
+Converted reads and backups may exceed the durable ceiling while remaining
+within the transfer ceiling. Writes check their converted durable size before
+publication and return HTTP 413 when it does not fit. The editor rejects an
+oversized write before PUT when its representation is the durable format;
+cross-format writes retain the server's lossless conversion and size check.
+
 Integers are little-endian. The 16-byte `EPCF` envelope retains the v1 header
 layout: version at byte 4, header size at 6, payload length at 8, record count
 at 12 and zero reserved bits at 14. V2 uses version 2 and a uint16 record count.

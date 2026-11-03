@@ -59,6 +59,7 @@ interface Capabilities {
     document_versions?: unknown;
     max_record_body_bytes?: unknown;
     max_v2_document_bytes?: unknown;
+    max_durable_document_bytes?: unknown;
     max_navigation_depth?: unknown;
     writable_navigation_depth?: unknown;
     durable_document_version?: unknown;
@@ -110,6 +111,7 @@ export class NativePanelConfigClient {
   private documentVersion_ = PANEL_CONFIG_DOCUMENT_VERSION;
   private v1Available_ = false;
   private maxV2DocumentBytes_ = MAX_V2_DOCUMENT_BYTES;
+  private maxDurableDocumentBytes_: number | null = null;
   private preservesInactiveRecords_ = false;
   private readDepth_ = 1;
   private writeDepth_ = 1;
@@ -176,6 +178,9 @@ export class NativePanelConfigClient {
         const v2Limit = configuration?.max_v2_document_bytes;
         this.maxV2DocumentBytes_ = Number.isInteger(v2Limit) && Number(v2Limit) > 0
           ? Math.min(Number(v2Limit), MAX_V2_DOCUMENT_BYTES) : MAX_V2_DOCUMENT_BYTES;
+        const durableLimit = configuration?.max_durable_document_bytes;
+        this.maxDurableDocumentBytes_ = Number.isSafeInteger(durableLimit) && Number(durableLimit) >= 0
+          ? Number(durableLimit) : null;
         if (supported !== null && (configuration?.read || configuration?.write || versions.some((version) => version !== PANEL_CONFIG_DOCUMENT_VERSION))) this.knownNative_ = true;
         this.confirmedUnsupported_ = supported === false && configuration?.read === false && configuration?.write === false &&
           versions.every((version) => version === PANEL_CONFIG_DOCUMENT_VERSION);
@@ -324,6 +329,11 @@ export class NativePanelConfigClient {
           ? encodePanelPageDocument(updated)
           : version === V2_DOCUMENT_VERSION ? convertNativeV1ToV2(encodePanelConfig(updated)) : encodePanelConfig(updated);
         if (version === V2_DOCUMENT_VERSION && body.length > this.maxV2DocumentBytes_) return "too-large";
+        // A converted transport representation can exceed the saved-byte
+        // limit while its durable form still fits. Firmware checks that case
+        // after lossless conversion; the editor can check identical formats.
+        if (version === this.durableVersion_ && this.maxDurableDocumentBytes_ !== null &&
+            body.length > this.maxDurableDocumentBytes_) return "too-large";
         const next = await this.fetch_("/api/v1/config", {
           method: "PUT",
           cache: "no-store",

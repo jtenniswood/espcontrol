@@ -1,14 +1,15 @@
 #pragma once
 
+#include <algorithm>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
 
 #include "configuration_buffer.h"
+#include "configuration_service.h"
 
 namespace espcontrol::configuration {
 
-class ConfigurationService;
 class ConfigurationMainLoop;
 
 struct PanelConfigHttpContext {
@@ -49,6 +50,14 @@ inline void bind_panel_config_http_context(
 
 inline bool panel_config_http_context_ready() {
   return panel_config_http_context().ready.load(std::memory_order_acquire);
+}
+
+// The wire representation may be larger than the selected durable slot.
+// Exclude both storage headers and respect a smaller borrowed HTTP workspace.
+inline size_t panel_config_writable_document_bytes() {
+  const auto &context = panel_config_http_context();
+  if (!panel_config_http_context_ready() || context.service == nullptr) return 0;
+  return std::min(context.document_capacity, context.service->maximum_document_size());
 }
 
 // Capabilities must not report a permanent legacy fallback while the deferred

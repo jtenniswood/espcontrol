@@ -43,5 +43,6 @@ class AsyncWebHandler {
   virtual void handleRequest(AsyncWebServerRequest *) {}
 };
 class AsyncWebServer {public:void addHandler(AsyncWebHandler *) {}};
+inline AsyncWebServer *global_async_web_server() { static AsyncWebServer server; return &server; }
 }  // namespace web_server_idf
 }  // namespace esphome

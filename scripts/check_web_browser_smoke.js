@@ -388,6 +388,7 @@ async function installRoutes(context, slug, options = {}) {
           configuration: { read: true, write: true, document_versions: nativeState.documentVersions || [1],
             preserves_inactive_records: nativeState.preservesInactiveRecords,
             max_record_body_bytes: nativeState.maxRecordBodyBytes, max_v2_document_bytes: 524288,
+            max_durable_document_bytes: nativeState.maxDurableDocumentBytes,
             max_navigation_depth: nativeState.readDepth,
             writable_navigation_depth: nativeState.writeDepth,
             durable_document_version: nativeState.durableVersion },
@@ -8456,6 +8457,32 @@ async function assertNestedWriterLimits(browser,testCase) {
   }
 }
 
+async function assertNestedDurableByteLimit(browser,testCase) {
+  const document={deviceProfile:testCase.slug,buttons:{1:";Budget Root;;;;;subpage"},
+    subpages:{1:"~B,1|G,,Child",33:"~B"},settings:{button_order:"1"}};
+  const nativeState={...nativeConfigState(testCase.slug),documentVersions:[1,2],readDepth:2,writeDepth:2,durableVersion:2,
+    document,maxDurableDocumentBytes:encodePanelPageDocument(document).length};
+  const before=JSON.stringify(document);
+  const context=await browser.newContext({viewport:testCase.viewport});await installRoutes(context,testCase.slug,{nativeState});
+  const page=await context.newPage();await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`,{waitUntil:"domcontentloaded"});
+    await page.waitForSelector('.sp-main [data-slot="1"] .sp-subpage-badge');
+    await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+    await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+    await page.locator('.sp-main .sp-empty-cell').first().click();
+    await page.getByRole("button",{name:"Switch card type",exact:true}).click();
+    if(!await page.getByLabel("Entity",{exact:true}).isVisible())await page.getByRole("button",{name:"Card Settings",exact:true}).click();
+    await page.getByLabel("Entity",{exact:true}).fill("light.over_limit");
+    await page.getByRole("button",{name:"Save",exact:true}).click();
+    await page.locator('.sp-banner.sp-error').filter({hasText:"storage capacity"}).waitFor();
+    assert(await page.locator('.sp-settings-overlay.sp-visible').isVisible(),"durable-byte rejection retains the card draft");
+    assert.strictEqual(nativeState.puts.length,0,"oversized durable document is rejected before PUT");
+    assert.strictEqual(JSON.stringify(nativeState.document),before,"durable-byte rejection leaves the entire graph unchanged");
+    console.log(`${testCase.slug}: durable-byte limit rejects nested saves before PUT and retains the draft`);
+  } finally {await context.close();}
+}
+
 function nestedEditorCases() {
   return [...new Map(ACTIVE_CASES.map(testCase => [testCase.slots,testCase])).values()];
 }
@@ -8630,7 +8657,7 @@ async function assertNestedBackup(browser,testCase) {
     }
     if (process.env.ESPCONTROL_NESTED_PAGES_ONLY === "1") {
       for(const testCase of nestedEditorCases())
-        { await assertNestedPageEditor(browser,testCase); await assertNestedWriterLimits(browser,testCase); }
+        { await assertNestedPageEditor(browser,testCase); await assertNestedWriterLimits(browser,testCase); await assertNestedDurableByteLimit(browser,testCase); }
       return;
     }
     if (process.env.ESPCONTROL_BACKUP_ADMISSION_ONLY === "1") {
@@ -8748,6 +8775,7 @@ async function assertNestedBackup(browser,testCase) {
       await assertNestedPageEditor(browser,testCase);
       await assertNestedBackup(browser,testCase);
       await assertNestedWriterLimits(browser,testCase);
+      await assertNestedDurableByteLimit(browser,testCase);
     }
     await assertHostedCompatibility(browser);
     await assertFirmwareRetryFeedback(browser);
