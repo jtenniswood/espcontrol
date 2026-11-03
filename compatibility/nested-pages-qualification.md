@@ -426,6 +426,34 @@ the tested corrections. A new sequential factory matrix passes all nine profiles
 current pin, with completed log hashes, SDK markers and unchanged sources
 verified. The preceding all-nine SDK1 matrix remains a separate checkpoint.
 
+The independent generation notification and deferred-refresh correction at
+`7560bf91a` passes 256 web-unit checks, type checking, generated-bundle freshness
+and the complete real-browser suite on all nine layouts. Six focused host checks
+and both SDK variants of the event-stream lifecycle test pass. Linux CI passes
+243 of 244 firmware tests; the remaining HTTP test still expects every retained
+row to be active despite an order of `B,1`. Its follow-up checks exactly one
+active row and preservation/exclusion of the others. The complete sanitized
+HTTP v1/v2 suite passes with those corrected assertions. The full local firmware
+build is not credited: macOS Clang stops on an existing unused constant in the
+timer fixture.
+
+A verified SDK2 S3 display-mode diagnostic uses the same grouped 1,440-message,
+128 KiB value workload. With display-off verified before and after delivery,
+the response arrives in 11.634 seconds and the full cache is observed. With
+display-active verified before delivery, no ordered response arrives within
+30 seconds; local TCP counters still show 108,659 outgoing bytes near the end.
+This narrows the investigation to a contribution from active-display work;
+it does not identify the specific work or qualify unpaced burst handling.
+Exact original firmware, native-v1 bytes at generation 1073 and all protected
+settings/PIN/reset/sleep/update preferences are verified restored. A preceding
+attempt completes the asleep condition but fails to wake through Home navigation;
+it is excluded as a pair and restores generation 1070. Fixed timing-only
+instrumentation is prepared separately; no performance fix is claimed.
+
+All nine factory profiles compile at `7560bf91a` with ESPHome 2026.10.2.
+Completed logs, hashes and SDK markers are verified. The assertion-only follow-up
+and this record do not change those tested firmware or browser sources.
+
 ## Remaining gates
 
 All nine production factory profiles compile at `c05fde64f` with the current

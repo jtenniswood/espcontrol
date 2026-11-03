@@ -390,7 +390,11 @@ void historical_capacity_reads_and_child_folder_writes() {
     const auto saved=version==1?f.put(retained,"1","\"1\""):f.put(v2,"2","\"v2-1\"");
     assert(status(saved)==204&&f.runtime.active().generation()==2);
     assert(f.runtime.active().page(1)->card_count==limits.cards_per_subpage+1);
-    assert(f.runtime.active().page(1)->runtime_card_count==limits.cards_per_subpage);
+    const auto *page=f.runtime.active().page(1);
+    assert(page->runtime_card_count==1);
+    assert(page->includes_runtime_card(page->first_card));
+    for(CardId id=page->first_card+1;id<page->first_card+page->card_count;++id)
+      assert(!page->includes_runtime_card(id)&&!f.runtime.active().runtime_card(id));
     assert(records(f.get().response)==records(retained));
   }
   for(const auto& limits:DEVICE_UI_PROFILES)for(uint16_t version:{1,2}) {
