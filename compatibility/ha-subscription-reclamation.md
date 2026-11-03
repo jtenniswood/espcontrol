@@ -52,6 +52,12 @@ enumeration therefore retain the audited behaviour. The bridge's host fixture
 now generates its SDK version from `.github/esphome.env`, so changing the pin
 cannot leave that test silently compiling against an older hard-coded version.
 
+The 2026.10.2 audit compares the same four files against 2026.10.1: all are
+byte-identical, and the 2026.10.2 Docker image matches the installed wheel.
+The bridge explicitly accepts both audited patches. A host regression runs the
+real transport behaviour under each version and verifies that the next,
+unaudited patch fails compilation. The repository SDK pin is managed separately.
+
 The native protocol has no remote-unsubscribe message. Home Assistant may keep
 announcing retired entities until its next reconnect; those replies are ignored.
 This stage reclaims device-owned registrations, not Home Assistant's own memory.

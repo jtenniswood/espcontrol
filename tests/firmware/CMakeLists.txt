@@ -1294,6 +1294,9 @@ target_compile_options(home_assistant_transport_runtime_test PRIVATE -Wall -Wext
 target_include_directories(home_assistant_transport_runtime_test PRIVATE
   ${CMAKE_CURRENT_BINARY_DIR}/owned_ha_version owned_ha_stubs stubs ../../components/espcontrol)
 add_test(NAME home_assistant_transport_runtime_test COMMAND home_assistant_transport_runtime_test)
+add_test(NAME home_assistant_transport_sdk_guard_test
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/home_assistant_transport_sdk_guard_test.py
+          ${CMAKE_CXX_COMPILER})
 
 add_executable(artwork_controller_test artwork_controller_test.cpp)
 target_compile_features(artwork_controller_test PRIVATE cxx_std_17)
