@@ -474,9 +474,39 @@ zero invalidations with the same 301,420 retained host scene bytes. Cache tests
 cover unrelated/shared channels, reconnects and revision wrap boundaries; full
 scene tests pass all four grid sizes, including visible-update and child-indicator
 positive controls. The new hidden-update regression fails against the isolated
-old renderer. Physical replay and fresh firmware qualification for this follow-up
-are pending; the preceding green CI and nine-profile matrix qualify earlier
-sources. No unpaced-burst performance pass is claimed yet.
+old renderer. Implementation `ede961755` passes CI and all nine sequential factory
+builds on ESPHome 2026.10.2; log hashes, SDK markers and frozen sources are verified.
+Browser sources are unchanged from the completed nine-layout run.
+
+The controlled S3 after-probe `c632284c7` changes only the three runtime files
+and its label from timing baseline `7feec25d9`. The same observer/feed protocol
+now completes all 1,440 reports in 11.610 seconds with no card paints and a full
+131,072-byte cache. Application-loop scopes total 0.165 seconds, including
+0.141 seconds in scene scopes; callback scopes total 0.283 seconds. The scopes
+overlap and omit other framework work. Instrumented static RAM remains 204,879
+bytes and code grows 268 bytes; these are not settled heap measurements. Exact
+original firmware/data/settings are verified restored at generation 1081.
+
+A separate ordinary-client replay omits the timing observer and counter
+activation, retaining the library's default ten-second response limit. Its
+first ordered response times out, so no burst/phase completes; cleanup verifies
+exact original firmware/data/settings at generation 1083. This rules out the
+extra observer as the sole cause. The redraw correction is physically observed,
+while unpaced-burst qualification and attribution of the remaining delay remain
+open. No longer timeout is credited as a performance pass.
+
+A further timing-only probe `c4c62a2f0` keeps the same runtime and adds
+within-component callback-gap and public LVGL timer scopes. Both hooks are
+exercised: 1,296 gaps between successive callbacks in the same API component
+iteration total 8.555 seconds; 146 LVGL timer calls total 0.070 seconds. The
+configured core loop interval is 16 ms. All 1,440 callbacks complete with a full
+cache and no card paints; the ordered response arrives in 11.585 seconds.
+Between-callback gaps include SDK dispatch/matching, framing and socket reads;
+they are not an isolated measurement of subscription lookup or CPU execution.
+The pinned SDK scans its subscription list for each incoming state and recomputes
+C-string lengths during comparison, making that path the next investigation
+target. No SDK/framework optimization has been implemented. Exact original
+firmware/data/settings are verified restored at generation 1085.
 
 ## Remaining gates
 
