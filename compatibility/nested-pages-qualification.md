@@ -7,9 +7,9 @@ enable native v2/depth two without declaring a published reader floor.
 ## S3 memory comparison
 
 The before image rebuilds the starting development source `36f482d7c`; it is
-not a bitwise readback of the previously running flash. The corrected checkpoint
-after image is private source `8de157565`, based on `95037c8c3`, labelled
-`lab-nested-95037c8c3`. Both use ESPHome 2026.10.1 and ESP-IDF 5.5.6 on the same
+not a bitwise readback of the previously running flash. The final admission-guard
+after image is private source `d8e850ebc`, based on `ac0fad1ff`, labelled
+`lab-nested-ac0fad1ff`. Both use ESPHome 2026.10.1 and ESP-IDF 5.5.6 on the same
 physical 4-inch S3, with its saved settings and plaintext API.
 
 The corrected runs apply the same decoded flat workloads in the same order.
@@ -22,21 +22,21 @@ it does not mean firmware image size.
 
 | Workload | Internal heap free, before → after | PSRAM free, before → after | Combined free change |
 | --- | ---: | ---: | ---: |
-| Original dashboard | 76.1 → 79.8 KiB | 2276.5 → 2108.6 KiB | −164.1 KiB |
-| Empty | 89.2 → 81.5 KiB | 2349.1 → 2323.0 KiB | −33.9 KiB |
-| Nine sensors | 85.9 → 80.8 KiB | 2435.5 → 2401.6 KiB | −39.0 KiB |
-| 72 sensors in nine folders | 43.2 → 74.0 KiB | 2217.4 → 2349.6 KiB | +163.0 KiB |
+| Original dashboard | 76.1 → 79.6 KiB | 2276.5 → 2106.9 KiB | −166.0 KiB |
+| Empty | 89.2 → 81.4 KiB | 2349.1 → 2321.3 KiB | −35.8 KiB |
+| Nine sensors | 85.9 → 80.7 KiB | 2435.5 → 2399.9 KiB | −40.9 KiB |
+| 72 sensors in nine folders | 43.2 → 73.9 KiB | 2217.4 → 2347.9 KiB | +161.2 KiB |
 
 The original dashboard includes a cover-art media card. Its combined free range
-is 2,409,011–2,409,039 bytes before and 2,240,747–2,240,951 after. The protocol
+is 2,409,011–2,409,039 bytes before and 2,238,487–2,239,211 after. The protocol
 does not directly observe image buffers or display mode; that regression is
 not yet isolated. Real HA content can update, and fixed-order replacements can
 retain caches. Subtracting rows therefore does not isolate per-card costs.
 These are settled measurements, not navigation or image/decode peaks.
 The maximum Sensor layout also improves the largest internal block from
-24,576 to 31,744 bytes. Its largest PSRAM block falls from 2,228,224 to
-1,998,848 bytes, so increased combined free memory does not imply that every
-allocation shape improves.
+24,576 to 31,744 bytes. Its largest PSRAM block improves from 2,228,224 to
+2,293,760 bytes. These figures apply to that workload; the original dashboard's
+largest PSRAM block instead falls from 2,293,760 to 1,835,008 bytes.
 
 Earlier synthetic fixtures put Sensor IDs in the action field rather than the
 Sensor field, so their nine-sensor and maximum-layout claims are withdrawn.
@@ -44,21 +44,26 @@ The original raw samples and failed proofs remain preserved. An observer issue
 in a later attempt restarted the subscription stream before its last entry;
 that attempt is also excluded. The accepted pair waits for delayed grid refresh
 and drains the complete stream before retrying. Both cohorts restore exact
-original dashboard data and verify all 78 settings/PIN status; final firmware
-and automatic-update cleanup is tracked separately.
+original dashboard data and verify all 78 settings/PIN status. Final recovery
+also verifies the original-source firmware, exact native-v1 bytes at generation
+1037, reset status and the original automatic-update setting restored.
 
 This checkpoint includes newer main changes and larger RGB bounce buffers, so
 it is an end-to-end build comparison. Static RAM falls from 206,455 to 204,503
-bytes. OTA image size grows from 5,019,968 to 5,260,592 bytes. ELF code and
-read-only sections grow by 240,752 bytes. Both builds enable instruction and
+bytes. OTA image size grows from 5,019,968 to 5,260,656 bytes. ELF code and
+read-only sections grow by 240,812 bytes. Both builds enable instruction and
 read-only-data copies into PSRAM, so code growth offsets runtime savings; the
 S3 also spends 19,200 more internal bytes on its 30-row RGB bounce buffers.
 Section sizes are separate accounting, not exact live PSRAM reservations. See
 the [pinned IDF explanation](https://docs.espressif.com/projects/esp-idf/en/v5.5.6/esp32s3/api-guides/external-ram.html#move-instructions-in-flash-to-psram).
 
-The subsequent visible-order admission guard `ac0fad1ff` passes its focused
-host regressions. Its firmware images and factory matrix remain to qualify;
-these checkpoint measurements do not claim to test that later build.
+A separate host allocation census uses the same corrected payloads and the
+real LVGL scene, with mocked hardware, HA transport and image decoding. On that
+64-bit host, the original dashboard reserves 38,968 bytes in the scene arena
+versus 13,981 empty and retains one unloaded artwork lease. This is not an ESP32
+heap measurement and does not isolate the media regression. No HA values were
+supplied in either that census or the settled Sensor fixtures; physical tests
+with populated state caches and real image buffers remain required.
 
 ## Physical checks and recovery
 
@@ -90,9 +95,9 @@ these checkpoint measurements do not claim to test that later build.
   and 52,558-byte fixtures return HTTP 413 without changing the preceding
   configuration. The full 7,620-card shape is not submitted because its
   948,591-byte representation exceeds the advertised transport ceiling.
-  Original dashboard data and all 79 settings/PIN/reset status are retained;
+  Original dashboard data, 78 protected settings and PIN/reset status are retained;
   the exact cached original firmware and native-v1 dashboard are now restored,
-  with all 79 settings/PIN/reset and both original automatic-update settings
+  with all 78 protected settings/PIN/reset and both original automatic-update settings
   verified. Other P4 tests remain in progress.
 - The actual 10-inch embedded editor also passes creation inside an existing
   folder, a Sensor leaf bound through its Sensor field, reload, immediate-parent
@@ -100,7 +105,7 @@ these checkpoint measurements do not claim to test that later build.
   native settings, a sibling folder and stored inactive page remain unchanged.
 - The timing-only 10-inch image `d7f300074` completes 1,000 cycles, 3,000 actual
   page changes and three API reconnects. All 21 retained-resource fields stay
-  unchanged; exact configuration bytes/generation and all 79 settings/PIN/reset
+  unchanged; exact configuration bytes/generation and all 78 protected settings/PIN/reset
   checks pass. Full resource snapshots occur only while stopped at Home.
   Each request waits for the renderer's page-change acknowledgment. This does
   not establish a reliable fixed 500 ms request interval: an earlier sender
@@ -108,7 +113,7 @@ these checkpoint measurements do not claim to test that later build.
   acknowledgment latency of 522 ms, 95th percentile 544 ms and maximum 2,126 ms,
   including network and polling time. These counters do not prove pixel stability.
 - The 4.3-inch reader bridge boots with its exact original native-v1 dashboard,
-  all 79 settings/PIN/reset status and a complete v2 read projection. The initial
+  all 78 protected settings/PIN/reset status and a complete v2 read projection. The initial
   nested candidate rejects saving that dashboard: its folders retain six and
   seven records behind a five-card grid. Both v1 and v2 host reproduction fail
   write admission before the fix. PageStore now retains all records while
@@ -119,12 +124,26 @@ these checkpoint measurements do not claim to test that later build.
   profiles; physical qualification of this fix remains required. No dashboard
   replacement was committed on the 4.3-inch panel during the rejected checks.
 
+P4 snapshots also contain one live backlight observation, for 79 entries in
+total. Wake/sleep and automatic brightness can change that output; configured
+brightness controls remain among the 78 protected settings.
+
+After these tests, the separately authorized SDK-update task installed ESPHome
+2026.10.2 on the local displays and verified the saved dashboard generations
+unchanged. It corrected the replacement 7-inch panel to the V2 profile and
+verified its dashboard byte-for-byte. Further qualification must preserve those
+newer images as recovery targets. The measurements above remain a 2026.10.1
+comparison. The native API subscription bridge has been audited against both
+patches; matching API sources are byte-identical and guard tests accept only
+those two audited versions.
+
 ## Remaining gates
 
-All nine production factory profiles compile at `7c0abe97a`; its PR CI passes
-all 52 required tasks. Compilation does not establish physical layout parity.
-Final-build paired memory runs, the original-dashboard memory investigation,
+All nine production factory profiles compile at `ac0fad1ff` with ESPHome
+2026.10.1. CI also passes at `36b5b9cd0`, including the audited SDK guard.
+Compilation does not establish physical layout parity or qualify the full
+feature on ESPHome 2026.10.2. The original-dashboard memory investigation,
 nested visual confirmation, remaining P4 qualification, further replacement/
-delayed-event/modal/takeover checks, image peaks and physical storage-failure
+delayed-event/modal/takeover checks, populated HA state caches, image peaks and physical storage-failure
 qualification remain open. Published-reader and mirror-retirement gates in
 [the delivery plan](nested-pages-delivery.md) still apply before release enablement.

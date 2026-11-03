@@ -29,8 +29,9 @@ The S3 subsequently completed 1,000 navigation cycles, three reconnects and
 bounded-resource checks, followed by an initial before/after idle memory cohort
 and verified restoration of its original firmware, dashboard and settings.
 Its initial synthetic Sensor fixtures were found to have unbound Sensor fields.
-A corrected checkpoint pair now verifies all expected registrations; final-build
-measurements and the original dashboard's memory regression remain to investigate.
+A corrected final-build pair now verifies all expected registrations and the
+original firmware/data restoration. The original dashboard's memory regression
+and physical tests with populated HA state caches remain to investigate.
 The [qualification record](nested-pages-qualification.md) gives the source scopes,
 memory results, required reader bridge for old-firmware recovery and remaining
 physical/visual gates. Release enablement remains unfinished.
