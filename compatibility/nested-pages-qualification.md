@@ -156,7 +156,7 @@ not establish pixel stability, image/decode peaks or physical P4 cache behavior.
   off-grid folder inactive. An explicitly overfull visible order is still
   rejected; stored inactive rows and requested grid positions are checked
   separately. Sanitized regression coverage passes on all nine
-  profiles; physical qualification of this fix remains required. No dashboard
+  profiles. The physical recheck below qualifies the corrected save path. No dashboard
   replacement was committed on the 4.3-inch panel during the rejected checks.
 - The corrected 4.3-inch SDK2 probe `15b2d4377` (base `c28c5b43f`) subsequently
   boots with the exact original dashboard and passes the complete v2 read
@@ -175,6 +175,23 @@ not establish pixel stability, image/decode peaks or physical P4 cache behavior.
   switches are observed ON; a delayed switch acknowledgment is reconciled
   without repeating the device write. This illustrates separate native-storage,
   compatibility-mirror and format-conversion constraints.
+- A compact 10-inch fixture keeps the same 400 cards (20 folders and 380 climate
+  controls) and 7,600 state/attribute pairs, while shortening synthetic IDs and
+  labels. Its native-v1/v2 sizes are 9,443/29,713 bytes. Four physical SDK2
+  same/disjoint replacements commit with HTTP 204, fill the complete 524,288-byte
+  cache and complete two folder round trips each. Fresh observers receive
+  exactly 7,600 raw registrations per replacement, with no duplicates, missing
+  or unexpected pairs. All 18 checked retained-resource fields remain equal:
+  scene reservations are 1,171,219 bytes with seven live allocations and 180
+  widgets. An API reconnect, fresh exact registration audit and full-cache
+  refill also pass. The final snapshot has 341,671 free internal bytes and
+  17,582,652 free PSRAM bytes; no scene allocation/accounting failures are
+  reported. Exact upgraded firmware, original native-v1 bytes at generation
+  354, all 78 protected settings/PIN/reset and both original automatic-update
+  preferences are verified restored. These checks use ordered input batches
+  and do not establish burst throughput, pixel stability or isolated
+  image/decode peaks. The larger fixture's compatibility warning remains an
+  independent gate.
 
 P4 snapshots also contain one live backlight observation, for 79 entries in
 total. Wake/sleep and automatic brightness can change that output; configured
@@ -188,9 +205,9 @@ newer images as recovery targets. The measurements above remain a 2026.10.1
 comparison. The native API subscription bridge has been audited against both
 patches; matching API sources are byte-identical and guard tests accept only
 those two audited versions.
-The replacement 7-inch V2 is subsequently unavailable; the user has asked that
-it remain out of the remaining tests for now. No qualification firmware or
-dashboard has been installed on that panel in this task.
+The user confirms the replacement 7-inch V2 is unavailable for now. Remaining
+tests are held, with no qualification writes during this SDK2 phase. Earlier
+runtime layout testing on this panel remains a separate, user-confirmed result.
 
 ## Remaining gates
 
@@ -203,7 +220,7 @@ add main's host flashing guard and guidance. CI also passes at `36b5b9cd0` and
 Compilation does not establish physical layout parity or qualify the full
 feature on ESPHome 2026.10.2. The original-dashboard memory investigation,
 nested visual confirmation, remaining P4 qualification, further replacement/
-delayed-event/modal/takeover checks, populated P4 HA state caches, burst replay,
+delayed-event/modal/takeover checks, populated HA caches on other P4 profiles, burst replay,
 image peaks and physical storage-failure
 qualification remain open. Published-reader and mirror-retirement gates in
 [the delivery plan](nested-pages-delivery.md) still apply before release enablement.
