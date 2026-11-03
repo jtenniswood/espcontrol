@@ -7,53 +7,58 @@ enable native v2/depth two without declaring a published reader floor.
 ## S3 memory comparison
 
 The before image rebuilds the starting development source `36f482d7c`; it is
-not a bitwise readback of the previously running flash. The uninstrumented
-after image is private source `d64c2829e`, based on `7c0abe97a`, labelled
-`lab-nested-05bf5c0f8`. Both use ESPHome 2026.10.1 and ESP-IDF 5.5.6 on the same
+not a bitwise readback of the previously running flash. The corrected checkpoint
+after image is private source `8de157565`, based on `95037c8c3`, labelled
+`lab-nested-95037c8c3`. Both use ESPHome 2026.10.1 and ESP-IDF 5.5.6 on the same
 physical 4-inch S3, with its saved settings and plaintext API.
 
-The initial runs apply the same decoded flat workloads in the same order. Each waits
-130 seconds, then takes three existing standard memory-sensor publications
-61 seconds apart. No extra diagnostic RPC, browser session or synthetic HA
-feed runs during sampling. Values below are medians. Total means combined free
-internal heap plus free PSRAM; it does not mean firmware image size.
-
-The synthetic nine-sensor and maximum-flat fixtures were found to put their
-sensor IDs in the action-entity field instead of the Sensor field. A subsequent
-physical dependency check reported zero registered channels. Their measurements
-do not qualify sensor workloads; corrected paired runs are required. Only the
-valid original-dashboard and empty rows from that initial cohort are shown here.
-
-A fresh corrected before cohort has since completed all four workloads, with
-three settled samples each. Reverse HA registration checks verify all nine and
-72 expected Sensor states before sampling. The observer waits for delayed grid
-refresh and drains the complete registration stream before retrying; an earlier
-attempt restarted that stream too soon and is excluded. The paired after run
-uses updated private source `8de157565`, based on the off-grid fix `95037c8c3`,
-and remains in progress. No completed comparison from this new pair is claimed.
+The corrected runs apply the same decoded flat workloads in the same order.
+Reverse HA registration checks verify all nine and 72 expected Sensor states,
+then disconnect the observer. Each workload waits 130 seconds before three
+existing standard memory-sensor publications 61 seconds apart. No extra
+firmware diagnostic RPC, browser or fabricated HA feed runs during sampling.
+Values below are medians. Total means combined free internal heap and PSRAM;
+it does not mean firmware image size.
 
 | Workload | Internal heap free, before → after | PSRAM free, before → after | Combined free change |
 | --- | ---: | ---: | ---: |
-| Original dashboard | 75.3 → 79.9 KiB | 2276.3 → 2284.4 KiB | +12.7 KiB |
-| Empty | 88.7 → 81.4 KiB | 2349.0 → 2322.9 KiB | −33.4 KiB |
+| Original dashboard | 76.1 → 79.8 KiB | 2276.5 → 2108.6 KiB | −164.1 KiB |
+| Empty | 89.2 → 81.5 KiB | 2349.1 → 2323.0 KiB | −33.9 KiB |
+| Nine sensors | 85.9 → 80.8 KiB | 2435.5 → 2401.6 KiB | −39.0 KiB |
+| 72 sensors in nine folders | 43.2 → 74.0 KiB | 2217.4 → 2349.6 KiB | +163.0 KiB |
 
-The original-dashboard after samples span 2,421,007–2,429,347 combined free
-bytes; before samples span 2,407,891–2,408,067. The empty workload has identical
-samples within each run. Largest free blocks remain 31,744 internal bytes and
-2,293,760 PSRAM bytes in every sample. These are settled idle measurements
-with the original settings, not a direct observation of display mode or a
-navigation/image-decode peak. Real HA values may update, and replacements can
-retain caches; subtracting rows does not isolate per-card allocation costs.
+The original dashboard includes a cover-art media card. Its combined free range
+is 2,409,011–2,409,039 bytes before and 2,240,747–2,240,951 after. The protocol
+does not directly observe image buffers or display mode; that regression is
+not yet isolated. Real HA content can update, and fixed-order replacements can
+retain caches. Subtracting rows therefore does not isolate per-card costs.
+These are settled measurements, not navigation or image/decode peaks.
+The maximum Sensor layout also improves the largest internal block from
+24,576 to 31,744 bytes. Its largest PSRAM block falls from 2,228,224 to
+1,998,848 bytes, so increased combined free memory does not imply that every
+allocation shape improves.
 
-The full candidate includes newer main changes and larger RGB bounce buffers,
-so this is an end-to-end build comparison. Static RAM falls from 206,455 to
-204,503 bytes. OTA image size grows from 5,019,968 to 5,260,560 bytes. ELF code
-and read-only sections grow by 240,716 bytes. Both configurations enable
-instruction/read-only-data copies into PSRAM, so code growth offsets runtime
-savings; the S3 also spends 19,200 more internal bytes on its 30-row RGB bounce
-buffers. Section sizes are separate accounting, not an exact measurement of
-live PSRAM reservations. See the
-[pinned IDF explanation](https://docs.espressif.com/projects/esp-idf/en/v5.5.6/esp32s3/api-guides/external-ram.html#move-instructions-in-flash-to-psram).
+Earlier synthetic fixtures put Sensor IDs in the action field rather than the
+Sensor field, so their nine-sensor and maximum-layout claims are withdrawn.
+The original raw samples and failed proofs remain preserved. An observer issue
+in a later attempt restarted the subscription stream before its last entry;
+that attempt is also excluded. The accepted pair waits for delayed grid refresh
+and drains the complete stream before retrying. Both cohorts restore exact
+original dashboard data and verify all 78 settings/PIN status; final firmware
+and automatic-update cleanup is tracked separately.
+
+This checkpoint includes newer main changes and larger RGB bounce buffers, so
+it is an end-to-end build comparison. Static RAM falls from 206,455 to 204,503
+bytes. OTA image size grows from 5,019,968 to 5,260,592 bytes. ELF code and
+read-only sections grow by 240,752 bytes. Both builds enable instruction and
+read-only-data copies into PSRAM, so code growth offsets runtime savings; the
+S3 also spends 19,200 more internal bytes on its 30-row RGB bounce buffers.
+Section sizes are separate accounting, not exact live PSRAM reservations. See
+the [pinned IDF explanation](https://docs.espressif.com/projects/esp-idf/en/v5.5.6/esp32s3/api-guides/external-ram.html#move-instructions-in-flash-to-psram).
+
+The subsequent visible-order admission guard `ac0fad1ff` passes its focused
+host regressions. Its firmware images and factory matrix remain to qualify;
+these checkpoint measurements do not claim to test that later build.
 
 ## Physical checks and recovery
 
@@ -73,7 +78,7 @@ live PSRAM reservations. See the
   unavailable (HTTP 503), without erasing the data. Recovery used a qualified
   dual-reader/v1-writer bridge and an explicit save of the complete original
   flat dashboard as v1 before installing the original-source image.
-- After both memory cohorts, the original-source firmware, exact original
+- After the initial memory cohorts, the original-source firmware, exact original
   native-v1 bytes, all 78 saved settings, PIN/reset status and original automatic
   update setting were verified restored. This recovery of a known flat backup
   does not make arbitrary nested data readable by old v1-only firmware.
@@ -86,7 +91,9 @@ live PSRAM reservations. See the
   configuration. The full 7,620-card shape is not submitted because its
   948,591-byte representation exceeds the advertised transport ceiling.
   Original dashboard data and all 79 settings/PIN/reset status are retained;
-  original-firmware recovery and the other P4 tests remain in progress.
+  the exact cached original firmware and native-v1 dashboard are now restored,
+  with all 79 settings/PIN/reset and both original automatic-update settings
+  verified. Other P4 tests remain in progress.
 - The actual 10-inch embedded editor also passes creation inside an existing
   folder, a Sensor leaf bound through its Sensor field, reload, immediate-parent
   Back and the two-level creation limit. Both saves are atomic; root records,
@@ -116,7 +123,8 @@ live PSRAM reservations. See the
 
 All nine production factory profiles compile at `7c0abe97a`; its PR CI passes
 all 52 required tasks. Compilation does not establish physical layout parity.
-Corrected paired sensor memory runs, nested visual confirmation, remaining P4 qualification, further replacement/
+Final-build paired memory runs, the original-dashboard memory investigation,
+nested visual confirmation, remaining P4 qualification, further replacement/
 delayed-event/modal/takeover checks, image peaks and physical storage-failure
 qualification remain open. Published-reader and mirror-retirement gates in
 [the delivery plan](nested-pages-delivery.md) still apply before release enablement.
