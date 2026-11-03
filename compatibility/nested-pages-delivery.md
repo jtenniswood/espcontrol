@@ -105,6 +105,14 @@ metadata admission and rollback, and unchanged allocation for an unchanged
 dashboard. These budgets still require physical qualification; writable depth
 remains one and durable document version remains one.
 
+Writer retirement must also preserve editing and restoring existing flat
+dashboards that fit v1 but exceed the saved-document limit after v2 conversion.
+The 400-card P4 climate fixture is 25,087 bytes in v1 and 53,407 bytes in v2,
+against a 40,932-byte durable limit. A published reader floor alone does not
+resolve that admission gap. Keep the v1 writer until a compatible storage or
+format-selection policy passes this migration case; an oversized replacement
+must leave the current dashboard intact.
+
 ## Agreed behaviour
 
 - Keep current grid sizes and one Back slot on every non-root page.

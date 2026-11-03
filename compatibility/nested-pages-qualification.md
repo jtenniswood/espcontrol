@@ -158,6 +158,23 @@ not establish pixel stability, image/decode peaks or physical P4 cache behavior.
   separately. Sanitized regression coverage passes on all nine
   profiles; physical qualification of this fix remains required. No dashboard
   replacement was committed on the 4.3-inch panel during the rejected checks.
+- The corrected 4.3-inch SDK2 probe `15b2d4377` (base `c28c5b43f`) subsequently
+  boots with the exact original dashboard and passes the complete v2 read
+  projection. A native-v1 save that retains every original field and adds only
+  a qualification setting commits successfully; restoring the exact original
+  bytes also succeeds. Scene reservations return to 22,199 bytes with 54 widgets
+  and no allocation/accounting failures. Exact upgraded firmware, original
+  native-v1 bytes at generation 133, 78 protected settings/PIN/reset and original
+  automatic-update preferences are verified restored. This qualifies the
+  retained-record save fix on hardware, without a nested write or pixel claim.
+- A long-identifier 10-inch flat climate fixture occupies 25,087 native-v1
+  bytes but 53,407 bytes in its v2 projection. Its native-v1 commit returns HTTP
+  202 with `X-Panel-Config-Legacy-Mirror: failed`; it is not credited as a
+  completed full-cache test. The exact upgraded firmware, original data at
+  generation 349 and protected preferences are verified restored. Both update
+  switches are observed ON; a delayed switch acknowledgment is reconciled
+  without repeating the device write. This illustrates separate native-storage,
+  compatibility-mirror and format-conversion constraints.
 
 P4 snapshots also contain one live backlight observation, for 79 entries in
 total. Wake/sleep and automatic brightness can change that output; configured
@@ -171,11 +188,18 @@ newer images as recovery targets. The measurements above remain a 2026.10.1
 comparison. The native API subscription bridge has been audited against both
 patches; matching API sources are byte-identical and guard tests accept only
 those two audited versions.
+The replacement 7-inch V2 is subsequently unavailable; the user has asked that
+it remain out of the remaining tests for now. No qualification firmware or
+dashboard has been installed on that panel in this task.
 
 ## Remaining gates
 
 All nine production factory profiles compile at `ac0fad1ff` with ESPHome
-2026.10.1. CI also passes at `36b5b9cd0`, including the audited SDK guard.
+2026.10.1 and at private `c61cda45b` with ESPHome 2026.10.2 (base `c28c5b43f`
+plus the SDK pin). The rebase onto main `6c10c3d5a` preserves the parent runtime
+branch and every tested firmware/browser source; its three changed files only
+add main's host flashing guard and guidance. CI also passes at `36b5b9cd0` and
+`c28c5b43f`, including the audited SDK guard and the checks selected for each change.
 Compilation does not establish physical layout parity or qualify the full
 feature on ESPHome 2026.10.2. The original-dashboard memory investigation,
 nested visual confirmation, remaining P4 qualification, further replacement/
