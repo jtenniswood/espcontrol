@@ -17,7 +17,7 @@ std::string_view configured_entity(const PageStore& store, CardId card) {
   if (!definition || store.field(*definition, CardField::TYPE) != "media") return {};
   for (PageId id = 0; id < store.page_count(); ++id) {
     const auto* page = store.page(id);
-    if (card >= page->first_card && card < page->first_card + page->runtime_card_count)
+    if (page->includes_runtime_card(card))
       return page->navigable ? store.field(*definition, CardField::ENTITY) : std::string_view{};
   }
   return {};

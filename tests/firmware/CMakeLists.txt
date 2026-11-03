@@ -366,6 +366,7 @@ target_include_directories(page_entity_modal_replay_test PRIVATE stubs ../../com
 add_test(NAME page_entity_modal_replay_test COMMAND page_entity_modal_replay_test)
 
 add_executable(page_card_dependencies_test page_card_dependencies_test.cpp
+  ../../components/espcontrol/page_renderer_layout.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/page_store_goldens.h
   ../../components/espcontrol/page_card_dependencies.cpp
   ../../components/espcontrol/page_entity_state_runtime.cpp

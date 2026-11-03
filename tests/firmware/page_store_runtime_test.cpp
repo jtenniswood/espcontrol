@@ -287,7 +287,7 @@ void write_admission_preserves_boot_and_inactive_source() {
         assert(!admitted&&runtime.preparation_capacity_exceeded()&&!runtime.preparation_allocation_failed());
         assert(resources.prepares==prepares&&arena.memory().reserved_bytes==reserved&&runtime.active().generation()==1);
       }
-      // Both paths retain every source record. Only the visible prefix binds;
+      // Both paths retain every source record. Only placed retained rows bind;
       // writes reject an order that explicitly requests too many positions.
       assert(runtime.prepare(version,source,source_size));
       assert(!runtime.preparation_capacity_exceeded());
@@ -295,7 +295,7 @@ void write_admission_preserves_boot_and_inactive_source() {
       assert(runtime.active().source_size()==source_size&&std::memcmp(runtime.active().source_document(),source,source_size)==0);
       assert(runtime.active().page(1)->card_count==limits.cards_per_subpage+1);
       assert(runtime.active().page(1)->runtime_card_count ==
-        (inactive ? 0 : limits.cards_per_subpage));
+        (inactive || !overfull_order ? 0 : limits.cards_per_subpage));
     }
     assert(backing.allocations.empty()&&arena.memory().reserved_bytes==0&&arena.memory().accounting_errors==0);
   }

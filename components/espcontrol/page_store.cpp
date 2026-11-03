@@ -118,9 +118,9 @@ class PageStoreBuilder {
                                   card_count * sizeof(CardDefinition);
     store_.memory_.source_bytes = size;
     pages[0].card_count = root_count;
-    pages[0].runtime_card_count = limits.slot_count;
     pages[0].navigable = true;
     pages[0].order = intern(order.text());
+    set_runtime_cards(pages[0], limits, true);
 
     PageId next_page = 1;
     CardId next_card = root_count;
@@ -138,10 +138,7 @@ class PageStoreBuilder {
       page.order = intern(subpage_order(raw));
       const auto children = parse_subpage_config(raw);
       page.card_count = children.size();
-      // Back consumes one grid position. Older layouts may retain additional
-      // records; keep their source fields without binding off-grid cards.
-      page.runtime_card_count = page.navigable
-          ? std::min<size_t>(page.card_count, limits.slot_count - 1) : 0;
+      set_runtime_cards(page, limits);
       for (size_t child = 0; child < children.size(); ++child) {
         // This is precisely the existing subpage-to-grid interpretation,
         // including generated card normalization and compact field decoding.
@@ -177,6 +174,31 @@ class PageStoreBuilder {
   }
 
  private:
+  void set_runtime_cards(PageDefinition &page, const DeviceUiLimits &limits, bool root = false) {
+    static_assert(MAX_GRID_SLOTS <= 32, "Page membership must cover the renderer's card IDs");
+    page.runtime_card_mask = 0;
+    if (page.navigable) {
+      const size_t capacity = root ? limits.slot_count : limits.cards_per_subpage;
+      if (root || page.card_count <= capacity) {
+        // Keep the established state ownership for ordinary saved pages.
+        const size_t count = std::min<size_t>(page.card_count, capacity);
+        page.runtime_card_mask = count == 32 ? UINT32_MAX : (uint32_t{1} << count) - 1;
+      } else {
+        // With retained extra rows, Back does not imply that the final row is
+        // hidden: the actual order may place that row in any visible cell.
+        store_.memory_.arena_bytes = offset_;
+        SubpageOrder order;
+        parse_subpage_order(std::string(store_.string(page.order)), limits.slot_count, page.card_count, order);
+        for (size_t position = 0; position < limits.slot_count; ++position) {
+          const int slot = order.positions[position];
+          const size_t cell = order.has_back_token ? position : position + 1;
+          if (cell < limits.slot_count && slot > 0 && slot <= 32)
+            page.runtime_card_mask |= uint32_t{1} << (slot - 1);
+        }
+      }
+    }
+    page.runtime_card_count = __builtin_popcount(page.runtime_card_mask);
+  }
   static bool normalize_v2(PanelConfigV2Reader &reader,const PanelConfigV2Record &card,
                           bool child,bool compact,V2StageState &state,ParsedCfg *parsed) {
     using namespace panel_config_projection_detail;
@@ -281,8 +303,9 @@ class PageStoreBuilder {
     store_.source_version_=PANEL_CONFIG_DOCUMENT_VERSION_2;store_.strings_begin_=offset_;
     store_.memory_.record_bytes=page_count*sizeof(PageDefinition)+card_count*sizeof(CardDefinition);
     store_.memory_.source_bytes=size;
-    pages[0].card_count=root_count;pages[0].runtime_card_count=limits.slot_count;
+    pages[0].card_count=root_count;
     pages[0].navigable=true;pages[0].order=intern(std::string(reader.string(root.third)));
+    set_runtime_cards(pages[0],limits,true);
     for(size_t slot=0;slot<root_count;++slot) {
       ParsedCfg parsed=parse_cfg("");
       if(state.roots[slot]) {
@@ -335,10 +358,8 @@ class PageStoreBuilder {
           (wire_page.third || target.card_count || !folder || !navigable)))return PageStoreStatus::INVALID_DOCUMENT;
       target.parent=parent->reserved;target.owner=position->reserved;
       const auto &parent_page=pages[target.parent];
-      target.navigable=navigable && parent_page.navigable && target.owner>=parent_page.first_card &&
-        target.owner-parent_page.first_card<parent_page.runtime_card_count;
-      target.runtime_card_count=target.navigable
-        ?std::min<size_t>(target.card_count,limits.slot_count-1):0;
+      target.navigable=navigable && parent_page.includes_runtime_card(target.owner);
+      set_runtime_cards(target,limits);
       if(target.navigable)cards[target.owner].target=index;
     }
     for(size_t i=0;i<position_count;++i) {

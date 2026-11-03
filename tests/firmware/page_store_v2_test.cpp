@@ -244,8 +244,9 @@ void retained_off_grid_subpage_cards() {
         const auto &store = runtime.active();
         const auto *page = store.page(1);
         assert(page->card_count == limits.cards_per_subpage + size_t{2});
-        assert(page->runtime_card_count == limits.cards_per_subpage);
-        assert(store.runtime_card(page->first_card + limits.cards_per_subpage - 1));
+        assert(page->runtime_card_count == 1);
+        assert(store.runtime_card(page->first_card));
+        assert(!store.runtime_card(page->first_card + 1));
         assert(!store.runtime_card(page->first_card + limits.cards_per_subpage));
         const auto *hidden = store.card(page->first_card + limits.cards_per_subpage);
         assert(store.field(*hidden, CardField::SENSOR) ==
@@ -276,6 +277,18 @@ void retained_off_grid_subpage_cards() {
     assert(!store.runtime_card(hidden_folder) && store.card(hidden_folder)->target == NO_PAGE);
     assert(!store.runtime_card(store.page(2)->first_card));
     assert(store.field(*store.card(store.page(2)->first_card), CardField::LABEL) == "Nested Leaf");
+    // Moving that retained folder into the order must activate its complete
+    // subtree even though its original slot exceeds the Back-limited prefix.
+    const std::string reordered_order = "B," + std::to_string(limits.slot_count);
+    for (auto &record : records)
+      if (record.kind == K::STRING && record.id == 72)
+        record.text = reordered_order;
+    const auto reordered = wire(records);
+    Arena reordered_arena(arena.size()); PageStore visible_store;
+    assert(stage(reordered, limits, reordered_arena, scratch, visible_store) == PageStoreStatus::OK);
+    assert(visible_store.page(1)->runtime_card_count == 1 && visible_store.page(2)->navigable);
+    assert(visible_store.runtime_card(hidden_folder) && visible_store.card(hidden_folder)->target == 2);
+    assert(visible_store.runtime_card(visible_store.page(2)->first_card));
     ++cases;
   }
 }

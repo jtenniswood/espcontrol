@@ -1129,8 +1129,7 @@ private:
       return NO_PAGE;
     for (PageId p = 0; p < store.page_count(); ++p) {
       const auto *page = store.page(p);
-      if (page->navigable && token.card >= page->first_card &&
-          token.card - page->first_card < page->runtime_card_count)
+      if (page->includes_runtime_card(token.card))
         return p;
     }
     return NO_PAGE;

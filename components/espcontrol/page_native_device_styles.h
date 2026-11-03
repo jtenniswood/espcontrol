@@ -243,10 +243,8 @@ public:
 private:
   bool source(const PageStore &store, PageId page, PageModalToken token) const {
     const auto *definition = store.page(page);
-    return definition && definition->navigable &&
+    return definition && definition->includes_runtime_card(token.card) &&
            token.configuration == store.generation() &&
-           token.card >= definition->first_card &&
-           token.card - definition->first_card < definition->runtime_card_count &&
            store.runtime_card({token.configuration, token.card});
   }
   PageNativeSourceFonts fonts(PageId page) const {

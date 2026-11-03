@@ -32,12 +32,31 @@ struct PageDefinition {
   CardId first_card{0};
   uint16_t card_count{0};
   StringId order{EMPTY_STRING};
+  // Retained definitions may extend beyond this device's visible capacity.
+  // Membership can be sparse when an order places a higher-numbered card.
+  uint32_t runtime_card_mask{0};
+  uint16_t runtime_card_count{0};
   // Legacy documents can retain a subpage behind a non-folder card. Keep its
   // data without making it a navigable target.
   bool navigable{false};
-  // Retained definitions may extend beyond this device's visible capacity.
-  // Runtime owners use this prefix; serialization keeps card_count unchanged.
-  uint16_t runtime_card_count{0};
+  bool includes_runtime_card(CardId id) const {
+    return navigable && id >= first_card && id - first_card < 32 &&
+           (runtime_card_mask & (uint32_t{1} << (id - first_card)));
+  }
+  struct RuntimeCards {
+    CardId first;
+    uint32_t mask;
+    struct Iterator {
+      CardId first;
+      uint32_t remaining;
+      CardId operator*() const { return first + __builtin_ctz(remaining); }
+      Iterator &operator++() { remaining &= remaining - 1; return *this; }
+      bool operator!=(const Iterator &other) const { return remaining != other.remaining; }
+    };
+    Iterator begin() const { return {first, mask}; }
+    Iterator end() const { return {first, 0}; }
+  };
+  RuntimeCards runtime_cards() const { return {first_card, navigable ? runtime_card_mask : 0}; }
 };
 
 struct ConfigurationHandle {
@@ -92,8 +111,7 @@ class PageStore {
     if (id >= card_count_) return nullptr;
     for (PageId page = 0; page < page_count_; ++page) {
       const auto &definition = pages_[page];
-      if (definition.navigable && id >= definition.first_card &&
-          id - definition.first_card < definition.runtime_card_count) return cards_ + id;
+      if (definition.includes_runtime_card(id)) return cards_ + id;
     }
     return nullptr;
   }

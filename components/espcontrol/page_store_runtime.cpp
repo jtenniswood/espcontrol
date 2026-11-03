@@ -35,8 +35,8 @@ bool PageStoreRuntime::prepared_within_limits() const {
           1 + static_cast<size_t>(std::count(order.begin(), order.end(), ','));
       if (cells > limits_.slot_count) return false;
     }
-    for (size_t index = 0; index < page->runtime_card_count; ++index) {
-      const auto *card = staged_.card(page->first_card + index);
+    for (const auto id : page->runtime_cards()) {
+      const auto *card = staged_.card(id);
       const auto type = staged_.field(*card, CardField::TYPE);
       if (type == "subpage" && card->target == NO_PAGE) return false;
       for (size_t support = 0; support < limits_.card_type_count; ++support)

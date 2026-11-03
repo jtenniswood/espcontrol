@@ -349,8 +349,7 @@ class PageCardCommands final : public PageRuntimeResources {
       return false;
     const auto* card = active_.runtime_card({origin.configuration, origin.card});
     const auto* page = active_.page(origin.page);
-    if (!card || !page || !page->navigable || origin.card < page->first_card ||
-        origin.card - page->first_card >= page->runtime_card_count)
+    if (!card || !page || !page->includes_runtime_card(origin.card))
       return false;
     return true;
   }

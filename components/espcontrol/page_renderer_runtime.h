@@ -252,8 +252,8 @@ class PageRendererRuntime final : public PageRuntimeResources {
     PageId target=0;
     for(size_t index=0;index<depth;++index) {
       const auto *page=next.page(target);
-      if(!page || !path[index] || path[index]>page->runtime_card_count)return 0;
-      const auto *owner=next.card(page->first_card+path[index]-1);
+      if(!page || !path[index] || path[index]>page->card_count)return 0;
+      const auto *owner=next.runtime_card(page->first_card+path[index]-1);
       if(!owner || owner->target==NO_PAGE)return 0;
       target=owner->target;
       if(!next.page(target) || !next.page(target)->navigable)return 0;

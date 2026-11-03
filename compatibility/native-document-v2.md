@@ -147,12 +147,16 @@ instead of silently replacing them during UTF-8 encoding.
 
 `PageStore` retains every saved root definition through the highest stored slot,
 including slots beyond the device profile. `card_count` describes that saved
-range; `runtime_card_count` describes the admitted prefix. Runtime sources,
-subscriptions, state reads, commands and card modals use the admitted range.
+range; `runtime_card_count` counts admitted members. Root ownership retains
+the base-profile prefix. When a child page has extra retained rows beyond its
+Back-limited capacity, its order selects runtime members, including a higher
+saved card number placed in a visible cell. Runtime sources, subscriptions,
+state reads, commands and card modals share that membership.
 Dormant roots cannot acquire state through an entity shared with an active card.
 The base profile capacity stays admitted across display rotations. Navigable
-child pages retain their existing full child range, including state needed by
-parent summaries; inactive pages and unknown definitions remain saved.
+ordinary child pages retain their existing state ownership, including state
+needed by parent summaries. Unplaced extra rows, inactive pages and unknown
+definitions remain saved without becoming active sources or navigation targets.
 This changes neither the v1 document bytes nor the live document version.
 
 ## Direct runtime reading
