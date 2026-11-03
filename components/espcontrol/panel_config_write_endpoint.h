@@ -16,6 +16,7 @@
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #include "panel_config_document.h"
 #include "panel_config_http_context.h"
+#include "panel_config_http_limits.h"
 #include "panel_config_http_etag.h"
 #include "panel_config_upload.h"
 #include "panel_config_representation.h"

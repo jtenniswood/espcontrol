@@ -10,6 +10,7 @@
 
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #include "panel_config_http_context.h"
+#include "panel_config_http_limits.h"
 
 namespace espcontrol::configuration {
 
