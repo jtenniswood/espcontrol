@@ -372,6 +372,27 @@ void historical_capacity_reads_and_child_folder_writes() {
     assert(status(f.put(v2,"2","\"v2-2\""))==413);
     assert(f.backend.writes==writes&&f.runtime.active().generation()==2);
   }
+  // Retention beyond the grid is valid when the order requests only visible
+  // positions. Both HTTP representations must save every hidden source field.
+  for(const auto& limits:DEVICE_UI_PROFILES)for(uint16_t version:{1,2}) {
+    Fixture f(limits);const auto historical=document(limits,false,limits.cards_per_subpage+1);
+    PanelConfigReader reader(historical.data(),historical.size());
+    assert(reader.begin()==PanelConfigStatus::OK);PanelConfigRecord row;std::string children;
+    while(reader.next(&row)==PanelConfigStatus::OK)
+      if(row.type==PanelConfigRecordType::SUBPAGE&&row.slot==1)
+        children.assign(reinterpret_cast<const char*>(row.value),row.value_size);
+    assert(children.find('|')!=std::string::npos);
+    children="~B,1"+children.substr(children.find('|'));
+    const auto retained=replace_record(historical,PanelConfigRecordType::SUBPAGE,1,"",children);
+    PanelConfigRepresentation converted(allocate,release);
+    assert(converted.convert(1,2,retained.data(),retained.size(),PANEL_CONFIG_V2_HTTP_MAX_BYTES)==PanelConfigRepresentationStatus::OK);
+    const Bytes v2(converted.data(),converted.data()+converted.size());
+    const auto saved=version==1?f.put(retained,"1","\"1\""):f.put(v2,"2","\"v2-1\"");
+    assert(status(saved)==204&&f.runtime.active().generation()==2);
+    assert(f.runtime.active().page(1)->card_count==limits.cards_per_subpage+1);
+    assert(f.runtime.active().page(1)->runtime_card_count==limits.cards_per_subpage);
+    assert(records(f.get().response)==records(retained));
+  }
   for(const auto& limits:DEVICE_UI_PROFILES)for(uint16_t version:{1,2}) {
     Fixture f(limits);const auto original=f.get().response;
     const auto child_folder=replace_record(original,PanelConfigRecordType::SUBPAGE,1,"","B,1|:Nested:Auto:Auto:::subpage::");
