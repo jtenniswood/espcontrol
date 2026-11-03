@@ -368,6 +368,27 @@ editing, read-only navigation with disabled edits, backups and reconnects.
 Earlier excluded runs exposed an obsolete read-only lock expectation and the
 need to distinguish older native-save caches from complete editor snapshots.
 
+Private SDK2 S3 probe `105e108cf` then qualifies the membership correction on
+hardware with a sparse `B,9` page containing eight retained Sensor rows and a
+visible ninth climate control. Fresh observers receive exactly 20 climate
+registrations and none for retained rows. Both disjoint native-v1 replacements
+bind card 9 correctly and open its modal. The second save occurs with the old
+climate modal open; it retires that context. Replaying the held old binding/modal
+origin is rejected both before and during the new modal, which remains intact.
+All 14 checked retained-resource fields match after closing and returning Home:
+23,067 scene bytes, seven allocations and 81 widgets, with no scene allocation
+failures.
+This is synthetic-origin replay and modal/binding coverage, not pixel proof or
+a delayed completed-download callback test. Exact upgraded firmware, original
+native-v1 bytes at generation 1060, all 78 protected settings/PIN/reset and the
+original update preference are verified restored.
+
+Main `738840a02` brings in ESPHome 2026.10.2. Integration
+`c05fde64f` changes only the SDK pin, preserves parent runtime ancestry and
+passes all 13 wrapper tests; firmware/browser sources remain byte-identical to
+the tested corrections. A new sequential factory matrix is running on this
+current pin. The preceding all-nine SDK1 matrix remains a separate checkpoint.
+
 ## Remaining gates
 
 All nine production factory profiles compile at implementation checkpoint
