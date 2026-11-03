@@ -673,6 +673,53 @@ Together these runs qualify the recorded GIF stale-result boundaries and
 normal decoded-frame playback on S3, not delayed-current animation resumption,
 panel pixels, other formats or P4 parity.
 
+Private read-only playback probe `182896eac` subsequently reproduces the
+expanded-view stall with allocation diagnostics. The corrected collector gates
+the intended GIF's HTTP bytes while forwarding earlier completions, avoiding
+both a captured PNG refresh and a wait behind an older pending callback.
+Those earlier collector attempts are excluded; exact original recoveries pass
+at generations 1128 and 1130. An initial ungated diagnostic separately records
+five 409,840-byte allocation failures with a 376,832-byte largest block and
+restores generation 1126.
+
+With the corrected collector, all three tile/playback/stale-result checks pass.
+All four expanded-view cases (zero, two and eight extra seconds of callback
+delay, then normal delivery) stall. Each logs a 409,840-byte next-frame
+allocation failure with a largest block of 327,680 bytes, followed by a GIF-frame
+error. The first case has 650,592 bytes of free PSRAM before that allocation:
+enough total bytes, but insufficient contiguous space. Playback is visible and
+unblocked before the error, then its animation owner stops. Exact original
+firmware/native bytes and protected preferences are restored at generation
+1133. This establishes the failure mechanism in this reproduction; the earlier
+`7a1587cbf` run lacked allocation logs, so its cause is not retroactively proven.
+
+Private candidate `047637d8e` retains the same diagnostics and changes only the
+GIF canvas admission code plus its firmware label. It conservatively reserves a
+restore canvas whenever source bytes may contain disposal method three; other
+files need one canvas. Actual decoder host measurements for this fixture fall
+from 921,600 to 460,800 workspace bytes. ASan/UBSan checks preserve independent
+golden compositing for static/interlaced images, animated disposal-one/two
+images without a restore canvas, and disposal-three images with both canvases.
+They also cover conservative false positives, missing required backup storage,
+source mutation, truncation and corrupt inputs. Existing full playback/recovery
+checks pass with both host heap variants.
+
+The compiled pair verifies identical SDK/API sources, runtime receiver, hold
+instrumentation and collector logic; only the two GIF components differ.
+Static RAM section bytes remain 138,500, and the candidate OTA image adds
+144 bytes. All seven S3 candidate cases pass, including changing expanded frames
+after all three delays and normal delivery, with no allocation/frame errors or
+dropped callback targets. Retained scene owners match the before-build.
+Tile free-PSRAM samples rise from 1,041,972 to 1,512,712 bytes; the pre-GIF
+baselines differ by 12,044 bytes, giving a baseline-adjusted improvement of
+458,696 bytes. Expanded playback finishes its four observations with
+702,400–702,716 bytes free. These are sampled diagnostic measurements, not
+isolated peaks or an uninstrumented production comparison. Exact original
+firmware/native bytes and all protected settings, PIN/reset and sleep/update
+preferences are verified restored at generation 1136. The optimization remains
+private: worst-case full-source scan latency, broader GIF/P4 coverage and
+production-source build/device qualification still need work.
+
 A browser follow-up separates saved card identities from visible cell count
 in both transfer validation and preview rendering. Five model regressions cover
 retained cards above all four grid capacities and the saved-ID boundary 32;
