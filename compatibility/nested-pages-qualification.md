@@ -1349,6 +1349,23 @@ makes no legacy-mirror equivalence claim.
 
 ## Remaining gates
 
+The user reports whole-screen shifting/breakup during the current S3 completed-
+GIF test at maximum layout/cache load. Three delayed-current cases (0, 2 and
+8 seconds) pass their component/lease checks before the run is cancelled; this
+is a visual failure, not a completed qualification. Exact original firmware,
+native/legacy dashboard and all protected preferences are restored at generation
+1165, with over 70 seconds of stability; the user confirms the original is stable.
+A production control removes all image hashing, private hooks and memory polling
+during animation. The same whole-screen shift still occurs, so diagnostic reads
+alone do not explain the failure. Its exact-original recovery is running.
+
+The next S3 candidate increases RGB bounce buffers from 30 to 40 rows at the
+same 10-MHz pixel clock, requesting another 19,200 internal bytes. This is an
+unqualified stability candidate; spare heap and the same visual workload must
+be checked before acceptance. The preceding memory table and all-nine matrix
+retain their 30-row source scope. Other device configurations and production
+writer/storage policies are unchanged.
+
 The durable-format follow-up adds a bounded lossless v1 fallback for flat
 documents whose preferred v2 form exceeds the backend limit. Host checks cover
 40 KiB and 16 KiB slots, retained/inactive records, opaque settings, raw invalid
