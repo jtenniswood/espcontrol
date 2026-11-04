@@ -102,6 +102,7 @@ class ArtworkImage : public PollingComponent,
   void cancel_update();
   const std::string &get_url() const { return this->url_; }
   int get_last_http_status() const { return this->last_http_status_; }
+  bool last_failure_was_resource() const { return this->transfer_failure_ == TransferFailure::RESOURCE; }
   bool last_error_was_ha_media_proxy_not_found() const {
     return this->last_http_status_ == HTTP_CODE_NOT_FOUND && this->last_error_was_ha_media_proxy_;
   }

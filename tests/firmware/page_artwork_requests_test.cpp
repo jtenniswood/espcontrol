@@ -75,6 +75,47 @@ void request_priority_and_cap() {
     assert(image.max_source_dimension == 200);
   }
 }
+void resource_failure_completion() {
+  ArtworkImage image;
+  ArtworkImage* components[]{&image};
+  PageArtworkRequests<1> requests;
+  assert(requests.initialize(components, 1));
+  Origin origin;
+  PageImageRuntime<1> runtime(requests, origin);
+  const PageBindingToken token{1, 1, 0, 0, 0, false};
+  assert(runtime.bind(0, token));
+  PageImageOptions options{200, 100};
+  options.retain_completed = true;
+  assert(runtime.request(0, token, "https://test/image", options));
+  image.ready = true;
+  image.reply();
+  const auto asset = runtime.snapshot(0, token).asset;
+  assert(asset);
+  assert(runtime.request(0, token, "https://test/expanded", options));
+  const auto failed_generation = image.generation;
+  image.resource_failure = true;
+  image.reply(false);
+  auto state = runtime.snapshot(0, token);
+  assert(state.ready && state.failed && state.resource_failure && state.asset == asset);
+  assert(runtime.request(0, token, "https://test/replacement", options));
+  assert(!image.resource_failure && !runtime.snapshot(0, token).resource_failure);
+  image.resource_failure = true;
+  assert(!image.channel.deliver(failed_generation, false, false));
+  state = runtime.snapshot(0, token);
+  assert(state.pending && !state.failed && !state.resource_failure);
+  image.resource_failure = false;
+  image.reply(false);
+  state = runtime.snapshot(0, token);
+  assert(state.failed && !state.resource_failure && state.asset == asset);
+  assert(runtime.request(0, token, "https://test/success", options));
+  image.resource_failure = true;  // A stale transport flag cannot taint success.
+  image.reply();
+  state = runtime.snapshot(0, token);
+  assert(state.ready && !state.failed && !state.resource_failure && state.asset != asset);
+  image.accept = false;
+  assert(!runtime.request(0, token, "https://test/not-started", options));
+  assert(runtime.snapshot(0, token).failed && !runtime.snapshot(0, token).resource_failure);
+}
 void modal_and_tile_components() {
   ArtworkImage tile, modal_image;
   ArtworkImage* tile_components[]{&tile};
@@ -243,5 +284,6 @@ int main() {
   pool_claims();
   integration();
   request_priority_and_cap();
+  resource_failure_completion();
   modal_and_tile_components();
 }

@@ -1089,6 +1089,56 @@ native-only helper fails the stale-legacy negative control. This observation
 does not establish a bootloader rollback reason or count as a physical power
 interruption.
 
+The next, separate overlap cohort uses infinite-loop versions of the same
+maximum-canvas assets; Pillow pixels and two production-player plays plus the
+next frame still match under ASan/UBSan. On the unchanged `68643cc0d` observer,
+the 2 MiB normal card/expanded pair passes and the card resumes without another
+HTTP request during five seconds after close. The 8 MiB pair reaches the
+explicit 4 MiB transfer-reserve guard and `ESP_ERR_NO_MEM` before buffering the
+second response. This attempt stops when an expanded retry occurs before
+close. That retry alone does not establish unsafe behavior: the probe's
+one-request expectation was stricter than the existing backoff policy.
+The completed restoration now repairs the legacy copy automatically, validates
+the original image for over 70 seconds and restores all protected state at
+generation 371.
+
+A separate host regression confirms the associated policy defect: a local
+expanded-image failure is treated as a source/camera failure, invalidating a
+complete tile and starting a replacement after close. The working fix carries
+the resource-failure classification through the stamped completion and gives
+it a modal-only retry delay, leaving the tile's source state intact. Targeted
+host checks now pass for image/camera tiles and both pre-request admission and
+completed resource failures; source/network retry checks continue to pass.
+Actual-component adapter checks cover classification, successful replacement,
+rejected start and stale completion.
+
+The separate fixed observer `7da689e07` uses implementation snapshot
+`f0a12293e`, with only YAML observation changes. All four physical overlap cases
+pass on the 10-inch V3 with the same 400-card fixture, exactly 7,566 routes and
+full 512-KiB value cache. Both 2-MiB cases play in the expanded view; both 8-MiB
+cases explicitly refuse the second source at the transfer-reserve guard.
+Normal and restore-previous disposal both preserve the covered card's complete,
+current descriptor. After close, each card resumes changing frames for at least
+five seconds without another HTTP request. Host tests separately enforce the
+modal-only retry delay; these short physical refusal windows do not establish
+repeated-retry timing.
+
+| Source / disposal | Expanded result | Internal / PSRAM low-water bytes |
+| --- | --- | ---: |
+| 2 MiB / normal | Playback | 300,067 / 9,253,812 |
+| 8 MiB / normal | Resource refusal | 304,143 / 7,329,112 |
+| 2 MiB / restore previous | Playback | 298,363 / 7,615,344 |
+| 8 MiB / restore previous | Resource refusal | 303,187 / 6,509,900 |
+
+These instrumented per-region low-water marks cover the expanded attempt;
+they are not simultaneous combined totals or an original-dashboard before/after
+comparison. This qualifies the existing transfer resource classification and
+pre-request admission path, not every decoder allocation failure or panel
+pixels. Exact original firmware and dashboard bytes remain stable for over
+70 seconds; all 78 protected settings, PIN/reset, sleep and both update
+preferences are restored at native generation 375, following the corrected
+native-plus-legacy recovery procedure.
+
 ## Flat storage migration on the 10-inch V3
 
 Public checkpoint `efc6dcf09` passes all nine sequential ESPHome 2026.10.2

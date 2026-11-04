@@ -108,6 +108,10 @@ struct Requests final : PageImageRequests {
   std::array<PageImageOptions, 6> options{};
   size_t starts{0}, cancels{0}, releases{0};
   bool accept{true};
+  bool local_resource_failure{false};
+  bool resource_failure(size_t) const override {
+    return local_resource_failure;
+  }
   std::function<void()> on_start, on_cancel;
   bool start(size_t slot, uint64_t request, std::string_view url, PageImageOptions opt, void* owner,
              Receive receive) override {
@@ -1978,7 +1982,52 @@ void explicit_tile_refresh() {
   expanded.close();
 }
 
+void expanded_resource_failure_preserves_tile() {
+  for (size_t shell : {size_t{0}, size_t{1}}) {
+    for (bool admission_denied : {false, true}) {
+      F f(DEVICE_UI_PROFILES[8]);
+      const char* entity = shell ? "image.still" : "camera.front";
+      f.send("entity_picture", "https://test/image.gif", entity);
+      f.preload(entity);
+      f.tick();
+      f.tick(1000);
+      f.ready(shell);
+      const auto tile_asset = f.images.snapshot(f.slot(shell), f.token(shell)).asset;
+      assert(tile_asset);
+      ExpandedPipeline pipeline(f);
+      pipeline.port.allowed = !admission_denied;
+      const auto opening = pipeline.open(f.token(shell).card);
+      pipeline.tick();
+      pipeline.tick(100);
+      assert(pipeline.requests.starts == (admission_denied ? 0u : 1u));
+      if (!admission_denied) {
+        pipeline.requests.local_resource_failure = true;
+        pipeline.requests.jobs[0].reply(false);
+        pipeline.tick();
+      }
+      assert(pipeline.source.snapshot(opening).status == PageImageTileStatus::UNAVAILABLE);
+      const auto modal_starts = pipeline.requests.starts;
+      const auto probes = pipeline.port.probes;
+      // Local pressure waits before another expanded request.
+      for (unsigned n = 0; n < 10; ++n) {
+        pipeline.tick(100);
+      }
+      assert(pipeline.requests.starts == modal_starts && pipeline.port.probes == probes);
+      const auto tile_starts = f.requests.starts;
+      pipeline.close();
+      f.tick(5000);
+      f.tick(100);
+      const auto tile = f.tiles.snapshot(f.token(shell));
+      assert(tile.status == PageImageTileStatus::READY && tile.asset == tile_asset);
+      // Local pressure cannot invalidate a complete tile or re-download it.
+      // Source/HTTP failures keep their existing retry coverage.
+      assert(f.requests.starts == tile_starts);
+    }
+  }
+}
+
 int main() {
+  expanded_resource_failure_preserves_tile();
   explicit_tile_refresh();
   expanded_source_lifecycle();
   expanded_source_revisions_and_recovery();

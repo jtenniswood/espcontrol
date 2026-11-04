@@ -64,6 +64,11 @@ suspension policy. The obsolete eager weather/timezone/calendar/image context
 registries are excluded from generated-profile binaries; shared modal UI
 storage remains in use.
 
+An expanded image refused by local memory limits uses its own retry delay.
+It preserves a completed tile after close; source/network failures retain
+their unavailable state and backoff. Failure classification follows the
+request-generation fences so late results cannot alter a replacement opening.
+
 Before shared production cutover, physically qualify S3, then a 20-slot P4 and
 the remaining grid sizes. Record whole-device and owner-level steady/peak
 memory, navigation latency and image peaks. Host tests and all-profile compile

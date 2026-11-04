@@ -309,12 +309,16 @@ class PageExpandedImageSource final : public PageEntityObserver {
     }
     if (image.failed && !r.failure_seen) {
       r.failure_seen = true;
-      failed(now);
+      failed(now, image.resource_failure);
     }
     remember_cache();
     if (!environment_.visible(token) || image.pending || !r.options.width || !r.options.height || r.exhausted)
       return;
-    if (r.retry && !due(now, r.policy.camera_retry_after)) return;
+    if (r.resource_wait) {
+      if (!due(now, r.wake)) return;
+      r.resource_wait = false;
+    }
+    if (r.retry && r.policy.camera_errors && !due(now, r.policy.camera_retry_after)) return;
     if (r.waiting && !due(now, r.wake)) return;
     if (r.queued && !due(now, r.wake)) return;
     const bool image_dirty = r.kind == PageImageEntityKind::IMAGE && r.policy.picture.modal_dirty();
@@ -365,7 +369,7 @@ class PageExpandedImageSource final : public PageEntityObserver {
     }
     if (!environment_.request_allowed(r.options.width, r.options.height)) {
       r.queued = false;
-      failed(now);
+      failed(now, true);
       return;
     }
     if (!images_.requestable()) {
@@ -457,7 +461,8 @@ class PageExpandedImageSource final : public PageEntityObserver {
     uint64_t serial{0}, handled_asset{0}, source_version{0}, requested_source{0}, applied_source{0};
     uint32_t started{0}, wake{0}, endpoint{0};
     bool dirty{false}, forced{false}, queued{false}, waiting{false}, retry{false}, failure_seen{false},
-        geometry_stale{false}, stale_unavailable{false}, cancelled_unavailable{false}, exhausted{false};
+        geometry_stale{false}, stale_unavailable{false}, cancelled_unavailable{false}, exhausted{false},
+        resource_wait{false};
   };
   static bool same(PageModalToken a, PageModalToken b) {
     return PageModalImageIdentity::same(a, b);
@@ -479,12 +484,23 @@ class PageExpandedImageSource final : public PageEntityObserver {
     record_.serial = ++serial_;
     ++revision_;
   }
-  void failed(uint32_t now) {
+  void failed(uint32_t now, bool resource_failure = false) {
     auto& r = record_;
-    r.policy.expanded_finished(now, false);
+    if (resource_failure) {
+      // Keep local admission/allocator pressure out of the tile's source
+      // failure state. A covered complete tile remains valid after close.
+      r.policy.schedule.finished(now, false);
+      r.policy.expanded_completed = true;
+      r.policy.expanded_success = false;
+    } else {
+      r.policy.expanded_finished(now, false);
+    }
     r.stale_unavailable = true;
     r.retry = true;
-    r.queued = r.waiting = false;
+    r.queued = false;
+    r.waiting = false;
+    r.resource_wait = resource_failure;
+    if (resource_failure) r.wake = now + 2000;
     ++revision_;
   }
   void seed() {

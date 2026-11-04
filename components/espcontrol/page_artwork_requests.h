@@ -91,6 +91,9 @@ class PageArtworkRequests final : public PageImageRequests {
   bool initialized() const {
     return initialized_;
   }
+  bool resource_failure(size_t slot) const override {
+    return slot < Slots && slots_[slot].image && slots_[slot].image->last_failure_was_resource();
+  }
   esphome::artwork_image::ArtworkImage* image(size_t slot) const {
     return slot < Slots ? slots_[slot].image : nullptr;
   }
