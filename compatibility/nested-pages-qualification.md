@@ -1011,13 +1011,16 @@ this follow-up's rebuilt web assets have separate browser qualification.
 
 A further transfer follow-up retains the first hidden order token when Back is
 implicit and allocates destination identities across all 32 supported saved
-records, independently of visible grid capacity. Twelve model regressions cover
-implicit/explicit Back and paste/duplicate with occupied invisible records and
-dormant descendants across all four grids. Eight reproduce failures before the
-fix. All 274 web-unit checks, direct TypeScript checking, generated-bundle
-freshness, web manifest and backup contracts pass. Existing full-capacity tests
-now fill all saved identities before expecting allocation refusal. These are
-host checks; this follow-up changes no C++ or device YAML.
+records on subpages, independently of visible grid capacity. Home retains its
+profile's renderable identity limit. Sixteen model regressions cover implicit/
+explicit Back, subpage paste/duplicate with occupied invisible records and
+dormant descendants, and rejected Home copy/cut across all four grids. Eight
+reproduce the original failures; four further Home cases catch an overbroad
+allocation limit in the first correction. All 278 web-unit checks, direct
+TypeScript checking, generated-bundle freshness, web manifest and backup
+contracts pass. Rejected Home moves keep the source and all dormant data;
+existing full-storage tests still reject partial batches. These are host checks;
+this follow-up changes no C++ or device YAML.
 
 ## Maximum GIF canvas and mixed-layout host checks
 

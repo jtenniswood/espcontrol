@@ -195,7 +195,9 @@ export function planPageCardPaste(document: PanelConfigDocument, target: number,
   for (const entry of entries) {
     check(pageDepth(target) < 2 || entry.button.type !== "subpage", "Subpages can be at most two levels deep");
     let slot = 0;
-    for (let possible = 1; possible <= PANEL_CONFIG_MAX_SLOT_COUNT; ++possible) {
+    // Home runtime uses fixed grid identities; subpages can retain higher saved IDs.
+    const maxIdentity = target ? PANEL_CONFIG_MAX_SLOT_COUNT : layout.slots;
+    for (let possible = 1; possible <= maxIdentity; ++possible) {
       const button = destination.buttons[possible - 1];
       const empty = !button || CARD_CONFIG_FIELDS.every(field => !button[field] ||
         ((field === "icon" || field === "icon_on") && button[field] === "Auto"));

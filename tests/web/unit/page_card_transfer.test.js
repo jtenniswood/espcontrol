@@ -203,6 +203,17 @@ for (const profile of [{ slots: 6, columns: 2 }, layout, { slots: 15, columns: 3
       assert.equal(JSON.stringify(document), before);
     });
   }
+  test(`Home refuses copy and cut when its ${profile.slots} renderable identities are occupied`, () => {
+    const document = source();
+    for (let slot = 3; slot <= profile.slots; ++slot) document.buttons[slot] = `light.saved_${slot};Saved ${slot}`;
+    document.settings.button_order = "1";
+    const clipboard = transfer.capturePageCards(document, 1, [2], profile);
+    const before = JSON.stringify(document);
+    for (const move of [undefined, clipboard.origin]) {
+      assert.throws(() => transfer.planPageCardPaste(document, 0, 2, clipboard.entries, profile, move), /without replacing saved cards/);
+      assert.equal(JSON.stringify(document), before, "rejected Home paste keeps the complete source and dormant data");
+    }
+  });
   test(`paste allocates a saved identity above ${profile.slots} visible cells without overwriting dormant data`, () => {
     const document = source();
     const records = Array.from({ length: profile.slots }, (_, i) => `,light.retained_${i + 1},Retained ${i + 1}`);
