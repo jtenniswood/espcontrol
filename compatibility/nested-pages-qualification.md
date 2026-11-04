@@ -1357,14 +1357,22 @@ native/legacy dashboard and all protected preferences are restored at generation
 1165, with over 70 seconds of stability; the user confirms the original is stable.
 A production control removes all image hashing, private hooks and memory polling
 during animation. The same whole-screen shift still occurs, so diagnostic reads
-alone do not explain the failure. Its exact-original recovery is running.
+alone do not explain the failure. Its exact-original recovery passes at generation
+1167. A 40-row RGB bounce-buffer candidate (`b86c85036530`) compiles for both
+development and factory S3 profiles, retains 60,827 bytes of free internal heap
+before animation, but still flickers according to the user. Exact-original
+recovery passes at generation 1169, including native/legacy HTTP 204, 78 protected
+preferences and over 70 seconds of stability.
 
-The next S3 candidate increases RGB bounce buffers from 30 to 40 rows at the
-same 10-MHz pixel clock, requesting another 19,200 internal bytes. This is an
-unqualified stability candidate; spare heap and the same visual workload must
-be checked before acceptance. The preceding memory table and all-nine matrix
-retain their 30-row source scope. Other device configurations and production
-writer/storage policies are unchanged.
+The next candidate restores 30 bounce rows and folds display rotation into IDF's
+existing RGB framebuffer copy. LVGL can then omit its separate 57,600-byte PSRAM
+rotation buffer and extra copy per redraw. Host checks execute the production
+write methods against both an API model and the pinned IDF pixel-copy macros:
+all four rotations, padded rectangles, already-rotated fallback buffers and
+failed-transform retry pass under ASan/UBSan; the API model also passes Linux
+GCC. This is not yet physically qualified. Other device configurations and
+production writer/storage policies are unchanged. Earlier memory tables retain
+their software-rotation source scope.
 
 The durable-format follow-up adds a bounded lossless v1 fallback for flat
 documents whose preferred v2 form exceeds the backend limit. Host checks cover

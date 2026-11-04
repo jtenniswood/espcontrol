@@ -168,6 +168,7 @@ void MipiRgb::common_setup_() {
     config.de_gpio_num = GPIO_NUM_NC;
   }
   config.pclk_gpio_num = static_cast<gpio_num_t>(this->pclk_pin_->get_pin());
+  this->panel_rotation_valid_ = false;
   esp_err_t err = esp_lcd_new_rgb_panel(&config, &this->handle_);
   if (err == ESP_OK)
     err = esp_lcd_panel_reset(this->handle_);
@@ -207,7 +208,7 @@ void MipiRgb::update() {
   int w = this->x_high_ - this->x_low_ + 1;
   int h = this->y_high_ - this->y_low_ + 1;
   this->write_to_display_(this->x_low_, this->y_low_, w, h, reinterpret_cast<const uint8_t *>(this->buffer_),
-                          this->x_low_, this->y_low_, this->width_ - w - this->x_low_);
+                          this->x_low_, this->y_low_, this->width_ - w - this->x_low_, true);
   // invalidate watermarks
   this->x_low_ = this->width_;
   this->y_low_ = this->height_;
@@ -224,14 +225,41 @@ void MipiRgb::draw_pixels_at(int x_start, int y_start, int w, int h, const uint8
   if (bitness != display::COLOR_BITNESS_565) {
     Display::draw_pixels_at(x_start, y_start, w, h, ptr, order, bitness, big_endian, x_offset, y_offset, x_pad);
     this->write_to_display_(x_start, y_start, w, h, reinterpret_cast<const uint8_t *>(this->buffer_), x_start, y_start,
-                            this->width_ - w - x_start);
+                            this->width_ - w - x_start, true);
   } else {
     this->write_to_display_(x_start, y_start, w, h, ptr, x_offset, y_offset, x_pad);
   }
 }
 
+bool MipiRgb::apply_panel_rotation_(display::DisplayRotation rotation) {
+  if (this->panel_rotation_valid_ && this->panel_rotation_ == rotation)
+    return true;
+  const bool swap_xy = rotation == display::DISPLAY_ROTATION_90_DEGREES ||
+                       rotation == display::DISPLAY_ROTATION_270_DEGREES;
+  const bool mirror_x = rotation == display::DISPLAY_ROTATION_90_DEGREES ||
+                        rotation == display::DISPLAY_ROTATION_180_DEGREES;
+  const bool mirror_y = rotation == display::DISPLAY_ROTATION_180_DEGREES ||
+                        rotation == display::DISPLAY_ROTATION_270_DEGREES;
+  // IDF folds this transform into its existing copy to the RGB framebuffer.
+  // LVGL therefore needs neither a rotation buffer nor a second PSRAM copy.
+  auto err = esp_lcd_panel_swap_xy(this->handle_, swap_xy);
+  if (err == ESP_OK)
+    err = esp_lcd_panel_mirror(this->handle_, mirror_x, mirror_y);
+  if (err != ESP_OK) {
+    this->panel_rotation_valid_ = false;
+    ESP_LOGE(TAG, "RGB framebuffer rotation failed: %s", esp_err_to_name(err));
+    return false;
+  }
+  this->panel_rotation_ = rotation;
+  this->panel_rotation_valid_ = true;
+  return true;
+}
+
 void MipiRgb::write_to_display_(int x_start, int y_start, int w, int h, const uint8_t *ptr, int x_offset, int y_offset,
-                                int x_pad) {
+                                int x_pad, bool pre_rotated) {
+  // The pixel-at-a-time fallback already writes physical coordinates.
+  if (!this->apply_panel_rotation_(pre_rotated ? display::DISPLAY_ROTATION_0_DEGREES : this->rotation_))
+    return;
   esp_err_t err = ESP_OK;
   auto stride = (x_offset + w + x_pad) * 2;
   ptr += y_offset * stride + x_offset * 2;  // skip to the first pixel

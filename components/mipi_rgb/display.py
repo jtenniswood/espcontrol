@@ -232,12 +232,14 @@ def _config_schema(config):
     if height % config[CONF_BOUNCE_BUFFER_ROWS] != 0:
         raise cv.Invalid("bounce_buffer_rows must divide the display height")
     has_writer = requires_buffer(config) or config.get(CONF_AUTO_CLEAR_ENABLED) is True
+    # The driver rotates during the existing framebuffer copy. LVGL can skip
+    # its separate software-rotation buffer and PSRAM-to-PSRAM copy.
     try:
         display.add_metadata(
             config[CONF_ID],
             width,
             height,
-            has_hardware_rotation=False,
+            has_hardware_rotation=True,
             byte_order=config[CONF_BYTE_ORDER],
             has_writer=has_writer,
             rotation=model.rotation_as_transform(config),
@@ -251,7 +253,7 @@ def _config_schema(config):
             width,
             height,
             has_writer=has_writer,
-            has_hardware_rotation=False,
+            has_hardware_rotation=True,
         )
     return config
 
