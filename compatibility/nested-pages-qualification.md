@@ -1009,6 +1009,16 @@ nine-layout browser suite also passes at `4783dc76c`, as does required CI.
 C++ sources are unchanged from the completed `d3cb407ae` factory matrix;
 this follow-up's rebuilt web assets have separate browser qualification.
 
+A further transfer follow-up retains the first hidden order token when Back is
+implicit and allocates destination identities across all 32 supported saved
+records, independently of visible grid capacity. Twelve model regressions cover
+implicit/explicit Back and paste/duplicate with occupied invisible records and
+dormant descendants across all four grids. Eight reproduce failures before the
+fix. All 274 web-unit checks, direct TypeScript checking, generated-bundle
+freshness, web manifest and backup contracts pass. Existing full-capacity tests
+now fill all saved identities before expecting allocation refusal. These are
+host checks; this follow-up changes no C++ or device YAML.
+
 ## Maximum GIF canvas and mixed-layout host checks
 
 At public checkpoint `476ea10d6` (runtime code unchanged from `efc6dcf09`),

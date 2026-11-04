@@ -161,7 +161,7 @@ test("unrelated concurrent settings are retained by a valid move", () => {
 });
 test("a capacity failure cannot paste only part of a batch or overwrite invisible saved cards", () => {
   const document = source(), clipboard = transfer.capturePageCards(document, 1, [1, 2], layout);
-  for (let slot = 3; slot <= layout.slots; ++slot) document.buttons[slot] = `light.hidden_${slot};Hidden`;
+  for (let slot = 3; slot <= 32; ++slot) document.buttons[slot] = `light.hidden_${slot};Hidden`;
   const before = JSON.stringify(document);
   assert.throws(() => transfer.planPageCardPaste(document, 0, 2, clipboard.entries, layout), /without replacing saved cards/);
   assert.equal(JSON.stringify(document), before);
@@ -175,6 +175,58 @@ test("edited page preserves untouched raw sibling tokens and inactive order slot
   assert.equal(parsed(result.document.subpages[2]).backColor, "FACE00");
   valid(result.document);
 });
+for (const profile of [{ slots: 6, columns: 2 }, layout, { slots: 15, columns: 3 }, { slots: 20, columns: 4 }]) {
+  for (const explicitBack of [false, true]) {
+    test(`delete preserves hidden order after ${explicitBack ? "explicit" : "implicit"} Back on ${profile.slots} cells`, () => {
+      const document = source();
+      const records = Array.from({ length: profile.slots + 2 }, (_, i) => `,light.kept_${i + 1},Record ${i + 1}`);
+      const order = records.map((_, i) => String(i + 1));
+      if (explicitBack) order.unshift("B=Return:ABCDEF");
+      const boundary = profile.slots - (explicitBack ? 1 : 0);
+      records[boundary - 1] = "subpage,,Hidden folder";
+      const hiddenTree = child(1, boundary);
+      document.subpages[hiddenTree] = "~B,1|,light.hidden_leaf,Leaf";
+      document.subpages[1] = ["~" + order.join(","), ...records].join("|");
+      const before = JSON.stringify(document);
+      const captured = transfer.capturePageCards(document, 1, [1], profile);
+      const deleted = transfer.planPageCardDelete(document, captured.origin, profile);
+      const actual = deleted.subpages[1].split("|");
+      const hidden = order.slice(profile.slots - (explicitBack ? 0 : 1));
+      assert.deepEqual(actual[0].split(",").slice(profile.slots), hidden);
+      assert.deepEqual(actual.slice(2), records.slice(1), "unselected saved records stay byte-identical");
+      assert.equal(deleted.subpages[hiddenTree], document.subpages[hiddenTree]);
+      if (explicitBack) {
+        assert.equal(parsed(deleted.subpages[1]).backLabel, "Return");
+        assert.equal(parsed(deleted.subpages[1]).backColor, "ABCDEF");
+      }
+      valid(deleted);
+      assert.equal(JSON.stringify(document), before);
+    });
+  }
+  test(`paste allocates a saved identity above ${profile.slots} visible cells without overwriting dormant data`, () => {
+    const document = source();
+    const records = Array.from({ length: profile.slots }, (_, i) => `,light.retained_${i + 1},Retained ${i + 1}`);
+    document.subpages[2] = ["~B=Return:ABCDEF,1", ...records].join("|");
+    // The next identity is empty but still owns saved descendant data.
+    const dormant = child(2, profile.slots + 1);
+    document.subpages[dormant] = "~B,1|,light.dormant,Keep";
+    const before = JSON.stringify(document);
+    const clipboard = transfer.capturePageCards(document, 1, [2], profile);
+    const pasted = transfer.planPageCardPaste(document, 2, 2, clipboard.entries, profile);
+    assert.deepEqual(pasted.slots, [profile.slots + 2]);
+    assert.deepEqual(pasted.document.subpages[2].split("|").slice(1, profile.slots + 1), records);
+    assert.equal(pasted.document.subpages[dormant], document.subpages[dormant]);
+    assert.equal(parsed(pasted.document.subpages[2]).buttons[profile.slots + 1].label, "Other");
+    assert.equal(parsed(pasted.document.subpages[2]).backLabel, "Return");
+    valid(pasted.document);
+    const duplicate = transfer.capturePageCards(pasted.document, 2, pasted.slots, profile);
+    const duplicated = transfer.planPageCardPaste(pasted.document, 2, 3, duplicate.entries, profile);
+    assert.deepEqual(duplicated.slots, [profile.slots + 3]);
+    valid(duplicated.document);
+    assert.equal(JSON.stringify(document), before);
+  });
+}
+
 test("flat card codes stay version one while nested trees require version two", () => {
   const document = source(), captured = transfer.capturePageCards(document, 0, [1], layout).entries[0];
   const flat = { ...model.emptyCardConfig(), entity: "light.flat", label: "Flat", size: 1 };

@@ -2,7 +2,7 @@ import type { CardConfig } from "../contracts/types";
 import { CARD_CONFIG_FIELDS, cloneCardConfig, emptyCardConfig, parseRawButtonConfig } from "./card";
 import { encodeConfigField } from "./config_primitives";
 import { CARD_CONTRACT_SUBPAGE_TYPE_CODES, CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE } from "../generated/card_contract";
-import { buildSubpageGrid, parseRawSubpageConfig, serializeSubpageGrid } from "./subpage";
+import { buildSubpageGrid, isBackOrderToken, parseBackOrderToken, parseRawSubpageConfig, serializeSubpageGrid } from "./subpage";
 import { coveredCells, parseGridOrder, serializeGridOrder, type SlotSizeMap } from "./grid";
 import { findDuplicatePlacement, placeSlotAt } from "../features/preview_grid";
 import { PANEL_CONFIG_MAX_SLOT_COUNT, PanelConfigError, type PanelConfigDocument } from "./panel_config";
@@ -143,7 +143,9 @@ function updatedOrder(document: PanelConfigDocument, page: number, grid: readonl
   const previous = readPage(document, page);
   const next = serializeSubpageGrid(grid, sizes, previous.backLabel, previous.backColor);
   // Inactive records belong to the saved document, independently of this grid.
-  const tail = previous.order.split(",").slice(layout.slots);
+  const tokens = previous.order.split(",");
+  const hasBack = tokens.some(token => isBackOrderToken(parseBackOrderToken(token).token));
+  const tail = tokens.slice(layout.slots - (hasBack ? 0 : 1));
   if (tail.length) { while (next.length < layout.slots) next.push(""); next.push(...tail); }
   return next.join(",");
 }
@@ -193,7 +195,7 @@ export function planPageCardPaste(document: PanelConfigDocument, target: number,
   for (const entry of entries) {
     check(pageDepth(target) < 2 || entry.button.type !== "subpage", "Subpages can be at most two levels deep");
     let slot = 0;
-    for (let possible = 1; possible <= layout.slots; ++possible) {
+    for (let possible = 1; possible <= PANEL_CONFIG_MAX_SLOT_COUNT; ++possible) {
       const button = destination.buttons[possible - 1];
       const empty = !button || CARD_CONFIG_FIELDS.every(field => !button[field] ||
         ((field === "icon" || field === "icon_on") && button[field] === "Auto"));
