@@ -1,6 +1,6 @@
 # Nested-page qualification
 
-Recorded on 3 November 2026 for PR #2424, following runtime PR #2400.
+Recorded through 4 November 2026 for PR #2424, following runtime PR #2400.
 Production still writes native v1 at depth one. Private qualification images
 enable native v2/depth two without declaring a published reader floor.
 
@@ -204,6 +204,34 @@ zero. Exact upgraded firmware, unchanged original data/generation 1057 and all
 These are hardware tests with injected faults, not physical power interruptions
 or raw-partition failure tests; clearing scratch keys is not a bitwise NVS
 partition rollback.
+
+
+A private raw-flash harness subsequently passes 78 ASan/UBSan host cases using
+unchanged production `ConfigurationStore`, transient backend and ESP-IDF port.
+SDK wrappers confine the test to initially erased scratch sectors, retain the
+deployed 40 KiB slot geometry and compare the entire simulated 2 MiB partition
+after cleanup. Cases cover all seven mutation boundaries and 22 read boundaries
+before/after failure, partial writes/erases, newest-payload corruption and
+maximum 40,940-byte payloads. Both negative controls fail as intended. These
+host results do not establish hardware recovery or physical power interruption.
+
+The first 4.3-inch P4 hardware attempt (`1b23ea650`) refuses before any scratch
+read, erase or write. A separate read-only geometry image (`4b2f94fd6`) proves
+that this unit's deployed table has no `card_images` partition. The actual
+configuration service uses its 16 KiB NVS fallback and advertises a 16,356-byte
+durable-document limit. It still advertises reader depth two and writer depth
+one. The compiled candidate/recovery partition tables match, but OTA does not
+replace the deployed table; artifact matching alone therefore cannot prove the
+running storage geometry. The fault run is excluded from raw-flash qualification.
+
+Both attempts restore the exact original SDK2 firmware, unchanged native bytes
+and generation 147, all 78 protected settings, PIN/reset and both update
+preferences. A transient original-boot configuration GET 503 in the first
+cleanup is followed by verified readiness and completed restoration; the
+observer now bounds retries to known read-only readiness responses. The
+inspection makes no raw-case call. No repartitioning or manual data migration
+is performed. Raw-flash hardware qualification remains open and must use a
+verified raw-backed device, with deployed geometry checked before writes.
 
 Current SDK2 probe `105e108cf` also repeats the full-cache workload with a
 true unpaced 1,440-message send loop. The first ordered DeviceInfo response
