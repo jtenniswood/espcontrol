@@ -881,6 +881,23 @@ ownership requirements stay unchanged. Both attempts verify complete original
 recovery, latest generation 1147 with exact firmware/native bytes, all 78
 protected preferences, PIN/reset and sleep/update preferences restored.
 
+The same populated A/B fixtures also pass two disjoint replacements with a real
+incomplete HTTP image transfer: GIF cancellation after 4,384 of 25,825 bytes and
+PNG cancellation after 4,368 of 219,904 bytes. The server sends an initial 4 KiB,
+then 16 bytes every 200 ms while gated, maintaining read activity so a timeout
+cannot stand in for cancellation. Two live-GIF warm-ups and both replacements
+pass. Each new configuration audits all 1,126 routes and refills its climate
+cache; another 1,126 retired climate/image updates are then delivered. The
+current PNG component URL/descriptor hash stays unchanged across three samples,
+tracked cache/resource counters remain equal, and no new HTTP request appears
+in the retired-update observation windows. No image/scene errors are recorded.
+These are incomplete-transfer cancellation and component/resource checks, not
+an intentionally delayed completed-decode replay, consumer lease-field readback
+or panel pixels. Exact original firmware/native bytes and all 78 protected
+preferences, PIN/reset and sleep/update preferences are restored at generation
+1151 after both replacements.
+
+
 
 
 A browser follow-up separates saved card identities from visible cell count
