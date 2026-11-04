@@ -262,6 +262,36 @@ sectors, not faults applied to the live primary configuration, a power cut or a
 production memory measurement. Physical power-interruption qualification remains
 open; the live primary sectors are never deliberately corrupted by this cohort.
 
+
+The prepared power-session image (`3f9ba3881`) adds a persistent ownership guard
+in the older synthetic slot's unused padding. It pauses a worker immediately
+before or after the new slot's outer publication marker; the ordinary loop/API
+remain available. Fresh readers can recover the guard after RAM is lost and
+refuse cleanup for an unknown or mismatched session. SHA256 checks mask only the
+initially erased scratch window during recovery, then verify the full partition
+after cleanup through a separate readback action. No production file or writer
+policy changes; source/SDK/display/partition/worker/symbol checks pass.
+
+ASan/UBSan core tests pass 22 assertion groups, including four abrupt child
+process exits that retain simulated flash while losing the entire private call
+stack and RAM. Three negative controls catch missing session, outside-data and
+pause guards. All 78 earlier raw-driver host cases still pass with the optional
+pause hook; those two negative controls remain effective. Fifteen actual
+controller-function checks reject software/reset-pin/brownout reports and
+network reconnects as clean power-on evidence, retain the human-confirmation
+gate and reconcile a lost cleanup reply without another erase.
+
+On the 10-inch, both cooperative cancellation boundaries pass on this exact
+image. The default API response barriers remain responsive while the worker is
+paused, inspection is fenced until it stops, and fresh readers select complete
+old/new payloads as expected. Both cleanup replies and independent SHA256
+readbacks match the pre-session full-partition digest. The observer waits past
+the pinned SDK's 60-second successful-boot interval before arming. Exact original
+SDK2 firmware/native generation 363, all 78 protected settings, PIN/reset and
+both update preferences are restored. These are cancellation and preparation
+results; no actual power cut is credited. The prepared controller requires a
+fresh power-on reset plus separate human confirmation for the physical cases.
+
 Current SDK2 probe `105e108cf` also repeats the full-cache workload with a
 true unpaced 1,440-message send loop. The first ordered DeviceInfo response
 exceeds the client's default ten-second timeout. Its cleanup then encounters a
