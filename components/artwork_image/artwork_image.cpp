@@ -772,6 +772,7 @@ size_t ArtworkImage::resize_(int width_in, int height_in) {
   ESP_LOGD(TAG, "Allocating decode buffer of %zu bytes", new_size);
   this->decode_buffer_ = this->allocator_.allocate(new_size);
   if (this->decode_buffer_ == nullptr) {
+    this->transfer_failure_ = TransferFailure::RESOURCE;
     ESP_LOGE(TAG, "allocation of %zu bytes failed. Biggest block in heap: %zu Bytes", new_size,
              this->allocator_.get_max_free_block_size());
     // Report failure after the decoder returns, preserving its stack frame.

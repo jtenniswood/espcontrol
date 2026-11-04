@@ -27,6 +27,7 @@ source = r'''
 #include "scanline_resampler.h"
 #include "rgb565_scaler.h"
 #include "image_pipeline_policy.h"
+#include "transfer_observer.h"
 #define ESP_LOGI(tag, ...) (void)(tag)
 #define ESP_LOGE(tag, ...) (void)(tag)
 bool allocation_fails = false;
@@ -51,6 +52,7 @@ source += r'''
 namespace esphome { namespace artwork_image {
 enum class ImageResizeMode { FIT, COVER };
 struct ArtworkImage {
+ TransferFailure transfer_failure_ = TransferFailure::CONTENT;
  int fixed_width_=1, fixed_height_=1;
  ImageResizeMode resize_mode_ = ImageResizeMode::FIT;
  uint32_t fit_background_color_ = 0;
@@ -289,7 +291,18 @@ int main() {
    const uint8_t input[8]{};
    decoder.draw_rgb565_frame(2,2,4,input);
    assert(decoder.has_failed());
+   assert(image.transfer_failure_ == TransferFailure::RESOURCE);
    assert(image.bytes == std::vector<uint8_t>(3,0));
+ }
+ {
+   allocation_fails = false;
+   ArtworkImage image;
+   Decoder decoder(&image);
+   assert(decoder.set_size(2,2));
+   image.decode_buffer_width_ = image.decode_content_width_ = 0;
+   assert(!decoder.prepare_filtered_resize(2,2));
+   assert(decoder.has_failed());
+   assert(image.transfer_failure_ == TransferFailure::CONTENT);
  }
  assert(allocations == 0);
 }

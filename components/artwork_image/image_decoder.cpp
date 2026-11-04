@@ -32,6 +32,8 @@ bool ImageDecoder::prepare_filtered_resize(int width, int height) {
   const int end_x = std::min(this->image_->decode_buffer_width_, this->x_offset_ + content_width);
   this->resample_workspace_size_ = ScanlineResampler::workspace_size(end_x - start_x);
   this->resample_workspace_ = this->resample_allocator_.allocate(this->resample_workspace_size_);
+  if (this->resample_workspace_size_ && !this->resample_workspace_)
+    this->image_->transfer_failure_ = TransferFailure::RESOURCE;
   if (!this->resampler_.configure(width, height, content_width, content_height,
                                  this->image_->decode_buffer_width_, this->image_->decode_buffer_height_,
                                  this->x_offset_, this->y_offset_, this->resample_workspace_,

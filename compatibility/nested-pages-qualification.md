@@ -1152,6 +1152,29 @@ with pinned-image Linux GCC. This is host classification evidence, separate
 from the preceding physical transfer-refusal cohort; updated firmware and S3
 maximum-pressure qualification remain to be run.
 
+The explicit-error follow-up is public `db06ef47a`; all nine factory profiles
+and GitHub CI pass. Its YAML-only S3 observer `ab819502d` reaches the maximum
+81-card layout (70 climates, two images, nine folders), exactly 1,406 unique
+registrations and all 131,072 cache bytes. The 480 × 480 / 369,953-byte card GIF
+advances. Expansion then fails a 409,840-byte output allocation with a largest
+available block of 90,112 bytes. The component still reports RESOURCE false:
+the GIF frame writer collapses that failure to INVALID_TYPE, bypassing the
+explicit-error mapping. The trial stops before the 640-pixel pressure cases.
+An earlier attempt is excluded because its measurement script queried modal
+slot one; the corrected slot-zero probe has its own host regression. Both
+attempts restore exact original firmware/dashboard, PIN/reset and all 78
+protected preferences, with acknowledged native/legacy persistence and over
+70 seconds of original-image stability; the latest native generation is 1158.
+
+The resulting fix records RESOURCE at the failed output allocation itself,
+and at a failed non-empty filtered-resize workspace allocation. Invalid resize
+geometry keeps its content classification. The production resize/receiver
+regression reproduces the lost classification; the actual resize integration
+test covers workspace exhaustion and invalid geometry. Four Linux GCC checks
+and five selected host checks pass; removing either allocation-origin mapping
+fails its resource assertion. These are host results pending the next hardware
+retest; the full-layout expanded GIF is not claimed to fit on the S3.
+
 ## Flat storage migration on the 10-inch V3
 
 Public checkpoint `efc6dcf09` passes all nine sequential ESPHome 2026.10.2
