@@ -268,6 +268,8 @@ class ArtworkImage : public PollingComponent,
   void replace_animation_();
   void stop_animation_();
   void loop_animation_();
+  void suspend_animation_workspace_();
+  void suspend_hidden_animations_();
 
   /**
    * @brief Draw a pixel into the buffer.

@@ -7,7 +7,9 @@
 namespace esphome::artwork_image {
 static const char *const TAG = "artwork_image.gif";
 
-GifDecoder::~GifDecoder() {
+GifDecoder::~GifDecoder() { this->release_working_state_(); }
+
+void GifDecoder::release_working_state_() {
   this->pause();
   if (player_) {
     player_->~Player();
@@ -15,6 +17,43 @@ GifDecoder::~GifDecoder() {
   }
   canvas_allocator_.deallocate(workspace_, workspace_pixels_);
   axis_allocator_.deallocate(horizontal_axes_, horizontal_axes_size_);
+  release_filtered_resize();
+  player_ = nullptr; workspace_ = nullptr; workspace_pixels_ = 0;
+  horizontal_axes_ = nullptr; horizontal_axes_size_ = 0;
+  initialized_ = false; rendering_ = false; render_target_ready_ = false;
+  render_row_ = 0; decode_work_us_ = resize_work_us_ = 0;
+}
+
+bool GifDecoder::suspend_working_state(bool completed_frame) {
+  if (suspended_ || !player_ || !first_frame_ready_ || !source_.data()) return false;
+  suspended_delay_ms_ = player_->delay_ms();
+  // A second cover during reconstruction must keep the original destination.
+  if (!replaying_) {
+    replay_position_ = player_->playback_position();
+    replay_current_frame_ = rendering_ || completed_frame;
+  }
+  this->release_working_state_();
+  suspended_ = true;
+  return true;
+}
+
+int GifDecoder::initialize_player_(uint8_t *buffer, size_t size) {
+  this->release_working_state_();
+  uint16_t width = 0, height = 0;
+  if (!gif::Player::dimensions(buffer, size, width, height)) return DECODE_ERROR_INVALID_TYPE;
+  player_ = player_allocator_.allocate(1);
+  if (!player_) return DECODE_ERROR_OUT_OF_MEMORY;
+  new (player_) gif::Player();
+  const size_t canvas_pixels = static_cast<size_t>(width) * height;
+  workspace_pixels_ = canvas_pixels * (restore_required_ ? 2u : 1u);
+  workspace_ = canvas_allocator_.allocate(workspace_pixels_);
+  if (!workspace_) return DECODE_ERROR_OUT_OF_MEMORY;
+  if (!player_->open(buffer, size, workspace_, restore_required_ ? workspace_ + canvas_pixels : nullptr))
+    return DECODE_ERROR_INVALID_TYPE;
+  source_length_ = size;
+  initialized_ = true;
+  suspended_ = false;
+  return 0;
 }
 
 int GifDecoder::decode(uint8_t *buffer, size_t size) {
@@ -49,18 +88,9 @@ int GifDecoder::decode(uint8_t *buffer, size_t size) {
     if (scan == gif::Player::RestoreScan::MORE) return 0;
     this->pause();
     scanning_ = false;
-    player_ = player_allocator_.allocate(1);
-    if (!player_) return DECODE_ERROR_OUT_OF_MEMORY;
-    new (player_) gif::Player();
-    const size_t canvas_pixels = static_cast<size_t>(width) * height;
-    const bool restore = scan == gif::Player::RestoreScan::REQUIRED;
-    workspace_pixels_ = canvas_pixels * (restore ? 2u : 1u);
-    workspace_ = canvas_allocator_.allocate(workspace_pixels_);
-    if (!workspace_) return DECODE_ERROR_OUT_OF_MEMORY;
-    if (!player_->open(buffer, size, workspace_, restore ? workspace_ + canvas_pixels : nullptr))
-      return DECODE_ERROR_INVALID_TYPE;
-    source_length_ = size;
-    initialized_ = true;
+    restore_required_ = scan == gif::Player::RestoreScan::REQUIRED;
+    const int initialized = this->initialize_player_(buffer, size);
+    if (initialized < 0) return initialized;
   }
   const auto result = advance();
   if (result == gif::Player::Result::ERROR || result == gif::Player::Result::END)
@@ -83,6 +113,15 @@ bool GifDecoder::retain_source(DownloadBuffer &transfer) {
 }
 
 gif::Player::Result GifDecoder::advance() {
+  if (suspended_) {
+    if (!source_.data() || source_.size() < source_length_ ||
+        this->initialize_player_(source_.data(), source_length_) < 0)
+      return gif::Player::Result::ERROR;
+    player_->restore_replayed_loop_count(replay_position_.loops);
+    replay_remaining_frames_ = replay_position_.frames;
+    replaying_ = true;
+  }
+  if (!player_) return gif::Player::Result::ERROR;
   // Avoid the normal 16 ms component-loop delay between bounded decode slices.
   // Other components still run between slices; idle/hidden animations release
   // the request so ordinary firmware scheduling resumes.
@@ -108,6 +147,19 @@ void GifDecoder::reset_render_target(bool completed_frame) {
 }
 
 gif::Player::Result GifDecoder::advance_step_() {
+  if (replaying_) {
+    if (!replay_remaining_frames_) {
+      replaying_ = false;
+      rendering_ = replay_current_frame_ && replay_position_.frames != 0;
+      return gif::Player::Result::MORE;
+    }
+    const auto result = player_->step();
+    if (result == gif::Player::Result::FRAME) {
+      --replay_remaining_frames_;
+      return gif::Player::Result::MORE;
+    }
+    return result;
+  }
   if (!rendering_) {
     const uint32_t started = micros();
     const auto result = player_->step();

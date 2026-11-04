@@ -1893,6 +1893,7 @@ bool ArtworkImage::create_decoder_(ImageFormat format, size_t total_size) {
     this->max_download_buffer_size_ = image_pipeline_transfer_limit(true, true);
     if (total_size == 0 && this->downloader_) total_size = this->get_sane_content_length_();
 #endif
+    this->suspend_hidden_animations_();
     this->decoder_ = make_unique<GifDecoder>(this);
     this->gif_decoding_ = true;
   }
@@ -2375,6 +2376,30 @@ void ArtworkImage::stop_animation_() {
 #endif
 }
 
+void ArtworkImage::suspend_animation_workspace_() {
+#if defined(USE_ARTWORK_IMAGE_GIF_SUPPORT) && defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
+  if (!this->animation_ || this->service_active_ || this->decoder_ || this->downloader_ ||
+      this->p4_pipeline_pending_ || this->s3_transfer_pending_ ||
+      !this->animation_->suspend_working_state(this->animation_frame_ready_)) return;
+  this->animation_frame_pending_ = false;
+  this->animation_frame_ready_ = false;
+  this->discard_decode_buffer_();
+  if (gif_playing == this) gif_playing = nullptr;
+#endif
+}
+
+void ArtworkImage::suspend_hidden_animations_() {
+#if defined(USE_ARTWORK_IMAGE_GIF_SUPPORT) && defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
+  const bool selected = (this->animation_screen_active_ && this->animation_screen_active_()) ||
+                        (this->animation_visible_ && this->animation_visible_());
+  if (!selected && !this->animation_fullscreen_ && this->p4_pipeline_priority_ != P4_PIPELINE_MODAL) return;
+  for (auto *owner : gif_slots) {
+    if (owner && owner != this && owner->animation_visible_ && !owner->animation_visible_())
+      owner->suspend_animation_workspace_();
+  }
+#endif
+}
+
 void ArtworkImage::loop_animation_() {
 #ifdef USE_ARTWORK_IMAGE_GIF_SUPPORT
   if (!this->animation_) return;
@@ -2385,6 +2410,7 @@ void ArtworkImage::loop_animation_() {
   }
   if (!this->animation_visible_ || !this->animation_visible_()) {
     this->animation_->pause();
+    this->suspend_animation_workspace_();
     if (gif_playing == this) gif_playing = nullptr;
     this->animation_frame_started_ms_ = millis();
     return;
@@ -2396,6 +2422,7 @@ void ArtworkImage::loop_animation_() {
     }
     gif_playing = nullptr;
   }
+  this->suspend_hidden_animations_();
   gif_playing = this;
   if (!this->animation_frame_ready_) {
     // Prepare the next frame during the displayed frame's delay. Keep its

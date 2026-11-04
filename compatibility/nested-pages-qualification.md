@@ -806,6 +806,51 @@ all 78 protected preferences, PIN/reset, sleep and both original update
 preferences are verified restored by the outer ownership finalizer at generation
 145. All displays are back on their original firmware after these tests.
 
+The follow-up `b0b4f286b` releases a hidden S3 GIF's working player, compositor,
+resize axes and staging surface while retaining its compressed source, completed
+picture and GIF ownership. Visibility restores the working state locally through
+cooperative replay, preserving exact frame position and finite repeat counts.
+Busy replacement staging is protected. P4 does not request suspension; its shared
+decoder initialization is separately requalified. No new source limits, storage
+format, writer capabilities, callback holds or private decoder counters are added.
+
+Actual host ASan/UBSan checks pass for normal/S3 policy with both heap variants,
+including exact disposal-one/two/three frames, finite repeats, a ready next frame,
+partial/repeated reconstruction, time yielding, mandatory allocation failure and
+destruction. A 16-frame fixture independently verified with Pillow exercises
+re-covering after a yielded replay. Three copied-input negative controls catch
+missing loop restoration, a lost replay destination and disabled hidden-owner
+release. The first host assertion incorrectly classified the fixture source as
+external allocation; that assertion-only attempt is excluded and preserved.
+
+With the same real GIFs, observations and 128-KiB sampled free-PSRAM floor, the
+S3 now passes all seven cases. The combined expanded view animates while its
+covered card retains a loaded/current completed descriptor. Closing it resumes
+card animation with the server request count unchanged at 16. No allocation,
+frame/fallback or scene-accounting errors are recorded. The combined sample has
+330,592 bytes free PSRAM and 81,171 bytes internal heap (411,763 combined), with
+a 143,360-byte largest PSRAM block after the required surfaces are allocated.
+This is a settled diagnostic sample, not an isolated peak or a numerical
+before/after difference: total free memory at the earlier failure was not
+captured. Exact original firmware/native bytes and all 78 protected preferences,
+PIN/reset and sleep/update preferences are restored at generation 1143.
+
+P4 overlay `0ca7e9039` changes only its observation label from `b0b4f286b`;
+every component byte is identical. All six normal/disposal-three/2-MiB/8-MiB
+cases pass without allocation/frame/fallback or scene-accounting errors, with
+source reclamation and outer ownership finalization. Exact original firmware,
+native bytes, 78 protected preferences, PIN/reset, sleep and both original
+update preferences are restored at generation 147.
+
+All nine factory profiles pass for immutable component snapshot `b0b4f286b`.
+Every build verifies ten protected source files, stock SDK API, MCU, distinct
+original/wrapped native-handler symbols, no lab actions and unchanged native-v1/
+depth-one writer policy. The production port copies the five functional C++
+files and runtime tests byte-for-byte; observation YAML stays private. These
+checks do not establish panel pixels, maximum-layout simultaneous image pressure,
+isolated peaks or resolution of the historical original-dashboard regression.
+
+
 A browser follow-up separates saved card identities from visible cell count
 in both transfer validation and preview rendering. Five model regressions cover
 retained cards above all four grid capacities and the saved-ID boundary 32;
@@ -818,8 +863,9 @@ this follow-up's rebuilt web assets have separate browser qualification.
 
 ## Remaining gates
 
-All nine production factory profiles compile at `b1847f0bb` with the current
-ESPHome 2026.10.2 pin, including the bounded GIF canvas port; the earlier
+All nine production factory profiles compile at `b0b4f286b` with the current
+ESPHome 2026.10.2 pin, including bounded canvases and the S3 hidden-workspace
+port; `b1847f0bb` retains its canvas-only scope and the earlier
 `c05fde64f` matrix retains its own source scope. The `39a159354` and `43a914249` checkpoints also pass
 all nine profiles with ESPHome 2026.10.1. Historical matrices also pass at `ac0fad1ff` with ESPHome
 2026.10.1 and at private `c61cda45b` with ESPHome 2026.10.2 (base `c28c5b43f`

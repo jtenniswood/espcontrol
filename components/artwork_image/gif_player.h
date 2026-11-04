@@ -71,6 +71,9 @@ class Player {
   uint16_t width() const { return width_; }
   uint16_t height() const { return height_; }
   const uint16_t *canvas() const { return canvas_; }
+  struct PlaybackPosition { uint16_t frames; uint32_t loops; };
+  PlaybackPosition playback_position() const { return {frames_, completed_loops_}; }
+  void restore_replayed_loop_count(uint32_t loops) { completed_loops_ = loops; }
   uint32_t delay_ms() const { return std::max(MIN_DELAY_MS, static_cast<uint32_t>(delay_) * 10); }
 
   // Called after the first bitmap. Repeats alone do not make a still GIF an
