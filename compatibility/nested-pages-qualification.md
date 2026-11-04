@@ -897,9 +897,21 @@ or panel pixels. Exact original firmware/native bytes and all 78 protected
 preferences, PIN/reset and sleep/update preferences are restored at generation
 1151 after both replacements.
 
-
-
-
+Current-source private probe `e10e0b464`, based on public `2fbeb8af4`, then
+passes seven actual completed-GIF callback cases. The private hooks hold a
+non-cached result after real 480 × 480 / 369,953-byte GIF decoding and descriptor
+publication, before the unchanged runtime receiver. A current result becomes
+ready and animates; stale results after page and disjoint-configuration changes
+leave the new request, pending/ready/failed flags, asset and revision unchanged.
+Modal completion held for zero, two and eight seconds, plus normal playback,
+also passes. No allocation, frame/fallback or scene-accounting errors are
+recorded. The receiver host checks pass under ASan/UBSan; stripping the private
+hooks restores the public receiver and functional image code byte-for-byte.
+These small image-only fixtures cover the completed-result boundary separately
+from the populated incomplete-transfer cases above. They do not establish panel
+pixels or isolated peaks. Exact original firmware/native bytes, all 78 protected
+preferences, PIN/reset and sleep/update preferences are verified restored at
+generation 1154.
 A browser follow-up separates saved card identities from visible cell count
 in both transfer validation and preview rendering. Five model regressions cover
 retained cards above all four grid capacities and the saved-ID boundary 32;
@@ -925,7 +937,7 @@ add main's host flashing guard and guidance. CI also passes at `36b5b9cd0` and
 Compilation does not establish physical layout parity or qualify the full
 feature on ESPHome 2026.10.2. The original-dashboard memory investigation,
 nested visual confirmation, remaining P4 qualification, further replacement/
-delayed-event/modal/takeover checks, additional P4 workload coverage, burst replay,
+delayed-event/modal/takeover checks, additional P4 workload coverage,
 remaining image/decode combinations and physical storage-failure
 qualification remain open. Published-reader and mirror-retirement gates in
 [the delivery plan](nested-pages-delivery.md) still apply before release enablement.
