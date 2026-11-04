@@ -1035,8 +1035,59 @@ Retired-generation updates are ignored. All 80 folder round trips keep every
 visible cell bound and require no new arena allocation, even with further
 arena allocations disabled. The counted scene reservation stays at 1,303,402
 bytes and seven live allocations across all four activations. This qualifies
-the mixed fixture and owner lifecycle on host; combining it with real image
-downloads, modals and physical heap measurements remains outstanding.
+the mixed fixture and owner lifecycle on host; real downloads, modals and
+physical heap measurements require separate device evidence.
+
+The subsequent physical 10-inch V3 cohort uses private `68643cc0d`, based on
+public `526cf5153`, with all 491 existing component-source hashes unchanged.
+Only YAML adds resource/descriptor observations and an ESP-IDF local-minimum
+monitor. Native-v1/depth-one writes remain unchanged. A fresh observer receives
+all 7,566 unique expected registrations in 126.052 seconds; an ordered feed
+fills the entire 524,288-byte cache, including image URLs/state, in 72.773
+seconds. Eight tile/expanded cases pass with the same 400-card mixed layout:
+640 × 640 GIFs at both source ceilings, normal and restore-previous disposal.
+Each publishes at least three distinct current component descriptors, and all
+eight HTTP GIF responses complete (40 MiB total). Tile cases also retain a PNG;
+expanded cases start from Home with the child tile inactive. This does not
+qualify simultaneous large tile/expanded GIF ownership or physical pixels.
+
+| Surface | Source | Disposal | Internal RAM local minimum, bytes | PSRAM local minimum, bytes |
+| --- | --- | --- | ---: | ---: |
+| Tile | 2 MiB | Keep | 298,659 | 13,893,440 |
+| Tile | 8 MiB | Keep | 298,695 | 7,601,916 |
+| Tile | 2 MiB | Restore previous | 298,567 | 13,074,172 |
+| Tile | 8 MiB | Restore previous | 298,071 | 6,782,720 |
+| Expanded | 2 MiB | Keep | 297,279 | 12,465,568 |
+| Expanded | 8 MiB | Keep | 297,883 | 6,174,088 |
+| Expanded | 2 MiB | Restore previous | 300,195 | 11,646,360 |
+| Expanded | 8 MiB | Restore previous | 299,387 | 5,354,904 |
+
+Each monitor window starts before the request and ends after playback is
+observed; full heap snapshots occur outside it. These are instrumented workload
+low-water marks, including background/API activity. ESP-IDF aggregates minima
+per heap region, so the two pools must not be summed into a simultaneous
+combined minimum. No allocation/frame/fallback or scene-accounting failures
+are recorded. After final sleep/takeover release, the full cache and seven scene
+allocations remain, reserving 1,252,986 scene bytes. Free PSRAM is 17,164,744
+bytes, within 24 bytes of the initial full-cache reading; image leases and
+active/retired modal contexts are zero. This extends the earlier source/pixel
+checks to one real maximum-layout image workload, not an original-dashboard
+before/after comparison or uninstrumented isolated decoder peak.
+
+The initial restoration exposes a qualification-controller gap: its read-only
+bridge makes two exact-original native commits but leaves the legacy copy written
+by this DUAL_WRITE cohort. The original-image upload acknowledges success, but
+the device reconnects on the cleanup image; one controlled restart does not
+establish the original image either. A subsequent exact-original DUAL_WRITE
+save acknowledges complete native/legacy persistence with HTTP 204. The same
+original firmware then reconnects and stays up for over 70 seconds. Exact
+original dashboard bytes, all 78 protected settings, PIN/reset, sleep and both
+update preferences are verified restored at generation 367. The failed attempt
+is preserved separately. Corrected controller recovery now requires the legacy
+repair before old-grid boot; four host policy checks pass and the original
+native-only helper fails the stale-legacy negative control. This observation
+does not establish a bootloader rollback reason or count as a physical power
+interruption.
 
 ## Flat storage migration on the 10-inch V3
 
