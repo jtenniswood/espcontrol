@@ -69,6 +69,12 @@ It preserves a completed tile after close; source/network failures retain
 their unavailable state and backoff. Failure classification follows the
 request-generation fences so late results cannot alter a replacement opening.
 
+On S3, an animated download must also reserve its next-frame surface and
+preserve PSRAM headroom before the first frame is accepted. Visible playback
+reuses its resize workspace; hiding the animation releases that workspace and
+staging while preserving the completed picture and compressed source. Static
+GIFs and occupied animation slots retain their existing still-image behavior.
+
 Before shared production cutover, physically qualify S3, then a 20-slot P4 and
 the remaining grid sizes. Record whole-device and owner-level steady/peak
 memory, navigation latency and image peaks. Host tests and all-profile compile

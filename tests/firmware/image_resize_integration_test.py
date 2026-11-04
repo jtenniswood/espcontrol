@@ -286,6 +286,17 @@ int main() {
  {
    ArtworkImage image;
    Decoder decoder(&image);
+   assert(decoder.set_size(2,2) && decoder.prepare_filtered_resize(2,2));
+   allocation_fails = true;
+   // Subsequent GIF frames must reuse their admitted resize workspace.
+   assert(decoder.prepare_filtered_resize(2,2));
+   assert(!decoder.has_failed());
+   allocation_fails = false;
+ }
+ assert(allocations == 0);
+ {
+   ArtworkImage image;
+   Decoder decoder(&image);
    assert(decoder.set_size(2,2));
    allocation_fails = true;
    const uint8_t input[8]{};

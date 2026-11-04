@@ -1175,6 +1175,38 @@ and five selected host checks pass; removing either allocation-origin mapping
 fails its resource assertion. These are host results pending the next hardware
 retest; the full-layout expanded GIF is not claimed to fit on the S3.
 
+With public `5d8d92bd5` and YAML-only observer `61685e22e`, the same maximum
+S3 layout now reports the 369,953-byte expansion failure as RESOURCE. The
+covered card remains complete and resumes five distinct frames during a
+5.25-second window; server requests stay at four across close. A separate
+480 × 480 / 25,825-byte control exposes a later admission gap: its first
+expanded frame publishes, but allocating the next 409,840-byte staging surface
+fails against a 376,832-byte largest block. Playback stops at the first frame.
+This is not a passing full-layout GIF qualification. The two 640-pixel cases
+remain unrun. Exact original firmware/dashboard, native/legacy persistence,
+PIN/reset and 78 protected preferences are restored at generation 1160 and
+observed stable over 70 seconds. The next fix must reserve playback staging
+before accepting an animated download; a successful first frame alone does
+not establish sustainable playback.
+
+The working S3 admission fix reserves the next-frame surface before promotion,
+checks the existing 96-KiB PSRAM headroom and transfers the reservation through
+cleanup before notifying success. Failure leaves the preceding image intact.
+Slot preparation preserves the current owner, rejects occupied visible slots
+and reclaims only eligible hidden owners before admission. The S3 decoder keeps
+and reuses its resize workspace between visible frames; suspension/cancellation
+still releases it. Other platforms retain their frame-release policy.
+Production first-frame publication tests pass for normal/S3 allocation,
+headroom, cleanup, stale generation, static fallback and hidden-cache cases.
+The actual GIF runtime passes all four normal/S3 heap variants under ASan/UBSan,
+including independent frame goldens and advancing admitted S3 frames with
+further allocations disabled. Five GCC lifecycle/resize checks pass. Four
+targeted negative controls catch disabled reservation, missing staging transfer,
+missing generation fencing and premature workspace release, after verifying
+their positive baselines. An earlier negative run is excluded because a test
+inherited the preceding case's low-memory setup. Firmware/hardware verification
+of this staging fix remains pending.
+
 ## Flat storage migration on the 10-inch V3
 
 Public checkpoint `efc6dcf09` passes all nine sequential ESPHome 2026.10.2

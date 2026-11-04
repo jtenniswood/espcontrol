@@ -196,7 +196,9 @@ gif::Player::Result GifDecoder::advance_step_() {
            static_cast<unsigned long>(decode_work_us_ / 1000),
            static_cast<unsigned long>(resize_work_us_ / 1000));
   decode_work_us_ = resize_work_us_ = 0;
+#if !defined(USE_ESP_IDF) || !defined(CONFIG_IDF_TARGET_ESP32S3)
   release_filtered_resize();
+#endif
   rendering_ = false;
   render_target_ready_ = false;
   return gif::Player::Result::FRAME;

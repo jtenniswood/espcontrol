@@ -20,6 +20,10 @@ for name in ("retain_animation_", "pause_animation_for_refresh_", "replace_anima
 match = re.search(r"^bool ArtworkImage::animation_needs_reload\(\) const \{\n.*?^\}", artwork, re.M | re.S)
 assert match
 methods.append(match[0])
+match = re.search(r"^int ArtworkImage::prepare_animation_slot_\(bool replacing\) \{\n.*?^\}",
+                  artwork, re.M | re.S)
+assert match
+methods.append(match[0])
 
 stub = r'''
 #pragma once
@@ -29,6 +33,7 @@ stub = r'''
 #include <memory>
 #include <vector>
 #include "gif_image.h"
+#include "transfer_observer.h"
 #include "esphome/core/log.h"
 #define ESP_LOGD(tag, ...) ((void)(tag))
 #define ESP_LOGW(tag, ...) ((void)(tag))
@@ -44,6 +49,7 @@ class ArtworkImage {
   DownloadBuffer download_buffer_{0};
   esphome::RAMAllocator<uint8_t> allocator_;
   bool gif_decoding_ = true, animation_reload_pending_ = false, animation_fullscreen_ = false;
+  TransferFailure transfer_failure_ = TransferFailure::CONTENT;
   P4PipelinePriority p4_pipeline_priority_ = P4_PIPELINE_TILE;
   std::unique_ptr<GifDecoder> animation_;
   bool animation_frame_pending_ = false, animation_frame_ready_ = false, fail_resize = false;
@@ -54,6 +60,8 @@ class ArtworkImage {
   std::vector<uint8_t> active, staging;
   uint8_t *buffer_ = nullptr, *decode_buffer_ = nullptr;
   int cache_invalidations = 0, width = 0, height = 0, decode_buffer_width_ = 0;
+  int decode_buffer_height_ = 0, decode_content_width_ = 0, decode_content_height_ = 0;
+  int decode_offset_x_ = 0, decode_offset_y_ = 0;
   int get_bpp() const { return 16; }
   bool has_transparency() const { return false; }
   bool is_big_endian() const { return false; }
@@ -80,6 +88,7 @@ class ArtworkImage {
     animation_fullscreen_ = fullscreen;
   }
   void retain_animation_();
+  int prepare_animation_slot_(bool replacing = false);
   void pause_animation_for_refresh_();
   void replace_animation_();
   void end_connection_();
@@ -119,16 +128,10 @@ void ImageDecoder::release_filtered_resize() {
 }
 bool ImageDecoder::set_size(int width, int height) {
   if (image_->fail_resize) return false;
-  image_->width = image_->decode_buffer_width_ = width; image_->height = height;
+  image_->width = image_->decode_buffer_width_ = image_->decode_content_width_ = width;
+  image_->height = image_->decode_buffer_height_ = image_->decode_content_height_ = height;
   image_->staging.assign(static_cast<size_t>(width) * height * 2, 0);
   image_->decode_buffer_ = image_->staging.data(); return true;
-}
-bool ImageDecoder::prepare_filtered_resize(int width, int height) {
-  release_filtered_resize();
-  resample_workspace_size_ = ScanlineResampler::workspace_size(width);
-  resample_workspace_ = resample_allocator_.allocate(resample_workspace_size_);
-  return resampler_.configure(width, height, width, height, width, height, 0, 0,
-                             resample_workspace_, resample_workspace_size_);
 }
 void ImageDecoder::draw_filtered_rgb888_row(int y, const uint8_t *data) {
   assert(resampler_.push_row(y, [data](int x) {
@@ -148,9 +151,12 @@ decoder_implementation = (COMPONENT / "image_decoder.cpp").read_text()
 row_method = re.search(r"^ScanlineResampler::RowResult ImageDecoder::draw_fast_filtered_rgb565_row\([^)]*\) \{\n.*?^\}",
                        decoder_implementation, re.M | re.S)
 assert row_method
+prepare_method = re.search(r"^bool ImageDecoder::prepare_filtered_resize\([^)]*\) \{\n.*?^\}",
+                          decoder_implementation, re.M | re.S)
+assert prepare_method
 buffer_methods = decoder_implementation.split("DownloadBuffer::DownloadBuffer", 1)[1].rsplit(
     "}  // namespace artwork_image", 1)[0]
-source += "\nnamespace esphome::artwork_image {\n" + row_method[0] + "\nDownloadBuffer::DownloadBuffer" + buffer_methods + "\n}\n"
+source += "\nnamespace esphome::artwork_image {\n" + prepare_method[0] + "\n" + row_method[0] + "\nDownloadBuffer::DownloadBuffer" + buffer_methods + "\n}\n"
 
 
 # Run the production LVGL visibility bindings against main/subpage object trees.
@@ -542,7 +548,56 @@ static void hidden_workspace_policy() {
   }
 }
 
+static void animation_slot_preparation() {
+  auto file = read(std::string(GIF_FIXTURE_DIR) + "/disposal-no-restore.gif");
+  ArtworkImage card;
+  card.animation_screen_active_ = [] { return true; };
+  load(card, file, false);
+  auto* previous = card.animation_.get(); const auto frame = card.active;
+  assert(card.prepare_animation_slot_(true) == 0 && card.animation_.get() == previous);
+  assert(card.prepare_animation_slot_() == -1 && card.animation_.get() == previous);
+  ArtworkImage next;
+  next.animation_screen_active_ = [] { return true; };
+  assert(next.prepare_animation_slot_(true) == -1 && card.animation_.get() == previous);
+  card.animation_visible_ = [] { return false; };
+  card.animation_screen_active_ = [] { return false; };
+  assert(next.prepare_animation_slot_(true) == 0 && !card.animation_ && card.animation_reload_pending_);
+  assert(card.active == frame && !gif_slots[0]);
+  ArtworkImage modal;
+  modal.p4_pipeline_priority_ = P4_PIPELINE_MODAL;
+  modal.animation_visible_ = [] { return false; };
+  load(modal, file, false); const auto cached = modal.active;
+  ArtworkImage screensaver;
+  screensaver.animation_fullscreen_ = true;
+  screensaver.animation_screen_active_ = [] { return true; };
+  assert(screensaver.prepare_animation_slot_(true) == 1 && !modal.animation_);
+  assert(modal.active == cached && !gif_slots[1]);
+  assert(fake_esphome_allocator::external_pointers.empty());
+}
+
+static void admitted_workspace_reuse() {
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
+  auto file = read(std::string(GIF_FIXTURE_DIR) + "/disposal-no-restore.gif");
+  auto expected = read(std::string(GIF_FIXTURE_DIR) + "/disposal-no-restore.rgb565");
+  ArtworkImage image; load(image, file, false);
+  fake_esphome_allocator::external_available = false;
+  fake_esphome_allocator::internal_available = false;
+  for (unsigned frame = 1; frame <= 3; ++frame) {
+    now_ms += image.animation_->delay_ms();
+    for (unsigned slice = 0; slice < 1000 && image.cache_invalidations < int(frame); ++slice)
+      image.loop_animation_();
+    assert(image.animation_ && image.cache_invalidations == int(frame));
+    assert(std::equal(image.active.begin(), image.active.end(), expected.begin() + 6 + frame * 128));
+  }
+  fake_esphome_allocator::external_available = true;
+  fake_esphome_allocator::internal_available = true;
+  image.stop_animation_(); assert(fake_esphome_allocator::external_pointers.empty());
+#endif
+}
+
 int main() {
+  animation_slot_preparation();
+  admitted_workspace_reuse();
   covered_during_replay();
   hidden_workspace_policy();
   suspended_playback_roundtrips();
