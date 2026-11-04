@@ -1139,6 +1139,19 @@ pixels. Exact original firmware and dashboard bytes remain stable for over
 preferences are restored at native generation 375, following the corrected
 native-plus-legacy recovery procedure.
 
+A subsequent decoder audit finds that generic preparation and streaming-decode
+errors discard the explicit `DECODE_ERROR_OUT_OF_MEMORY` classification. The
+follow-up maps only that result to RESOURCE; malformed and unsupported content
+keep their existing classification. The new registered host test executes the
+actual production methods with controlled GIF/JPEG/PNG/BMP backends. Preparation
+and decode allocation failures, cleanup, content errors, partial/full/invalid
+consumption and unsupported formats pass. Removing either new mapping makes
+its resource assertion fail. Five selected runtime/adapter/ownership/policy
+checks pass on AppleClang; decoder, ownership, resize and release checks pass
+with pinned-image Linux GCC. This is host classification evidence, separate
+from the preceding physical transfer-refusal cohort; updated firmware and S3
+maximum-pressure qualification remain to be run.
+
 ## Flat storage migration on the 10-inch V3
 
 Public checkpoint `efc6dcf09` passes all nine sequential ESPHome 2026.10.2

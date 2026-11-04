@@ -1400,6 +1400,8 @@ target_include_directories(page_image_runtime_test PRIVATE stubs ../../component
 add_test(NAME page_image_runtime_test COMMAND page_image_runtime_test)
 add_test(NAME artwork_owned_result_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/artwork_owned_result_test.py ${CMAKE_CXX_COMPILER})
+add_test(NAME artwork_decoder_failure_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/artwork_decoder_failure_test.py ${CMAKE_CXX_COMPILER})
 
 add_executable(image_service_test image_service_test.cpp ${CMAKE_CURRENT_BINARY_DIR}/image_service.cpp)
 target_compile_features(image_service_test PRIVATE cxx_std_17)

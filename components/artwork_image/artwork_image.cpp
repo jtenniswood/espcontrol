@@ -1925,7 +1925,9 @@ bool ArtworkImage::create_decoder_(ImageFormat format, size_t total_size) {
     ESP_LOGE(TAG, "Could not instantiate decoder. Image format unsupported: %d", format);
     return false;
   }
-  if (this->decoder_->prepare(total_size) < 0) {
+  const int prepared = this->decoder_->prepare(total_size);
+  if (prepared < 0) {
+    if (prepared == DECODE_ERROR_OUT_OF_MEMORY) this->transfer_failure_ = TransferFailure::RESOURCE;
     this->decoder_.reset();
     return false;
   }
@@ -2102,6 +2104,7 @@ bool ArtworkImage::decode_buffered_data_() {
   if (this->decode_started_ms_ == 0) this->decode_started_ms_ = millis();
   auto fed = this->decoder_->decode(this->download_buffer_.data(), unread);
   if (fed < 0) {
+    if (fed == DECODE_ERROR_OUT_OF_MEMORY) this->transfer_failure_ = TransferFailure::RESOURCE;
     ESP_LOGE(TAG, "Error when decoding image.");
     return false;
   }
