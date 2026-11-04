@@ -13,7 +13,7 @@ class GifDecoder : public ImageDecoder {
   explicit GifDecoder(ArtworkImage *image) : ImageDecoder(image), source_(0) {}
   ~GifDecoder() override;
   int decode(uint8_t *buffer, size_t size) override;
-  bool is_decoding() const override { return initialized_ && !first_frame_ready_; }
+  bool is_decoding() const override { return (scanning_ || initialized_) && !first_frame_ready_; }
   gif::Player::Result advance();
   void pause() { decode_loop_.stop(); }
   void reset_render_target(bool completed_frame = false);
@@ -28,6 +28,8 @@ class GifDecoder : public ImageDecoder {
   gif::Player *player_{nullptr};
   DownloadBuffer source_;
   size_t source_length_{0};
+  size_t restore_scan_position_{0};
+  bool scanning_{false};
   RAMAllocator<uint16_t> canvas_allocator_{RAMAllocator<uint16_t>::ALLOC_EXTERNAL};
   uint16_t *workspace_{nullptr};
   size_t workspace_pixels_{0};

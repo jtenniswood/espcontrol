@@ -716,9 +716,95 @@ baselines differ by 12,044 bytes, giving a baseline-adjusted improvement of
 702,400–702,716 bytes free. These are sampled diagnostic measurements, not
 isolated peaks or an uninstrumented production comparison. Exact original
 firmware/native bytes and all protected settings, PIN/reset and sleep/update
-preferences are verified restored at generation 1136. The optimization remains
-private: worst-case full-source scan latency, broader GIF/P4 coverage and
-production-source build/device qualification still need work.
+preferences are verified restored at generation 1136. At that checkpoint the
+optimization remains private, with source-scan latency and broader qualification
+still open.
+
+The cooperative follow-up scans at most 64 KiB of candidate positions per call,
+checking elapsed time between 4 KiB slices and yielding after four milliseconds.
+The existing high-frequency requester keeps scanning prompt between ordinary
+component loops. Scan progress counts as active decoding, including for the S3
+background-result consumer. `Player::open` no longer repeats the full scan;
+missing restore storage fails safely at the disposal guard if needed.
+Host ASan/UBSan checks cover chunk boundaries, all packed control values,
+random/corrupt inputs, 2/8 MiB sources, late restore markers, known/unknown
+length, no early decoder allocation, cancellation, pause/resume, failure,
+allocation exhaustion and clock wraparound. Negative controls removing active
+scan reporting or delaying the time guard fail their targeted assertions.
+The real 480-pixel fixture keeps its 460,800-byte canvas workspace and matches
+an independent Pillow 12.3 first-frame golden.
+
+Private timed source `775e313b5` adds three fixed `uint32_t` counters per decoder
+and read-only scan reports. All seven S3 cases pass, with six scan calls per
+369,953-byte GIF and a maximum observed scan duration of 3,876 microseconds.
+The predeclared limits are 8,000 microseconds and 65,536 candidate positions per
+call. No allocation/frame/scene-accounting errors or dropped callback targets
+occur. Static RAM section bytes remain unchanged from `047637d8e`; the diagnostic
+OTA image adds 400 bytes. Exact original firmware/native bytes and all protected
+settings, PIN/reset and sleep/update preferences are restored at generation 1139.
+
+P4 overlay `5da168eb9` has identical components and passes the same seven cases
+on the 4.3-inch RISC-V panel, with a maximum scan duration of 1,914 microseconds.
+Its profile-specific host fixture retains seven card definitions on the six-slot
+grid; four replacements and folder round trips pass with six state registrations
+and no new scene-arena allocation. Original SDK2 firmware/native bytes and all
+78 configured settings, PIN/reset and both update preferences are restored at
+generation 141. Host-client cross-loop timezone notices in this first cohort do
+not qualify timezone behaviour.
+
+A separate P4 run admits 2 MiB and 8 MiB inputs containing an 8 × 8 animated GIF
+prefix and repetitive trailing marker bytes. Complete source scans take 59/233
+calls, reach positions 2,097,149/8,388,605, and peak at 4,290/4,305 microseconds
+per call. Both inputs animate without allocation/frame errors. Free PSRAM after
+source reclamation is 25,328,176/25,328,260 bytes against a 25,328,180-byte
+baseline, while retaining the four-MiB stop margin. Exact original firmware,
+native bytes and protected preferences are restored at generation 143.
+An earlier attempt stops on a native GET 503 immediately after boot, before any
+fixture write or decode, and restores generation 141. Its response body was not
+captured. The corrected collector only retries documented temporary native GET
+503 responses for thirty seconds; writes/actions never retry. It disables host
+time provision. These cases qualify source admission/scanning, decoded animation
+and reclamation, not maximum pixel dimensions, isolated peaks, physical panel
+pixels or simultaneous GIF pressure.
+
+The production port keeps only the functional changes in the three GIF files;
+all private timing counters/getters and artwork/runtime/YAML instrumentation are
+excluded. Actual production Player/runtime ASan/UBSan checks pass with both heap
+variants. The four GIF fixtures and their independent goldens reproduce exactly
+with Pillow 12.3. Factory snapshot `b1847f0bb` passes all nine sequential
+ESPHome 2026.10.2 profiles. Each build verifies the eight protected GIF/lookup
+source files, MCU, unmodified SDK API, distinct original/wrapped handler symbols
+and unchanged native-v1/depth-one writer policy.
+
+YAML-only observation overlay `43342c2c6` then compiles with every external
+component byte identical to that production snapshot and unchanged SDK API
+sources. It observes current image URLs, published descriptor hashes and public
+memory snapshots, without callback holds or private decoder counters. Each
+accepted playback case requires a fresh real GIF-source notice and at least
+three distinct descriptor hashes. These are decoded-image checks, not panel
+pixels or isolated heap peaks.
+
+The production-component S3 passes tile, folder and expanded 480 × 480 GIF
+playback, the disposal-three fixture, and another card playback before the
+combined test. The disposal fixture changes only its repeat count for sampling;
+Pillow verifies all four composited frames remain identical. **The combined
+card/expanded GIF case fails:** five attempts cannot allocate a 409,840-byte
+expanded surface, each reporting a largest block of 327,680 bytes. The expanded
+image never becomes ready, so card resumption is not tested and the seven-case
+cohort is not a pass. Total free PSRAM at those failures was not captured. The
+five earlier passing cases do not qualify simultaneous GIF pressure. Exact
+original firmware/native bytes, all 78 protected preferences, PIN/reset, sleep
+and original update preference are verified restored at generation 1141.
+
+The production-component 4.3-inch P4 passes all six cases: 480 × 480 tile,
+folder and expanded playback, disposal-three, and the 2/8 MiB animated 8 × 8
+sources with repetitive trailing markers. Source reclamation returns within the
+one-MiB baseline tolerance; no allocation/frame/fallback or scene-accounting
+errors are recorded. These source-ceiling checks do not qualify maximum pixel
+images or simultaneous GIF pressure. Exact original firmware/native bytes,
+all 78 protected preferences, PIN/reset, sleep and both original update
+preferences are verified restored by the outer ownership finalizer at generation
+145. All displays are back on their original firmware after these tests.
 
 A browser follow-up separates saved card identities from visible cell count
 in both transfer validation and preview rendering. Five model regressions cover
@@ -732,8 +818,9 @@ this follow-up's rebuilt web assets have separate browser qualification.
 
 ## Remaining gates
 
-All nine production factory profiles compile at `c05fde64f` with the current
-ESPHome 2026.10.2 pin. The `39a159354` and `43a914249` checkpoints also pass
+All nine production factory profiles compile at `b1847f0bb` with the current
+ESPHome 2026.10.2 pin, including the bounded GIF canvas port; the earlier
+`c05fde64f` matrix retains its own source scope. The `39a159354` and `43a914249` checkpoints also pass
 all nine profiles with ESPHome 2026.10.1. Historical matrices also pass at `ac0fad1ff` with ESPHome
 2026.10.1 and at private `c61cda45b` with ESPHome 2026.10.2 (base `c28c5b43f`
 plus the SDK pin). The rebase onto main `6c10c3d5a` preserves the parent runtime

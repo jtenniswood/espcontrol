@@ -26,16 +26,38 @@ int GifDecoder::decode(uint8_t *buffer, size_t size) {
     if (!gif::Player::dimensions(buffer, size, width, height)) {
       ESP_LOGE(TAG, "Invalid GIF or source exceeds limits: source=%ux%u compressed=%zu max_pixels=%zu",
                width, height, size, gif::Player::MAX_PIXELS);
+      this->pause();
+      scanning_ = false;
       return DECODE_ERROR_UNSUPPORTED_FORMAT;
     }
-    ESP_LOGI(TAG, "GIF source: %ux%u compressed=%zu bytes", width, height, size);
+    if (!scanning_) {
+      ESP_LOGI(TAG, "GIF source: %ux%u compressed=%zu bytes", width, height, size);
+      scanning_ = true;
+    }
+    decode_loop_.start();
+    // Check time between small slices, including on repetitive compressed data.
+    // A call examines at most 64 KiB of positions; other components run between
+    // calls even when source admission reaches the 8 MiB file ceiling.
+    constexpr size_t SCAN_POSITIONS_PER_SLICE = 4 * 1024;
+    const uint32_t started = millis();
+    auto scan = gif::Player::RestoreScan::MORE;
+    for (unsigned slice = 0; slice < 16; ++slice) {
+      scan = gif::Player::scan_restore_canvas(
+          buffer, size, restore_scan_position_, SCAN_POSITIONS_PER_SLICE);
+      if (scan != gif::Player::RestoreScan::MORE || millis() - started >= 4) break;
+    }
+    if (scan == gif::Player::RestoreScan::MORE) return 0;
+    this->pause();
+    scanning_ = false;
     player_ = player_allocator_.allocate(1);
     if (!player_) return DECODE_ERROR_OUT_OF_MEMORY;
     new (player_) gif::Player();
-    workspace_pixels_ = static_cast<size_t>(width) * height * 2;
+    const size_t canvas_pixels = static_cast<size_t>(width) * height;
+    const bool restore = scan == gif::Player::RestoreScan::REQUIRED;
+    workspace_pixels_ = canvas_pixels * (restore ? 2u : 1u);
     workspace_ = canvas_allocator_.allocate(workspace_pixels_);
     if (!workspace_) return DECODE_ERROR_OUT_OF_MEMORY;
-    if (!player_->open(buffer, size, workspace_, workspace_ + workspace_pixels_ / 2))
+    if (!player_->open(buffer, size, workspace_, restore ? workspace_ + canvas_pixels : nullptr))
       return DECODE_ERROR_INVALID_TYPE;
     source_length_ = size;
     initialized_ = true;

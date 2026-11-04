@@ -8,8 +8,9 @@
 
 namespace esphome::artwork_image::gif {
 
-// A bounded GIF87a/89a reader. The caller owns the compressed data and two
-// RGB565 canvases. No file field can request an allocation or grow the LZW table.
+// A bounded GIF87a/89a reader. The caller owns the compressed data, one
+// RGB565 canvas and an optional restore canvas. No file field can request an
+// allocation or grow the LZW table.
 class Player {
  public:
   enum class Result { MORE, FRAME, END, ERROR };
@@ -27,8 +28,35 @@ class Player {
            static_cast<size_t>(width) * height <= MAX_PIXELS;
   }
 
+  enum class RestoreScan { MORE, CLEAR, REQUIRED };
+  // Search conservatively for GIF89a GCE disposal 3. A compressed-data match
+  // can reserve an unnecessary backup; a real restore operation is never missed.
+  // Each call examines at most `budget` candidate positions, with three bytes
+  // of lookahead. The cursor survives yielding between component loops.
+  static RestoreScan scan_restore_canvas(const uint8_t *data, size_t size,
+                                        size_t &position, size_t budget) {
+    if (!data || size < 4 || size > MAX_BYTES || !budget || position > size - 3)
+      return RestoreScan::REQUIRED;
+    const size_t positions = size - 3;
+    const size_t end = position + std::min(budget, positions - position);
+    while (position < end) {
+      const auto *control = static_cast<const uint8_t *>(
+          std::memchr(data + position, 0x21, end - position));
+      if (!control) {
+        position = end;
+        break;
+      }
+      position = static_cast<size_t>(control - data) + 1;
+      if (control[1] == 0xf9 && control[2] == 4 && ((control[3] >> 2) & 7) == 3)
+        return RestoreScan::REQUIRED;
+    }
+    return position == positions ? RestoreScan::CLEAR : RestoreScan::MORE;
+  }
+
+  // Opening validates only the header. Without backup storage, a later frame
+  // needing restore-previous fails safely at its existing disposal guard.
   bool open(const uint8_t *data, size_t size, uint16_t *canvas, uint16_t *restore) {
-    if (!dimensions(data, size, width_, height_) || !canvas || !restore) return false;
+    if (!dimensions(data, size, width_, height_) || !canvas) return false;
     data_ = data; size_ = size; canvas_ = canvas; restore_ = restore; pos_ = 13;
     if (data[10] & 0x80) {
       global_colors_ = 1u << ((data[10] & 7) + 1);
@@ -166,6 +194,7 @@ class Player {
       for (size_t y = top_; y < static_cast<size_t>(top_) + frame_height_; ++y)
         std::fill_n(canvas_ + y * width_ + left_, frame_width_, background_);
     } else if (disposal_ == 3) {
+      if (!restore_) return fail();
       std::memcpy(canvas_, restore_, static_cast<size_t>(width_) * height_ * 2);
     }
     uint8_t disposal = 0, transparent_index = 0;
@@ -231,7 +260,10 @@ class Player {
       if (!colors_ || !byte(min_bits_) || min_bits_ < 2 || min_bits_ > 8) return fail();
       disposal_ = disposal; delay_ = delay; transparent_ = transparent;
       transparent_index_ = transparent_index; interlaced_ = packed & 0x40;
-      if (disposal_ == 3) std::memcpy(restore_, canvas_, static_cast<size_t>(width_) * height_ * 2);
+      if (disposal_ == 3) {
+        if (!restore_) return fail();
+        std::memcpy(restore_, canvas_, static_cast<size_t>(width_) * height_ * 2);
+      }
       clear_ = 1u << min_bits_; next_ = clear_ + 2; code_bits_ = min_bits_ + 1;
       previous_ = -1; stack_size_ = 0; bit_buffer_ = 0; bit_count_ = 0;
       block_remaining_ = 0; blocks_ended_ = false; pixels_ = 0;
