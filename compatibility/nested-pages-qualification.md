@@ -1189,7 +1189,7 @@ observed stable over 70 seconds. The next fix must reserve playback staging
 before accepting an animated download; a successful first frame alone does
 not establish sustainable playback.
 
-The working S3 admission fix reserves the next-frame surface before promotion,
+Public `a0a4988b2` reserves the next-frame surface before promotion,
 checks the existing 96-KiB PSRAM headroom and transfers the reservation through
 cleanup before notifying success. Failure leaves the preceding image intact.
 Slot preparation preserves the current owner, rejects occupied visible slots
@@ -1204,8 +1204,40 @@ further allocations disabled. Five GCC lifecycle/resize checks pass. Four
 targeted negative controls catch disabled reservation, missing staging transfer,
 missing generation fencing and premature workspace release, after verifying
 their positive baselines. An earlier negative run is excluded because a test
-inherited the preceding case's low-memory setup. Firmware/hardware verification
-of this staging fix remains pending.
+inherited the preceding case's low-memory setup.
+
+YAML-only observer `a5909b710` verifies all 491 production component files
+against that public source and compiles on ESPHome 2026.10.2. Its five physical
+S3 cases pass with 81 first-level cards, 1,406 registered routes and exactly
+131,072 cached value bytes throughout:
+
+| Source | Expanded/source result | Internal heap minimum | PSRAM minimum |
+| --- | --- | ---: | ---: |
+| 480 × 480, 369,953 bytes | Expansion refused before publication | 71,203 B | 241,648 B |
+| 480 × 480, 25,825 bytes | Playback staging refused before publication | 71,507 B | 78,524 B |
+| 240 × 240, 6,897 bytes | Expanded playback, three changing descriptors | 71,415 B | 417,408 B |
+| 640 × 640, 2 MiB, normal disposal | Source refused; previous PNG retained | 69,155 B | 1,431,224 B |
+| 640 × 640, 2 MiB, restore-previous | Source refused; previous PNG retained | 70,023 B | 1,432,408 B |
+
+These are separate region minima during each operation, never a simultaneous
+combined minimum. The 96-KiB check governs admission after reservation; attempted
+allocations can temporarily reduce free PSRAM below that threshold before being
+refused. Both 480-pixel refusals report RESOURCE with no expanded image
+published; the old first-frame-then-freeze outcome is explicitly rejected.
+Closing the three expansions resumes five, five and eight changing card
+descriptors over more than five seconds, with HTTP counts unchanged at 4, 7
+and 10. Both 640-pixel refusals preserve the independent PNG, and subsequent
+fresh PNG requests complete and publish their expected colour. There are no
+unexpected decoder, frame or accounting errors. The additional 240-pixel control
+has independent Pillow 12.3.0 pixel goldens verified against the production
+player over three plays; it supplements all original 480/640 cases.
+
+Exact original firmware, native and legacy dashboard, PIN/reset and all 78
+protected preferences are restored at generation 1162. Original firmware stays
+stable over 70 seconds before updates resume. This is instrumented component
+and allocation evidence, not panel-pixel confirmation, a matched original-
+dashboard memory delta or power-loss qualification. The current nine-profile
+factory matrix is still running; previous matrices retain their source scopes.
 
 ## Flat storage migration on the 10-inch V3
 
