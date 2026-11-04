@@ -230,8 +230,37 @@ preferences. A transient original-boot configuration GET 503 in the first
 cleanup is followed by verified readiness and completed restoration; the
 observer now bounds retries to known read-only readiness responses. The
 inspection makes no raw-case call. No repartitioning or manual data migration
-is performed. Raw-flash hardware qualification remains open and must use a
-verified raw-backed device, with deployed geometry checked before writes.
+is performed. The subsequent 10-inch cohort below uses its verified raw-backed
+device, with deployed geometry checked before writes.
+
+Private 10-inch V3 image `3ba1e7528` then passes the same 78 cases on real flash.
+A preflight observes the writable, unencrypted 2 MiB `card_images` partition and
+actual 40,932-byte durable document limit. Only an initially erased 90,112-byte
+window at offset 1 MiB is mapped to the unchanged production 40 KiB-slot port.
+Task and range guards fence the private mapping. The selected custom MIPI driver,
+stock SDK API, original/wrapped symbols and compiled component hashes are
+verified before flashing.
+
+The normal commit exposes seven physical mutation and 22 read boundaries.
+Every before/after mutation failure, partial erase/write and before/after read
+failure recovers a complete old or new synthetic payload through fresh port,
+backend and store instances. Initial read failures make no commit mutation.
+Corrupting the newest payload selects the older valid slot. A maximum 40,940-byte
+opaque payload takes 44 mutation steps; selected partial writes/erases and
+publication-marker failures also pass at that size. These are storage-envelope
+payloads; native configuration
+retains its separate, smaller document limit.
+
+Every case restores the initially erased window and compares all 2 MiB of the
+partition byte-for-byte against its pre-case snapshot. The production raw backend
+uses no slot-sized transient allocation; the private observer separately borrows
+a 2 MiB verification snapshot and payload buffers. Neither the live native
+configuration nor its generation changes. Exact original SDK2 firmware/native
+generation 363, all 78 protected settings, PIN/reset and both update preferences
+are verified restored. This qualifies injected raw-driver failures in isolated
+sectors, not faults applied to the live primary configuration, a power cut or a
+production memory measurement. Physical power-interruption qualification remains
+open; the live primary sectors are never deliberately corrupted by this cohort.
 
 Current SDK2 probe `105e108cf` also repeats the full-cache workload with a
 true unpaced 1,440-message send loop. The first ordered DeviceInfo response
@@ -1024,6 +1053,6 @@ Compilation does not establish physical layout parity or qualify the full
 feature on ESPHome 2026.10.2. The original-dashboard memory investigation,
 nested visual confirmation, remaining P4 qualification, further replacement/
 delayed-event/modal/takeover checks, additional P4 workload coverage,
-remaining image/decode combinations and physical storage-failure
+remaining image/decode combinations and physical power-interruption
 qualification remain open. Published-reader and mirror-retirement gates in
 [the delivery plan](nested-pages-delivery.md) still apply before release enablement.

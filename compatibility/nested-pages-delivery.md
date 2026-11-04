@@ -124,7 +124,7 @@ allocation-failure, legacy edit/reboot and browser checks pass. The private
 10-inch future-flat-writer cohort also passes actual client edit/backup, old/new
 v1 restores, restart and full-cache navigation, with exact original recovery;
 see [its qualification scope](nested-pages-qualification.md#flat-storage-migration-on-the-10-inch-v3).
-Reader-floor, mirror-retirement and physical storage-failure gates remain.
+Reader-floor, mirror-retirement and physical power-interruption gates remain.
 
 PageStore preparation now starts with a smaller private parsing reservation and
 grows within the existing profile ceiling, releasing an unsuccessful attempt
@@ -180,8 +180,10 @@ increase document admission or remove other preparation/image peak costs.
    while preserving storage layout and atomic publication. Host coverage
    injects power cuts/read/write failures for partition and NVS paths. S3
    hardware coverage also injects NVS failures with a 16 KiB transient scratch
-   reservation and verifies fresh-handle recovery/cleanup. Raw-partition
-   failures and physical power interruptions retain separate qualification.
+   reservation and verifies fresh-handle recovery/cleanup. A later P4 cohort
+   passes 78 injected raw-driver cases at the deployed 40 KiB slot geometry in
+   isolated erased sectors, verifying the entire partition after each cleanup.
+   Physical power interruptions retain separate qualification.
 7. **Nested-page feature:** only after the preceding memory and compatibility
    gates, enable depth two through the generated contract, editor, validators,
    navigation, subtree operations, backups and remote page lookup.
