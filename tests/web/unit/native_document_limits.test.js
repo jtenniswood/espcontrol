@@ -22,13 +22,14 @@ function fixture(representation,durable,limit,versions=representation===1?[1]:[1
  });
  return {client,bytes,puts:()=>puts};
 }
-test('native saves enforce the advertised durable byte boundary before PUT',async()=>{
+test('native saves reject limits below every lossless durable form before PUT',async()=>{
  for(const version of [1,2]){
   const wire=version===1?flat.encodePanelConfig(document):graph.encodePanelPageDocument(document);
-  for(const limit of [0,wire.length-1,wire.length]){
+  const minimum=Math.min(wire.length,flat.encodePanelConfig(document).length);
+  for(const limit of new Set([0,minimum-1,minimum,wire.length-1,wire.length])){
    const f=fixture(version,version,limit);
-   assert.equal(await f.client.save(value=>value),limit<wire.length?'too-large':'saved');
-   assert.equal(f.puts(),limit<wire.length?0:1);
+   assert.equal(await f.client.save(value=>value),limit<minimum?'too-large':'saved');
+   assert.equal(f.puts(),limit<minimum?0:1);
   }
  }
 });

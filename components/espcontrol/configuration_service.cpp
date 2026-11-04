@@ -1,5 +1,6 @@
 #include "configuration_service.h"
 
+#include <algorithm>
 #include <array>
 #include <cstring>
 
@@ -38,6 +39,14 @@ void write_u32(uint8_t *data, uint32_t value) {
 
 bool supported_version(uint16_t version) {
   return version == CURRENT_CONFIGURATION_DOCUMENT_VERSION;
+}
+
+uint16_t replacement_version(uint16_t durable, ConfigurationWriteSource source,
+                             uint16_t preferred) {
+  if (source.document_version == 1) return 1;
+  // A v1-only writer still fences converted v2 input against nested data.
+  // Only a graph writer grants a complete v2 caller deliberate flattening.
+  return source.document_version == 2 && preferred == 2 ? 2 : durable;
 }
 
 ServiceStatus store_failure(StoreStatus status) {
@@ -343,7 +352,8 @@ ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
 
   if (!import_legacy) return {ServiceStatus::EMPTY, stored.status};
   fallback.reset();
-  const LegacyLoadResult legacy = legacy_.load_for_write(write_version(), output, output_capacity);
+  const LegacyLoadResult legacy = legacy_.load_for_write(write_version(), output,
+      std::min(output_capacity, maximum_document_size()));
   if (legacy.status == LegacyStatus::EMPTY) {
     return {ServiceStatus::EMPTY, stored.status};
   }
@@ -516,7 +526,8 @@ ConfigurationService::synchronize_legacy_runtime(uint8_t *output,
   bool changed = false;
   const auto legacy =
       legacy_.merge_for_write(write_version(), loaded.document_version,
-                              output, loaded.document_size, merged, capacity, &changed);
+                              output, loaded.document_size, merged,
+                              std::min(capacity, maximum_document_size()), &changed);
   if (legacy.status == LegacyStatus::ALLOCATION_FAILED)
     return {ServiceStatus::ALLOCATION_FAILED, loaded.store_status,
             loaded.document_version, loaded.generation, loaded.document_size};
@@ -573,8 +584,10 @@ ServiceSaveResult ConfigurationService::save_unlocked(
     return {ServiceStatus::STORE_FAILED, StoreStatus::PAYLOAD_TOO_LARGE,
             document_version, 0, document_size};
   }
-  // A v1 format at either end of conversion cannot describe nested data.
-  const auto replacement = admit_replacement(source.document_version == 1 ? 1 : document_version, nullptr);
+  // Protect old-format callers even after conversion to v2. Conversely, a
+  // complete v2 editor may intentionally remove nesting and select a lossless
+  // flat-v1 durable fallback; storage encoding is not the caller's identity.
+  const auto replacement = admit_replacement(replacement_version(document_version, source, write_version()), nullptr);
   if (replacement.status != ServiceStatus::OK)
     return {replacement.status, replacement.store_status, document_version, replacement.generation, document_size};
   if (legacy_writes_enabled()) {
@@ -647,7 +660,7 @@ ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
     return {ServiceStatus::STORE_FAILED, StoreStatus::PAYLOAD_TOO_LARGE,
             document_version, 0, document_size};
   }
-  const auto replacement = admit_replacement(source.document_version == 1 ? 1 : document_version, &expected_generation);
+  const auto replacement = admit_replacement(replacement_version(document_version, source, write_version()), &expected_generation);
   if (replacement.status != ServiceStatus::OK)
     return {replacement.status, replacement.store_status, document_version, replacement.generation, document_size};
   if (legacy_writes_enabled()) {

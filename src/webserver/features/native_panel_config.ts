@@ -257,12 +257,12 @@ export class NativePanelConfigClient {
       if (this.confirmedUnsupported_) return null;
       throw new Error("Configuration discovery is unavailable.");
     }
-    // Keep exact v1 backups on existing writers. A graph writer, or a reader
-    // whose stored graph cannot project to v1, requires an exact v2 snapshot.
+    // Prefer the declared writer, then follow the response's actual durable
+    // version: a graph writer can retain a large flat document in v1.
     const graphReadable = this.readNavigationDepth() === 2;
     let version = graphReadable && this.durableVersion_ === 2 ? 2 : this.v1Available_ ? 1 : graphReadable ? 2 : 0;
     if (!version) throw new Error("A compatible backup representation is unavailable.");
-    for (let attempt = 0; attempt < 2; ++attempt) {
+    for (let attempt = 0; attempt < 3; ++attempt) {
       const response = await this.fetch_("/api/v1/config", {
         cache: "no-store", headers: { "X-Panel-Config-Version": String(version) },
       });
@@ -276,6 +276,9 @@ export class NativePanelConfigClient {
       const returnedVersion = response.headers.get("X-Panel-Config-Version");
       if ((version === 2 && returnedVersion !== "2") || (returnedVersion !== null && returnedVersion !== String(version)))
         throw new Error("The backup configuration version is unavailable.");
+      const durableVersion = response.headers.get("X-Panel-Config-Durable-Version");
+      if (durableVersion === "1" && version === 2 && this.v1Available_) { version = 1; continue; }
+      if (durableVersion === "2" && version === 1 && graphReadable) { version = 2; continue; }
       const bytes = new Uint8Array(await response.arrayBuffer());
       if (version === 2 && bytes.length > this.maxV2DocumentBytes_) throw new Error("The backup exceeds the advertised byte limit.");
       if (nativeConfigDocumentVersion(bytes) !== version) throw new Error("The backup document does not match its negotiated version.");
@@ -329,11 +332,16 @@ export class NativePanelConfigClient {
           ? encodePanelPageDocument(updated)
           : version === V2_DOCUMENT_VERSION ? convertNativeV1ToV2(encodePanelConfig(updated)) : encodePanelConfig(updated);
         if (version === V2_DOCUMENT_VERSION && body.length > this.maxV2DocumentBytes_) return "too-large";
-        // A converted transport representation can exceed the saved-byte
-        // limit while its durable form still fits. Firmware checks that case
-        // after lossless conversion; the editor can check identical formats.
+        // Firmware can keep a losslessly representable flat document in v1
+        // when v2 expands beyond the backend limit. This is only an early
+        // capacity check: firmware also verifies graph IDs and raw provenance.
         if (version === this.durableVersion_ && this.maxDurableDocumentBytes_ !== null &&
-            body.length > this.maxDurableDocumentBytes_) return "too-large";
+            body.length > this.maxDurableDocumentBytes_) {
+          if (version !== V2_DOCUMENT_VERSION) return "too-large";
+          try {
+            if (convertNativeV2ToV1(body).length > this.maxDurableDocumentBytes_) return "too-large";
+          } catch { return "too-large"; }
+        }
         const next = await this.fetch_("/api/v1/config", {
           method: "PUT",
           cache: "no-store",

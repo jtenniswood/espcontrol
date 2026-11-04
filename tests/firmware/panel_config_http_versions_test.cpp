@@ -17,6 +17,7 @@
 #include "panel_config_capabilities_endpoint.h"
 #include "panel_config_service_validator.h"
 #include "panel_config_legacy_adapter.h"
+#include "durable_format_fixture.h"
 
 using namespace espcontrol;
 using namespace espcontrol::configuration;
@@ -68,10 +69,10 @@ Bytes document(const DeviceUiLimits &limits,bool maximum=false,size_t child_over
   assert(writer.append_setting(reinterpret_cast<const uint8_t *>(key.data()),key.size(),reinterpret_cast<const uint8_t *>(value.data()),value.size())==PanelConfigStatus::OK);
   size_t size=0;assert(writer.finish(&size)==PanelConfigStatus::OK);bytes.resize(size);return bytes;
 }
-Bytes nested_document() {
+Bytes nested_document(const DeviceUiLimits &limits = DEVICE_UI_PROFILES[8]) {
   Bytes bytes(4096);alignas(8)std::array<uint8_t,4096> scratch{};
   PanelConfigV2Writer writer(bytes.data(),bytes.size());assert(writer.begin()==PanelConfigStatus::OK);
-  PanelConfigV2Record r;r.kind=PanelConfigV2Kind::DEVICE_PROFILE;r.text=DEVICE_UI_PROFILES[8].device_profile;
+  PanelConfigV2Record r;r.kind=PanelConfigV2Kind::DEVICE_PROFILE;r.text=limits.device_profile;
   assert(writer.append(r)==PanelConfigStatus::OK);
   r={};r.kind=PanelConfigV2Kind::STRING;r.id=1;r.text="subpage";assert(writer.append(r)==PanelConfigStatus::OK);
   for(uint16_t page=0;page<3;++page) {
@@ -183,7 +184,7 @@ struct FutureGraphWriter:ConfigurationDocumentValidator {
   PanelConfigDocumentValidator content{allocate,release};
   bool supports_version(uint16_t version)const override{return content.supports_version(version);}
   uint16_t write_version()const override{return 2;}
-  bool supports_write_version(uint16_t version)const override{return version==2;}
+  bool supports_write_version(uint16_t version)const override{return version==1||version==2;}
   bool checks_replacements(uint16_t version)const override{return content.checks_replacements(version);}
   bool replacement_needs_document(uint16_t current,uint16_t incoming)const override{return content.replacement_needs_document(current,incoming);}
   ServiceStatus replacement_status(uint16_t current,const uint8_t*bytes,size_t size,uint16_t incoming)const override {
@@ -593,6 +594,48 @@ void replacement_check_and_commit_share_the_generation() {
     assert(status(fixture.put(old,"1","\"2\""))==422);
   }
 }
+void oversized_flat_v2_uses_lossless_durable_v1() {
+  const auto source = espcontrol::configuration::test::large_flat_document();
+  const Bytes v2 = [&] {
+    PanelConfigRepresentation encoded(allocate, release);
+    assert(encoded.convert(1, 2, source.data(), source.size(), PANEL_CONFIG_V2_HTTP_MAX_BYTES) == PanelConfigRepresentationStatus::OK);
+    return Bytes(encoded.data(), encoded.data() + encoded.size());
+  }();
+  assert(source.size() < 40932 && v2.size() > 40932);
+  for (const char *format : {"1", "2"}) {
+    FutureGraphWriter policy;
+    Fixture f(DEVICE_UI_PROFILES[4], &policy, LegacyConfigurationMode::READ_IMPORT_ONLY);
+    const auto &input = *format == '1' ? source : v2;
+    const auto saved = f.put(input, format, *format == '1' ? "\"1\"" : "\"v2-1\"");
+    if (status(saved) != 204) std::fprintf(stderr, "flat fallback format=%s HTTP=%s response=%.*s\n",
+        format, saved.status.c_str(), int(saved.response.size()), saved.response.data());
+    assert(status(saved) == 204 && saved.sent_headers.at("X-Panel-Config-Durable-Version") == "1");
+    assert(f.runtime.active().generation() == 2 && f.runtime.active().source_version() == 1);
+    assert(records(f.get("1").response) == records(source));
+    assert(f.get("2").response == v2);
+    const auto writes = f.backend.writes;
+    assert(status(f.put(input, format, *format == '1' ? "\"1\"" : "\"v2-1\"")) == 409);
+    assert(f.backend.writes == writes && f.runtime.active().generation() == 2);
+    // A fallback changes only storage encoding, not the old caller's authority.
+    f.seed_v2(nested_document(DEVICE_UI_PROFILES[4]));
+    const auto seeded_writes = f.backend.writes;
+    assert(status(f.put(source, "1", "\"3\"")) == 422);
+    assert(f.backend.writes == seeded_writes);
+    const auto restored = f.put(v2, "2", "\"v2-3\"");
+    assert(status(restored) == 204 && restored.sent_headers.at("X-Panel-Config-Durable-Version") == "1");
+    assert(f.runtime.active().generation() == 4 && records(f.get("1").response) == records(source));
+    Bytes boot(40 * 1024);
+    const auto rebooted = f.service.load_and_apply_runtime(boot.data(), boot.size());
+    assert(rebooted.ok() && rebooted.document_version == 1 && rebooted.generation == 4);
+    f.seed_v2(nested_document(DEVICE_UI_PROFILES[4]));
+    const auto guarded_writes = f.backend.writes;
+    assert(f.service.save(1, source.data(), source.size(), {1}).status == ServiceStatus::INCOMPATIBLE_REPLACEMENT);
+    assert(f.backend.writes == guarded_writes && f.runtime.active().generation() == 4);
+    const auto deliberate = f.service.save(1, source.data(), source.size(), {2});
+    assert(deliberate.ok() && deliberate.document_version == 1 && deliberate.generation == 6);
+    assert(records(f.get("1").response) == records(source));
+  }
+}
 void original_format_survives_a_future_writer_conversion() {
   {
     FutureGraphWriter policy;Fixture fixture(DEVICE_UI_PROFILES[8],&policy);
@@ -766,6 +809,7 @@ void advertised_durable_bytes_follow_the_selected_backend() {
 }
 int main() {
   durable_byte_boundary();
+  oversized_flat_v2_uses_lossless_durable_v1();
   advertised_durable_bytes_follow_the_selected_backend();
   historical_capacity_reads_and_child_folder_writes();
   profile_capacity_write_limits();

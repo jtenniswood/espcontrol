@@ -218,6 +218,23 @@ export async function runNativeNegotiatedBackupTests(): Promise<void> {
   same(backupVersions, [2, 1], "backup explicitly requests its compatible v1 representation");
   same(edits, 1, "backup does not write or trigger migration");
 
+  for (const [preferred, stored] of [[2, 1], [1, 2]] as const) {
+    const requested: number[] = [], storedBytes = stored === 1 ? exact : bytes(initial, 2);
+    const selectedStorage = createNativePanelConfigClient(async (path, request) => {
+      if (path.endsWith("capabilities")) return { ...response(200), json: async () => ({ configuration: {
+        read: true, write: true, document_versions: [1, 2], max_navigation_depth: 2,
+        writable_navigation_depth: 1, durable_document_version: preferred,
+      } }) };
+      check(request?.method !== "PUT", "choosing a backup format never writes");
+      const version = selected(request); requested.push(version);
+      const base = response(200, version === 1 ? exact : bytes(initial, 2), version);
+      return { ...base, headers: { get: name => name === "X-Panel-Config-Durable-Version" ? String(stored) : base.headers.get(name) } };
+    });
+    same(Array.from((await selectedStorage.readForBackup("panel-a"))!), Array.from(storedBytes),
+      "backup follows actual durable format and retains exact bytes");
+    same(requested, [preferred, stored], "backup does not assume preferred format equals stored format");
+  }
+
   // A structurally valid future graph which this editor cannot project must
   // never be flattened by reading a v1 view and replacing the stored graph.
   const records: NativeV2Record[] = decodeNativeV2(bytes(initial, 2));
@@ -282,6 +299,35 @@ export async function runNativeNestedPageClientTests(): Promise<void> {
     ['"v2-5"', 2, 2, 2], "capable snapshot and both limits are explicit");
   same(await capable.save(update), "saved", "capable writer saves graph without a v1 projection");
   same(saved, update(nested), "ordinary edits retain nested descendants");
+  const flat = update(initial), flatBytes = encodePanelConfig(flat).length;
+  check(encodePanelPageDocument(flat).length > flatBytes, "fixture expands in graph format");
+  for (const [limit, serverStatus, expected, expectedWrites] of [
+    [flatBytes, 204, "saved", 1], [flatBytes - 1, 204, "too-large", 0],
+    [flatBytes, 413, "too-large", 1],
+  ] as const) {
+    let writes = 0;
+    const client = createNativePanelConfigClient(async (path, request) => {
+      if (path.endsWith("capabilities")) return announced({ writable_navigation_depth: 2,
+        durable_document_version: 2, max_durable_document_bytes: limit });
+      check(selected(request) === 2, "storage fallback retains graph transport and identity");
+      if (request?.method === "PUT") {
+        ++writes;
+        same(request.headers?.["If-Match"], '"v2-7"', "storage selection retains the graph CAS token");
+        same(decodePanelPageDocument(request.body!), flat, "complete flat data reaches firmware selection");
+        return response(serverStatus);
+      }
+      return response(200, bytes(initial, 2), 2, '"v2-7"');
+    });
+    same(await client.save(update), expected, "firmware can choose a lossless flat durable fallback");
+    same(writes, expectedWrites, "fallback does not change representations or bypass a byte rejection");
+  }
+  const oversizedNested = createNativePanelConfigClient(async (path, request) => {
+    if (path.endsWith("capabilities")) return announced({ writable_navigation_depth: 2,
+      durable_document_version: 2, max_durable_document_bytes: 1 });
+    check(request?.method !== "PUT", "oversize nested data cannot use the flat fallback");
+    return response(200, wire, 2, '"v2-7"');
+  });
+  same(await oversizedNested.save(current => current), "too-large", "capacity checks never flatten nesting");
   for (const status of [415, 422]) {
     const events: number[] = [];
     const client = createNativePanelConfigClient(async (path, request) => {

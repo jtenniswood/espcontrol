@@ -1253,6 +1253,16 @@ target_include_directories(panel_config_legacy_writer_test PRIVATE ../../compone
 target_link_libraries(panel_config_legacy_writer_test PRIVATE Threads::Threads)
 add_test(NAME panel_config_legacy_writer_test COMMAND panel_config_legacy_writer_test)
 
+add_executable(panel_config_durable_representation_test panel_config_durable_representation_test.cpp)
+target_compile_features(panel_config_durable_representation_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_durable_representation_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_durable_representation_test PRIVATE ../../components/espcontrol)
+if(ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+  target_compile_options(panel_config_durable_representation_test PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+  target_link_options(panel_config_durable_representation_test PRIVATE -fsanitize=address,undefined)
+endif()
+add_test(NAME panel_config_durable_representation_test COMMAND panel_config_durable_representation_test)
+
 add_executable(espcontrol_app_core_test
   espcontrol_app_core_test.cpp
   ../../components/espcontrol/espcontrol_app_core.cpp

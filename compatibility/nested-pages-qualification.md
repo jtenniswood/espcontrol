@@ -924,6 +924,19 @@ this follow-up's rebuilt web assets have separate browser qualification.
 
 ## Remaining gates
 
+The durable-format follow-up adds a bounded lossless v1 fallback for flat
+documents whose preferred v2 form exceeds the backend limit. Host checks cover
+40 KiB and 16 KiB slots, retained/inactive records, opaque settings, raw invalid
+escape spelling, graph IDs, import flags and discarded-dictionary rejection.
+The exact historical 400-card fixture also selects v1 from either input format:
+25,087 saved bytes instead of its 53,407-byte v2 form, within 40,932 bytes, with
+an exact canonical v2 round trip. HTTP checks retain CAS and old-source fences,
+allow a complete graph writer's deliberate flat replacement, and reload the
+selected v1 document. Real legacy bindings also import, edit and reboot at both
+slot sizes. Browser checks preserve graph transport/CAS and exact actual-format
+backups. This policy has no physical migration qualification yet and does not
+enable production v2 or depth-two writes.
+
 All nine production factory profiles compile at `b0b4f286b` with the current
 ESPHome 2026.10.2 pin, including bounded canvases and the S3 hidden-workspace
 port; `b1847f0bb` retains its canvas-only scope and the earlier

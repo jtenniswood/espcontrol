@@ -1,5 +1,6 @@
 #include "panel_config_legacy_adapter.h"
 #include "panel_config_compatibility_view.h"
+#include "panel_config_durable_representation.h"
 
 namespace espcontrol::configuration {
 
@@ -20,8 +21,8 @@ LegacyLoadResult PanelConfigLegacyAdapter::convert_for_write(
     size_t output_capacity) {
   if (source.status != LegacyStatus::OK || source.document_version == target)
     return source;
-  PanelConfigRepresentation converted(allocate_, release_);
-  const auto status = converted.convert(source.document_version, target,
+  PanelConfigDurableRepresentation converted(allocate_, release_);
+  const auto status = converted.select(source.document_version, target,
       output, source.document_size, output_capacity);
   if (status != PanelConfigRepresentationStatus::OK) {
     const auto failure = status == PanelConfigRepresentationStatus::UNAVAILABLE
@@ -30,8 +31,8 @@ LegacyLoadResult PanelConfigLegacyAdapter::convert_for_write(
                ? LegacyStatus::BUFFER_TOO_SMALL : LegacyStatus::READ_FAILED);
     return {failure, target, 0};
   }
-  std::memcpy(output, converted.data(), converted.size());
-  return {LegacyStatus::OK, target, converted.size()};
+  if (output != converted.data()) std::memcpy(output, converted.data(), converted.size());
+  return {LegacyStatus::OK, converted.version(), converted.size()};
 }
 
 LegacyLoadResult PanelConfigLegacyAdapter::load_for_write(

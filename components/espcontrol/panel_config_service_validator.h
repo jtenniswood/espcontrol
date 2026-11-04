@@ -20,7 +20,9 @@ public:
                      document_version) != PANEL_CONFIG_STORAGE_READ_VERSIONS.end();
   }
   bool supports_write_version(uint16_t version) const override {
-    return version == PANEL_CONFIG_DURABLE_WRITE_VERSION;
+    return version == PANEL_CONFIG_DURABLE_WRITE_VERSION ||
+        (version == 1 && supports_version(1) && PANEL_CONFIG_DURABLE_WRITE_VERSION == 2 &&
+         PANEL_CONFIG_LEGACY_MODE == LegacyConfigurationMode::READ_IMPORT_ONLY);
   }
   uint16_t write_version() const override { return PANEL_CONFIG_DURABLE_WRITE_VERSION; }
 

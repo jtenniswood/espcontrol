@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -11,6 +12,7 @@
 #include "panel_config_service_validator.h"
 #include "panel_config_compatibility_view.h"
 #include "nested_page_fixture.h"
+#include "durable_format_fixture.h"
 
 using namespace espcontrol;
 using namespace espcontrol::configuration;
@@ -74,7 +76,7 @@ struct FutureWriter : ConfigurationDocumentValidator {
   PanelConfigDocumentValidator content{allocate, release};
   bool supports_version(uint16_t v) const override { return content.supports_version(v); }
   uint16_t write_version() const override { return 2; }
-  bool supports_write_version(uint16_t v) const override { return v == 2; }
+  bool supports_write_version(uint16_t v) const override { return v == 1 || v == 2; }
   bool checks_replacements(uint16_t v) const override { return content.checks_replacements(v); }
   bool replacement_needs_document(uint16_t current, uint16_t incoming) const override { return content.replacement_needs_document(current, incoming); }
   ServiceStatus replacement_status(uint16_t current, const uint8_t* data, size_t size, uint16_t incoming) const override { return content.replacement_status(current, data, size, incoming); }
@@ -155,6 +157,63 @@ void bootstrap(const DeviceUiLimits& limits, bool next) {
   expected[std::to_string(static_cast<int>(PanelConfigRecordType::SETTING)) + ":0:button_on_color"] = "ABCDEF";
   assert(records(read(f), boot.document_version) == expected);
   if (next) assert(f.color.writes == 0 && f.order.writes == 0 && f.button.writes == 0);
+  assert(live.empty());
+}
+
+void large_legacy_bootstrap(size_t roots, size_t slot_capacity) {
+  Fixture f(DEVICE_UI_PROFILES[4]);
+  for (auto &slot : f.backend.slots) slot.assign(slot_capacity, 255);
+  const auto source = espcontrol::configuration::test::large_flat_document(roots);
+  PanelConfigReader reader(source.data(), source.size());
+  assert(reader.begin() == PanelConfigStatus::OK);
+  std::map<uint8_t, std::string> buttons, pages;
+  PanelConfigRecord row;
+  while (reader.next(&row) == PanelConfigStatus::OK) {
+    const std::string value(reinterpret_cast<const char *>(row.value), row.value_size);
+    if (row.type == PanelConfigRecordType::BUTTON) buttons[row.slot] = value;
+    else if (row.type == PanelConfigRecordType::SUBPAGE) pages[row.slot] = value;
+    else if (row.type == PanelConfigRecordType::SETTING &&
+        std::string_view(reinterpret_cast<const char *>(row.key), row.key_size) == "button_order") f.order.state = value;
+  }
+  std::vector<std::unique_ptr<Text>> fields;
+  auto field = [&](const std::string &value) {
+    fields.push_back(std::make_unique<Text>(value)); return fields.back().get();
+  };
+  for (const auto &[slot, value] : buttons) {
+    std::array<PanelConfigTextValue *, PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS> chunks{};
+    if (pages.count(slot)) {
+      const auto &page = pages.at(slot);
+      for (size_t offset = 0, n = 0; offset < page.size(); offset += 255, ++n) {
+        assert(n < chunks.size()); chunks[n] = field(page.substr(offset, 255));
+      }
+    }
+    assert(f.bindings.set_button(slot, field(value), chunks));
+  }
+  Bytes output(40 * 1024);
+  const auto legacy = f.legacy.load(output.data(), output.size());
+  assert(legacy.status == LegacyStatus::OK && legacy.document_size <= f.service.maximum_document_size());
+  const Bytes original(output.begin(), output.begin() + legacy.document_size);
+  {
+    PanelConfigRepresentation v2(allocate, release);
+    assert(v2.convert(1, 2, original.data(), original.size(), PANEL_CONFIG_V2_HTTP_MAX_BYTES) == PanelConfigRepresentationStatus::OK);
+    assert(v2.size() > f.service.maximum_document_size());
+  }
+  const auto boot = f.service.load_and_apply_runtime(output.data(), output.size());
+  assert(boot.imported_legacy() && boot.document_version == 1 && read(f) == original);
+  const auto writes = f.backend.writes;
+  assert(f.service.synchronize_legacy_runtime(output.data(), output.size()).generation == boot.generation);
+  assert(f.backend.writes == writes);
+  f.color.state = "AABBCC";
+  const auto edited = f.service.synchronize_legacy_runtime(output.data(), output.size());
+  assert(edited.ok() && edited.document_version == 1 && edited.generation == boot.generation + 1);
+  auto expected = records(original, 1);
+  expected[std::to_string(int(PanelConfigRecordType::SETTING)) + ":0:button_on_color"] = "AABBCC";
+  assert(records(read(f), 1) == expected && f.runtime.version == 1);
+  ConfigurationService reboot(f.store, f.legacy, &f.future, nullptr, 0, LegacyConfigurationMode::READ_IMPORT_ONLY);
+  reboot.set_buffer_allocator(allocate, release); reboot.set_runtime_adapter(&f.runtime);
+  const auto booted = reboot.load_and_apply_runtime(output.data(), output.size());
+  assert(booted.ok() && booted.document_version == 1 && booted.generation == edited.generation);
+  for (const auto &text : fields) assert(text->writes == 0);
   assert(live.empty());
 }
 
@@ -257,7 +316,8 @@ void allocation_failures(const DeviceUiLimits& limits) {
   const auto legacy = f.legacy.load(output.data(), output.size());
   assert(legacy.status == LegacyStatus::OK);
   const auto too_small = f.legacy.load_for_write(2, output.data(), legacy.document_size);
-  assert(too_small.status == LegacyStatus::BUFFER_TOO_SMALL && live.empty());
+  assert(too_small.status == LegacyStatus::OK && too_small.document_version == 1 &&
+         too_small.document_size == legacy.document_size && live.empty());
   // Service-level failure while converting the first import leaves native
   // storage empty, allowing an ordinary retry rather than committing v1.
   calls = 0; fail_at = 2; // first allocation is service read scratch
@@ -495,6 +555,8 @@ int main(int argc, char**) {
     }
     merge_allocation_failures(DEVICE_UI_PROFILES[0]);
     native_global_publication_failures(DEVICE_UI_PROFILES[0]);
+    large_legacy_bootstrap(20, 40 * 1024);
+    large_legacy_bootstrap(12, 16 * 1024);
   }
   assert(live.empty());
 }

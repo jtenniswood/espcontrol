@@ -19,7 +19,7 @@
 #include "panel_config_http_limits.h"
 #include "panel_config_http_etag.h"
 #include "panel_config_upload.h"
-#include "panel_config_representation.h"
+#include "panel_config_durable_representation.h"
 #include "panel_config_write_status.h"
 
 namespace espcontrol::configuration {
@@ -152,12 +152,12 @@ class PanelConfigWriteHandler final
       return;
     }
 
-    PanelConfigRepresentation converted(context.allocate, context.release);
+    PanelConfigDurableRepresentation converted(context.allocate, context.release);
     const uint8_t *document = upload->body.data();
     size_t document_size = upload->body.size();
-    const auto durable_version = context.service->write_version();
-    if (representation != durable_version) {
-      const auto status = converted.convert(representation, durable_version, document, document_size, context.document_capacity);
+    {
+      const auto status = converted.select(representation, context.service->write_version(),
+          document, document_size, panel_config_writable_document_bytes());
       if (status != PanelConfigRepresentationStatus::OK) {
         send_status(raw_request, status == PanelConfigRepresentationStatus::UNAVAILABLE
             ? "503 Service Unavailable" : status == PanelConfigRepresentationStatus::TOO_LARGE
@@ -167,6 +167,7 @@ class PanelConfigWriteHandler final
       }
       document = converted.data(); document_size = converted.size();
     }
+    const auto durable_version = converted.version();
     if (document_size > panel_config_writable_document_bytes()) {
       send_status(raw_request, "413 Content Too Large", "Configuration exceeds the stored document byte limit");
       return;

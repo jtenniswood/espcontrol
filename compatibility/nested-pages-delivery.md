@@ -110,10 +110,18 @@ remains one and durable document version remains one.
 Writer retirement must also preserve editing and restoring existing flat
 dashboards that fit v1 but exceed the saved-document limit after v2 conversion.
 The 400-card P4 climate fixture is 25,087 bytes in v1 and 53,407 bytes in v2,
-against a 40,932-byte durable limit. A published reader floor alone does not
-resolve that admission gap. Keep the v1 writer until a compatible storage or
-format-selection policy passes this migration case; an oversized replacement
-must leave the current dashboard intact.
+against a 40,932-byte durable limit. A bounded format selector now retains v1
+when the preferred v2 representation exceeds the actual saved-document limit.
+A v2 request can use that fallback only if projection and reimport preserve
+page/card IDs, values, raw text, import flags and record counts. Nested or lossy
+projections are rejected; allocation failure never silently changes format.
+Legacy import and edits use the same backend limit, excluding both headers.
+Backups follow the response's actual durable version and retain exact stored
+bytes, independently of the preferred writer. A v1 source remains fenced
+against nested replacement; a v1-only writer keeps that fence for converted v2
+requests too. Production still writes v1. Host capacity, HTTP, generation,
+allocation-failure, legacy edit/reboot and browser checks precede physical
+qualification of this policy; reader-floor and mirror-retirement gates remain.
 
 PageStore preparation now starts with a smaller private parsing reservation and
 grows within the existing profile ceiling, releasing an unsuccessful attempt
