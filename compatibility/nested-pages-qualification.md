@@ -1009,6 +1009,35 @@ nine-layout browser suite also passes at `4783dc76c`, as does required CI.
 C++ sources are unchanged from the completed `d3cb407ae` factory matrix;
 this follow-up's rebuilt web assets have separate browser qualification.
 
+## Maximum GIF canvas and mixed-layout host checks
+
+At public checkpoint `476ea10d6` (runtime code unchanged from `efc6dcf09`),
+four independently generated GIFs combine the decoder's maximum 640 × 640
+canvas with exact 2 MiB and 8 MiB sources, with and without restore-previous
+disposal. More than 99.9% of each source consists of encoded image blocks
+(LZW data and sub-block framing);
+each contains five or seventeen frames, including a partial final rectangle.
+Valid comments before the trailer fill the remaining bytes. Under ASan/UBSan,
+the production player matches every Pillow 12.3.0 RGB565 reference pixel over
+two plays. Normal playback uses an 819,200-byte canvas; restore-previous needs
+1,638,400 bytes for both canvases. The checks also verify bounded restore scans,
+rejection beyond the pixel/dimension/source limits, and safe failure when the
+required restore canvas is absent. A deliberately corrupted reference fails
+the pixel comparison. These are host player checks, not physical allocations
+or full download/resize/modal pipeline measurements.
+
+A separate current-source scene/state/renderer check uses the real LVGL owner
+with fake hardware, artwork and HA transport. Its exact native-v1 fixtures
+contain 400 first-level cards: 20 folders, 378 climate controls and two image
+cards. Four A/A/B/B activations retain all 7,566 unique expected entity/attribute
+pairs and a full 524,288-byte value cache, including image URLs and state.
+Retired-generation updates are ignored. All 80 folder round trips keep every
+visible cell bound and require no new arena allocation, even with further
+arena allocations disabled. The counted scene reservation stays at 1,303,402
+bytes and seven live allocations across all four activations. This qualifies
+the mixed fixture and owner lifecycle on host; combining it with real image
+downloads, modals and physical heap measurements remains outstanding.
+
 ## Flat storage migration on the 10-inch V3
 
 Public checkpoint `efc6dcf09` passes all nine sequential ESPHome 2026.10.2
