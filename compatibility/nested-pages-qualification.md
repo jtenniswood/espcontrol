@@ -6,6 +6,53 @@ enable native v2/depth two without declaring a published reader floor.
 
 ## S3 memory comparison
 
+### Controlled production pair on ESPHome 2026.10.2
+
+Retained original firmware from source `1963f016a` (compiled 3 November) is
+compared with unmodified production source `fd394cdc1` (runtime `a0a4988b2`,
+compiled 4 November). The latter has no private YAML probes, diagnostic RPCs,
+local heap monitors or API encryption. Both use the exact original 1,151-byte
+native-v1 dashboard at generation 1162: two saved subpages and 14 populated
+saved card records, including inactive placements.
+
+Each arm disables the screensaver and Home timeout, keeps screen scheduling
+off, restarts, returns to Home, settles for 130 seconds and takes three standard HTTP
+sensor samples at least 61 seconds apart. Backlight is ON at 255 in all six
+samples; no synthetic HA feed or browser runs during collection. Values below
+are medians, in KiB. Combined free means internal heap plus PSRAM free bytes.
+
+| Measurement | Before | After | Change |
+| --- | ---: | ---: | ---: |
+| Internal heap free | 74.1 | 79.8 | +5.7 |
+| PSRAM free | 2091.9 | 2109.9 | +18.0 |
+| Combined free | 2166.0 | 2189.7 | +23.7 |
+| Largest internal block | 31.0 | 31.0 | 0.0 |
+| Largest PSRAM block | 1952.0 | 1792.0 | −160.0 |
+
+Combined raw ranges are 2,217,763–2,218,131 bytes before and
+2,242,219–2,242,755 after. Free RAM improves about 1.1%; the smaller contiguous
+PSRAM block remains relevant to large-image admission. The candidate's RGB
+buffers request 19,200 additional internal bytes. Its static data/BSS falls
+2,432 bytes while code/read-only sections grow 246,260 bytes; both SDK configs
+copy instructions and read-only data into PSRAM. Section sizes are separate
+accounting, not exact live heap reservations or isolated renderer savings.
+
+These are settled whole-firmware measurements on the original dashboard, not
+image/navigation peaks or a causal explanation of the earlier SDK1 regression.
+The protocol does not directly observe image buffers or freeze real HA content.
+One first attempt is excluded because its collector expected newer capability
+fields on the original v1-only firmware; it performs no candidate upload or
+samples and verifies recovery. The corrected run verifies the older contract
+and the candidate's explicit depth-one/v1 writer policy. Neither measured arm
+writes dashboard data. After sampling, one same-payload HTTP 204 save verifies
+both native and legacy completion; exact original firmware, all 78 protected
+preferences and PIN/reset/updates are restored at generation 1163, with over
+70 seconds of original-firmware stability before automatic updates resume.
+Later browser-only transfer corrections retain all 491 component files and
+device YAML; their rebuilt web assets have separate host checks.
+
+### Earlier source-specific measurements
+
 The before image rebuilds the starting development source `36f482d7c`; it is
 not a bitwise readback of the previously running flash. The final admission-guard
 after image is private source `d8e850ebc`, based on `ac0fad1ff`, labelled
@@ -1249,8 +1296,11 @@ Exact original firmware, native and legacy dashboard, PIN/reset and all 78
 protected preferences are restored at generation 1162. Original firmware stays
 stable over 70 seconds before updates resume. This is instrumented component
 and allocation evidence, not panel-pixel confirmation, a matched original-
-dashboard memory delta or power-loss qualification. The current nine-profile
-factory matrix is still running; previous matrices retain their source scopes.
+dashboard memory delta or power-loss qualification. All nine factory profiles pass at `a0a4988b2`, verifying 25 runtime source
+files, SDK, MCU, stock API, distinct native-handler symbols, no lab actions
+and unchanged writer policy. Each completed build retains hash-verified ELF/bin
+artifacts while removing only compiler intermediates. Previous matrices retain
+their source scopes.
 
 ## Flat storage migration on the 10-inch V3
 
@@ -1312,9 +1362,10 @@ slot sizes. Browser checks preserve graph transport/CAS and exact actual-format
 backups. The 10-inch future-flat-writer cohort above qualifies one physical
 migration path; production v2 and depth-two writes remain disabled.
 
-All nine production factory profiles compile at `efc6dcf09` with the current
-ESPHome 2026.10.2 pin, including bounded canvases and the S3 hidden-workspace
-port; `b1847f0bb` retains its canvas-only scope and the earlier
+All nine factory profiles pass at `a0a4988b2` on ESPHome 2026.10.2, including
+the GIF admission/resource fix; browser-only follow-ups retain all component
+and device-configuration bytes. Earlier `efc6dcf09` builds include bounded
+canvases and the S3 hidden-workspace port; `b1847f0bb` retains its canvas-only scope and the earlier
 `c05fde64f` matrix retains its own source scope. The `39a159354` and `43a914249` checkpoints also pass
 all nine profiles with ESPHome 2026.10.1. Historical matrices also pass at `ac0fad1ff` with ESPHome
 2026.10.1 and at private `c61cda45b` with ESPHome 2026.10.2 (base `c28c5b43f`
@@ -1323,9 +1374,9 @@ branch and every tested firmware/browser source; its three changed files only
 add main's host flashing guard and guidance. CI also passes at `36b5b9cd0` and
 `c28c5b43f`, including the audited SDK guard and the checks selected for each change.
 Compilation does not establish physical layout parity or qualify the full
-feature on ESPHome 2026.10.2. The original-dashboard memory investigation,
-nested visual confirmation, remaining P4 qualification, further replacement/
-delayed-event/modal/takeover checks, additional P4 workload coverage,
-remaining image/decode combinations and physical power-interruption
-qualification remain open. Published-reader and mirror-retirement gates in
+feature on ESPHome 2026.10.2. The controlled original-dashboard pair above
+is complete; the historical SDK1 regression still lacks its original image/
+display observations. Delayed-current GIF completion after the latest admission
+fix, nested visual confirmation, physical cases outside the recorded P4/image/
+modal/takeover cohorts and actual power interruptions remain unqualified. Published-reader and mirror-retirement gates in
 [the delivery plan](nested-pages-delivery.md) still apply before release enablement.
