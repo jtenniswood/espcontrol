@@ -850,6 +850,38 @@ files and runtime tests byte-for-byte; observation YAML stays private. These
 checks do not establish panel pixels, maximum-layout simultaneous image pressure,
 isolated peaks or resolution of the historical original-dashboard regression.
 
+A separate populated-cache S3 follow-up on these same components passes four
+playback/navigation cases with 56 climate models and two image cards (65 cards,
+eight pages). A fresh client audits exactly 1,126 unique/raw subscriptions;
+1,120 ordered climate updates supply 98,304 value bytes. Tracked cache use is
+98,430 bytes after image state arrives, within its 131,072-byte reservation.
+The 480 × 480 GIF has 16 solid-colour frames and is 25,825 compressed bytes,
+independently decoded with Pillow. This extends pixel dimensions and populated
+state coverage, not maximum compressed-source pressure or individual cache-value
+readback.
+
+Card playback, expanded playback, card resumption and folder/Home return each
+produce at least three distinct current descriptors. The covered card keeps its
+completed picture; modal-close resumption makes no additional HTTP request
+(three requests before and after). Store/layout/view/widget/metadata/channel/
+cache-capacity counters remain equal to the populated baseline. The counted
+arena stays at 239,579 bytes/seven allocations outside the modal, adding only
+its known 544-byte/two-allocation context while open. No image allocation,
+frame/fallback or scene-accounting errors are recorded. The expanded-view sample
+reports 222,516 bytes free PSRAM and 80,651 internal heap (303,167 combined),
+above the unchanged 128-KiB free-PSRAM floor. These are observed samples, not
+isolated peaks, a before/after comparison or panel-pixel confirmation.
+
+The first attempt passes the first three image cases and reaches the correct
+child page, but its checker incorrectly equates root slot three with PageId
+three. The exact host fixture verifies root slots 3–9 map to child PageIds 1–7
+across all four replacements, with Home zero. The corrected collector changes
+that expectation to one and passes the full cohort; inputs, memory margins and
+ownership requirements stay unchanged. Both attempts verify complete original
+recovery, latest generation 1147 with exact firmware/native bytes, all 78
+protected preferences, PIN/reset and sleep/update preferences restored.
+
+
 
 A browser follow-up separates saved card identities from visible cell count
 in both transfer validation and preview rendering. Five model regressions cover
