@@ -120,8 +120,11 @@ Backups follow the response's actual durable version and retain exact stored
 bytes, independently of the preferred writer. A v1 source remains fenced
 against nested replacement; a v1-only writer keeps that fence for converted v2
 requests too. Production still writes v1. Host capacity, HTTP, generation,
-allocation-failure, legacy edit/reboot and browser checks precede physical
-qualification of this policy; reader-floor and mirror-retirement gates remain.
+allocation-failure, legacy edit/reboot and browser checks pass. The private
+10-inch future-flat-writer cohort also passes actual client edit/backup, old/new
+v1 restores, restart and full-cache navigation, with exact original recovery;
+see [its qualification scope](nested-pages-qualification.md#flat-storage-migration-on-the-10-inch-v3).
+Reader-floor, mirror-retirement and physical storage-failure gates remain.
 
 PageStore preparation now starts with a smaller private parsing reservation and
 grows within the existing profile ceiling, releasing an unsuccessful attempt

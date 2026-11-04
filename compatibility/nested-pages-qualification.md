@@ -922,6 +922,51 @@ nine-layout browser suite also passes at `4783dc76c`, as does required CI.
 C++ sources are unchanged from the completed `d3cb407ae` factory matrix;
 this follow-up's rebuilt web assets have separate browser qualification.
 
+## Flat storage migration on the 10-inch V3
+
+Public checkpoint `efc6dcf09` passes all nine sequential ESPHome 2026.10.2
+factory builds, including the lossless durable-format selector. A private
+10-inch V3 image (`d123867f1`) changes only the preferred/current writer to v2,
+selects read/import-only legacy handling and adds YAML memory/index observations.
+Writable depth remains one; the other compiled components match the public
+checkpoint. This qualifies the future flat-writer transition separately from
+production enablement or nested writes.
+
+The exact historical 400-card/380-climate fixture imports as 25,087-byte native
+v1; its v2 representation occupies 53,407 bytes against the 40,932-byte durable
+limit. The real current browser-client module reads v2, submits a 53,423-byte
+label edit with v2 CAS, and saves losslessly as 25,095-byte v1. Its backup reads
+v2 then follows the durable-version header to export the exact stored v1 bytes.
+Both the old fixture and that new backup restore successfully. Stale CAS returns
+409 and a nested write returns 422, without changing data or generation. A
+software restart preserves the exact saved bytes and generation.
+
+Fresh connections audit all 7,600 unique climate routes before and after restart
+in 126.63/128.56 seconds. Each 7,600-frame grouped feed fills all 524,288 state
+bytes, with an ordered DeviceInfo barrier every sixteen frames, taking
+85.97/78.71 seconds. These are paced aggregate observations, not isolated raw
+throughput or individual value readback. Folder/Home navigation retains the
+full cache and scene owners: 1,355,893 arena bytes in seven allocations. The final
+Home sample has 328,183 internal heap bytes and 16,933,460 free PSRAM bytes.
+No sampled allocation, index or scene-accounting errors occur. This is neither
+an original-dashboard memory delta nor panel-pixel confirmation.
+
+The final cohort restores the exact original native document twice through a
+read/import-only v1 bridge (`e560de7e0`), then reinstalls the exact original SDK2
+firmware. Native hash, generation 363, all 78 protected settings, PIN/reset,
+sleep and both update preferences are verified. Two ordinary commits/readbacks
+qualify cleanup; they do not inspect raw slots or test power interruption.
+
+Two earlier attempts remain excluded: the first observed an acknowledged timeout
+setting before its asynchronous publication, and the second allowed only ninety
+seconds for stock SDK subscription enumeration. The runner now waits for setting
+publication and bounds enumeration at 240 seconds with a thirty-second stall
+guard and progress counts. That second attempt's extra original-firmware native
+commit returned 202 with a legacy-mirror warning; exact native data and protected
+settings were subsequently verified restored. The final passing cohort performs
+both cleanup commits on the read/import-only bridge, each returning 204, and
+makes no legacy-mirror equivalence claim.
+
 ## Remaining gates
 
 The durable-format follow-up adds a bounded lossless v1 fallback for flat
@@ -934,10 +979,10 @@ an exact canonical v2 round trip. HTTP checks retain CAS and old-source fences,
 allow a complete graph writer's deliberate flat replacement, and reload the
 selected v1 document. Real legacy bindings also import, edit and reboot at both
 slot sizes. Browser checks preserve graph transport/CAS and exact actual-format
-backups. This policy has no physical migration qualification yet and does not
-enable production v2 or depth-two writes.
+backups. The 10-inch future-flat-writer cohort above qualifies one physical
+migration path; production v2 and depth-two writes remain disabled.
 
-All nine production factory profiles compile at `b0b4f286b` with the current
+All nine production factory profiles compile at `efc6dcf09` with the current
 ESPHome 2026.10.2 pin, including bounded canvases and the S3 hidden-workspace
 port; `b1847f0bb` retains its canvas-only scope and the earlier
 `c05fde64f` matrix retains its own source scope. The `39a159354` and `43a914249` checkpoints also pass
