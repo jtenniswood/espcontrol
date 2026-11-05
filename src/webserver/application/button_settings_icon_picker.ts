@@ -1,4 +1,9 @@
-import { iconOptions as ICON_OPTIONS, iconSlug, mdiIcon, normalizeCustomIcon, textSpan } from "./ui_primitives";
+import { customIconCodepoint, iconOptions as ICON_OPTIONS, iconSlug, mdiIcon, normalizeCustomIcon, textSpan } from "./ui_primitives";
+
+function sameCustomIcon(a: unknown, b: unknown): boolean {
+    var codepoint = customIconCodepoint(a);
+    return codepoint !== null && codepoint === customIconCodepoint(b);
+}
 
 export interface ButtonSettingsIconPickerFeature {
     init(picker: any, currentIcon: any, onSelect: (icon: any) => void): void;
@@ -18,6 +23,10 @@ export function createButtonSettingsIconPickerFeature(
         var optionEls: any = null;
         var emptyEl: any = null;
         var customEl: any = null;
+        // The custom row sits above the built-in list when it shows the card's
+        // current custom icon, and below any name matches when it shows a
+        // typed codepoint, so Enter prefers a matching built-in icon.
+        var customFirst: any = false;
         function ensureBuilt(this: any) {
             if (optionEls)
                 return;
@@ -59,9 +68,13 @@ export function createButtonSettingsIconPickerFeature(
             highlighted = -1;
             var lc: any = (filter || "").toLowerCase();
             var hasMatch: any = false;
-            var custom: any = normalizeCustomIcon(filter);
+            var typed: any = normalizeCustomIcon(filter);
+            var custom: any = typed || (!lc && customIconCodepoint(currentIcon) !== null ? currentIcon : null);
+            customFirst = !typed;
+            dropdown.insertBefore(customEl, customFirst ? optionEls[0] || emptyEl : emptyEl);
             customEl._optName = custom;
             customEl.classList.remove("sp-highlighted");
+            customEl.classList.toggle("sp-active", sameCustomIcon(custom, currentIcon));
             customEl.replaceChildren();
             if (custom) {
                 customEl.appendChild(mdiIcon(custom, "sp-icon-option-icon mdi"));
@@ -89,6 +102,7 @@ export function createButtonSettingsIconPickerFeature(
                 for (var i: any = 0; i < optionEls.length; i++) {
                     optionEls[i].classList.toggle("sp-active", optionEls[i]._optName === opt);
                 }
+                customEl.classList.toggle("sp-active", sameCustomIcon(customEl._optName, opt));
             }
         }
         function selectOpt(this: any, opt?: any) {
@@ -110,7 +124,8 @@ export function createButtonSettingsIconPickerFeature(
         }
         function getVisible(this: any) {
             var vis: any = [];
-            if (customEl && customEl.style.display !== "none")
+            var showCustom: any = customEl && customEl.style.display !== "none";
+            if (showCustom && customFirst)
                 vis.push(customEl);
             if (optionEls) {
                 for (var i: any = 0; i < optionEls.length; i++) {
@@ -118,6 +133,8 @@ export function createButtonSettingsIconPickerFeature(
                         vis.push(optionEls[i]);
                 }
             }
+            if (showCustom && !customFirst)
+                vis.push(customEl);
             return vis;
         }
         function highlightAt(this: any, idx?: any) {
