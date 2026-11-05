@@ -128,9 +128,9 @@ This protects the local web page, but it is not a replacement for normal network
 
 ## Advanced: Add Your Own Icons
 
-The icon picker includes a few hundred icons from [Material Design Icons](https://pictogrammers.com/library/mdi/). When you compile the firmware yourself, you can add any other icon from that set to your own display without waiting for it to be added to the built-in list.
+The icon picker includes a few hundred icons from [Material Design Icons](https://pictogrammers.com/library/mdi/). When you compile the firmware yourself, you can add any other icon from that set that is not part of the ones added by default.
 
-1. Find the icon on [pictogrammers.com](https://pictogrammers.com/library/mdi/) and open it. Note its codepoint, for example `F0EFA` for **home-flood**.
+1. Find the icon ([Material Design Icons](https://pictogrammers.com/library/mdi/)) and open it. Note its codepoint, for example `F0EFA` for **home-flood**.
 2. Add the icon to your display's YAML. Put a `\U000` in front of the codepoint:
 
    ```yaml
@@ -139,16 +139,17 @@ The icon picker includes a few hundred icons from [Material Design Icons](https:
        glyphs:
          - "\U000F0EFA"  # home-flood
          - "\U000F1234"  # beaker-remove-outline
+         # - ... Any other additional icons
    ```
 
-3. Validate and install the firmware again.
+3. Flash the firmware onto your device
 4. In the card's **Icon** field, type the codepoint (`F0EFA`) and choose **Custom icon mdi:F0EFA**.
 
 Add the icon to every display where you want to use it. If a card uses a custom icon that isn't in that display's YAML, the web page preview still shows it, but the display shows an empty space where the icon should be.
 
 ESPHome stops with `Found duplicate glyph` if an icon is already built in. Remove that line and pick it from the normal icon list instead.
 
-Each extra icon uses a little firmware space. This is rarely a concern on the P4 displays; on the 4-inch S3 display, keep the list short. Icons added to Material Design Icons after version 7.4.47 are not available yet.
+Each extra icon uses a little firmware space. This is rarely a concern on the P4 displays. On the 4-inch S3 display, keep the list short.
 
 ## Advanced: Ethernet Options
 
