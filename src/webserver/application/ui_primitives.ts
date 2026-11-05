@@ -63,16 +63,14 @@ export function customIconCodepoint(value: unknown): number | null {
 // Turn what someone typed in the icon picker ("F0F92", "mdi:F0F92",
 // "\U000F0F92", "U+F0F92", "0xF0F92") into a saved custom icon value.
 export function normalizeCustomIcon(input: unknown): string | null {
-  const text = String(input || "").trim()
+  const hex = String(input || "").trim()
     .replace(/^mdi:/i, "")
     .replace(/^(?:\\U0*|U\+|0x)/i, "");
-  if (!/^[0-9A-Fa-f]{4,6}$/.test(text)) return null;
-  const codepoint = parseInt(text, 16);
-  if (!isIconCodepoint(codepoint)) return null;
-  return "mdi:" + codepoint.toString(16).toUpperCase().padStart(4, "0");
+  const codepoint = customIconCodepoint("mdi:" + hex);
+  return codepoint === null ? null : "mdi:" + codepoint.toString(16).toUpperCase().padStart(4, "0");
 }
 
-const customIconRules: Record<string, true> = {};
+const customIconRules = new Set<string>();
 let customIconStyle: HTMLStyleElement | null = null;
 
 // The bundled icon font contains every MDI glyph, but CSS classes exist only
@@ -81,14 +79,14 @@ let customIconStyle: HTMLStyleElement | null = null;
 function customIconSlug(codepoint: number): string {
   const hex = codepoint.toString(16);
   const slug = "custom-" + hex;
-  if (!customIconRules[slug] && typeof document !== "undefined" && document.head) {
+  if (!customIconRules.has(slug) && typeof document !== "undefined" && document.head) {
     if (!customIconStyle) {
       customIconStyle = document.createElement("style");
       document.head.appendChild(customIconStyle);
     }
     customIconStyle.appendChild(document.createTextNode(
       ".mdi-" + slug + "::before{content:'\\" + hex + "'}"));
-    customIconRules[slug] = true;
+    customIconRules.add(slug);
   }
   return slug;
 }

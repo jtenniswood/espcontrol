@@ -22,6 +22,7 @@ int main() {
   assert(std::strcmp(find_icon("mdi:0041"), cog) == 0);
   assert(std::strcmp(find_icon("mdi:1F03350"), cog) == 0);
   assert(std::strcmp(find_icon("Not An Icon"), cog) == 0);
+  assert(std::strcmp(find_icon(nullptr), cog) == 0);
   // Once the fixed cache is full, new codepoints fall back to the cog while
   // already-cached ones keep resolving to their original pointers.
   char name[16];

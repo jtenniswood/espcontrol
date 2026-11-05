@@ -471,6 +471,7 @@ inline const char* custom_mdi_icon_glyph(const char* name) {
 
 // Linear search for an icon name; returns fallback (cog) if not found
 inline const char* find_icon(const char* name) {
+  if (name == nullptr) return "\U000F0493";
   if (const char* custom = custom_mdi_icon_glyph(name)) return custom;
   // Keep serialized icon names from releases that used the typographic
   // "Wi-Fi" spelling working after the visible labels moved to "Wifi".
