@@ -1628,14 +1628,50 @@ both fail the corresponding behavioral regression. These browser changes have
 not been flashed for physical testing and do not enable production nested writes.
 The memory and device results above remain scoped to their recorded sources.
 
+## Current 10-inch recovery and cancellation (5 November)
+
+Read-only discovery finds the 10-inch V3 back on official `v2.13.0`, rather
+than the cached SDK2 development image. Its dedicated HTTP endpoint confirms
+project/model/version, and direct ESPHome mDNS confirms native MAC
+`80:F1:B2:D5:C9:16`, SDK `2026.9.1` and Noise encryption. All three published
+OTA/factory/manifest files match GitHub's SHA-256 digests. The factory's app at
+`0x20000` equals the OTA image; esptool validates its checksum/hash, P4 chip and
+IDF `5.5.5` metadata. This verifies a pinned published-release recovery target;
+it does not claim a native-API compilation timestamp or read the encryption key.
+
+A fresh read-only snapshot retains the exact original 1,568-byte native-v1
+dashboard at generation 375, reset/PIN state, 77 available protected preferences
+and runtime backlight. The newer camera-dimming entity returns 404 on this
+original, is excluded explicitly and receives no commands.
+
+A separate controller uses those current records, not the obsolete SDK2 owner.
+Twenty identity/source checks, 15 physical-evidence/reconciliation checks and
+three update-intent/lost-acknowledgement checks pass on the host. It rejects wrong
+MAC/model/version/SDK/encryption, does not repeat uncertain cleanup commands,
+and never credits a network disconnect or software reset as a physical cut.
+Its read-only preflight also passes. The prepared private storage image
+`3f9ba3881` retains all six production storage files byte-identical to public
+`b0f57fee0`; its earlier host results keep their recorded scope.
+
+The actual firmware round trip then passes cancellation before and after
+publication, using the initially erased isolated 90,112-byte scratch window.
+Both sessions inspect the expected retained selection/generation, clean the
+owned window and independently reproduce the complete 2 MiB image partition's
+original SHA-256. The controller restores the verified official OTA, exact
+native dashboard at generation 375, all 77 available preferences, PIN/reset and
+both update settings. Direct discovery again confirms the original SDK/project/
+MAC/encryption mode; over 76 seconds of original-firmware stability pass.
+The controller neither reads nor writes the encryption key. These are cancellation and
+recovery checks, not actual power-interruption evidence. No test is left armed.
+
 ## Remaining qualification gates
 
 The newly admitted 480 × 480 full-screen GIF needs manual appearance confirmation
 at maximum load. Physical cases outside the recorded P4/image/modal/takeover
-cohorts and actual power interruptions remain unqualified. A read-only preflight
-on the 10-inch address now encounters an encrypted API, unlike the retained
-plaintext baseline. No firmware, configuration or settings are changed; current
-identity and a matching recovery path must be established before that test.
+cohorts and actual power interruptions remain unqualified. The current
+10-inch published-release identity/recovery path and cancellation round trip
+are verified above. Actual cuts still require operator availability and explicit
+confirmation of each manual power cycle; none is inferred from a restart.
 
 The historical SDK1 memory regression still lacks its original image/display
 observations. Published-reader and mirror-retirement gates in
