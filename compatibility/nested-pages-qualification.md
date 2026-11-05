@@ -1742,6 +1742,31 @@ native dashboard at generation 375, all 77 available preferences, PIN/reset and
 both update settings are restored. The test is no longer armed. Identifying the
 actual target power feed is required before a new attempt.
 
+Two later before-publication attempts also record no controller restart. The
+operator identifies the screen while it cycles between its existing Home and
+Devices pages; navigation does not modify the dashboard. The second attempt
+expires without a reset, and the later identification reply cannot establish a
+cut within that checkpoint.
+
+For the third attempt, the operator cue starts a fresh 15-minute observation
+window after the storage boundary is ready. Nine host checks cover cue ownership,
+cancellation and connection-loss handling; 15 existing physical-evidence guards
+still pass. Storage, identity and recovery routines remain unchanged. The user
+explicitly confirms a new five-second disconnection. Active API requests keep
+succeeding, however, and an independent observer still finds the held worker,
+software-reset reason 3 and 614,693 ms uptime, versus 70,844 ms at readiness.
+The observation therefore does not establish loss of controller power. Another
+power feed or disconnection of only the display remains a possibility, not a
+verified diagnosis.
+
+Cooperative cancellation cleans the owned region and independently reproduces
+the full partition checksum. Official `v2.13.0`, the exact generation-375
+dashboard, all 77 preferences, PIN/reset and update settings are restored; the
+final restoration audit spans over 82 seconds. All three failed observations
+and human receipts are retained separately. No physical cut is credited and no
+test remains armed. Identify the external power connections before another
+firmware replacement or cut request.
+
 ## Remaining qualification gates
 
 The 480 × 480 S3 appearance gate has explicit user confirmation, with the host
