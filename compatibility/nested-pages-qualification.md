@@ -1457,6 +1457,18 @@ from an earlier source establish the before/after cost of this candidate. Direct
 DMA with periodic VSYNC recovery remains unqualified and must not be presented
 as a flicker fix.
 
+Private `948ad815f` restores 30-row bounce buffering and conditional recovery,
+then places the 5,503-byte optimized GIF resize function in actual linked IRAM
+instead of external instruction storage. It still records 648 recoveries in
+30.012 seconds and 89 during the transition; the user reports continued jitter.
+Original recovery passes at generation 1191. Private `f6e725160` instead leaves
+all 491 component sources unchanged and reduces bounce buffering to 10 rows.
+The stock 57,600-byte LVGL buffer then fits internal RAM, but the user still
+reports jitter; the experiment is cooperatively stopped and original recovery
+passes at generation 1193. Neither is an accepted fix. The public S3 defaults
+return to 30-row buffering and conditional recovery; the GIF scanout fault
+remains unresolved.
+
 The interrupted November 4 isolation build has an excluded artifact-recovery
 attempt: source files survive the Docker shutdown, but capture reads the earlier
 `98462b13e` ELF. The native identity fence stops before dashboard changes; the
