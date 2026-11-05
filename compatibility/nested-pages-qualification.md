@@ -1664,6 +1664,42 @@ MAC/encryption mode; over 76 seconds of original-firmware stability pass.
 The controller neither reads nor writes the encryption key. These are cancellation and
 recovery checks, not actual power-interruption evidence. No test is left armed.
 
+## Completed GIF results across sleep and wake (5 November)
+
+Private `0c3e308b1` adds three maximum-load display-off/wake cases. Its runtime
+components, S3 clock/buffering and decoder remain those of public `d183c6898`;
+current `cda1aea47` has the same component/device/SDK bytes. Each run audits all
+1,406 routes and fills the complete 128 KiB cache for 81 cards, 70 climates,
+two images and nine folders. Only bounded 64-byte descriptor samples are read;
+these checks do not establish panel pixels, isolated heap peaks or a memory pair.
+
+Two actual successful, non-cached 240 × 240 GIF completions are held at the
+adapter/runtime boundary while their modal is current. Display-off retires all
+image leases and modal contexts. Releasing one result while asleep does not
+reactivate them; releasing the other after wake and a fresh PNG opening leaves
+its request, pending/ready/failed state, asset, revision and sampled descriptor
+unchanged. New images complete and the independent PNG remains available.
+
+The third case refreshes a tile with a real GIF completion held, then retires
+that tile through display-off and wakes onto a new PNG. Releasing the old result
+again preserves the replacement's ownership/state and sampled descriptor. The
+first cohort stops at an incorrect capture assertion: the shared modal validator
+requires `ready == 0`, while the tile correctly retains completed asset 12 during
+pending request 13. Production `request()` explicitly preserves that prior
+picture. Its two preceding modal cases pass; the cohort remains recorded as
+failed, followed by complete original recovery at generation 1205.
+
+A tile-only retry requires the exact prior ready asset, the current pending
+cookie, successful non-cached decode and an intact callback target. Ten host
+checks use the actual recorded capture, reject invalid states and verify the
+unchanged recovery finalizer. That retry passes without a firmware code change.
+The fixed public `d183c6898` firmware, exact original dashboard at generation
+1207, all 78 preferences, PIN/reset and update settings are verified restored,
+with over 70 seconds of stability. No callback target is dropped instead of
+replayed. The initial report's copied eleven-case label is corrected with its
+original bytes/hash preserved; accepted evidence is three distinct cases across
+two runs. No test is left running.
+
 ## Remaining qualification gates
 
 The newly admitted 480 × 480 full-screen GIF needs manual appearance confirmation
