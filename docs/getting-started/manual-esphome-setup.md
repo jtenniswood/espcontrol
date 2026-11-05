@@ -126,6 +126,30 @@ substitutions:
 
 This protects the local web page, but it is not a replacement for normal network security, so do not expose the display directly to the internet.
 
+## Advanced: Add Your Own Icons
+
+The icon picker includes a few hundred icons from [Material Design Icons](https://pictogrammers.com/library/mdi/). When you compile the firmware yourself, you can add any other icon from that set to your own display without waiting for it to be added to the built-in list.
+
+1. Find the icon on [pictogrammers.com](https://pictogrammers.com/library/mdi/) and open it. Note its codepoint, for example `F0EFA` for **home-flood**.
+2. Add the icon to your display's YAML. Put a `\U000` in front of the codepoint:
+
+   ```yaml
+   font:
+     - id: !extend font_icon_main
+       glyphs:
+         - "\U000F0EFA"  # home-flood
+         - "\U000F1234"  # beaker-remove-outline
+   ```
+
+3. Validate and install the firmware again.
+4. In the card's **Icon** field, type the codepoint (`F0EFA`) and choose **Custom icon mdi:F0EFA**.
+
+Add the icon to every display where you want to use it. If a card uses a custom icon that isn't in that display's YAML, the web page preview still shows it, but the display shows an empty space where the icon should be.
+
+ESPHome stops with `Found duplicate glyph` if an icon is already built in. Remove that line and pick it from the normal icon list instead.
+
+Each extra icon uses a little firmware space. This is rarely a concern on the P4 displays; on the 4-inch S3 display, keep the list short. Icons added to Material Design Icons after version 7.4.47 are not available yet.
+
 ## Advanced: Ethernet Options
 
 Some supported ESP32-P4 panels include wired Ethernet. ESPHome cannot run WiFi and Ethernet in the same firmware, so this option is Ethernet-only and is intended for manual installs.

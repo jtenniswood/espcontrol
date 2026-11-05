@@ -134,6 +134,17 @@ python3 scripts/build.py icons --check
 
 Exits 0 if everything is in sync. The check also compares each `icons.json` codepoint with the pinned Material Design Icons release, so the browser preview and device font cannot silently drift apart.
 
+## Custom icons
+
+Users who compile their own firmware can use icons that are not in
+`icons.json`. They add the glyph to `font_icon_main` with
+`- id: !extend font_icon_main` in their device YAML and type the codepoint in
+the web icon picker. Cards then save the icon as `mdi:<hex codepoint>`, for
+example `mdi:F0EFA`. `find_icon()` in `components/espcontrol/icons.h` renders
+that codepoint directly, and `iconSlug()` in
+`src/webserver/application/ui_primitives.ts` adds a matching CSS class for
+previews. User docs: `docs/getting-started/manual-esphome-setup.md`.
+
 ## Domain defaults
 
 To change which icon is used when a button's icon is set to "Auto", edit the `"domain_defaults"` object in `icons.json`. Values must reference an icon `name` from the `"icons"` array.

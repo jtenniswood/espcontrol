@@ -7,8 +7,11 @@
 // =============================================================================
 #pragma once
 
+#include <cstdint>
 #include <cstring>
 #include <cstddef>
+#include <map>
+#include <string>
 
 struct IconEntry {
   const char* name;   // display name used in web UI icon picker
@@ -420,8 +423,52 @@ static const IconEntry ICON_ENTRIES[] = {
 
 static constexpr size_t NUM_ICONS = sizeof(ICON_ENTRIES) / sizeof(ICON_ENTRIES[0]);
 
+// Custom icons are saved as "mdi:<hex codepoint>" (e.g. "mdi:F0F92") so any
+// Material Design Icon can be used without a built-in table entry. The glyph
+// must also be added to the font_icon_main glyph list in the device YAML,
+// otherwise LVGL renders an empty box. Returns nullptr for malformed values.
+inline const char* custom_mdi_icon_glyph(const char* name) {
+  if (name == nullptr || std::strncmp(name, "mdi:", 4) != 0) return nullptr;
+  const char* hex = name + 4;
+  size_t len = std::strlen(hex);
+  if (len < 4 || len > 6) return nullptr;
+  uint32_t cp = 0;
+  for (size_t i = 0; i < len; i++) {
+    char c = hex[i];
+    uint32_t v;
+    if (c >= '0' && c <= '9') v = c - '0';
+    else if (c >= 'a' && c <= 'f') v = c - 'a' + 10;
+    else if (c >= 'A' && c <= 'F') v = c - 'A' + 10;
+    else return nullptr;
+    cp = (cp << 4) | v;
+  }
+  // MDI lives in the Private Use Areas (U+F0000 and up today, U+E000-F8FF
+  // historically). Rejecting other ranges keeps text characters out.
+  bool in_pua = (cp >= 0xE000 && cp <= 0xF8FF) ||
+                (cp >= 0xF0000 && cp <= 0x10FFFD);
+  if (!in_pua) return nullptr;
+  // Callers keep the returned pointer (e.g. ternaries feeding LVGL labels),
+  // so each codepoint gets its own long-lived string instead of a shared buffer.
+  static std::map<uint32_t, std::string> cache;
+  auto it = cache.find(cp);
+  if (it != cache.end()) return it->second.c_str();
+  std::string utf8;
+  if (cp <= 0xFFFF) {
+    utf8 += static_cast<char>(0xE0 | (cp >> 12));
+    utf8 += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+    utf8 += static_cast<char>(0x80 | (cp & 0x3F));
+  } else {
+    utf8 += static_cast<char>(0xF0 | (cp >> 18));
+    utf8 += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
+    utf8 += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+    utf8 += static_cast<char>(0x80 | (cp & 0x3F));
+  }
+  return cache.emplace(cp, std::move(utf8)).first->second.c_str();
+}
+
 // Linear search for an icon name; returns fallback (cog) if not found
 inline const char* find_icon(const char* name) {
+  if (const char* custom = custom_mdi_icon_glyph(name)) return custom;
   // Keep serialized icon names from releases that used the typographic
   // "Wi-Fi" spelling working after the visible labels moved to "Wifi".
   static const IconEntry legacy_icon_aliases[] = {
