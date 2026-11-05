@@ -12,6 +12,9 @@ export interface ButtonSettingsIconPickerFeature {
 export function createButtonSettingsIconPickerFeature(
     document: Document,
     renderPreview: () => void,
+    // Official prebuilt firmware has no extra icon glyphs, so typed codepoints
+    // are only offered when the firmware reports custom icon support.
+    customIconsAvailable: () => boolean = () => false,
 ): ButtonSettingsIconPickerFeature {
     // ── Button Settings Icon Picker ───────────────────────────────────
     // ── Icon picker (optimized) ────────────────────────────────────────────
@@ -68,7 +71,7 @@ export function createButtonSettingsIconPickerFeature(
             highlighted = -1;
             var lc: any = (filter || "").toLowerCase();
             var hasMatch: any = false;
-            var typed: any = normalizeCustomIcon(filter);
+            var typed: any = customIconsAvailable() ? normalizeCustomIcon(filter) : null;
             var custom: any = typed || (!lc && customIconCodepoint(currentIcon) !== null ? currentIcon : null);
             customFirst = !typed;
             dropdown.insertBefore(customEl, customFirst ? optionEls[0] || emptyEl : emptyEl);

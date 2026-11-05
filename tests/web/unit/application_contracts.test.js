@@ -1062,7 +1062,8 @@ describe("browserless application contracts", () => {
     assert.match(settings, /iconPicker: ButtonSettingsIconPickerFeature/);
     assert.match(settings, /iconPicker\.init\(picker, currentVal, onSelect\)/);
     assert.match(context, /readonly iconPicker: ButtonSettingsIconPickerFeature/);
-    assert.match(entry, /createButtonSettingsIconPickerFeature\(dom\.document, \(\) => preview\.render\(\)\)/);
+    assert.match(entry, /createButtonSettingsIconPickerFeature\(dom\.document, \(\) => preview\.render\(\),\s*\(\) => customIcons\.available\(\)\)/);
+    assert.match(entry, /const customIcons = createCustomIconSupport\(dom\.fetch,/);
     assert.doesNotMatch(entry, /installGlobals\(installButtonSettingsIconPickerModule/);
     assert.doesNotMatch(globals, /\bvar initIconPicker:/);
   });

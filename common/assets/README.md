@@ -145,6 +145,12 @@ that codepoint directly, and `iconSlug()` in
 `src/webserver/application/ui_primitives.ts` adds a matching CSS class for
 previews. User docs: `docs/getting-started/manual-esphome-setup.md`.
 
+The picker only offers custom icons when the firmware has some. At compile
+time, `components/espcontrol/custom_icons.py` compares `font_icon_main`'s
+glyphs with the built-in table in `icons.h`; if any were added, the firmware
+reports `"icons":{"custom":true}` in `/api/v1/capabilities`. Official prebuilt
+firmware reports `false`, so typed codepoints are not offered there.
+
 ## Domain defaults
 
 To change which icon is used when a button's icon is set to "Auto", edit the `"domain_defaults"` object in `icons.json`. Values must reference an icon `name` from the `"icons"` array.

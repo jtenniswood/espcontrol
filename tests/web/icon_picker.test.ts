@@ -89,7 +89,7 @@ function check(value: unknown, message: string): void {
   if (!value) throw new Error(message);
 }
 
-function buildPicker(currentIcon: string) {
+function buildPicker(currentIcon: string, customIconsAvailable = true) {
   const doc = fakeDocument();
   (globalThis as any).document = doc;
   const picker = new FakeElement();
@@ -97,7 +97,7 @@ function buildPicker(currentIcon: string) {
   const dropdown = picker.appendChild(Object.assign(new FakeElement(), { className: "sp-icon-dropdown" }));
   picker.appendChild(Object.assign(new FakeElement(), { className: "sp-icon-picker-preview" }));
   const selected: string[] = [];
-  createButtonSettingsIconPickerFeature(doc as any, () => {}).init(picker, currentIcon,
+  createButtonSettingsIconPickerFeature(doc as any, () => {}, () => customIconsAvailable).init(picker, currentIcon,
     (icon: string) => { selected.push(icon); });
   const rows = (): any[] => dropdown.children.filter((row) => row.style.display !== "none" &&
     !row.classes.has("sp-icon-option--empty"));
@@ -125,6 +125,21 @@ export function runIconPickerTests(): void {
         "Keyboard navigation must start from the current custom icon");
       picker.key("Enter");
       check(picker.selected[0] === "mdi:F0EFA", "Enter must keep the current custom icon");
+    }
+
+    // Firmware without extra icons (official prebuilt builds) never offers a
+    // typed codepoint, but still shows a custom icon a card already uses.
+    {
+      const picker = buildPicker("Lightbulb", false);
+      picker.input.dispatch("focus");
+      picker.type("F0F92");
+      check(picker.rows().length === 0, "Typed codepoints must not be offered without custom icon support");
+      picker.key("Enter");
+      check(picker.selected.length === 0, "Enter must not save a custom icon without support");
+      const existing = buildPicker("mdi:F0EFA", false);
+      existing.input.dispatch("focus");
+      check(existing.rows()[0]?.labelText === "Custom icon mdi:F0EFA",
+        "A card's existing custom icon must stay visible without support");
     }
 
     // A built-in icon card never shows the custom row on open.

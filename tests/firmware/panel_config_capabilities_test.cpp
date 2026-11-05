@@ -27,6 +27,8 @@ int main() {
                       std::strstr(capabilities.data(), "\"web_assets\"") != nullptr &&
                       std::strstr(capabilities.data(), "\"delivery\":\"manifest\"") !=
                           nullptr &&
+                      std::strstr(capabilities.data(), "\"icons\":{\"custom\":false}") !=
+                          nullptr &&
                       !write_panel_config_capabilities_json(nullptr,
                                                             capabilities.size(),
                                                             &capabilities_size);
@@ -38,13 +40,21 @@ int main() {
                                            &capabilities_size) &&
       std::strstr(capabilities.data(), "\"read\":true") != nullptr &&
       std::strstr(capabilities.data(), "\"write\":true") != nullptr;
+  // Firmware compiled with extra icons advertises them to the web picker.
+  set_panel_config_custom_icons_available(true);
+  const bool custom_icons_are_advertised =
+      write_panel_config_capabilities_json(capabilities.data(),
+                                           capabilities.size(),
+                                           &capabilities_size) &&
+      std::strstr(capabilities.data(), "\"icons\":{\"custom\":true}") != nullptr &&
+      capabilities.data()[capabilities_size - 1] == '}';
   set_panel_config_http_context_initialization_complete(false);
   const bool startup_capability_is_retryable =
       !panel_config_http_context_initialization_complete();
   set_panel_config_http_context_initialization_complete(true);
   const bool completed_initialization_is_observable =
       panel_config_http_context_initialization_complete();
-  return passed && read_capability_is_advertised &&
+  return passed && read_capability_is_advertised && custom_icons_are_advertised &&
                  startup_capability_is_retryable &&
                  completed_initialization_is_observable
              ? EXIT_SUCCESS

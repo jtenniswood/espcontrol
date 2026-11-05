@@ -108,6 +108,9 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     cg.add(var.set_web_auth_credentials(username, password))
+    from .custom_icons import icon_font_has_custom_glyphs
+    if icon_font_has_custom_glyphs(CORE.config.get("font", [])):
+        cg.add(var.set_custom_icons_available(True))
 
     panel_config = config.get(CONF_PANEL_CONFIG)
     if panel_config is not None:

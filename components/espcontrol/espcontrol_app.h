@@ -55,6 +55,7 @@ class EspControlApp : public esphome::Component {
       esphome::text::Text *subpage_5 = nullptr,
       esphome::text::Text *subpage_6 = nullptr,
       esphome::text::Text *subpage_7 = nullptr);
+  void set_custom_icons_available(bool available);
   void set_panel_config_card_images_storage(bool enabled) {
     panel_config_card_images_storage_ = enabled;
   }
