@@ -50,8 +50,8 @@ All 11 physical cases pass with 81 cards, 70 climates, two images, nine folders,
 - The 369,953-byte 480 × 480 GIF plays as a card; full-screen expansion is refused
   as RESOURCE before publication, and the retained card resumes without download.
 - The 25,825-byte 480 × 480 GIF now plays full-screen, with changing descriptor
-  samples and retained-card resumption. Its new full-screen appearance still
-  needs a separate manual check; the confirmed visual control above is 240 × 240.
+  samples and retained-card resumption. Its new full-screen appearance
+  receives subsequent manual confirmation in the visual/recovery section below.
 - The 6,897-byte 240 × 240 GIF plays full-screen and resumes its card.
 - Both 2 MiB 640 × 640 disposal variants are safely refused. The previous image
   and independent PNG remain available, and a fresh replacement PNG completes.
@@ -1700,11 +1700,54 @@ replayed. The initial report's copied eleven-case label is corrected with its
 original bytes/hash preserved; accepted evidence is three distinct cases across
 two runs. No test is left running.
 
+## 480-pixel S3 visual confirmation and interrupted-controller recovery
+
+On 5 November, the normal public `d183c6898` firmware displays the 25,825-byte
+480 × 480 GIF full-screen after loading the 81-card fixture, auditing 1,406
+routes and prefilling the complete 128 KiB state cache. Two completed-frame
+notices and an actual expanded decode precede the window without image or
+memory polling. The user explicitly confirms that the colours change while
+the whole screen remains stable and correctly positioned, without jitter,
+breakup or flicker. No firmware upload is performed for this check.
+
+A local ENOSPC error terminates the host controller before cleanup; its partial
+report and frozen source are preserved. The human result is saved separately.
+This is not recorded as an uninterrupted automated-cohort pass or proof that
+live cache values remained frozen throughout the window. Disposable package
+cache and generated CMake intermediates are removed; source, executables,
+fixtures and verified recovery images are retained.
+
+A restore-only supervisor verifies the exact current firmware identity, owned
+fixture bytes/generation and protected settings before writing. It reuses the
+controller's native/legacy CAS and preference recovery without rerunning the
+visual test or uploading firmware. An HTTP 204 confirms complete native and
+legacy restoration. The exact original dashboard at generation 1209, all 78
+settings, PIN/reset and update preferences, and over 70 seconds of fixed-firmware
+stability are verified. The manual appearance gate passes; the original host
+run retains its interrupted status and separate successful recovery evidence.
+
+## First manual 10-inch power attempt
+
+The first operator attempt reaches the held before-publication boundary in
+session `2126636821`. The user reports disconnecting and reconnecting power,
+but the target does not restart: an independent read-only observer verifies
+the expected native MAC and test firmware, a still-waiting phase, software-reset
+reason 3 and continuous uptime of 606,962 ms, versus 70,986 ms at the ready
+boundary. No transport disconnect or fresh power-on evidence is recorded, so
+no physical power-cut pass is credited.
+
+The controller times out, cancels the held write, cleans its owned region and
+reproduces the complete partition checksum. Verified official `v2.13.0`, exact
+native dashboard at generation 375, all 77 available preferences, PIN/reset and
+both update settings are restored. The test is no longer armed. Identifying the
+actual target power feed is required before a new attempt.
+
 ## Remaining qualification gates
 
-The newly admitted 480 × 480 full-screen GIF needs manual appearance confirmation
-at maximum load. Physical cases outside the recorded P4/image/modal/takeover
-cohorts and actual power interruptions remain unqualified. The current
+The 480 × 480 S3 appearance gate has explicit user confirmation, with the host
+interruption and separate recovery qualified above. Physical cases outside the
+recorded P4/image/modal/takeover cohorts and actual power interruptions remain
+unqualified. The current
 10-inch published-release identity/recovery path and cancellation round trip
 are verified above. Actual cuts still require operator availability and explicit
 confirmation of each manual power cycle; none is inferred from a restart.
