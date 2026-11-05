@@ -1441,13 +1441,21 @@ expected periodic resynchronisations, not underrun detections. Expanded GIF
 playback completes; active standard readings are 48,279 internal free bytes,
 31,744 largest internal block, 622,192 free PSRAM bytes and 40,748 internal boot
 minimum bytes. These are instrumented maximum-load readings, not a matched
-original-dashboard comparison. The visual window receives no confirmation and
-is explicitly unobserved. Exact current original firmware/dashboard and all
-protected settings are restored at generation 1187. The corresponding public
-candidate adds schema support for zero bounce rows, direct DMA plus VSYNC
-recovery on the S3, and the tested internal GIF workspace/cache policy. It
-still requires correct-position/flicker-free human validation and production
-build/resource qualification before acceptance.
+original-dashboard comparison. The initially unobserved visual window receives
+late feedback reporting substantial sideways jitter. This variant fails physical
+qualification; periodic resynchronisation is not an accepted fix. Exact current
+original firmware/dashboard and all protected settings are restored at
+generation 1187.
+
+The corresponding public candidate (`ba1392483`) passes its uninstrumented S3
+development and affected factory builds, including actual ELF identity checks;
+GitHub CI also passes. A normal-firmware maximum-layout retest is cooperatively
+cancelled after that negative reply, before its formal visual window. It is not
+an additional pixel observation. Exact original firmware/dashboard and all 78
+protected settings are verified restored at generation 1189. No memory readings
+from an earlier source establish the before/after cost of this candidate. Direct
+DMA with periodic VSYNC recovery remains unqualified and must not be presented
+as a flicker fix.
 
 The interrupted November 4 isolation build has an excluded artifact-recovery
 attempt: source files survive the Docker shutdown, but capture reads the earlier
