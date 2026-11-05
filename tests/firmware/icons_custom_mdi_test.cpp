@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstdio>
 #include <cstring>
 
 #include "icons.h"
@@ -21,4 +22,14 @@ int main() {
   assert(std::strcmp(find_icon("mdi:0041"), cog) == 0);
   assert(std::strcmp(find_icon("mdi:1F03350"), cog) == 0);
   assert(std::strcmp(find_icon("Not An Icon"), cog) == 0);
+  // Once the fixed cache is full, new codepoints fall back to the cog while
+  // already-cached ones keep resolving to their original pointers.
+  char name[16];
+  for (size_t i = 0; i < CUSTOM_MDI_ICON_CACHE_SLOTS; i++) {
+    std::snprintf(name, sizeof(name), "mdi:F2%03zX", i);
+    find_icon(name);
+  }
+  assert(std::strcmp(find_icon("mdi:F3000"), cog) == 0);
+  assert(find_icon("mdi:F0F92") == first);
+  assert(std::strcmp(first, "\U000F0F92") == 0);
 }

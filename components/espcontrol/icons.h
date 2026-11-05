@@ -10,8 +10,10 @@
 #include <cstdint>
 #include <cstring>
 #include <cstddef>
-#include <map>
+#include <mutex>
 #include <string>
+
+#include "config_field_decode.h"
 
 struct IconEntry {
   const char* name;   // display name used in web UI icon picker
@@ -426,7 +428,10 @@ static constexpr size_t NUM_ICONS = sizeof(ICON_ENTRIES) / sizeof(ICON_ENTRIES[0
 // Custom icons are saved as "mdi:<hex codepoint>" (e.g. "mdi:F0F92") so any
 // Material Design Icon can be used without a built-in table entry. The glyph
 // must also be added to the font_icon_main glyph list in the device YAML,
-// otherwise LVGL renders an empty box. Returns nullptr for malformed values.
+// otherwise LVGL renders an empty box. Returns nullptr for malformed values,
+// or once more distinct custom icons are in use than the cache holds.
+static constexpr size_t CUSTOM_MDI_ICON_CACHE_SLOTS = 64;
+
 inline const char* custom_mdi_icon_glyph(const char* name) {
   if (name == nullptr || std::strncmp(name, "mdi:", 4) != 0) return nullptr;
   const char* hex = name + 4;
@@ -434,13 +439,9 @@ inline const char* custom_mdi_icon_glyph(const char* name) {
   if (len < 4 || len > 6) return nullptr;
   uint32_t cp = 0;
   for (size_t i = 0; i < len; i++) {
-    char c = hex[i];
-    uint32_t v;
-    if (c >= '0' && c <= '9') v = c - '0';
-    else if (c >= 'a' && c <= 'f') v = c - 'a' + 10;
-    else if (c >= 'A' && c <= 'F') v = c - 'A' + 10;
-    else return nullptr;
-    cp = (cp << 4) | v;
+    int v = hex_digit(hex[i]);
+    if (v < 0) return nullptr;
+    cp = (cp << 4) | static_cast<uint32_t>(v);
   }
   // MDI lives in the Private Use Areas (U+F0000 and up today, U+E000-F8FF
   // historically). Rejecting other ranges keeps text characters out.
@@ -448,22 +449,24 @@ inline const char* custom_mdi_icon_glyph(const char* name) {
                 (cp >= 0xF0000 && cp <= 0x10FFFD);
   if (!in_pua) return nullptr;
   // Callers keep the returned pointer (e.g. ternaries feeding LVGL labels),
-  // so each codepoint gets its own long-lived string instead of a shared buffer.
-  static std::map<uint32_t, std::string> cache;
-  auto it = cache.find(cp);
-  if (it != cache.end()) return it->second.c_str();
-  std::string utf8;
-  if (cp <= 0xFFFF) {
-    utf8 += static_cast<char>(0xE0 | (cp >> 12));
-    utf8 += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
-    utf8 += static_cast<char>(0x80 | (cp & 0x3F));
-  } else {
-    utf8 += static_cast<char>(0xF0 | (cp >> 18));
-    utf8 += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
-    utf8 += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
-    utf8 += static_cast<char>(0x80 | (cp & 0x3F));
+  // so each codepoint gets its own slot that is never rewritten. The table is
+  // fixed-size (no heap) and locked because lookups can come from any task.
+  struct CustomGlyphSlot {
+    uint32_t codepoint;
+    char utf8[5];
+  };
+  static CustomGlyphSlot slots[CUSTOM_MDI_ICON_CACHE_SLOTS];
+  static size_t used = 0;
+  static std::mutex lock;
+  std::lock_guard<std::mutex> guard(lock);
+  for (size_t i = 0; i < used; i++) {
+    if (slots[i].codepoint == cp) return slots[i].utf8;
   }
-  return cache.emplace(cp, std::move(utf8)).first->second.c_str();
+  if (used == CUSTOM_MDI_ICON_CACHE_SLOTS) return nullptr;
+  CustomGlyphSlot &slot = slots[used++];
+  slot.codepoint = cp;
+  slot.utf8[encode_utf8_codepoint(cp, slot.utf8)] = '\0';
+  return slot.utf8;
 }
 
 // Linear search for an icon name; returns fallback (cog) if not found

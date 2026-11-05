@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <string>
 
+#include "config_field_decode.h"
+
 #include "esphome/core/string_ref.h"
 
 // Copy an ESPHome StringRef while applying the existing fixed display limit.
@@ -48,21 +50,7 @@ inline bool append_html_code_point(std::string &output, uint32_t code_point) {
       (code_point >= 0xD800 && code_point <= 0xDFFF)) {
     return false;
   }
-  if (code_point <= 0x7F) {
-    output.push_back(static_cast<char>(code_point));
-  } else if (code_point <= 0x7FF) {
-    output.push_back(static_cast<char>(0xC0 | (code_point >> 6)));
-    output.push_back(static_cast<char>(0x80 | (code_point & 0x3F)));
-  } else if (code_point <= 0xFFFF) {
-    output.push_back(static_cast<char>(0xE0 | (code_point >> 12)));
-    output.push_back(static_cast<char>(0x80 | ((code_point >> 6) & 0x3F)));
-    output.push_back(static_cast<char>(0x80 | (code_point & 0x3F)));
-  } else {
-    output.push_back(static_cast<char>(0xF0 | (code_point >> 18)));
-    output.push_back(static_cast<char>(0x80 | ((code_point >> 12) & 0x3F)));
-    output.push_back(static_cast<char>(0x80 | ((code_point >> 6) & 0x3F)));
-    output.push_back(static_cast<char>(0x80 | (code_point & 0x3F)));
-  }
+  append_utf8_codepoint(output, code_point);
   return true;
 }
 
