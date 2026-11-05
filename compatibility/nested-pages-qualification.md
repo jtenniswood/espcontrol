@@ -1364,15 +1364,99 @@ before animation, but still flickers according to the user. Exact-original
 recovery passes at generation 1169, including native/legacy HTTP 204, 78 protected
 preferences and over 70 seconds of stability.
 
-The next candidate restores 30 bounce rows and folds display rotation into IDF's
+The `952477c1c` candidate restores 30 bounce rows and folds display rotation into IDF's
 existing RGB framebuffer copy. LVGL can then omit its separate 57,600-byte PSRAM
 rotation buffer and extra copy per redraw. Host checks execute the production
 write methods against both an API model and the pinned IDF pixel-copy macros:
 all four rotations, padded rectangles, already-rotated fallback buffers and
 failed-transform retry pass under ASan/UBSan; the API model also passes Linux
-GCC. This is not yet physically qualified. Other device configurations and
+GCC. Development and affected S3 factory builds pass, including selected driver
+rotation, stock SDK/API, partition/ELF and 27 protected-source checks; CI is
+green. The same uninstrumented maximum-layout visual test still flickers
+according to the user. Its pre-animation free heap is 80,131 bytes with a
+31,744-byte largest block and 1,644,160 bytes free PSRAM; exact original recovery
+passes at generation 1171 (native/legacy HTTP 204, 78 protected preferences and
+over 70 seconds of stability). The copy reduction is not a flicker fix. A private
+IRAM GDMA-reset counter (`131045f77`, all 491 production component files
+unchanged) records zero resets in 20.008 seconds idle, 756 in 30.476 seconds
+of expanded GIF playback, then zero in 20.015 seconds after returning Home.
+The caller is `0x40376ba8` inside the stock RGB VSYNC recovery ISR. The pinned
+driver restarts when expected bounce-buffer EOF events are missed; unconditional
+VSYNC restart is disabled and the application does not request resets. This
+establishes scanout-service failures during animation; it does not measure cache
+misses or establish visual correctness. Exact-original restoration passes at
+generation 1173. A 14,400-byte internal LVGL draw buffer (`98462b13e`) still
+records 697 resets in 30.021 seconds and the user still sees jitter. An
+interrupted cleanup is resumed with exact ownership checks; original firmware,
+data and all protected preferences are verified restored at generation 1175.
+Other device configurations and
 production writer/storage policies are unchanged. Earlier memory tables retain
 their software-rotation source scope.
+
+
+On November 5, verified private `705b3ae8a` isolates rendering from GIF work at
+the same maximum layout/cache load. Each row below uses a 20-second interval;
+scalar counter reads happen only at its boundaries.
+
+| Phase | Display-DMA recovery resets |
+| --- | ---: |
+| Idle Home | 0 |
+| Expanded GIF, rendering active | 480 |
+| Rendering paused, GIF processing continues | 695 |
+| Rendering resumed | 490 |
+| Return to Home | 0 |
+
+Existing DEBUG frame-completion notices collected outside the paused interval
+confirm ongoing GIF processing: decode takes 29 ms and resizing 458–467 ms.
+This excludes framebuffer rendering as the sole cause. Original firmware,
+native/legacy data and 78 protected preferences are restored at generation 1177.
+The current brightness-mode setting is captured read-only before this cohort;
+the historical settings snapshot remains intact.
+
+A rows-only internal-memory candidate (`2df8630dc`) reduces measured resize
+work to 296–298 ms but still records 678 resets in 30 seconds. It is not a
+stability pass; exact-original recovery passes at generation 1179. The next
+private candidate (`f0a06fd66`) also keeps the optional lookup cache internal
+(with exact arithmetic fallback if it cannot allocate) and installs a
+7,680-byte internal LVGL draw buffer through the public API. Original ESPHome
+buffer storage remains alive for paused snow. Host ASan/UBSan and Linux GCC
+checks cover required-workspace refusal, optional-cache failure, correct pixels
+and already-admitted playback with allocation disabled. Prior source fails the
+new placement regressions. These checks do not establish physical stability.
+The first device attempt reaches verified draw-buffer placement but ends before
+expanded completion after a fixed three-second wait. A bounded-completion rerun
+loads the 470 × 436 expansion in 3.999 seconds, measures 244 ms resize work and
+still records 536 resets in 30.587 seconds; original recovery passes at generation
+1183. This is a failed stability candidate.
+
+Direct framebuffer DMA (`4ceec7012`) removes the CPU refill step. The stock
+57,600-byte draw buffer fits internal RAM and expanded playback completes.
+The user sees stable colours but a whole-layout shift of about 200 pixels: a
+visual failure. Direct-mode reset counts do not detect FIFO underruns and cannot
+establish pixel correctness. Original recovery passes at generation 1185.
+
+Private `4f87813af` adds `CONFIG_LCD_RGB_RESTART_IN_VSYNC=y` to resynchronise the
+pixel stream every vertical refresh. The measured 37.711 resets/second are
+expected periodic resynchronisations, not underrun detections. Expanded GIF
+playback completes; active standard readings are 48,279 internal free bytes,
+31,744 largest internal block, 622,192 free PSRAM bytes and 40,748 internal boot
+minimum bytes. These are instrumented maximum-load readings, not a matched
+original-dashboard comparison. The visual window receives no confirmation and
+is explicitly unobserved. Exact current original firmware/dashboard and all
+protected settings are restored at generation 1187. The corresponding public
+candidate adds schema support for zero bounce rows, direct DMA plus VSYNC
+recovery on the S3, and the tested internal GIF workspace/cache policy. It
+still requires correct-position/flicker-free human validation and production
+build/resource qualification before acceptance.
+
+The interrupted November 4 isolation build has an excluded artifact-recovery
+attempt: source files survive the Docker shutdown, but capture reads the earlier
+`98462b13e` ELF. The native identity fence stops before dashboard changes; the
+known binary is restored to original firmware with current settings and no
+native writes. That artifact is quarantined. The passing isolation cohort uses
+a rebuilt image whose actual ELF API project version and build timestamp are
+verified against the manifest. Wrong-label and wrong-timestamp negative checks
+reject the quarantined image. No measurements from it are credited to `705b3ae8a`.
 
 The durable-format follow-up adds a bounded lossless v1 fallback for flat
 documents whose preferred v2 form exceeds the backend limit. Host checks cover

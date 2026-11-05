@@ -233,6 +233,8 @@ struct InspectDecoder : GifDecoder {
   size_t retained_capacity() const { return source_.size(); }
   size_t scan_position() const { return restore_scan_position_; }
   size_t workspace_pixels() const { return workspace_pixels_; }
+  const void *resize_workspace() const { return resample_workspace_; }
+  const void *horizontal_axes() const { return horizontal_axes_; }
   bool has_player() const { return player_ != nullptr; }
   const uint8_t *retained_source() { return source_.data(); }
 };
@@ -595,9 +597,73 @@ static void admitted_workspace_reuse() {
 #endif
 }
 
+static void s3_resize_workspace_placement() {
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
+  auto file = read(std::string(GIF_FIXTURE_DIR) + "/static87.gif");
+  auto expected = read(std::string(GIF_FIXTURE_DIR) + "/static87.rgb565");
+  for (bool available : {false, true}) {
+    fake_esphome_allocator::internal_available = available;
+    {
+      ArtworkImage image;
+      InspectDecoder decoder(&image);
+      assert(decoder.prepare(file.size()) == 0);
+      int result = 0;
+      for (unsigned slice = 0; !decoder.is_finished() && result >= 0 && slice < 1000; ++slice)
+        result = decoder.decode(file.data(), file.size());
+      if (available) {
+        assert(result >= 0 && decoder.is_finished() && decoder.resize_workspace());
+        assert(!fake_esphome_allocator::external_pointers.count(decoder.resize_workspace()));
+        assert(decoder.horizontal_axes() &&
+               !fake_esphome_allocator::external_pointers.count(decoder.horizontal_axes()));
+        assert(std::equal(image.staging.begin(), image.staging.end(), expected.begin() + 6));
+      } else {
+        // Plenty of PSRAM must not silently move the hot rows back onto the
+        // RGB scanout bus. Failure happens before first-frame publication.
+        assert(result < 0 && !decoder.is_finished() && !decoder.resize_workspace());
+        assert(image.transfer_failure_ == TransferFailure::RESOURCE && !image.buffer_);
+      }
+    }
+    assert(fake_esphome_allocator::external_pointers.empty());
+  }
+  fake_esphome_allocator::internal_available = true;
+  // Admit the required rows, then refuse the optional internal lookup cache.
+  // Exact pixels and subsequent frames must survive without more allocation.
+  file = read(std::string(GIF_FIXTURE_DIR) + "/disposal-no-restore.gif");
+  expected = read(std::string(GIF_FIXTURE_DIR) + "/disposal-no-restore.rgb565");
+  fake_esphome_allocator::internal_fail_after = 1;
+  {
+    ArtworkImage image;
+    InspectDecoder decoder(&image);
+    assert(decoder.prepare(file.size()) == 0);
+    for (unsigned slice = 0; !decoder.is_finished() && slice < 1000; ++slice)
+      assert(decoder.decode(file.data(), file.size()) >= 0);
+    assert(decoder.is_finished() && decoder.resize_workspace() && !decoder.horizontal_axes());
+    assert(std::equal(image.staging.begin(), image.staging.end(), expected.begin() + 6));
+    fake_esphome_allocator::internal_available = false;
+    for (unsigned frame = 1; frame <= 3; ++frame) {
+      auto result = gif::Player::Result::MORE;
+      for (unsigned slice = 0; result == gif::Player::Result::MORE && slice < 1000; ++slice)
+        result = decoder.advance();
+      assert(result == gif::Player::Result::FRAME && !decoder.horizontal_axes());
+      assert(std::equal(image.staging.begin(), image.staging.end(), expected.begin() + 6 + frame * 128));
+    }
+  }
+  fake_esphome_allocator::internal_available = true;
+  fake_esphome_allocator::internal_fail_after = -1;
+  assert(fake_esphome_allocator::external_pointers.empty());
+#endif
+}
+
 int main() {
-  animation_slot_preparation();
+  s3_resize_workspace_placement();
   admitted_workspace_reuse();
+#ifdef TEST_SDK_DEFAULT
+  // Older lifecycle doubles intentionally put adopted transfer vectors in
+  // internal memory. Keep the faithful-default check focused on workspace
+  // provenance, admission failure and already-admitted playback reuse.
+  return 0;
+#endif
+  animation_slot_preparation();
   covered_during_replay();
   hidden_workspace_policy();
   suspended_playback_roundtrips();
@@ -1056,14 +1122,28 @@ inline void *heap_caps_realloc(void *pointer, size_t size, int caps) {
 """)
     helpers = (ROOT / "tests/firmware/stubs/esphome/core/helpers.h").read_text()
     helpers = helpers.replace("inline bool external_available = true;", "inline bool external_available = true;\ninline int external_fail_after = -1;")
+    helpers = helpers.replace("inline bool internal_available = true;", "inline bool internal_available = true;\ninline int internal_fail_after = -1;")
     helpers = helpers.replace("    if (count == 0) return nullptr;", "    if (count == 0) return nullptr;\n    if ((flags_ & ALLOC_EXTERNAL) && fake_esphome_allocator::external_fail_after >= 0) {\n      if (fake_esphome_allocator::external_fail_after == 0) return nullptr;\n      --fake_esphome_allocator::external_fail_after;\n    }")
+    helpers = helpers.replace("    if (count == 0) return nullptr;", "    if (count == 0) return nullptr;\n    if (flags_ == ALLOC_INTERNAL && fake_esphome_allocator::internal_fail_after >= 0) {\n      if (fake_esphome_allocator::internal_fail_after == 0) return nullptr;\n      --fake_esphome_allocator::internal_fail_after;\n    }")
     (temp / "esphome/core/helpers.h").write_text(helpers)
-    for native_heap, small_target in ((False, False), (True, False), (False, True), (True, True)):
-        executable = temp / (("test-esp32-heap" if native_heap else "test") + ("-s3" if small_target else ""))
+    for native_heap, small_target, sdk_default in (
+        (False, False, False), (True, False, False),
+        (False, True, False), (True, True, False), (True, True, True),
+    ):
+        # The shared strict default intentionally catches implicit allocation
+        # assumptions. Also exercise the pinned SDK's external-first default,
+        # which exposed the S3 workspace placement bug on real hardware.
+        (temp / "esphome/core/helpers.h").write_text(
+            helpers.replace("flags_{ALLOC_INTERNAL};", "flags_{ALLOC_INTERNAL | ALLOC_EXTERNAL};")
+            if sdk_default else helpers
+        )
+        executable = temp / (("test-esp32-heap" if native_heap else "test") +
+                             ("-s3" if small_target else "") + ("-sdk-default" if sdk_default else ""))
         subprocess.run(shlex.split(os.environ.get("CXX", "c++")) + [
             "-std=c++17", "-Wall", "-Wextra", "-Werror", "-DUSE_ARTWORK_IMAGE_GIF_SUPPORT",
             *(["-DUSE_ESP32"] if native_heap else []),
             *(["-DUSE_ESP_IDF", "-DCONFIG_IDF_TARGET_ESP32S3"] if small_target else []),
+            *(["-DTEST_SDK_DEFAULT"] if sdk_default else []),
             "-I", str(temp), "-I", str(COMPONENT), "-I", str(ROOT / "tests/firmware/stubs"),
             '-DGIF_FIXTURE_DIR="' + str(ROOT / "tests/firmware/fixtures/gif") + '"',
             str(temp / "gif_image.cpp"), str(temp / "test.cpp"), "-o", str(executable),

@@ -131,8 +131,8 @@ void MipiRgb::setup() {
 void MipiRgb::common_setup_() {
   esp_lcd_rgb_panel_config_t config{};
   config.flags.fb_in_psram = 1;
-  // Album-art redraws are full-screen and PSRAM-heavy. A larger internal bounce
-  // buffer gives the RGB DMA more headroom while JPEG decode/LVGL compete for PSRAM.
+  // Zero selects direct framebuffer DMA; a positive count uses CPU-filled
+  // internal bounce buffers between PSRAM and the display peripheral.
   config.bounce_buffer_size_px = this->width_ * this->bounce_buffer_rows_;
   config.num_fbs = 1;
   config.timings.h_res = this->width_;
@@ -183,8 +183,7 @@ void MipiRgb::common_setup_() {
 }
 
 void MipiRgb::loop() {
-  // The ESP-IDF RGB driver already restarts on real DMA underflow when needed.
-  // Continuously requesting restarts can cause visible one-frame shifts and flicker.
+  // ESP-IDF owns the configured VSYNC recovery; no scanout work runs here.
 }
 
 void MipiRgb::update() {

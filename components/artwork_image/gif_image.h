@@ -10,7 +10,15 @@ namespace esphome::artwork_image {
 
 class GifDecoder : public ImageDecoder {
  public:
-  explicit GifDecoder(ArtworkImage *image) : ImageDecoder(image), source_(0) {}
+  explicit GifDecoder(ArtworkImage *image) : ImageDecoder(image), source_(0) {
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32S3)
+    // Hot interpolation rows and lookup axes compete with RGB scanout in
+    // PSRAM. Rows are required; unavailable lookup storage uses the existing
+    // exact arithmetic fallback instead of an external-memory cache.
+    resample_allocator_ = RAMAllocator<uint8_t>{RAMAllocator<uint8_t>::ALLOC_INTERNAL};
+    axis_allocator_ = RAMAllocator<ResampleAxis32>{RAMAllocator<ResampleAxis32>::ALLOC_INTERNAL};
+#endif
+  }
   ~GifDecoder() override;
   int decode(uint8_t *buffer, size_t size) override;
   bool is_decoding() const override { return (scanning_ || initialized_) && !first_frame_ready_; }

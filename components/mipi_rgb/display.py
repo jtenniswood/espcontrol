@@ -165,7 +165,7 @@ def model_schema(config):
                 cv.frequency, cv.Range(min=4e6, max=100e6)
             ),
             model.option(CONF_PCLK_INVERTED, True): cv.boolean,
-            cv.Optional(CONF_BOUNCE_BUFFER_ROWS, default=20): cv.int_range(min=1, max=255),
+            cv.Optional(CONF_BOUNCE_BUFFER_ROWS, default=20): cv.int_range(min=0, max=255),
             iseqconf: cv.ensure_list(map_sequence),
             model.option(CONF_BYTE_ORDER, BYTE_ORDER_BIG): cv.one_of(
                 BYTE_ORDER_LITTLE, BYTE_ORDER_BIG, lower=True
@@ -229,7 +229,7 @@ def _config_schema(config):
     )(config)
     model = MODELS[config[CONF_MODEL].upper()]
     width, height = model_dimensions(config, model)
-    if height % config[CONF_BOUNCE_BUFFER_ROWS] != 0:
+    if config[CONF_BOUNCE_BUFFER_ROWS] and height % config[CONF_BOUNCE_BUFFER_ROWS] != 0:
         raise cv.Invalid("bounce_buffer_rows must divide the display height")
     has_writer = requires_buffer(config) or config.get(CONF_AUTO_CLEAR_ENABLED) is True
     # The driver rotates during the existing framebuffer copy. LVGL can skip

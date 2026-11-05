@@ -46,9 +46,9 @@ esp32:
       # default 32-byte lines can desynchronise PSRAM reads from panel DMA and
       # leave the whole display vertically shifted until the next restart.
       CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
-      # The RGB driver already restarts after a genuine DMA underflow. Restarting
-      # on every VSYNC can instead shift the framebuffer by one bounce-buffer block.
-      CONFIG_LCD_RGB_RESTART_IN_VSYNC: "n"
+      # Direct framebuffer DMA needs VSYNC resynchronisation after bus stalls,
+      # including flash writes, to avoid retaining a shifted pixel stream.
+      CONFIG_LCD_RGB_RESTART_IN_VSYNC: "y"
       CONFIG_LCD_RGB_ISR_IRAM_SAFE: "y"
       CONFIG_SPIRAM_FETCH_INSTRUCTIONS: "y"
       CONFIG_SPIRAM_RODATA: "y"
@@ -429,9 +429,9 @@ display:
     # the visibly shimmery 8MHz setting. Higher clocks have caused screen shifts
     # and pixel breakup when WiFi, flash, and web traffic compete for PSRAM.
     pclk_frequency: 10MHz
-    # Allow longer PSRAM stalls during pooled-grid redraws. The two internal
-    # DMA buffers use 18.75 KiB more than the default 20-row pair.
-    bounce_buffer_rows: 30
+    # Let the peripheral read PSRAM directly. CPU bounce-buffer refills can
+    # miss their deadlines during GIF processing; VSYNC recovery is enabled above.
+    bounce_buffer_rows: 0
     update_interval: never
     auto_clear_enabled: False
     # Keep the ST7701S panel init sequence on the non-mirrored path. The

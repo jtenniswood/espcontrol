@@ -786,6 +786,8 @@ add_test(NAME mipi_dsi_draw_failure_test COMMAND
 add_test(NAME mipi_rgb_rotation_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/mipi_rgb_rotation_test.py)
+add_test(NAME mipi_rgb_bounce_buffer_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/mipi_rgb_bounce_buffer_test.py)
 
 add_test(NAME device_ui_limits_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
