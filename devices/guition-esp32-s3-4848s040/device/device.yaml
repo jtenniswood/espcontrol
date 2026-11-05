@@ -425,10 +425,9 @@ display:
     # Start WiFi before the RGB panel allocates its frame buffers; otherwise the
     # WiFi driver can fail to claim enough internal RX buffers on fresh boots.
     setup_priority: 240
-    # Keep the S3 RGB clock conservative while lifting the panel scan rate above
-    # the visibly shimmery 8MHz setting. Higher clocks have caused screen shifts
-    # and pixel breakup when WiFi, flash, and web traffic compete for PSRAM.
-    pclk_frequency: 10MHz
+    # Leave PSRAM bandwidth for expanded artwork and the full state cache.
+    # A lower refresh rate prevents scanout shifts during large image changes.
+    pclk_frequency: 6MHz
     # Internal bounce buffers isolate display DMA from direct PSRAM bus stalls.
     bounce_buffer_rows: 30
     update_interval: never

@@ -1491,8 +1491,15 @@ rate needs a separate appearance check. Linked conditional-recovery ISR sizes
 match the original binary, excluding the earlier unconditional-restart variant.
 Exact original firmware/dashboard/settings are restored at generation 1197.
 The uninstrumented 6 MHz candidate (`5fab98845`, all 491 component files
-unchanged) passes source/SDK/partition/actual-ELF-identity checks. Its visible
-animation test is pending; no pixel or final production qualification is claimed.
+unchanged) passes source/SDK/partition/actual-ELF-identity checks. At the maximum
+layout/cache, actual expanded-image completion and two completed-frame notices
+precede a visual window without device polling. During that window the user
+confirms both “there's no jitter now” and “Stable and correctly positioned” for
+the changing full-screen Image 2, including flicker and breakup checks. This
+qualifies that visible animation at the lower refresh rate. The public S3 clock
+is changed to 6 MHz with 30-row buffering and conditional recovery retained.
+Final production builds, matched memory measurements and the remaining runtime
+qualification retain their separate gates; no depth-two writer is enabled.
 
 The interrupted November 4 isolation build has an excluded artifact-recovery
 attempt: source files survive the Docker shutdown, but capture reads the earlier
