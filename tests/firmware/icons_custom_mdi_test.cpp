@@ -20,6 +20,12 @@ int main() {
   assert(std::strcmp(find_icon("mdi:XYZ1"), cog) == 0);
   assert(std::strcmp(find_icon("mdi:F0F92:home-flood"), cog) == 0);
   assert(std::strcmp(find_icon("mdi:0041"), cog) == 0);
+  // The older U+E000-F8FF area has no MDI glyphs, so it is rejected too.
+  assert(std::strcmp(find_icon("mdi:E000"), cog) == 0);
+  assert(std::strcmp(find_icon("mdi:F8FF"), cog) == 0);
+  assert(std::strcmp(find_icon("mdi:F0EF"), cog) == 0);
+  assert(std::strcmp(find_icon("mdi:F0000"), "\U000F0000") == 0);
+  assert(std::strcmp(find_icon("mdi:10FFFD"), "\U0010FFFD") == 0);
   assert(std::strcmp(find_icon("mdi:1F03350"), cog) == 0);
   assert(std::strcmp(find_icon("Not An Icon"), cog) == 0);
   assert(std::strcmp(find_icon(nullptr), cog) == 0);

@@ -153,17 +153,17 @@ export function runIconPickerTests(): void {
     // codepoint, the built-in icon comes first and Enter picks it.
     {
       const names = iconOptions as string[];
-      names.push("Test Icon E0E0");
+      names.push("Test Icon F0E0A");
       try {
         const picker = buildPicker("Lightbulb");
         picker.input.dispatch("focus");
-        picker.type("e0e0");
+        picker.type("f0e0a");
         const visible = picker.rows();
         check(visible.length === 2, "Both the built-in and custom rows must be offered");
-        check(visible[0]._optName === "Test Icon E0E0", "The built-in name match must come first");
-        check(visible[1].labelText === "Custom icon mdi:E0E0", "The custom row must come after name matches");
+        check(visible[0]._optName === "Test Icon F0E0A", "The built-in name match must come first");
+        check(visible[1].labelText === "Custom icon mdi:F0E0A", "The custom row must come after name matches");
         picker.key("Enter");
-        check(picker.selected[0] === "Test Icon E0E0", "Enter must prefer the matching built-in icon");
+        check(picker.selected[0] === "Test Icon F0E0A", "Enter must prefer the matching built-in icon");
       } finally {
         names.pop();
       }

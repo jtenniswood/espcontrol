@@ -46,11 +46,11 @@ export function escAttr(value: unknown): string {
 // Custom icons are stored as "mdi:<hex codepoint>" (for example "mdi:F0F92").
 // The firmware renders them directly once the glyph is added to the device
 // font in the user's ESPHome YAML. Matches find_icon() in icons.h.
-const CUSTOM_ICON_RE = /^mdi:([0-9A-Fa-f]{4,6})$/;
+const CUSTOM_ICON_RE = /^mdi:([0-9A-Fa-f]{5,6})$/;
 
 function isIconCodepoint(codepoint: number): boolean {
-  return (codepoint >= 0xE000 && codepoint <= 0xF8FF) ||
-    (codepoint >= 0xF0000 && codepoint <= 0x10FFFD);
+  // The bundled MDI font only uses the supplementary Private Use Areas.
+  return codepoint >= 0xF0000 && codepoint <= 0x10FFFD;
 }
 
 export function customIconCodepoint(value: unknown): number | null {
@@ -67,7 +67,7 @@ export function normalizeCustomIcon(input: unknown): string | null {
     .replace(/^mdi:/i, "")
     .replace(/^(?:\\U0*|U\+|0x)/i, "");
   const codepoint = customIconCodepoint("mdi:" + hex);
-  return codepoint === null ? null : "mdi:" + codepoint.toString(16).toUpperCase().padStart(4, "0");
+  return codepoint === null ? null : "mdi:" + codepoint.toString(16).toUpperCase();
 }
 
 const customIconRules = new Set<string>();

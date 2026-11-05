@@ -436,18 +436,17 @@ inline const char* custom_mdi_icon_glyph(const char* name) {
   if (name == nullptr || std::strncmp(name, "mdi:", 4) != 0) return nullptr;
   const char* hex = name + 4;
   size_t len = std::strlen(hex);
-  if (len < 4 || len > 6) return nullptr;
+  if (len < 5 || len > 6) return nullptr;
   uint32_t cp = 0;
   for (size_t i = 0; i < len; i++) {
     int v = hex_digit(hex[i]);
     if (v < 0) return nullptr;
     cp = (cp << 4) | static_cast<uint32_t>(v);
   }
-  // MDI lives in the Private Use Areas (U+F0000 and up today, U+E000-F8FF
-  // historically). Rejecting other ranges keeps text characters out.
-  bool in_pua = (cp >= 0xE000 && cp <= 0xF8FF) ||
-                (cp >= 0xF0000 && cp <= 0x10FFFD);
-  if (!in_pua) return nullptr;
+  // MDI glyphs live in the supplementary Private Use Areas (U+F0000 and up).
+  // The bundled MDI font has nothing in the older U+E000-F8FF area, and
+  // rejecting other ranges keeps text characters out.
+  if (cp < 0xF0000 || cp > 0x10FFFD) return nullptr;
   // Callers keep the returned pointer (e.g. ternaries feeding LVGL labels),
   // so each codepoint gets its own slot that is never rewritten. The table is
   // fixed-size (no heap) and locked because lookups can come from any task.
