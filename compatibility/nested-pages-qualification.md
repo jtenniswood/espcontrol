@@ -1469,6 +1469,31 @@ passes at generation 1193. Neither is an accepted fix. The public S3 defaults
 return to 30-row buffering and conditional recovery; the GIF scanout fault
 remains unresolved.
 
+The finite pipeline diagnostic (`de5be9908`) runs with LVGL paused and verifies
+completed work counters for each isolated stage. Thirty-second recovery counts
+are 1,064 for normal playback, 887 for decoding alone, 965 for resizing alone,
+861 for copying completed frames alone and 1,065 for normal playback again.
+The isolated stages use bounded waits and different cycle counts, so these
+rates do not establish a single responsible stage. The user reports worse
+jitter; original recovery passes at generation 1195.
+
+The missing frozen-image control (`f698a52d5`) retains the image and buffers
+while stopping all decoding, resizing and publication. At 10 MHz it still
+records 601 recoveries in 20 seconds, with all three work counters unchanged.
+This rules out active GIF processing as a sufficient explanation. With the
+same paused renderer and maximum layout/cache, normal playback records 707,
+542 and 258 recoveries at requested clocks of 10, 9 and 8 MHz respectively.
+At 6 MHz, both normal playback (28 completed frames) and the frozen control
+record zero recoveries over separate 20-second intervals. Returning to 10 MHz
+reproduces 709 recoveries during playback and 589 while frozen. Observed VSYNC
+callback rates change from about 37.7 to 22.6 per second; this lower refresh
+rate needs a separate appearance check. Linked conditional-recovery ISR sizes
+match the original binary, excluding the earlier unconditional-restart variant.
+Exact original firmware/dashboard/settings are restored at generation 1197.
+The uninstrumented 6 MHz candidate (`5fab98845`, all 491 component files
+unchanged) passes source/SDK/partition/actual-ELF-identity checks. Its visible
+animation test is pending; no pixel or final production qualification is claimed.
+
 The interrupted November 4 isolation build has an excluded artifact-recovery
 attempt: source files survive the Docker shutdown, but capture reads the earlier
 `98462b13e` ELF. The native identity fence stops before dashboard changes; the
