@@ -32,6 +32,7 @@ export class NativePanelConfigController {
   private client_: NativePanelConfigClient | null;
   private saveQueue_: Promise<NativePanelConfigSaveOutcome> = Promise.resolve("saved");
   private revision_ = 0;
+  private saveAttemptId_ = 0;
   private legacyFallback_ = false;
   private retryDelayMs_ = 250;
   // P4 panels can still be completing their deferred native-configuration
@@ -50,7 +51,9 @@ export class NativePanelConfigController {
     this.legacyFallback_ = false;
   }
   get saveQueue(): Promise<NativePanelConfigSaveOutcome> { return this.saveQueue_; }
-  set saveQueue(value: Promise<NativePanelConfigSaveOutcome>) { this.saveQueue_ = value; }
+  set saveQueue(value: Promise<NativePanelConfigSaveOutcome>) { ++this.saveAttemptId_; this.saveQueue_ = value; }
+  // Snapshot/backup reads wrap the queue without creating a new write attempt.
+  get saveAttemptId(): number { return this.saveAttemptId_; }
   get legacyFallback(): boolean { return this.legacyFallback_; }
   set legacyFallback(value: boolean) { this.legacyFallback_ = value; }
   get retryDelayMs(): number { return this.retryDelayMs_; }
@@ -137,6 +140,7 @@ export class NativePanelConfigController {
     const client = this.client_;
     if (!client) return null;
     ++this.revision_;
+    ++this.saveAttemptId_;
     const save = this.saveQueue_
       .then(async () => this.supported() || await this.waitForDiscovery())
       .then(async (supported) => supported === "legacy-fallback" || supported === "failed"

@@ -65,6 +65,10 @@ export async function runNativePageTransferTests(): Promise<void> {
   check(JSON.stringify(persisted) === before && JSON.stringify(visible) === before && published === 0,
     "rejection changes neither storage nor visible state and cannot announce a successful save");
   check(clipboard()?.native?.cut && !state.nativeConfigLoading, "rejection retains the cut clipboard and unlocks retry");
+  check(!!await feature.capture([1]), "copy can read a source after an explicit rejection");
+  await native.readSnapshot();
+  await native.readForBackup().catch(() => null);
+  check(await native.saveQueue === "nested-pages-unavailable", "read-only operations preserve the rejected outcome");
   check((await feature.paste(2)).ok, "retry succeeds without silently resetting the previous failure outcome");
   check(writes === 2 && published === 1 && !state.clipboard, "retry has exactly one successful whole-document transaction");
   check(JSON.stringify(visible) === JSON.stringify(persisted), "editor applies the complete committed document only after success");
@@ -83,6 +87,8 @@ export async function runNativePageTransferTests(): Promise<void> {
   check(!await feature.duplicate(1), "lost acknowledgement is an uncertain save");
   check(writes === 4 && persisted.subpages[65] && JSON.stringify(visible) === before,
     "server may have published even though the editor could not confirm the transfer");
+  await native.readSnapshot();
+  await native.readForBackup().catch(() => null);
   check(!await feature.duplicate(1) && writes === 4, "uncertain publication cannot be retried into an accidental duplicate");
   check(banners.some(message => message.includes("Could not confirm")), "uncertain publication requires a saved-state reload");
   persisted = snapshot();
@@ -109,4 +115,27 @@ export async function runNativePageTransferTests(): Promise<void> {
   const expectedDelete = planPageCardDelete(persisted, capturePageCards(persisted, 0, [2], geometry).origin, geometry);
   check(await feature.delete([2]), "delete after rotation succeeds");
   check(JSON.stringify(persisted) === JSON.stringify(expectedDelete), "delete uses the current layout");
+
+  layout.gridCols = 3;
+  persisted = snapshot();
+  for (let slot = 2; slot <= 9; ++slot) persisted.buttons[slot] = `light.existing_${slot};Existing`;
+  persisted.settings.button_order = "1,2,3,4,5,6,7,8,9";
+  visible = persisted; native.client!.acceptSnapshot(persisted); native.saveQueue = Promise.resolve("saved");
+  const fullGrid = JSON.stringify(persisted), beforeLocalFailure = writes;
+  check(!await feature.duplicate(1), "full-grid duplication is rejected locally");
+  check(writes === beforeLocalFailure && JSON.stringify(persisted) === fullGrid, "local planning failure sends no PUT");
+  check(banners.at(-1)?.includes("room"), "local planning failure retains its useful explanation");
+  await native.readSnapshot();
+  check(await feature.delete([2]), "a locally rejected duplicate must allow deleting a card to make room");
+  check(await feature.duplicate(1), "duplicate succeeds after making room");
+  check(writes === beforeLocalFailure + 2, "only the two valid edits are written");
+
+  persisted = snapshot(); native.client!.acceptSnapshot(persisted); native.saveQueue = Promise.resolve("saved");
+  rejected = true;
+  check(!await feature.duplicate(1), "transfer retry fixture is explicitly rejected");
+  rejected = true;
+  await native.schedule(current => current);
+  const writesBeforeBlockedRetry = writes;
+  check(!await feature.duplicate(1) && writes === writesBeforeBlockedRetry,
+    "a later unrelated failed save cannot inherit the transfer's retry permission");
 }

@@ -1,8 +1,75 @@
 # Nested-page qualification
 
-Recorded through 4 November 2026 for PR #2424, following runtime PR #2400.
+Recorded through 5 November 2026 for PR #2424, following runtime PR #2400.
 Production still writes native v1 at depth one. Private qualification images
 enable native v2/depth two without declaring a published reader floor.
+
+## Latest S3 results (5 November)
+
+Public `d183c6898` uses a 6 MHz RGB clock, 30 bounce-buffer rows and conditional
+VSYNC recovery. Its normal development and affected S3 factory builds pass
+source, SDK, partition, native-handler and actual ELF-identity checks; GitHub CI
+also passes. The uninstrumented, component-identical `5fab98845` visual control
+loads the actual 240 × 240 expanded GIF at the maximum layout/cache before a
+window without device polling. The user confirms it is stable and correctly
+positioned as its colours change, without jitter, breakup or flicker. The lower
+clock reduces observed refresh from approximately 37.7 to 22.6 Hz.
+
+A matched original-dashboard comparison uses retained `1963f016a` and public
+`d183c6898`, both ESPHome 2026.10.2, the same 1,151-byte v1 document, explicit
+awake/Home controls, a reboot and at least 130 seconds of settling per arm.
+Three standard HTTP samples per arm are at least 61 seconds apart. These are
+median whole-build steady-state values, with live inputs and caches not frozen:
+
+| Free memory | Before (KiB) | After (KiB) | Change (KiB) |
+| --- | ---: | ---: | ---: |
+| Internal heap | 74.2 | 80.1 | +6.0 |
+| PSRAM | 2092.3 | 2166.8 | +74.5 |
+| Heap plus PSRAM | 2166.4 | 2246.9 | +80.5 |
+| Largest internal block | 31.0 | 31.0 | 0.0 |
+| Largest PSRAM block | 1952.0 | 2016.0 | +64.0 |
+
+Exact combined medians are 2,218,431 and 2,300,871 bytes. Linked static DRAM
+data/BSS decreases by 2,424 bytes; that section accounting is separate from live
+free memory. This pair supersedes the earlier `fd394cdc1` pair for the installed
+S3 fix, without explaining individual allocation changes or historical SDK1
+measurements.
+
+Private `0c3e308b1` repeats the resource and completed-callback cohort against
+public `d183c6898`. Only three existing callback/lease observer hooks and the
+completed-result hold are added; the clock, buffering, decoder, admission guards
+and receiver remain unchanged. Descriptor liveness reads at most 64 bytes per
+sample, rather than scanning full images. Host ASan/UBSan checks exercise the
+actual callback receiver and bounded sampler; negative controls reject a removed
+request-cookie guard and an unbounded sampler. These samples establish changing
+descriptors, not panel pixels or full-frame golden hashes.
+
+All 11 physical cases pass with 81 cards, 70 climates, two images, nine folders,
+1,406 routes and the complete 128 KiB HA cache:
+
+- The 369,953-byte 480 × 480 GIF plays as a card; full-screen expansion is refused
+  as RESOURCE before publication, and the retained card resumes without download.
+- The 25,825-byte 480 × 480 GIF now plays full-screen, with changing descriptor
+  samples and retained-card resumption. Its new full-screen appearance still
+  needs a separate manual check; the confirmed visual control above is 240 × 240.
+- The 6,897-byte 240 × 240 GIF plays full-screen and resumes its card.
+- Both 2 MiB 640 × 640 disposal variants are safely refused. The previous image
+  and independent PNG remain available, and a fresh replacement PNG completes.
+- Actual completed GIF results held for 0, 2 and 8 seconds retain the correct
+  lease/cookie, then animate after release. A no-hold control and stale results
+  after modal replacement and disjoint full-cache configuration replacement
+  also pass without changing the replacement's ownership or state.
+
+Separate local minima are 44,259 internal bytes and 113,364 PSRAM bytes; these
+are not simultaneous measurements and must not be added. The latter occurs in
+the newly fitting 480 × 480 playback case. The sampled settled 128 KiB stop
+margin is not a hard minimum throughout decoding/playback.
+
+Recovery verifies the currently installed public `d183c6898` firmware, exact
+original dashboard at generation 1203, all 78 protected preferences, PIN/reset
+and update settings, plus over 70 seconds of stability. Retained recovery
+artifacts now target this fixed firmware, rather than the earlier 10 MHz image.
+No production depth-two writer is enabled by these results.
 
 ## S3 memory comparison
 
@@ -1347,7 +1414,7 @@ settings were subsequently verified restored. The final passing cohort performs
 both cleanup commits on the read/import-only bridge, each returning 204, and
 makes no legacy-mirror equivalence claim.
 
-## Remaining gates
+## S3 display recovery history
 
 The user reports whole-screen shifting/breakup during the current S3 completed-
 GIF test at maximum layout/cache load. Three delayed-current cases (0, 2 and
@@ -1498,8 +1565,8 @@ confirms both “there's no jitter now” and “Stable and correctly positioned
 the changing full-screen Image 2, including flicker and breakup checks. This
 qualifies that visible animation at the lower refresh rate. The public S3 clock
 is changed to 6 MHz with 30-row buffering and conditional recovery retained.
-Final production builds, matched memory measurements and the remaining runtime
-qualification retain their separate gates; no depth-two writer is enabled.
+The latest-results section records the subsequent production builds, matched
+memory pair and 11-case runtime cohort; no depth-two writer is enabled.
 
 The interrupted November 4 isolation build has an excluded artifact-recovery
 attempt: source files survive the Docker shutdown, but capture reads the earlier
@@ -1535,9 +1602,42 @@ branch and every tested firmware/browser source; its three changed files only
 add main's host flashing guard and guidance. CI also passes at `36b5b9cd0` and
 `c28c5b43f`, including the audited SDK guard and the checks selected for each change.
 Compilation does not establish physical layout parity or qualify the full
-feature on ESPHome 2026.10.2. The controlled original-dashboard pair above
-is complete; the historical SDK1 regression still lacks its original image/
-display observations. Delayed-current GIF completion after the latest admission
-fix, nested visual confirmation, physical cases outside the recorded P4/image/
-modal/takeover cohorts and actual power interruptions remain unqualified. Published-reader and mirror-retirement gates in
-[the delivery plan](nested-pages-delivery.md) still apply before release enablement.
+feature on ESPHome 2026.10.2. The latest-results section records the subsequent
+S3 resource/callback cohort; historical matrices retain their exact source scope.
+
+## Editor transfer follow-up (5 November)
+
+Host regressions reproduce three review findings: a full-grid duplicate's local
+planning failure blocks deletion, a snapshot or backup read revokes retry after
+an explicit rejection, and a newly allocated high-ID card does not reserve its
+span cells. Transfers now distinguish a pre-PUT planning error from an uncertain
+acknowledgement and track safe retry against the write attempt rather than the
+queue promise. Read-only operations retain the failed outcome without losing
+eligibility; a later unrelated failed save cannot inherit that permission.
+Lost acknowledgements remain blocked after reads.
+
+Subpage grid construction now supplies its saved identity range separately from
+visible cell capacity. Tall, wide and large cards above the visible ID count
+reserve their covered cells on all four grids, so a subsequent paste or deletion
+cannot hide an unrelated card. Home retains its renderable identity limit.
+
+All 290 web unit tests, TypeScript, fresh web assets, generated-output checks,
+web smoke, asset manifest and three backup contract/API checks pass. Two negative
+controls remove local-failure retry eligibility and read-stable eligibility;
+both fail the corresponding behavioral regression. These browser changes have
+not been flashed for physical testing and do not enable production nested writes.
+The memory and device results above remain scoped to their recorded sources.
+
+## Remaining qualification gates
+
+The newly admitted 480 × 480 full-screen GIF needs manual appearance confirmation
+at maximum load. Physical cases outside the recorded P4/image/modal/takeover
+cohorts and actual power interruptions remain unqualified. A read-only preflight
+on the 10-inch address now encounters an encrypted API, unlike the retained
+plaintext baseline. No firmware, configuration or settings are changed; current
+identity and a matching recovery path must be established before that test.
+
+The historical SDK1 memory regression still lacks its original image/display
+observations. Published-reader and mirror-retirement gates in
+[the delivery plan](nested-pages-delivery.md) still apply before enabling
+production depth-two writes. Keep PR #2424 and #1825 open.

@@ -264,3 +264,40 @@ test("nested card codes reject orphaned, overdeep and oversized page trees", () 
   const mixed = { ...envelope.cards[0], subpage: { order: [], back_label: "Back", buttons: [] } };
   assert.throws(() => codes.normalizeCardTransferEnvelope({ ...envelope, cards: [mixed] }), /nested-page format/);
 });
+
+for (const profile of [{ slots: 6, columns: 2 }, layout, { slots: 15, columns: 3 }, { slots: 20, columns: 4 }]) {
+  for (const size of [2, 3, 4]) {
+    test(`high-ID size ${size} reserves its span during transfers on ${profile.slots} cells`, () => {
+      const document = source();
+      document.subpages[2] = ["~B,1", ...Array.from({ length: profile.slots }, (_, i) => `,light.saved_${i},Saved ${i}`)].join("|");
+      const entry = transfer.capturePageCards(document, 1, [2], profile).entries[0];
+      const first = transfer.planPageCardPaste(document, 2, profile.columns, [{ ...entry, size }], profile);
+      const highId = profile.slots + 1;
+      assert.deepEqual(first.slots, [highId]);
+      const firstPage = parsed(first.document.subpages[2]);
+      const firstGrid = model.buildSubpageGrid(firstPage, profile.slots, profile.columns);
+      const origin = firstGrid.grid.indexOf(highId);
+      assert.equal(firstGrid.sizes[highId], size);
+      const covered = model.coveredCells(origin, size, profile.slots, profile.columns, false);
+      for (const cell of covered) assert.equal(firstGrid.grid[cell], -1, "the high-ID card owns every covered cell");
+      let second;
+      try { second = transfer.planPageCardPaste(first.document, 2, covered[0], [entry], profile); }
+      catch (error) {
+        assert.match(error.message, /room/);
+        assert.equal(firstGrid.grid.filter(cell => cell === 0).length, 0, "only a full grid can reject the next single card");
+        return;
+      }
+      const added = second.slots[0];
+      const beforeDelete = model.buildSubpageGrid(parsed(second.document.subpages[2]), profile.slots, profile.columns).grid;
+      assert.ok(!covered.includes(beforeDelete.indexOf(added)), "new card cannot occupy the existing span");
+      const deleted = transfer.planPageCardDelete(second.document,
+        transfer.capturePageCards(second.document, 2, [highId], profile).origin, profile);
+      const afterDelete = model.buildSubpageGrid(parsed(deleted.subpages[2]), profile.slots, profile.columns).grid;
+      assert.equal(afterDelete.indexOf(added), beforeDelete.indexOf(added), "deleting a span retains the unrelated placement");
+      assert.equal(parsed(deleted.subpages[2]).buttons[added - 1].label, entry.button.label);
+      for (let i = 0; i < profile.slots; ++i)
+        assert.equal(deleted.subpages[2].split("|")[i + 1], document.subpages[2].split("|")[i + 1]);
+      valid(deleted);
+    });
+  }
+}

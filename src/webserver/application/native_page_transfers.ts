@@ -30,7 +30,7 @@ export function createNativePageTransfersFeature(options: {
 }): NativePageTransfersFeature {
   const currentLayout = () => ({ slots: options.layout.previewSlots, columns: options.layout.gridCols });
   let busy = false;
-  let unappliedSave: ReturnType<NativePanelConfigController["schedule"]> = null;
+  let unappliedSaveAttempt: number | null = null;
   const available = () => options.native.writableNavigationDepth() === 2;
   const page = () => state.editingSubpage ?? 0;
   async function run(action: (layout: ReturnType<typeof currentLayout>) => Promise<void>): Promise<boolean> {
@@ -47,7 +47,7 @@ export function createNativePageTransfersFeature(options: {
       options.grid.flushMainGridSave();
       await options.api.postQueueIdle();
       const previous = await options.native.saveQueue;
-      if (options.api.postQueueHadError() || (previous !== "saved" && previous !== "mirror-failed" && options.native.saveQueue !== unappliedSave))
+      if (options.api.postQueueHadError() || (previous !== "saved" && previous !== "mirror-failed" && options.native.saveAttemptId !== unappliedSaveAttempt))
         throw new Error("The previous change did not save. Retry it or reload before transferring cards.");
       if (state.configLocked) throw new Error("The connection changed. Try again after reconnecting.");
       await action(currentLayout());
@@ -70,15 +70,22 @@ export function createNativePageTransfersFeature(options: {
   }
   async function save(plan: (current: PanelConfigDocument) => PanelConfigDocument): Promise<void> {
     let committed: PanelConfigDocument | null = null;
-    const pending = options.native.schedule(current => { committed = plan(current); return committed; });
+    let planningFailed = false, planningError: unknown;
+    const pending = options.native.schedule(current => {
+      try { committed = plan(current); return committed; }
+      catch (error) { planningFailed = true; planningError = error; throw error; }
+    });
+    const attempt = options.native.saveAttemptId;
     const result = await pending;
     // A failed connection may lose the acknowledgement after publication.
-    // Only explicit rejections are safe to retry without reloading storage.
-    unappliedSave = result !== "failed" && result !== "legacy-fallback" ? pending : null;
+    // Local planning errors occur before PUT; explicit server rejections also
+    // leave storage unchanged. Reads preserve eligibility for that attempt.
+    unappliedSaveAttempt = pending && (planningFailed || result !== "failed" && result !== "legacy-fallback") ? attempt : null;
+    if (planningFailed) throw planningError;
     if (result === "failed") throw new Error("Could not confirm the transfer. Reload the saved pages before trying again.");
     if ((result !== "saved" && result !== "mirror-failed") || !committed)
       throw new Error(result === "conflict" ? "The saved pages changed. Reload before trying again." : "The cards did not save. No transfer was applied.");
-    unappliedSave = null;
+    unappliedSaveAttempt = null;
     // A disconnected panel will refresh itself on reconnect. Do not overwrite
     // its connection state with the candidate from this now-obsolete session.
     if (!state.configLocked) options.editor().replace(committed);
