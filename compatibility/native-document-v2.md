@@ -217,10 +217,15 @@ gate. Release contracts also declare reader and writer navigation depths.
 Enabling nested writes requires explicit depth-two reader proof for the floor
 and every supported downgrade, plus legacy-mirror retirement. A flat durable-v2
 writer can retain writable depth one. Missing historical depth metadata cannot
-qualify a nested reader. Compatibility retirement additionally requires two distinct consecutive
-stable dual-write releases after the durable-v2 rollout, followed by the retained
-import-only phase. The release-contract checks run in ordinary CI as well as
-release validation, with negative controls isolated from source files.
+qualify a nested reader. Compatibility retirement additionally requires two
+distinct consecutive stable dual-write releases after the durable-v2 rollout,
+followed by the retained
+import-only phase. These releases must be consecutive in the complete stable
+history: an intervening older document version or missing manifest cannot be
+skipped. Later import-only patches may retain that phase while preserving proof
+of the original dual-write window. The release-contract checks run in ordinary
+CI as well as release validation, with negative controls isolated from source
+files.
 
 Real service/store tests seed the actual ECDO v2 envelope and restore ordinary
 and maximum fixtures for all nine profiles, including UTF-8 text, inactive

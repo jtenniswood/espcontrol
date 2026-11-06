@@ -51,6 +51,28 @@ flat-v2 writer: it may restore an existing nested document for reading, but
 cannot publish a nested replacement while writable depth is one. Host tests
 cover this distinction and reject writes before runtime or storage changes.
 
+### Production release sequence
+
+The latest published `v2.13.0` contract does not declare a v2 or depth-two reader.
+The tested branch therefore needs the following stable-release sequence before
+ordinary builds can create a subpage inside an existing subpage. Release names
+are assigned when publishing; test fixtures and private images cannot satisfy
+the published-history gate.
+
+| Stage | Durable default / writable depth | Legacy mode | Required published evidence |
+| --- | --- | --- | --- |
+| Reader bridge | v1 / one | Dual-write | Publish this branch's v1/v2, depth-two readers with its runtime dependencies |
+| First flat-v2 release | v2, with lossless v1 capacity fallback / one | Dual-write | Set the bridge as the minimum reader; verify every supported downgrade through that floor |
+| Second flat-v2 release | Same / one | Dual-write | Retain the first flat-v2 release in the consecutive stable history |
+| Nested-page release | v2, with lossless flat-v1 capacity fallback / two | Read/import-only | Verify both consecutive flat-v2 dual-write releases and depth-two readers throughout the supported downgrade range |
+
+Keep the import adapter for at least the declared stable import-only window;
+enabling nesting does not remove legacy import. Later import-only patches must
+retain proof of the original dual-write window. An intervening release using
+an older durable format or missing its manifest breaks that window rather than
+being filtered out. Do not advance production policy using hypothetical tags
+or edit historical release manifests to supply missing reader proof.
+
 Legacy first-boot import and flat compatibility edits now request the selected
 durable format from the adapter. Test-only v2-writer coverage exercises the real
 service, text bindings and validator without enabling the production writer.

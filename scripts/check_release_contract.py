@@ -66,25 +66,29 @@ def validate_release_history(contract: dict, releases: list[dict]) -> None:
         "legacy mirror retirement requires the durable-v2 rollout first"
     )
 
-    matching = [
-        release
-        for release in releases
-        if release["manifest"].get("releaseContract", {}).get("panelConfigDocumentVersion")
-        == contract["panelConfigDocumentVersion"]
-    ]
-    assert matching, "no published release manifests match this PanelConfig document version"
-    tags = [release.get("tagName") for release in matching]
+    def published_phase(release: dict) -> str | None:
+        declared = release["manifest"].get("releaseContract", {})
+        if declared.get("panelConfigDocumentVersion") != contract["panelConfigDocumentVersion"]:
+            return None
+        return declared.get("panelConfigCompatibility", {}).get("phase")
+
+    assert any(published_phase(release) is not None for release in releases), (
+        "no published release manifests match this PanelConfig document version"
+    )
+    tags = [release.get("tagName") for release in releases]
     assert all(tags) and len(set(tags)) == len(tags), (
         "compatibility windows require distinct published stable releases"
     )
-    phases = [
-        release["manifest"]["releaseContract"].get("panelConfigCompatibility", {}).get("phase")
-        for release in matching
-    ]
-    if phases[0] == "read-import-only":
-        phases = phases[1:]
+    # Retain every stable release in order: filtering by document version can
+    # turn two releases separated by a v1 rollback into a consecutive window.
+    phases = [published_phase(release) for release in releases]
+    start = 0
+    # Once retirement is published, later patches may retain import support.
+    # They must still lead back to the same qualifying dual-write window.
+    while start < len(phases) and phases[start] == "read-import-only":
+        start += 1
     required = policy["dualWriteStableReleases"]
-    assert phases[:required] == ["dual-write"] * required, (
+    assert phases[start:start + required] == ["dual-write"] * required, (
         f"read-import-only requires {required} consecutive published dual-write releases "
         "with the current PanelConfig document version"
     )
@@ -239,6 +243,35 @@ def self_test() -> None:
         return {"tagName": tag, "manifest": {"releaseContract": manifest_contract}}
 
     validate_release_history(read_import_contract, [published("dual-write", "v2.11.0"), published("dual-write", "v2.10.0")])
+    # Consecutive means consecutive in the complete stable-release history,
+    # including releases using an older document version or missing a manifest.
+    older_document = published("dual-write", "v2.11.0")
+    older_document["manifest"]["releaseContract"].update(
+        panelConfigDocumentVersion=1, panelConfigWriteVersion=1,
+    )
+    for history in [
+        [published("dual-write", "v2.12.0"), older_document, published("dual-write", "v2.10.0")],
+        [older_document, published("dual-write", "v2.10.1"), published("dual-write", "v2.10.0")],
+        [published("dual-write", "v2.12.0"), {"tagName": "v2.11.0", "manifest": {}},
+         published("dual-write", "v2.10.0")],
+        [published("read-import-only", "v2.13.0"), published("dual-write", "v2.12.0"),
+         older_document, published("dual-write", "v2.10.0")],
+    ]:
+        try:
+            validate_release_history(read_import_contract, history)
+        except AssertionError as error:
+            assert any(message in str(error) for message in (
+                "2 consecutive published dual-write", "without the required document reader",
+            ))
+        else:
+            raise AssertionError("compatibility window skipped an intervening stable release")
+
+    for retained_releases in (1, 2, 3):
+        history = [published("read-import-only", f"v2.{12 + i}.0")
+                   for i in reversed(range(retained_releases))]
+        validate_release_history(read_import_contract, history + [
+            published("dual-write", "v2.11.0"), published("dual-write", "v2.10.0"),
+        ])
     try:
         validate_release_history(read_import_contract, [published("dual-write", "v2.10.0")])
     except AssertionError as error:

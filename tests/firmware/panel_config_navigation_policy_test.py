@@ -41,6 +41,25 @@ def published(tag="v9.9.9", **declarations):
 
 
 class NavigationPolicyTest(unittest.TestCase):
+    def test_reader_bridge_then_two_flat_releases_allows_nested_release(self):
+        bridge = reader_stage()
+        history = []
+        validate_release_history(bridge, history)
+        history.insert(0, published("v9.9.9", **bridge))
+
+        flat = deepcopy(bridge)
+        flat.update(panelConfigDocumentVersion=2, panelConfigWriteVersion=2,
+                    panelConfigMinimumReaderRelease="v9.9.9")
+        validate_release_history(flat, history)
+        history.insert(0, published("v9.10.0", **flat))
+        with self.assertRaisesRegex(AssertionError, "2 consecutive published dual-write"):
+            validate_release_history(nested_stage(), history)
+
+        validate_release_history(flat, history)
+        history.insert(0, published("v9.11.0", **flat))
+        validate_release_history(nested_stage(), history)
+        self.assertEqual(navigation_depths(nested_stage()), (2, 2))
+
     def test_actual_release_history_gate_requires_nested_reader_proof(self):
         older = nested_stage()
         older["panelConfigWriteNavigationDepth"] = 1
