@@ -7,8 +7,13 @@
 // =============================================================================
 #pragma once
 
+#include <cstdint>
 #include <cstring>
 #include <cstddef>
+#include <string>
+
+#include "config_field_decode.h"
+#include "custom_icon_glyphs.h"
 
 struct IconEntry {
   const char* name;   // display name used in web UI icon picker
@@ -420,8 +425,40 @@ static const IconEntry ICON_ENTRIES[] = {
 
 static constexpr size_t NUM_ICONS = sizeof(ICON_ENTRIES) / sizeof(ICON_ENTRIES[0]);
 
+// Custom icons are saved as "mdi:<hex codepoint>" (e.g. "mdi:F0F92") so any
+// Material Design Icon can be used without a built-in table entry. The glyph
+// must also be added to the font_icon_main glyph list in the device YAML.
+// Returns nullptr for malformed values (shown as the cog). A well-formed
+// codepoint that the icon font does not contain returns "", so the card shows
+// no icon, as LVGL would for any missing glyph.
+inline const char* custom_mdi_icon_glyph(const char* name) {
+  if (name == nullptr || std::strncmp(name, "mdi:", 4) != 0) return nullptr;
+  const char* hex = name + 4;
+  size_t len = std::strlen(hex);
+  if (len < 5 || len > 6) return nullptr;
+  uint32_t cp = 0;
+  for (size_t i = 0; i < len; i++) {
+    int v = hex_digit(hex[i]);
+    if (v < 0) return nullptr;
+    cp = (cp << 4) | static_cast<uint32_t>(v);
+  }
+  // Rejecting other ranges keeps text characters out.
+  if (cp < CUSTOM_ICON_MIN_CODEPOINT || cp > CUSTOM_ICON_MAX_CODEPOINT) return nullptr;
+  if (const char* custom = find_custom_icon_glyph(cp)) return custom;
+  // Built-in icons can also be referenced by codepoint.
+  char utf8[5] = {};
+  encode_utf8_codepoint(cp, utf8);
+  if (std::strcmp(utf8, "\U000F0493") == 0) return "\U000F0493";
+  for (size_t i = 0; i < NUM_ICONS; i++) {
+    if (std::strcmp(ICON_ENTRIES[i].glyph, utf8) == 0) return ICON_ENTRIES[i].glyph;
+  }
+  return "";
+}
+
 // Linear search for an icon name; returns fallback (cog) if not found
 inline const char* find_icon(const char* name) {
+  if (name == nullptr) return "\U000F0493";
+  if (const char* custom = custom_mdi_icon_glyph(name)) return custom;
   // Keep serialized icon names from releases that used the typographic
   // "Wi-Fi" spelling working after the visible labels moved to "Wifi".
   static const IconEntry legacy_icon_aliases[] = {

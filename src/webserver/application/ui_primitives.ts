@@ -43,8 +43,60 @@ export function escAttr(value: unknown): string {
     .replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// Custom icons are stored as "mdi:<hex codepoint>" (for example "mdi:F0F92").
+// The firmware renders them directly once the glyph is added to the device
+// font in the user's ESPHome YAML. Matches find_icon() in icons.h.
+const CUSTOM_ICON_RE = /^mdi:([0-9A-Fa-f]{5,6})$/;
+
+function isIconCodepoint(codepoint: number): boolean {
+  // The bundled MDI font only uses the supplementary Private Use Areas.
+  return codepoint >= 0xF0000 && codepoint <= 0x10FFFD;
+}
+
+export function customIconCodepoint(value: unknown): number | null {
+  const match = CUSTOM_ICON_RE.exec(String(value || ""));
+  if (!match || !match[1]) return null;
+  const codepoint = parseInt(match[1], 16);
+  return isIconCodepoint(codepoint) ? codepoint : null;
+}
+
+// Turn what someone typed in the icon picker ("F0F92", "mdi:F0F92",
+// "\U000F0F92", "U+F0F92", "0xF0F92") into a saved custom icon value.
+export function normalizeCustomIcon(input: unknown): string | null {
+  const hex = String(input || "").trim()
+    .replace(/^mdi:/i, "")
+    .replace(/^(?:\\U0*|U\+|0x)/i, "");
+  const codepoint = customIconCodepoint("mdi:" + hex);
+  return codepoint === null ? null : "mdi:" + codepoint.toString(16).toUpperCase();
+}
+
+const customIconRules = new Set<string>();
+let customIconStyle: HTMLStyleElement | null = null;
+
+// The bundled icon font contains every MDI glyph, but CSS classes exist only
+// for built-in icons. Add a class for each custom codepoint the first time
+// it is shown so every existing preview renders it unchanged.
+function customIconSlug(codepoint: number): string {
+  const hex = codepoint.toString(16);
+  const slug = "custom-" + hex;
+  if (!customIconRules.has(slug) && typeof document !== "undefined" && document.head) {
+    if (!customIconStyle) {
+      customIconStyle = document.createElement("style");
+      document.head.appendChild(customIconStyle);
+    }
+    customIconStyle.appendChild(document.createTextNode(
+      ".mdi-" + slug + "::before{content:'\\" + hex + "'}"));
+    customIconRules.add(slug);
+  }
+  return slug;
+}
+
 export function iconSlug(name: unknown): string {
   const value = String(name || "");
+  const customCodepoint = customIconCodepoint(value);
+  if (customCodepoint !== null) return customIconSlug(customCodepoint);
+  // Malformed custom values show the cog, matching the firmware fallback.
+  if (/^mdi:/i.test(value)) return "cog";
   return GENERATED_ICON_EXCEPTIONS[value] || value.toLowerCase().replace(/[^a-z0-9]/g, (character) =>
     character === " " ? "-" : "") || "cog";
 }

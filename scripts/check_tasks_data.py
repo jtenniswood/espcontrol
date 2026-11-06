@@ -135,6 +135,8 @@ TASKS = (
              "components/espcontrol/config_field_decode.h",
              "components/espcontrol/panel_backup*.h",
              "components/espcontrol/backup.py",
+             "components/espcontrol/icons.h",
+             "components/espcontrol/custom_icons.py",
              "components/espcontrol/button_grid_climate.h",
              "components/espcontrol/climate_state_logic.h",
              "components/espcontrol/button_grid_media_slider_lifecycle.h",

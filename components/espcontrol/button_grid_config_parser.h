@@ -1789,24 +1789,6 @@ inline Utf8DecodeStatus decode_utf8_codepoint(const std::string &text, size_t of
   return Utf8DecodeStatus::VALID;
 }
 
-inline void append_utf8_codepoint(std::string &out, uint32_t codepoint) {
-  if (codepoint <= 0x7F) {
-    out.push_back(static_cast<char>(codepoint));
-  } else if (codepoint <= 0x7FF) {
-    out.push_back(static_cast<char>(0xC0 | (codepoint >> 6)));
-    out.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
-  } else if (codepoint <= 0xFFFF) {
-    out.push_back(static_cast<char>(0xE0 | (codepoint >> 12)));
-    out.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
-    out.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
-  } else {
-    out.push_back(static_cast<char>(0xF0 | (codepoint >> 18)));
-    out.push_back(static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F)));
-    out.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
-    out.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
-  }
-}
-
 inline const Utf8CasePair *utf8_latin_case_pairs(size_t &count) {
   // Locale-dependent Turkish dotted/dotless I are deliberately left unchanged.
   static const Utf8CasePair pairs[] = {
