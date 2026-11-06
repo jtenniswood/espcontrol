@@ -51,10 +51,13 @@ export function registerWeatherCardTypes(
             idSuffix: "weather-display",
             options: weatherModeOptions,
             value: function (this: any, b?: any) {
-                return normalizeWeatherCardMode(b.precision);
+                return weatherCardIsForecastMode(b) ? "forecast" : normalizeWeatherCardMode(b.precision);
             },
             onChange: function (this: any, b?: any, helpers?: any) {
-                if (weatherWindUsesSensors(b) && this.value !== "wind") {
+                // Forecast is an editor grouping; retain the saved period values.
+                const precision = this.value === "forecast"
+                    ? (weatherCardIsForecastMode(b) ? b.precision : "today") : this.value;
+                if (weatherWindUsesSensors(b) && precision !== "wind") {
                     b.entity = "";
                     b.sensor = "";
                     b.options = setConfigOptionValue(b.options, "wind_source", "");
@@ -62,7 +65,7 @@ export function registerWeatherCardTypes(
                     helpers.saveField("sensor", b.sensor);
                     helpers.saveField("options", b.options);
                 }
-                const next = { precision: this.value, options: "" };
+                const next = { precision, options: "" };
                 if (readingUsesSensor(b) !== readingUsesSensor(next)) {
                     b.entity = "";
                     helpers.saveField("entity", b.entity);
@@ -70,7 +73,7 @@ export function registerWeatherCardTypes(
                 for (const mode of ["rainfall", "pressure", "humidity"])
                     b.options = setConfigOptionValue(b.options, mode + "_source", "");
                 helpers.saveField("options", b.options);
-                b.precision = this.value;
+                b.precision = precision;
                 helpers.saveField("precision", b.precision);
                 renderButtonSettings();
             },
@@ -107,7 +110,23 @@ export function registerWeatherCardTypes(
             b.precision = normalizeWeatherCardMode(b.precision);
         },
         renderSettings: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
-            helpers.renderCardModeSelector(panel, b, helpers, WEATHER_CARD_METADATA);
+            const typeField = helpers.renderCardModeSelector(panel, b, helpers, WEATHER_CARD_METADATA);
+            if (weatherCardIsForecastMode(b)) {
+                // Keep Type and Period together above the collapsible settings.
+                const forecastFields = document.createElement("div");
+                forecastFields.className = "sp-field";
+                helpers.markCardPrimaryField(forecastFields, "type");
+                typeField.field.replaceWith(forecastFields);
+                forecastFields.appendChild(typeField.field);
+                const period = helpers.selectField("Period", helpers.idPrefix + "weather-period",
+                    [["today", "Today"], ["tomorrow", "Tomorrow"], ["daily", "Week"]],
+                    b.precision, function (this: any) {
+                        b.precision = this.value;
+                        helpers.saveField("precision", b.precision);
+                        renderButtonSettings();
+                    });
+                forecastFields.appendChild(period.field);
+            }
             if (b.precision === "wind") {
                 const sourceGroup = helpers.disclosureSection("Source", helpers.idPrefix + "wind-source-settings", true);
                 helpers.markCardPrimaryField(sourceGroup.panel, "entity");

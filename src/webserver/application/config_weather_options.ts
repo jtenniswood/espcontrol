@@ -13,18 +13,16 @@ export function createConfigWeatherOptionsFeature(
     }
 
     function weatherModeOptions(this: any) {
-        const options: any = [
-            ["", "Current Conditions"],
-            ["wind", "Wind"],
-            ["rainfall", "Rainfall"],
+        const options: [string, string][] = [
             ["pressure", "Air Pressure"],
+            ["", "Current Conditions"],
+            ["forecast", "Forecast"],
             ["humidity", "Humidity"],
+            ["rainfall", "Rainfall"],
             ["visibility", "Visibility"],
-            ["today", "Today's Forecast"],
-            ["tomorrow", "Tomorrow's Forecast"],
-            ["daily", "Daily Forecast"],
+            ["wind", "Wind"],
         ];
-        return weatherForecastCardsSupported() ? options : options.slice(0, 6);
+        return weatherForecastCardsSupported() ? options : options.filter(([value]) => value !== "forecast");
     }
 
     function weatherModeOptionValues(this: any) {

@@ -17,15 +17,13 @@ Show current conditions or daily forecasts from a Home Assistant weather entity.
 1. Select a card and change its type to **Weather**.
 2. Enter a **Weather Entity**, for example `weather.forecast_home`.
 3. Choose **Type**:
-   - **Current Conditions** — the live condition icon and label.
-   - **Wind** — a direction arrow, direction name, and current wind speed below.
-   - **Rainfall** — a rain icon, label and measured or predicted rainfall amount.
    - **Air Pressure** — pressure from a weather entity or sensor.
+   - **Current Conditions** — the live condition icon and label.
+   - **Forecast** — choose **Period**: **Today**, **Tomorrow**, or **Week**. Today and Tomorrow show one day's icon and high/low temperatures; Week shows up to eight days in a row or grid, depending on card size and provider data.
    - **Humidity** — relative humidity from a weather entity or sensor.
+   - **Rainfall** — a rain icon, label and measured or predicted rainfall amount.
    - **Visibility** — visibility from a weather entity, with no source tabs.
-   - **Today's Forecast** — today's icon and high/low temperatures.
-   - **Tomorrow's Forecast** — tomorrow's icon and high/low temperatures.
-   - **Daily Forecast** — up to eight days in a row or grid.
+   - **Wind** — a direction arrow, direction name, and current wind speed below.
 4. Resize the card in the preview, optionally choose **Custom Colours**, then press **Save**.
 
 ::: tip Home Assistant actions permission
@@ -34,7 +32,7 @@ Enable **Allow the device to perform Home Assistant actions** so the panel can r
 
 ### Configuration Examples
 
-The admin webserver examples below use `weather.forecast_home`; replace it with your own entity. The preview uses sample data. Your panel loads real conditions and forecasts from Home Assistant.
+The examples below use `weather.forecast_home`; replace it with your own entity. Older screenshots show separate forecast types; in the current editor choose **Forecast**, then **Period → Today**, **Tomorrow**, or **Week**. The preview uses sample data. Your panel loads real conditions and forecasts from Home Assistant.
 
 <div class="weather-configuration-grid">
   <figure>
@@ -72,7 +70,7 @@ The admin webserver examples below use `weather.forecast_home`; replace it with 
 
 ## How It Works on the Panel
 
-Forecasts show whole-degree high/low temperatures, such as **18°/2°**, using the panel's **Temperature Unit** setting. Today and Tomorrow always show one day. Daily Forecast adapts to the card's size: a row on wide cards, a grid on larger cards, or a column on tall narrow cards. Enlarge the card to show more days; the count also depends on your provider's data and font sizes.
+Forecasts show whole-degree high/low temperatures, such as **18°/2°**, using the panel's **Temperature Unit** setting. The Today and Tomorrow periods always show one day. Week adapts to the card's size: a row on wide cards, a grid on larger cards, or a column on tall narrow cards. Enlarge the card to show more days; the count also depends on your provider's data and font sizes.
 
 Forecasts refresh hourly and after reconnecting. **Loading** appears while fetching data. If a refresh fails, the previous forecast keeps the same card layout, with **Last forecast** shown in the details popup; if no data is available for the requested date, the card shows **Forecast unavailable**. Your Home Assistant provider must support daily forecasts.
 
@@ -114,5 +112,5 @@ Tap any forecast card to open up to six days in a **3×2 grid**, showing conditi
 Standard Home Assistant weather states use matching icons. Current Conditions keeps provider-specific labels, such as **Light Rain**; unknown or unavailable states show a fallback icon and readable label.
 
 ::: details Older configurations
-**Temperatures Today** and **Temperatures Tomorrow** cards retain their day selection and use the current forecast layout. A separate **Weather Forecast** card loads as **Tomorrow's Forecast**. The old custom label and large temperature number controls no longer apply.
+**Temperatures Today** and **Temperatures Tomorrow** cards retain their day selection and use the current forecast layout. A separate **Weather Forecast** card loads as **Forecast → Period → Tomorrow**. Existing Today, Tomorrow and Daily Forecast cards retain their period under the grouped Forecast type. The old custom label and large temperature number controls no longer apply.
 :::

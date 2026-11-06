@@ -7761,11 +7761,14 @@ async function assertS3ForecastEditorLayout(browser) {
     await page.locator('.sp-main [data-slot="1"]').click();
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await page.waitForSelector(".sp-settings-overlay.sp-visible");
-    const modeSelect = page.locator('.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select');
+    const modeSelect = page.locator('[id$="weather-display"]');
     assert.deepStrictEqual(await modeSelect.locator('option').allTextContents(),
-      ["Current Conditions", "Wind", "Rainfall", "Today's Forecast", "Tomorrow's Forecast", "Daily Forecast"]);
+      ["Air Pressure", "Current Conditions", "Forecast", "Humidity", "Rainfall", "Visibility", "Wind"]);
+    assert.strictEqual(await modeSelect.inputValue(), "forecast");
+    assert.strictEqual(await page.locator('[id$="weather-period"]').inputValue(), "daily");
+    assert.deepStrictEqual(await page.locator('[id$="weather-period"] option').allTextContents(), ["Today", "Tomorrow", "Week"]);
     for (const [mode, label] of [["today", "Today"], ["tomorrow", "Tomorrow"]]) {
-      await page.locator('.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select').selectOption(mode);
+      await page.locator('[id$="weather-period"]').selectOption(mode);
       await page.getByRole("button", { name: "Save", exact: true }).click();
       await page.waitForSelector(".sp-settings-overlay.sp-visible", {state: "hidden"});
       const days = page.locator('.sp-main [data-slot="1"] .sp-weather-day:not([hidden])');
@@ -7788,10 +7791,31 @@ async function assertS3ForecastEditorLayout(browser) {
       await page.locator('.sp-main [data-slot="1"]').click();
       await page.getByRole("button", { name: "Edit", exact: true }).click();
       await page.waitForSelector(".sp-settings-overlay.sp-visible");
+      assert.strictEqual(await page.locator('[id$="weather-period"]').inputValue(), mode, "Saved forecast period is retained");
+      assert.strictEqual(await page.locator('[id$="weather-display"]').inputValue(), "forecast");
       assert.strictEqual(await page.getByText("Large Temperature Numbers", {exact: true}).count(), 0);
       assert.strictEqual(await page.locator('.sp-settings-modal #sp-inp-label').count(), 0);
     }
-    console.log('S3 editor: renamed Today/Tomorrow modes each show one forecast day and omit obsolete controls.');
+    await page.locator('[id$="weather-period"]').selectOption("daily");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible", { state: "hidden" });
+    await waitForNativeState(nativeState, () => nativeState.document.buttons[1].includes("daily"), "Week forecast saved with its existing stored value");
+    await page.reload();
+    await page.waitForSelector('#sp-app');
+    await seedNativeDocument(page, nativeState);
+    await page.waitForFunction(() => document.querySelectorAll('.sp-main [data-slot="1"] .sp-weather-day:not([hidden])').length === 4);
+    await page.locator('.sp-main [data-slot="1"]').click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible");
+    assert.strictEqual(await page.locator('[id$="weather-display"]').inputValue(), "forecast");
+    assert.strictEqual(await page.locator('[id$="weather-period"]').inputValue(), "daily", "Week survives a full page reload");
+    await page.locator('.sp-settings-modal').screenshot({ path: '/tmp/weather-forecast-period-editor.png' });
+    await page.locator('[id$="weather-display"]').selectOption("");
+    assert.strictEqual(await page.locator('[id$="weather-period"]').count(), 0, "Period only appears for Forecast");
+    await page.locator('[id$="weather-display"]').selectOption("forecast");
+    assert.strictEqual(await page.locator('[id$="weather-period"]').inputValue(), "today", "New Forecast selection defaults to Today");
+    assert.strictEqual(await page.locator('.sp-settings-modal input[id$="entity"]').inputValue(), "weather.home", "Switching between weather types retains the weather entity");
+    console.log('Grouped Forecast editor: alphabetic types, Today/Tomorrow/Week period changes, legacy values, save/reload and conditional Period passed.');
 
   } finally { await context.close(); }
 }
@@ -8122,6 +8146,11 @@ async function assertWeatherReadingEditors(browser) {
     if (process.env.ESPCONTROL_PIN_ONLY === "1") {
       await assertScreensaverPinSettings(browser);
       console.log("PIN settings browser checks passed.");
+      return;
+    }
+    if (process.env.ESPCONTROL_FORECAST_PERIOD_ONLY === "1") {
+      await assertS3ForecastEditorLayout(browser);
+      await assertWeatherReadingEditors(browser);
       return;
     }
     if (process.env.ESPCONTROL_WEATHER_READINGS_ONLY === "1") {
