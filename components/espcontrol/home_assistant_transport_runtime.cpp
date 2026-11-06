@@ -1,5 +1,7 @@
 #include "home_assistant_transport_runtime.h"
 
+#include <cstring>
+
 #include "esphome/core/defines.h"
 
 #ifdef USE_API_HOMEASSISTANT_STATES
@@ -72,12 +74,16 @@ struct NativeBackend {
     return true;
   }
   static void reannounce() {
-    // Compaction changes positional cursors. Restart enumeration for every
-    // authenticated connection so another component's subscriptions cannot be
-    // skipped, including non-HA clients that requested the state list.
+    // Replaying a live HA session adds duplicate remote listeners. The native
+    // protocol has no remote unsubscribe; reconnect HA so its peer removes the
+    // old listeners before enumerating the changed list. This public hook only
+    // marks removal: APIServer closes it before advancing an obsolete cursor.
+    // Diagnostic clients keep their sessions; never mutate active_clients here.
     for (const auto &client : esphome::api::global_api_server->active_clients()) {
-      if (client && !client->is_marked_for_removal() && client->is_authenticated())
-        client->on_subscribe_home_assistant_states_request();
+      if (!client || client->is_marked_for_removal() || !client->is_authenticated()) continue;
+      const char *name = client->get_name();
+      if (name != nullptr && std::strstr(name, "Home Assistant") != nullptr)
+        client->on_disconnect_response();
     }
   }
 };

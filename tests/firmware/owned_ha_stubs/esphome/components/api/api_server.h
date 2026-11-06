@@ -10,7 +10,11 @@ struct APIConnection {
   bool removed{false};
   int cursor{-1};
   size_t enumerations{0};
+  size_t disconnects{0};
+  const char *name{"Home Assistant 2026.11.0"};
   bool home_assistant_states{false};
+  const char *get_name() const { return name; }
+  void on_disconnect_response() { removed = true; ++disconnects; }
   bool is_marked_for_removal() const { return removed; }
   bool is_authenticated() const { return authenticated; }
   void on_subscribe_home_assistant_states_request() {
