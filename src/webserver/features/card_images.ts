@@ -195,6 +195,8 @@ function imageItem(value: unknown, normalizeId: (value: unknown) => string): Car
 export function createCardImagesFeature(dependencies: CardImagesFeatureDependencies): CardImagesFeature {
   const api = createCardImageApi(dependencies.fetch, dependencies.imageUrl);
   let loaded = false;
+  let generation = 0;
+  let pendingList: Promise<CardImageItem[]> | null = null;
   let images: CardImageItem[] = [];
   let libraryInfo: CardImageLibraryInfo = {
     available: false,
@@ -210,39 +212,50 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
   };
 
   const invalidate = (): void => {
+    generation++;
+    pendingList = null;
     loaded = false;
     images = [];
   };
 
   const list = async (force = false): Promise<CardImageItem[]> => {
     if (!force && loaded) return images.slice();
-    const response = await api.list();
-    if (response.status === 404) {
-      images = [];
-      libraryInfo = { ...libraryInfo, available: false, requiresUsbFlash: true };
+    if (pendingList) return pendingList;
+    const started = generation;
+    const request = (async () => {
+      const response = await api.list();
+      if (started !== generation) return list();
+      if (response.status === 404) {
+        images = [];
+        libraryInfo = { ...libraryInfo, available: false, requiresUsbFlash: true };
+        loaded = true;
+        throw new CardImageStorageUnavailableError();
+      }
+      if (!response.ok) throw new Error("Could not load images.");
+      const payload = await response.json() as CardImageListPayload;
+      if (started !== generation) return list();
+      const rawImages = Array.isArray(payload?.images) ? payload.images : [];
+      images = rawImages
+        .map((item) => imageItem(item, dependencies.normalizeId))
+        .filter((item): item is CardImageItem => item !== null);
+      libraryInfo = {
+        available: !!payload?.available,
+        requiresUsbFlash: !!payload?.requires_usb_flash,
+        formatVersion: integer(payload?.format_version),
+        referenceTransactions: !!payload?.reference_transactions,
+        restoreTransactions: !!payload?.restore_transactions,
+        maxActiveBackgrounds: integer(payload?.max_active_backgrounds) || dependencies.maxActiveBackgrounds,
+        storageBytes: integer(payload?.storage_bytes),
+        usedBytes: integer(payload?.used_bytes),
+        freeBytes: integer(payload?.free_bytes),
+        maxBytes: integer(payload?.max_bytes),
+      };
       loaded = true;
-      throw new CardImageStorageUnavailableError();
-    }
-    if (!response.ok) throw new Error("Could not load images.");
-    const payload = await response.json() as CardImageListPayload;
-    const rawImages = Array.isArray(payload?.images) ? payload.images : [];
-    images = rawImages
-      .map((item) => imageItem(item, dependencies.normalizeId))
-      .filter((item): item is CardImageItem => item !== null);
-    libraryInfo = {
-      available: !!payload?.available,
-      requiresUsbFlash: !!payload?.requires_usb_flash,
-      formatVersion: integer(payload?.format_version),
-      referenceTransactions: !!payload?.reference_transactions,
-      restoreTransactions: !!payload?.restore_transactions,
-      maxActiveBackgrounds: integer(payload?.max_active_backgrounds) || dependencies.maxActiveBackgrounds,
-      storageBytes: integer(payload?.storage_bytes),
-      usedBytes: integer(payload?.used_bytes),
-      freeBytes: integer(payload?.free_bytes),
-      maxBytes: integer(payload?.max_bytes),
-    };
-    loaded = true;
-    return images.slice();
+      return images.slice();
+    })();
+    pendingList = request;
+    try { return await request; }
+    finally { if (pendingList === request) pendingList = null; }
   };
 
   const decodeUploadResponse = async (response: CardImageHttpResponse, fallback: string): Promise<CardImageItem> => {
@@ -280,6 +293,7 @@ export function createCardImagesFeature(dependencies: CardImagesFeatureDependenc
     info: () => ({ ...libraryInfo }),
     cachedImages: () => images.slice(),
     replaceCachedImages(value) {
+      invalidate();
       images = value.slice();
       loaded = images.length > 0;
     },

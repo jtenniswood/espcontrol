@@ -1,6 +1,7 @@
 #include "button_grid.h"
 #include "card_background_controller.h"
 #include <cassert>
+#include <memory>
 
 namespace espcontrol::card_background {
 
@@ -30,6 +31,7 @@ using CardBackgroundController =
   espcontrol::card_background::Controller<CARD_BACKGROUND_IMAGE_MAX_CONTEXTS>;
 
 struct CardBackgroundRuntimeState {
+  std::shared_ptr<uint8_t> callback_lifetime = std::make_shared<uint8_t>(0);
   CardBackgroundImageCtx contexts[CARD_BACKGROUND_IMAGE_MAX_CONTEXTS];
   CardBackgroundController controller;
   std::vector<CardBackgroundWidgetRef> widget_refs;
@@ -40,6 +42,7 @@ struct CardBackgroundRuntimeState {
 };
 
 void card_background_runtime_shutdown(CardBackgroundRuntimeState &runtime) {
+  runtime.callback_lifetime.reset();
   if (runtime.final_refresh_timer) lv_timer_del(runtime.final_refresh_timer);
   if (runtime.cache_write_timer) lv_timer_del(runtime.cache_write_timer);
   if (runtime.next_download_timer) lv_timer_del(runtime.next_download_timer);
@@ -47,6 +50,7 @@ void card_background_runtime_shutdown(CardBackgroundRuntimeState &runtime) {
   runtime.cache_write_timer = nullptr;
   runtime.next_download_timer = nullptr;
   for (auto &context : runtime.contexts) {
+    for (auto &binding : context.bindings) image_card_clear_widget_source(binding.widget);
     if (context.image) context.image->release();
     context.image = nullptr;
   }
@@ -118,7 +122,7 @@ bool card_background_text_on_image(lv_obj_t *object) {
   if (!runtime || runtime->widget_refs.empty()) return false;
   for (auto *parent = object; parent; parent = lv_obj_get_parent(parent)) {
     for (const auto &ref : runtime->widget_refs) {
-      if (ref.btn == parent) return true;
+      if (ref.btn == parent && ref.widget && !lv_obj_has_flag(ref.widget, LV_OBJ_FLAG_HIDDEN)) return true;
     }
   }
   return false;
@@ -399,10 +403,15 @@ void card_background_handle_download_error(CardBackgroundImageCtx *ctx) {
 void card_background_bind_callbacks(CardBackgroundImageCtx *ctx) {
   if (!ctx || !ctx->image || ctx->callbacks_bound) return;
   ctx->callbacks_bound = true;
-  ctx->image->add_on_finished_callback([ctx](bool cached) {
+  // ArtworkImage outlives this service's runtime. Old callbacks must not touch
+  // freed contexts if the service is stopped and started again.
+  std::weak_ptr<uint8_t> lifetime = card_background_runtime().callback_lifetime;
+  ctx->image->add_on_finished_callback([ctx, lifetime](bool cached) {
+    if (lifetime.expired()) return;
     card_background_apply_downloaded(ctx, cached);
   });
-  ctx->image->add_on_error_callback([ctx]() {
+  ctx->image->add_on_error_callback([ctx, lifetime]() {
+    if (lifetime.expired()) return;
     card_background_handle_download_error(ctx);
   });
 }
@@ -520,6 +529,10 @@ bool card_background_move_binding_to_size(CardBackgroundImageCtx *ctx,
     target, binding.btn, binding.widget);
   if (!new_binding) return false;
 
+  // LVGL retains the decoded buffer pointer until the source is replaced.
+  // Detach it before the old context can release that buffer, including when
+  // the replacement image still needs to be downloaded.
+  image_card_clear_widget_source(binding.widget);
   binding.active = false;
   binding.btn = nullptr;
   binding.widget = nullptr;
@@ -554,6 +567,9 @@ void refresh_card_background_image(lv_obj_t *btn, const GridConfig &cfg) {
       }
       ctx->image->set_target_size(width, height);
       if ((previous_width != width || previous_height != height) && !ctx->url.empty()) {
+        for (auto &attached : ctx->bindings) {
+          if (attached.active) image_card_clear_widget_source(attached.widget);
+        }
         ctx->image->release();
         state.ready = false;
         ctx->image->set_target_size(width, height);

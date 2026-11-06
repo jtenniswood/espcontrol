@@ -35,7 +35,7 @@ import { syncCardCurveUi } from "./card_curve_ui";
 import type { BackupImportController } from "../features/backup_import_controller";
 import type { BackupExportController } from "../features/backup_export_controller";
 import type { BackupFileController } from "../features/backup_file_controller";
-import type { BackupRestoreController } from "../features/backup_restore_controller";
+import type { BackupRestoreController, BackupRestoreProgress } from "../features/backup_restore_controller";
 import type { ApplicationLayoutState } from "./application_context";
 import type { NativePanelConfigController } from "../controllers/native_panel_config_controller";
 import type { PanelConfigDocument } from "../model";
@@ -380,7 +380,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 }
                 const restoredName = await controllers.identity?.chooseRestoreName(data);
                 if (restoredName === null) return;
-                async function applyBackupRestorePlan(this: any, plannedImport: any) {
+                async function applyBackupRestorePlan(this: any, plannedImport: any, restoreProgress: BackupRestoreProgress) {
                 var importedSettings: any = plannedImport.importedSettings;
                 var importedGridCols: any = plannedImport.importedGridCols;
                 var backupPlan: any = plannedImport.backupPlan;
@@ -460,9 +460,11 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 }
                 var layoutRestoreResult: any;
                 if (nativeAvailability === "legacy-fallback") {
+                    restoreProgress.layoutWriteStarted();
                     layoutRestoreResult = await queueLegacyLayoutRestore();
                 }
                 else {
+                    restoreProgress.layoutWriteStarted();
                     var nativeRestore: any = nativeController.writeDocument(nativeDocument);
                     layoutRestoreResult = nativeRestore ? await nativeRestore : "failed";
                     if (layoutRestoreResult === "legacy-fallback") {
@@ -474,9 +476,10 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                         requestApi.postQueueError = true;
                     }
                     else if (layoutRestoreResult !== "saved") {
-                        rejectBackup("The layout could not be restored. No other backup settings were changed.");
+                        rejectBackup("The layout save could not be confirmed. Check the display before retrying. No other backup settings were changed.");
                     }
                 }
+                await restoreProgress.layoutPersisted();
 
                 // Do not change the editor or unrelated device settings until
                 // the complete layout has been accepted by the target firmware.

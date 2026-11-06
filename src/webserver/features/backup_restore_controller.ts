@@ -20,8 +20,15 @@ export interface BackupRestoreControllerOptions<Plan, Target> {
 
 export interface BackupRestoreController<Plan, Target> {
   readonly stage: BackupRestoreStage;
-  restore(data: unknown, target: Target, apply: (plan: Plan) => unknown,
+  restore(data: unknown, target: Target, apply: (plan: Plan, progress: BackupRestoreProgress) => unknown,
           assets?: BackupRestoreAssets<Plan>): Promise<boolean>;
+}
+
+export interface BackupRestoreProgress {
+  /** A lost layout-write response must not authorize destructive compensation. */
+  layoutWriteStarted(): void;
+  /** Commit assets as soon as their layout is durable, before unrelated settings. */
+  layoutPersisted(): Promise<void>;
 }
 
 function restoreErrorMessage(error: unknown): string {
@@ -54,6 +61,15 @@ export function createBackupRestoreController<Plan, Target>(
       }
       let assetsStarted = false;
       let configurationPersisted = false;
+      let layoutWriteStarted = false;
+      let assetsCommitted = false;
+      const commitAssets = async () => {
+        if (!assets || assetsCommitted) return;
+        stage = "committing";
+        try { await assets.commit(); }
+        catch { await assets.commit(); }
+        assetsCommitted = true;
+      };
       try {
         const warnings = options.warnings(plan);
         if (warnings.length) options.showBanner(warnings.join(" "), "warning");
@@ -68,25 +84,24 @@ export function createBackupRestoreController<Plan, Target>(
           assets.remap(plan);
         }
         stage = "applying";
-        await apply(plan);
+        await apply(plan, {
+          layoutWriteStarted() { layoutWriteStarted = true; },
+          async layoutPersisted() {
+            configurationPersisted = true;
+            await commitAssets();
+            stage = "applying";
+          },
+        });
         await options.postQueueIdle();
         if (options.postQueueHadError()) {
           throw new Error("Configuration restore failed. Check the connection and try again.");
         }
         configurationPersisted = true;
-        if (assets) {
-          stage = "committing";
-          try {
-            await assets.commit();
-          } catch {
-            // A lost response is safe to retry with the same durable session.
-            await assets.commit();
-          }
-        }
+        await commitAssets();
         options.showBanner("Configuration imported successfully", "success");
         return true;
       } catch (error) {
-        if (assets && assetsStarted && !configurationPersisted) {
+        if (assets && assetsStarted && !configurationPersisted && !layoutWriteStarted) {
           stage = "rolling-back";
           try {
             // Already queued settings must settle before deleting their images.
@@ -97,7 +112,8 @@ export function createBackupRestoreController<Plan, Target>(
             return false;
           }
         }
-        // Once configuration is durable, preserve its images for device recovery.
+        // A layout write may have succeeded even if its response was lost.
+        // Device recovery can inspect durable references; client rollback cannot.
         options.showBanner(restoreErrorMessage(error), "error");
         return false;
       } finally {

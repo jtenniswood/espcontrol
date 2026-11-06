@@ -35,7 +35,7 @@ struct lv_obj_t {
 };
 int lv_label_class;
 constexpr int LV_DRAW_TASK_TYPE_LABEL=1, LV_EVENT_DRAW_TASK_ADDED=2, LV_EVENT_CHILD_CREATED=3;
-constexpr int LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS=16, LV_PART_MAIN=0, LV_OPA_COVER=255, LV_OPA_80=204;
+constexpr int LV_OBJ_FLAG_HIDDEN=8, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS=16, LV_PART_MAIN=0, LV_OPA_COVER=255, LV_OPA_80=204;
 struct lv_layer_t { lv_area_t _clip_area; };
 struct lv_draw_label_dsc_t {
   struct { lv_layer_t *layer; lv_obj_t *obj; } base;
@@ -71,6 +71,7 @@ void *lv_event_get_param(lv_event_t *event){return event->param;}
 void *event_data=nullptr;
 void *lv_event_get_user_data(lv_event_t *){return event_data;}
 bool lv_obj_check_type(lv_obj_t *obj,int *){return obj->label;}
+bool lv_obj_has_flag(lv_obj_t *obj,int flag){return flag==LV_OBJ_FLAG_HIDDEN?obj->hidden:(obj->flags&flag)!=0;}
 void lv_obj_add_flag(lv_obj_t *obj,int flag){obj->flags|=flag;}
 void lv_obj_remove_event_cb(lv_obj_t *obj,Callback cb){auto &v=obj->events;v.erase(std::remove_if(v.begin(),v.end(),[cb](auto &e){return e.cb==cb;}),v.end());}
 void lv_obj_add_event_cb(lv_obj_t *obj,Callback cb,int code,void *data){obj->events.push_back({cb,code,data});}
@@ -98,7 +99,7 @@ void lv_draw_label(lv_layer_t *layer,const lv_draw_label_dsc_t *descriptor,const
 }
 #include "card_background_text.h"
 namespace espcontrol::card_background {
-struct Ref {lv_obj_t *btn;};
+struct Ref {lv_obj_t *btn; lv_obj_t *widget;};
 struct CardBackgroundRuntimeState {std::vector<Ref> widget_refs;};
 CardBackgroundRuntimeState runtime;
 auto &refs=runtime.widget_refs;
@@ -130,7 +131,7 @@ for filename, namespace, names in [
 source += r'''
 using namespace espcontrol::card_background;
 void enable(lv_obj_t *owner){
- refs={{owner}};card_background_text_query()=card_background_text_on_image;
+ refs={{owner,owner}};card_background_text_query()=card_background_text_on_image;
  card_background_bind_text_tree(owner);
  lv_obj_remove_event_cb(owner,card_background_text_child_created);
  lv_obj_add_event_cb(owner,card_background_text_child_created,LV_EVENT_CHILD_CREATED,nullptr);
@@ -191,6 +192,11 @@ source += r'''
   value.text="Unavailable";value.hidden=true;render(&value);assert(tasks.empty());
   value.hidden=false;container.hidden=true;render(&value);assert(tasks.empty());
   container.hidden=false;check_pair(&value);
+  lv_obj_t image;refs.front().widget=&image;
+  image.hidden=true;render(&value);assert(tasks.size()==1 && tasks.front()->descriptor.opa==178);
+  image.hidden=false;check_pair(&value);
+  refs.front().widget=nullptr;render(&value);assert(tasks.size()==1);
+  refs.front().widget=&image;check_pair(&value);
   refs.clear();card_background_unbind_text_tree(&owner);
   assert(owner.events.empty() && value.events.empty() && late.events.empty());
   render(&value);assert(tasks.size()==1 && tasks.front()->descriptor.opa==178);

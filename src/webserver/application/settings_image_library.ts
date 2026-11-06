@@ -7,6 +7,7 @@ import type { ControlsShellFeature } from "./controls_shell";
 
 export interface SettingsImageLibraryFeature {
   buildCard(): HTMLElement;
+  refreshIfOpen(): void;
 }
 
 export function createSettingsImageLibraryFeature(
@@ -14,7 +15,9 @@ export function createSettingsImageLibraryFeature(
   shell: Pick<ControlsShellFeature, "createActionButton" | "showBanner" | "isConfigLocked">,
   fields: Pick<ControlsFieldsFeature, "makeCollapsibleCard">,
 ): SettingsImageLibraryFeature {
+  let refreshVisible = () => {};
   return {
+    refreshIfOpen() { refreshVisible(); },
     buildCard() {
       const body = document.createElement("div");
       body.className = "sp-image-library";
@@ -151,6 +154,7 @@ export function createSettingsImageLibraryFeature(
         const syncSave = () => { save.disabled = saving || !input.value.trim() || input.value.trim() === original; };
         input.addEventListener("input", () => {
           error.hidden = true;
+          error.textContent = "";
           syncSave();
         });
         cancel.addEventListener("click", () => dialog.close("cancel"));
@@ -179,7 +183,7 @@ export function createSettingsImageLibraryFeature(
           renameDialog = null;
           const row = Array.from(list.children).find(row => (row as HTMLElement).dataset.imageId === image.id);
           const replacement = row?.querySelector<HTMLButtonElement>('button[aria-label="Rename"]');
-          (trigger.isConnected ? trigger : replacement)?.focus();
+          (loadFailed ? retry : trigger.isConnected ? trigger : replacement || upload).focus();
         }, { once: true });
         actions.append(cancel, save);
         form.append(field, actions);
@@ -222,7 +226,7 @@ export function createSettingsImageLibraryFeature(
           await refresh();
           return null;
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Could not update the image library.";
+          const message = error instanceof Error && error.message ? error.message : "Could not update the image library.";
           status.textContent = message;
           shell.showBanner(message, "error");
           return message;
@@ -242,6 +246,9 @@ export function createSettingsImageLibraryFeature(
       card.querySelector(".card-header")!.addEventListener("click", () => {
         if (!card.classList.contains("collapsed") && !busy) void refresh();
       });
+      refreshVisible = () => {
+        if (!card.classList.contains("collapsed") && !busy && !loading && !renameDialog) void refresh();
+      };
       syncActions();
       return card;
     },

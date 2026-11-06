@@ -1,4 +1,5 @@
 #include "card_image_store.h"
+#include "esp_heap_caps.h"
 #include "card_asset_service.h"
 #include "panel_flash_layout.h"
 #include "panel_config_asset_references.h"
@@ -992,6 +993,20 @@ void test_cache_is_confined_to_disposable_region() {
   expect(offset >= cache_start, "cache record must stay inside the disposable region");
 }
 
+void test_cache_releases_ram_on_store_destruction() {
+  flash.reset();
+  const auto before = heap_caps_outstanding_allocations;
+  {
+    TestCardImageStore store;
+    const auto source = upload(store);
+    std::vector<uint8_t> pixels(16 * 16 * 2, 0x7B);
+    expect(store.write_rgb565_cache(source.id, source.crc32, 16, 16, pixels.data(), pixels.size()) == ESP_OK,
+           "decoded cache should be stored before teardown");
+    expect(heap_caps_outstanding_allocations > before, "cache fixture must own a RAM allocation");
+  }
+  expect(heap_caps_outstanding_allocations == before, "store destruction must release decoded RAM caches");
+}
+
 void test_cache_requires_its_source_image() {
   flash.reset();
   TestCardImageStore store;
@@ -1209,6 +1224,7 @@ int main() {
   test_recovered_index_stays_ahead_of_surviving_slot();
   test_corrupt_image_payload_is_rejected();
   test_cache_is_confined_to_disposable_region();
+  test_cache_releases_ram_on_store_destruction();
   test_cache_requires_its_source_image();
   test_upload_evicts_cache_when_index_is_full();
   std::cout << "Card image store tests passed.\n";

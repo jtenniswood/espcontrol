@@ -21,6 +21,7 @@ export interface ControlsShellDependencies {
     readonly state: AppState;
     readonly schedule: typeof setTimeout;
     readonly cancelSchedule: (handle: any) => void;
+    readonly settingsShown?: () => void;
     readonly buildSettingsPage: (parent: HTMLElement) => void;
     readonly closeSettings: () => void;
     readonly postButtonPress: (name: string) => Promise<Response>;
@@ -250,6 +251,7 @@ export function createControlsShellFeature(
         return bar;
     }
     function switchTab(this: any, tab?: any) {
+        const returningToSettings = tab === "settings" && state.activeTab !== "settings";
         const returningToScreen = tab === "screen" && state.activeTab !== "screen";
         state.activeTab = tab;
         if (els.root)
@@ -263,6 +265,7 @@ export function createControlsShellFeature(
         els.devicePage.className = "sp-page" + (tab === "device" ? " active" : "");
         syncTabChrome();
         if (returningToScreen) dependencies.renderPreview();
+        if (returningToSettings) dependencies.settingsShown?.();
     }
     function syncTabChrome(this: any) {
         var support: any = document.querySelector(".sp-support-btn");

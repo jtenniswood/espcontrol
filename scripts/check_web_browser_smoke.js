@@ -8247,6 +8247,16 @@ async function assertImageLibrarySettings(browser, testCase) {
     assert.strictEqual(await renameButton.getAttribute('title'), 'Rename');
     assert.strictEqual(await renameButton.locator('.mdi-pencil').count(), 1);
     assert(await row.getByText('Used by 1 card', { exact: true }).isVisible());
+    // Returning from Layout refreshes an already expanded library.
+    await page.getByRole('tab', { name: 'Layout', exact: true }).click();
+    images.push({ id: 'external-image', name: 'Added in Layout', size: 64 });
+    await page.getByRole('tab', { name: 'Screen', exact: true }).click();
+    await library.getByRole('group', { name: 'Added in Layout', exact: true }).waitFor();
+    images = images.filter(image => image.id !== 'external-image');
+    await page.getByRole('tab', { name: 'Layout', exact: true }).click();
+    await page.getByRole('tab', { name: 'Screen', exact: true }).click();
+    await library.getByRole('group', { name: 'Added in Layout', exact: true }).waitFor({ state: 'hidden' });
+
     await row.scrollIntoViewIfNeeded();
     await row.locator('img').evaluate(image => image.decode());
     const originalName = await row.locator('.sp-image-library-name').textContent();

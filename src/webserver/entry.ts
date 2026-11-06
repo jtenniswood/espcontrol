@@ -320,6 +320,7 @@ function composeApplicationContext(): ApplicationContext {
     state: AppInstance.state,
     schedule: dom.schedule,
     cancelSchedule: (handle) => { dom.window.clearTimeout(handle); },
+    settingsShown: () => { imageLibrary.refreshIfOpen(); },
     buildSettingsPage: (parent) => { settingsPage.buildSettingsPage(parent); },
     closeSettings: () => { selection.closeSettings(); },
     postButtonPress: (name) => requestApi.postButtonPress(name),

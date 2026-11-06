@@ -123,6 +123,8 @@ add_test(NAME local_sensor_lifetime_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/local_sensor_lifetime_test.py)
 add_test(NAME card_colour_rendering_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/card_colour_rendering_test.py ${CMAKE_CXX_COMPILER})
+add_test(NAME card_background_lifecycle_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/card_background_lifecycle_test.py ${CMAKE_CXX_COMPILER})
 add_test(NAME card_background_text_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/card_background_text_test.py ${CMAKE_CXX_COMPILER})
 

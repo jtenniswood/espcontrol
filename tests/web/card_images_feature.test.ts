@@ -407,4 +407,31 @@ export async function runCardImagesFeatureTests(): Promise<void> {
   await deviceDelete;
   deepEqual(deviceDeleteEvents, ["wait", "reset", "delete", "clear-local", "rerender"],
     "device-owned deletion drains the queue before deleting and updating local state");
+
+  // A request started before a mutation must not republish deleted/renamed rows.
+  let finishOldList!: (value: CardImageHttpResponse) => void;
+  let listCalls = 0;
+  const concurrent = featureFor(async () => {
+    listCalls++;
+    if (listCalls === 1) return new Promise(resolve => { finishOldList = resolve; });
+    return response({ json: { available: true, images: [{ id: "new", name: "Current", size: 4 }] } });
+  });
+  const oldRequest = concurrent.list(true);
+  const sharedRequest = concurrent.list(true);
+  equal(listCalls, 1, "concurrent library reads share one request");
+  concurrent.invalidate();
+  await concurrent.list(true);
+  finishOldList(response({ json: { available: false, images: [{ id: "old", name: "Stale", size: 4 }] } }));
+  deepEqual(await oldRequest, concurrent.cachedImages(), "obsolete list resolves to current images");
+  deepEqual(await sharedRequest, concurrent.cachedImages(), "shared obsolete read also resolves to current images");
+  equal(concurrent.cachedImages()[0]?.id, "new", "obsolete list cannot overwrite current cache");
+  equal(concurrent.info().available, true, "obsolete storage metadata cannot replace current metadata");
+
+  let finishReplacement!: (value: CardImageHttpResponse) => void;
+  const replaced = featureFor(() => new Promise(resolve => { finishReplacement = resolve; }));
+  const pendingReplacement = replaced.list();
+  replaced.replaceCachedImages([{ id: "replacement", name: "Replacement", size: 4 }]);
+  finishReplacement(response({ json: { available: true, images: [] } }));
+  equal((await pendingReplacement)[0]?.id, "replacement", "explicit replacement invalidates pending reads");
+
 }

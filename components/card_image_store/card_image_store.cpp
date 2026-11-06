@@ -30,6 +30,7 @@ static constexpr esp_partition_subtype_t CARD_IMAGE_PARTITION_SUBTYPE =
 CardImageStore::CardImageStore() : mutex_(xSemaphoreCreateRecursiveMutex()) {}
 
 CardImageStore::~CardImageStore() {
+  for (auto &cache : this->ram_caches_) heap_caps_free(cache.data);
   if (mutex_ != nullptr) vSemaphoreDelete(mutex_);
 }
 

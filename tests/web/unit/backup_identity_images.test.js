@@ -47,3 +47,47 @@ for (const succeeds of [true, false]) {
       : ["stage", "commit", "finished"], "only a completed successful restore may restart the panel");
   });
 }
+
+for (const result of ['saved', 'mirror-failed', 'failed', 'discovery-failed']) {
+  test(`image durability boundary follows the actual layout write: ${result}`, async () => {
+    const events = [];
+    const noop = () => undefined;
+    const emptyFeature = new Proxy({}, { get: () => noop });
+    const document = { deviceProfile: 'test-panel', buttons: {}, subpages: {}, settings: { button_order: '', button_on_color: '' } };
+    const plan = { importedSettings: {}, importedGridCols: 3, backupPlan: {
+      screen: { device: 'test-panel' }, buttons: [], subpages: {}, config: { native_config: document },
+    } };
+    let complete;
+    const completion = new Promise(resolve => { complete = resolve; });
+    const controllers = new Proxy({
+      layout: { deviceId: 'test-panel', numSlots: 0 },
+      runtime: { els: {} },
+      requestApi: { postQueue: Promise.resolve(), postQueueError: false },
+      identity: { chooseRestoreName: async () => undefined },
+      backupImport: { plan: () => plan },
+      backupFile: { import: receive => receive({}, null) },
+      nativePanelConfig: {
+        client: {}, waitForDiscovery: async () => result === 'discovery-failed' ? 'failed' : 'native',
+        writeDocument: async () => { events.push('layout-write'); return result; },
+      },
+      backupRestore: { restore: async (_data, _target, apply) => {
+        try {
+          await apply(plan, {
+            layoutWriteStarted: () => events.push('write-started'),
+            layoutPersisted: async () => { events.push('assets-commit'); throw new Error('stop at durability boundary'); },
+          });
+        } catch (error) { events.push(error.message); }
+        complete();
+        return false;
+      } },
+    }, { get: (target, key) => target[key] ?? emptyFeature });
+    createAppBackupFeature(controllers).importConfig();
+    await completion;
+    if (result === 'saved' || result === 'mirror-failed') {
+      assert.deepEqual(events, ['write-started', 'layout-write', 'assets-commit', 'stop at durability boundary']);
+    } else {
+      assert(!events.includes('assets-commit'), 'unconfirmed layout cannot commit staged assets');
+      assert.equal(events.includes('write-started'), result !== 'discovery-failed');
+    }
+  });
+}

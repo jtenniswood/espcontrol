@@ -100,7 +100,7 @@ The file contains the saved cards, subpages, panel name and supported device set
 3. Let the restore finish, then check the cards, sensors, screen behaviour, and artwork.
 4. Set your touchscreen PIN again: importing clears the destination's PIN.
 
-A backup from a different-sized panel rearranges cards that no longer fit. Check the layout afterward. Older backups remain supported. Image files are staged until the restored card settings are saved, and committed before a restored name restarts the panel. An interrupted import is cleaned up when the panel restarts. Restoring a name uses the destination panel's own hardware suffix and restarts it after the restore.
+A backup from a different-sized panel rearranges cards that no longer fit. Check the layout afterward. Older backups remain supported. Image files are staged until the restored card settings are saved, then committed before other display settings and any panel-name restart. If a later setting fails, the saved layout keeps its images. If the connection drops during the layout save, check the display before retrying; recovery keeps images referenced by the saved layout and cleans up unused staged files. Restoring a name uses the destination panel's own hardware suffix and restarts it after the restore.
 
 ### Compatibility Notes
 

@@ -116,6 +116,28 @@ export async function runBackupRestoreControllerTests(): Promise<void> {
   equal(lostResponse.events.filter((event) => event === "commit").length, 2, "retry same transaction once");
   equal(lostResponse.events.includes("rollback"), false, "durable configuration is never rolled back after commit failure");
 
+  for (const failure of ["settings", "mirror", "pin"] as const) {
+    const partial = fixture();
+    equal(await partial.controller.restore({}, undefined, async (_plan, progress) => {
+      progress.layoutWriteStarted();
+      await progress.layoutPersisted();
+      partial.events.push("layout-saved");
+      if (failure === "settings" || failure === "mirror") partial.failPosts();
+      else throw new Error("PIN settings failed");
+    }, partial.assets), false, `${failure} failure is reported after the layout saves`);
+    equal(partial.events.includes("rollback"), false, "saved layout images are never deleted by a later failure");
+    equal(partial.events.indexOf("commit") < partial.events.indexOf("layout-saved"), true,
+      "assets commit at the durable layout boundary before unrelated writes");
+    equal(partial.events.filter(event => event === "commit").length, 1, "assets commit once");
+  }
+  const unknownLayout = fixture();
+  equal(await unknownLayout.controller.restore({}, undefined, (_plan, progress) => {
+    progress.layoutWriteStarted();
+    throw new Error("Layout response lost");
+  }, unknownLayout.assets), false, "an ambiguous layout write is reported");
+  equal(unknownLayout.events.includes("rollback"), false, "uncertain saves leave assets for reference-aware device recovery");
+  equal(unknownLayout.events.includes("commit"), false, "uncertain saves do not commit unconfirmed data");
+
   const offline = fixture();
   offline.loseCommits(2);
   equal(await offline.controller.restore({}, undefined, () => undefined, offline.assets), false, "report unreachable commit");
