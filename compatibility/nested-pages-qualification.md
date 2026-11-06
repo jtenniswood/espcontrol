@@ -36,8 +36,9 @@ storage-source equivalence, not whole-firmware or renderer equivalence.
 A new read-only preflight verifies the 10-inch V3 on official `v2.13.0`, its
 exact original generation-375 dashboard, protected settings, PIN/reset state
 and encrypted API identity. No API key is read or exported and no test is armed.
-Actual before/after-publication power cuts still require fresh operator
-availability and a separate confirmation for each held checkpoint.
+At this readiness checkpoint, actual power cuts still awaited an operator.
+The user subsequently requested testing without disconnecting power; the
+automated crash-recovery qualification below replaces that manual workflow.
 
 The latest published stable release remains
 [v2.13.0](https://github.com/jtenniswood/espcontrol/releases/tag/v2.13.0).
@@ -1853,17 +1854,78 @@ all 77 current preferences, PIN/reset and both update settings are restored and
 stable for over 76 seconds. The refreshed snapshot preserves the user's newer
 screensaver settings. No API key is retrieved or exported, and no test is left
 armed. Home Assistant's absence of further approval prompts awaits user feedback;
-actual physical cuts still require fresh checkpoints and confirmations.
+actual physical cuts are not credited by this cancellation cohort. The later
+automated reset method below supersedes the manual-cut workflow.
+
+## Automated abrupt-reset recovery (6 November)
+
+At the user's request, the transaction recovery test now runs without
+disconnecting power. Private source `f8bb317ccc63`, based on public `a9cddad09`,
+and frozen controller `80d76b435d2b8af1` pass both checkpoints on the actual
+10-inch P4 V3. The image builds with ESPHome 2026.10.2 and ESP-IDF 5.5.6;
+source, partition, SDK, artifact and ELF checks pass. The six production storage
+files and two private raw-partition/session cores retain their qualified bytes.
+Test endpoints and the reset trigger remain private qualification code.
+
+The worker holds mutation seven either immediately before or after publication
+in a guarded, initially erased 90,112-byte scratch window within `card_images`.
+A command fenced by nonce, session, boot identity, native generation, reset
+epoch and checkpoint requests `esp_restart_noos()` through the existing P4
+IRAM/cache-reset workaround. It bypasses application shutdown handlers. A
+44-byte RTC-retained witness ties the request to the next boot and records any
+shutdown-handler calls. The controller requires a fresh boot, software-reset
+reason 3, a matching witness with zero shutdown calls and a newly initialized
+worker before inspecting storage. It never infers a reset from lost transport
+alone or retries a reset command blindly.
+
+| Held checkpoint | Recovered test payload | Shutdown-handler calls | Result |
+| --- | --- | --- | --- |
+| Before publication | Old slot, generation 2 | 0 | Pass |
+| After publication | New slot, generation 3 | 0 | Pass |
+
+Both reset requests receive HTTP 202 and their exact accepted acknowledgements.
+All boot identities exceed the signed 32-bit range, exercising the corrected
+full-uint32 parser on hardware. Both cleanups independently reproduce the
+original full 2 MiB partition SHA-256
+`cdedcbd47d5c8199fb8669aaa2ecc8cd6dcecb3c59483f03697cc257ff2807ce`.
+The final report, frozen source/controller/artifact digests, retained witnesses,
+old/new payloads and recovery are independently audited. Scoped host coverage
+passes 56 C++ ASan/UBSan checks with three weakened-policy negative controls,
+68 controller checks, 17 actual HTTP-client checks and 11 identity checks.
+
+Earlier cohorts remain separate. The first completes both resets and recovery,
+but its client lacks the new reset-result decoder and reconciles the resulting
+reporting error using the retained witness. The second refuses a boot identity
+above the signed 32-bit range and times out without an accepted reset; it
+cleans up and restores the original successfully. Neither is relabelled as a
+clean final-controller run. The final cohort fixes the decoder, accepts the
+full unsigned boot range and treats explicit HTTP rejection as a terminal
+failure rather than waiting for or repeating a reset.
+
+After the final cohort, verified official `v2.13.0`, the exact generation-375
+native dashboard, all 77 protected preferences, PIN/reset and both automatic
+update settings are restored. The restored identity and dashboard remain
+verified for over 75 seconds, followed by another read-only identity/data/settings
+preflight. Dynamic API encryption preserves the saved key without reading,
+exporting or replacing it. No test is left armed.
+
+This qualifies transaction crash recovery across abrupt low-level software
+resets at both publication boundaries on the recorded device and storage
+source. It does not qualify electrical power loss, brownouts or interruption
+of a flash operation by collapsing supply voltage. RTC witness memory is
+deliberately retained; the result does not claim that every RAM region loses
+its contents. Electrical testing remains a separate scope, without blocking
+this automated replacement on operator availability.
 
 ## Remaining qualification gates
 
 The 480 × 480 S3 appearance gate has explicit user confirmation, with the host
 interruption and separate recovery qualified above. Physical cases outside the
-recorded P4/image/modal/takeover cohorts and actual power interruptions remain
-unqualified. The current
-10-inch published-release identity/recovery path and cancellation round trip
-are verified above. Actual cuts still require operator availability and explicit
-confirmation of each manual power cycle; none is inferred from a restart.
+recorded P4/image/modal/takeover cohorts remain unqualified. The current
+10-inch published-release recovery, cancellation and automated abrupt-reset
+round trips are verified above. Manual power cuts are no longer required for
+the replacement transaction crash-recovery workflow. Electrical power-loss
+and brownout behaviour remain outside its qualified scope.
 
 The historical SDK1 memory regression still lacks its original image/display
 observations. Published-reader and mirror-retirement gates in

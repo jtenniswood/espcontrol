@@ -124,7 +124,9 @@ allocation-failure, legacy edit/reboot and browser checks pass. The private
 10-inch future-flat-writer cohort also passes actual client edit/backup, old/new
 v1 restores, restart and full-cache navigation, with exact original recovery;
 see [its qualification scope](nested-pages-qualification.md#flat-storage-migration-on-the-10-inch-v3).
-Reader-floor, mirror-retirement and physical power-interruption gates remain.
+Reader-floor and mirror-retirement gates remain. Transaction crash recovery now
+has automated abrupt-reset coverage on the 10-inch V3; electrical power-loss
+behaviour remains separately unqualified.
 
 PageStore preparation now starts with a smaller private parsing reservation and
 grows within the existing profile ceiling, releasing an unsuccessful attempt
@@ -183,7 +185,15 @@ increase document admission or remove other preparation/image peak costs.
    reservation and verifies fresh-handle recovery/cleanup. A later P4 cohort
    passes 78 injected raw-driver cases at the deployed 40 KiB slot geometry in
    isolated erased sectors, verifying the entire partition after each cleanup.
-   Physical power interruptions retain separate qualification.
+   At the user's request, automated abrupt low-level software resets now
+   replace manual power cuts for transaction crash-recovery qualification.
+   Both before/after-publication checkpoints pass on the 10-inch P4 V3 with
+   fresh boot witnesses, zero application shutdown calls, expected old/new
+   payload selection and full-partition cleanup checksums. Original firmware,
+   dashboard and settings are restored. See the
+   [qualification scope](nested-pages-qualification.md#automated-abrupt-reset-recovery-6-november).
+   Electrical power loss, brownouts and supply collapse during flash operations
+   remain separate, unqualified behaviours.
 7. **Nested-page feature:** only after the preceding memory and compatibility
    gates, enable depth two through the generated contract, editor, validators,
    navigation, subtree operations, backups and remote page lookup.
