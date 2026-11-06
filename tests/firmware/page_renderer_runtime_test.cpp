@@ -128,6 +128,15 @@ void profile_navigation(const DeviceUiLimits &limits) {
       assert(!renderer.valid(token) && renderer.bound(token));
     };
     renderer.refresh();renderer.update_visible();port.on_update=nullptr;assert(renderer.valid(token));
+    const auto layout_bytes=renderer.memory().active_layout_bytes;
+    port.on_unbind=[&](){
+      renderer.retire_active();
+      assert(renderer.memory().active_layout_bytes==layout_bytes);
+      assert(!renderer.open_page(child_page)&&!renderer.suspend());
+    };
+    assert(renderer.open_page(child_page));assert(renderer.return_home());port.on_unbind=nullptr;
+    assert(renderer.valid(renderer.binding(1))&&arena.live.size()==arena_count);
+    token=renderer.binding(1);
     port.on_unbind = [&]() { assert(!renderer.valid(token) && !renderer.bound(token)); };
     renderer.retire_active();port.on_unbind=nullptr;assert(!renderer.valid(token));assert(arena.live.empty());
   }

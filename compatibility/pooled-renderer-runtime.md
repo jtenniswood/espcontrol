@@ -25,7 +25,8 @@ retirement paths. Whole-device allocation peaks require physical tests.
 Each binding token includes the committed configuration, binding revision,
 page, card and shell. Tokens become invalid before any unbind work. Delayed
 input/timer callbacks must carry their origin token, not read a replacement
-context's token when they execute. Suspend/resume invalidates gestures without
+context's token when they execute. Retirement cannot release the layout from
+inside an ongoing binding change. Suspend/resume invalidates gestures without
 creating new subscriptions. Exhausted binding revisions fail closed instead of
 reusing a token. Back is limited to the existing root/first-level hierarchy.
 
