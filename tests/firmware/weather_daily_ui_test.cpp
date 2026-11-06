@@ -100,6 +100,7 @@ void lv_obj_add_flag(lv_obj_t *obj,int flag){obj->flags|=flag;}
 void lv_obj_clear_flag(lv_obj_t *obj,int flag){obj->flags&=~flag;}
 void lv_obj_align(lv_obj_t *obj,int,int x,int y){obj->x=(obj->parent?obj->parent->width-obj->width:0)/2+x;obj->y=y;}
 NOOP(lv_obj_set_style_bg_color) NOOP(lv_obj_center)
+NOOP(lv_obj_update_layout)
 void lv_obj_move_background(lv_obj_t *obj){auto &c=obj->parent->children;c.erase(std::find(c.begin(),c.end(),obj));c.insert(c.begin(),obj);}
 void lv_obj_move_foreground(lv_obj_t *obj){auto &c=obj->parent->children;c.erase(std::find(c.begin(),c.end(),obj));c.push_back(obj);}
 NOOP(lv_obj_set_style_radius) NOOP(lv_obj_set_style_bg_opa) NOOP(lv_obj_set_style_border_width) NOOP(lv_obj_set_style_pad_all)

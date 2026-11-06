@@ -115,6 +115,7 @@ inline void weather_daily_sync_text_shadow(lv_obj_t *target, lv_obj_t *&shadow, 
   lv_obj_set_style_text_align(shadow, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
   // Copy the rendered text: display conversion has already happened on target.
   lv_label_set_text(shadow, lv_label_get_text(target));
+  lv_obj_update_layout(target);
   lv_obj_set_size(shadow, lv_obj_get_width(target), lv_obj_get_height(target));
   lv_obj_set_pos(shadow, lv_obj_get_x(target) + 1, lv_obj_get_y(target) + 1);
   lv_obj_move_background(shadow);
