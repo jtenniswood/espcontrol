@@ -1917,6 +1917,29 @@ deliberately retained; the result does not claim that every RAM region loses
 its contents. Electrical testing remains a separate scope, without blocking
 this automated replacement on operator availability.
 
+## Parent-review carry-forward audit (6 November)
+
+An audit of eight earlier, non-ancestor PR heads finds omitted runtime fixes.
+Runtime `7acf85afd` restores guards for controls enabled by delayed state,
+prevents reentrant retirement from releasing an in-use layout, and clears
+retired climate/light/cover titles during safe collection. Each restored
+regression fails before its fix. Real-LVGL ASan/UBSan checks then pass 1,000
+gesture cycles, pattern/navigation coverage on nine profiles, all 13 modal
+families and the focused renderer/title cases. Feature `4829b77c3` integrates
+these changes and passes its focused guard and three retirement checks.
+
+The runtime's old hard-coded SDK stub also hides a 2026.10.0 transport guard
+against the repository's 2026.10.2 pin. A direct current-pin compile reproduces
+that mismatch. Host tests now derive the header from `.github/esphome.env`;
+audited 2026.10.1/2 checks pass and unaudited 2026.10.3 fails compilation. The
+feature retains its additional native-dispatch guard checks. These are host
+and source checks, with no new device flash, factory matrix or memory result.
+
+The semantic carry-forward audit remains open for graph sizing/state replay,
+HA subscription refresh, media dependencies, label fallbacks and host-budget
+changes. Earlier device results retain their original source scopes; this
+audit must finish before treating the reader bridge as ready for release.
+
 ## Remaining qualification gates
 
 The 480 × 480 S3 appearance gate has explicit user confirmation, with the host
