@@ -229,22 +229,11 @@ inline void ha_flush_deferred_state_requests(size_t max_requests = 8) {
       max_requests, HA_READ_INTERNAL_FREE_MIN_BYTES, HA_READ_INTERNAL_LARGEST_MIN_BYTES);
 }
 
-// ESPHome normally advertises Home Assistant state subscriptions once during
-// the API handshake. Card configuration can rebuild the grid after that
-// handshake, so re-announce the expanded list to the existing Home Assistant
-// client instead of waiting for a reconnect before the cards receive data.
+// Refresh current values without adding another remote persistent listener.
+// Native registration changes reconnect HA separately from loop maintenance.
 inline void ha_reannounce_state_subscriptions() {
-  if (!ha_api_state_connected()) return;
-  for (const auto &client : esphome::api::global_api_server->active_clients()) {
-    if (!client) continue;
-    const char *client_name = client->get_name();
-    if (client_name == nullptr ||
-        std::string(client_name).find("Home Assistant") == std::string::npos) {
-      continue;
-    }
-    client->on_subscribe_home_assistant_states_request();
-  }
-  ha_log_subscription_diagnostics("grid-reannounce");
+  espcontrol::ha::request_state_refresh();
+  ha_log_subscription_diagnostics("grid-refresh-requested");
 }
 
 inline bool ha_action_begin(esphome::api::HomeassistantActionRequest &req,

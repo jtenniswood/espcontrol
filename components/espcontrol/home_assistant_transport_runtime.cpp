@@ -1,5 +1,7 @@
 #include "home_assistant_transport_runtime.h"
 
+#include <cstring>
+
 #include "esphome/core/defines.h"
 
 #ifdef USE_API_HOMEASSISTANT_STATES
@@ -74,17 +76,47 @@ struct NativeBackend {
     return true;
   }
   static void reannounce() {
-    // Compaction changes positional cursors. Restart enumeration for every
-    // authenticated connection so another component's subscriptions cannot be
-    // skipped, including non-HA clients that requested the state list.
+    // Replaying a live HA session adds duplicate remote listeners. The native
+    // protocol has no remote unsubscribe; reconnect HA so its peer removes the
+    // old listeners before enumerating the changed list. This public hook only
+    // marks removal: APIServer closes it before advancing an obsolete cursor.
+    // Diagnostic clients keep their sessions; never mutate active_clients here.
     for (const auto &client : esphome::api::global_api_server->active_clients()) {
-      if (client && !client->is_marked_for_removal() && client->is_authenticated())
-        client->on_subscribe_home_assistant_states_request();
+      if (!client || client->is_marked_for_removal() || !client->is_authenticated()) continue;
+      const char *name = client->get_name();
+      if (name != nullptr && std::strstr(name, "Home Assistant") != nullptr)
+        client->on_disconnect_response();
     }
   }
 };
 using Registry = OwnedHaSubscriptions<NativeBackend, EspControlExternalAllocator<std::byte>>;
 void (*maintenance_callback)() = nullptr;
+bool refresh_pending = false;
+size_t refresh_cursor = 0;
+void refresh_one_state() {
+  if (!refresh_pending || !NativeBackend::available()) return;
+  const auto &subscriptions = esphome::api::global_api_server->get_state_subs();
+  if (refresh_cursor >= subscriptions.size()) { refresh_pending = false; return; }
+  const auto &entry = subscriptions[refresh_cursor];
+  if (entry.entity_id == nullptr || *entry.entity_id == '\0') {
+    if (++refresh_cursor == subscriptions.size()) refresh_pending = false;
+    return; // Match native enumeration's handling of unconfigured wizard IDs.
+  }
+  esphome::api::SubscribeHomeAssistantStateResponse request;
+  request.entity_id = esphome::StringRef(entry.entity_id ? entry.entity_id : "");
+  request.attribute = esphome::StringRef(entry.attribute ? entry.attribute : "");
+  request.once = true;
+  bool sent = false, accepted = true;
+  for (const auto &client : esphome::api::global_api_server->active_clients()) {
+    if (!client || client->is_marked_for_removal() || !client->is_authenticated()) continue;
+    const char *name = client->get_name();
+    if (name == nullptr || std::strstr(name, "Home Assistant") == nullptr) continue;
+    sent = true;
+    accepted = client->send_message(request) && accepted;
+  }
+  // Backpressure retries the same one-shot pair; it never adds remote listeners.
+  if (sent && accepted && ++refresh_cursor == subscriptions.size()) refresh_pending = false;
+}
 }  // namespace
 
 uint32_t subscribe_owned(const std::string &entity, const std::string &attribute,
@@ -93,12 +125,19 @@ uint32_t subscribe_owned(const std::string &entity, const std::string &attribute
 }
 void unsubscribe_owned(uint32_t token) { Registry::instance().unsubscribe(token); }
 void set_subscription_maintenance(void (*maintenance)()) { maintenance_callback = maintenance; }
+void request_state_refresh() {
+  if (!refresh_pending) refresh_cursor = 0;
+  refresh_pending = true;
+}
 void maintain_subscriptions() {
   if (native_lookup::owner().delivering()) return;
   if (maintenance_callback != nullptr) maintenance_callback();
   auto &registry = Registry::instance();
   const bool changed = registry.flush();
-  if (changed) native_lookup::owner().changed();
+  if (changed) {
+    refresh_cursor = 0; // Compaction can move the pair at the current cursor.
+    native_lookup::owner().changed();
+  }
   native_lookup::maintain(esphome::millis());
   if (changed) {
     ESP_LOGD("ha_transport", "Native subscriptions: owned=%u pending=%u registry_bytes=%u lookup_bytes=%u upstream=%u capacity=%u heap_internal=%u heap_largest=%u psram_free=%u",
@@ -111,6 +150,7 @@ void maintain_subscriptions() {
              static_cast<unsigned>(NativeBackend::internal_largest()),
              static_cast<unsigned>(NativeBackend::psram_free()));
   }
+  refresh_one_state();
 }
 }  // namespace espcontrol::ha
 #else
@@ -118,6 +158,7 @@ namespace espcontrol::ha {
 uint32_t subscribe_owned(const std::string &, const std::string &, StateCallback) { return 0; }
 void unsubscribe_owned(uint32_t) {}
 void set_subscription_maintenance(void (*)()) {}
+void request_state_refresh() {}
 void maintain_subscriptions() {}
 }  // namespace espcontrol::ha
 #endif

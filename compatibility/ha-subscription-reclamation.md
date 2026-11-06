@@ -36,16 +36,38 @@ preserving foreign registrations even when their entity/attribute text matches.
 Host transport tests derive their version header from `.github/esphome.env`.
 The guard accepts the audited 2026.10.1/2 API and rejects an unaudited patch;
 an old hard-coded host version cannot conceal a repository pin mismatch.
-It restarts authenticated clients' positional subscription enumeration after
-changes. Audit this bridge when changing the pinned ESPHome version.
+When the persistent list changes, it marks only authenticated Home Assistant
+sessions for disconnection. The API server closes them before another positional
+cursor step; their peers clean up connection-owned listeners, then enumerate
+the changed list on reconnect. Log, diagnostic and unnamed clients stay
+connected. An unchanged maintenance tick does not request another disconnect.
+This can briefly interrupt HA connectivity when adding or removing native
+channels; navigation within an already prepared graph does not change that list.
 
-The 2026.10.0 audit compared the actual SDK sources with 2026.9.1: subscription
-records and state-response dispatch are unchanged. Enumeration still uses a
-positional cursor. The new wizard-input path remembers state subscriptions and
-skips unconfigured empty IDs; invoking the public enumeration request sets
-that flag as the SDK expects and restarts its cursor. The native-style fixture now retains dynamic
-foreign name storage across compaction and checks this enumeration flag. The
-version guard remains exact so a later SDK change requires another audit.
+The audited 2026.10.2 public disconnect hook marks removal without mutating the
+active-client vector, and the server skips marked clients before dispatch. The
+HA listener lifecycle was checked against primary upstream
+[manager](https://github.com/home-assistant/core/blob/f4e3a420d981b8a523fad8614923ffbc18494741/homeassistant/components/esphome/manager.py)
+and [entry data](https://github.com/home-assistant/core/blob/f4e3a420d981b8a523fad8614923ffbc18494741/homeassistant/components/esphome/entry_data.py)
+sources: repeating a persistent request adds another listener, while disconnect
+runs their cleanup callbacks. This is source/host evidence, not qualification of
+the user's installed HA version. Audit this bridge when changing the pinned SDK.
+
+Existing grid, climate and media value-refresh helpers now schedule one-shot
+requests instead of restarting persistent enumeration. Maintenance coalesces
+requests and visits one entity/attribute pair per loop tick, sending only to
+eligible HA clients. Backpressure retries that pair; list compaction resets the
+cursor before another request. Empty wizard IDs are skipped. A refresh alone
+neither reconnects HA nor installs another remote listener. The cursor and flag
+use fixed scalar storage, with no additional retained value cache.
+
+The actual pinned HA subscription, one-shot and disconnect method bodies were
+also executed with state/event doubles: 100 persistent replays install 100
+listeners, disconnect removes them, and 100 one-shot reads retain only the
+single original listener. Production-transport host checks cover deferred and
+coalesced refreshes, pacing, two HA clients, backpressure, changed-list cursors,
+null attributes, empty IDs and backend unavailability. Weakened persistent,
+unpaced and obsolete-cursor implementations fail the regression checks.
 
 The 2026.10.1 audit compared `api_server.h/.cpp` and `api_connection.h/.cpp`
 against the published 2026.10.0 wheel: all four files are byte-identical.
@@ -80,9 +102,7 @@ The maintenance log reports `lookup_bytes` separately from registry storage.
 The [qualification record](nested-pages-qualification.md) distinguishes the
 tested S3 candidate from production-source build and device checks.
 
-The native protocol has no remote-unsubscribe message. Home Assistant may keep
-announcing retired entities until its next reconnect; those replies are ignored.
-This stage reclaims device-owned registrations, not Home Assistant's own memory.
+
 
 Host coverage exercises 1,000 disjoint configurations, deferred add/remove
 during dispatch, late callbacks, owner destruction, shared channels, retained
