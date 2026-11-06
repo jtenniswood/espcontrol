@@ -9,9 +9,19 @@ separate nested-write gate are recorded in the
 `PageEntityStateRuntime` prepares a card-to-entity/attribute graph from an
 explicit driver dependency source. Equal pairs share one channel; multiple
 cards and duplicate references share the same value. Names, graph edges and a
-packed state cache live in one fallible arena per configuration generation.
+packed state cache have fallible storage per configuration generation. Values
+use the graph arena for fixed reservations or a separate growing pool for
+elastic budgets.
 Dependencies, channels and state bytes have caller-supplied bounds. These are
 preparation budgets, not qualified device limits.
+
+Sizing counts unique channels and card/channel links, so repeated declarations
+cannot consume the budget again or enlarge retained storage. Fallible indexed
+scratch copies borrowed names into stable blocks and is released before final
+construction. Both enumerations must describe the same graph; final counts
+and name bytes are checked. Short ordered card groups use bounded local scans;
+large fan-out or interleaved declarations use a link index. Counting buffers,
+index growth and grouping scratch are included in the requested-byte peak.
 
 The existing binding coordinator can carry both active and prepared owners on
 one native transport channel. Configuration consumers disable its additional
@@ -48,7 +58,7 @@ are valid only until the next delivery, disconnect or replacement; renderers
 must pull/copy the required values from the main event loop. This is not yet a
 claim that the coordinator's complete dispatch path or the existing renderer is
 allocation-free. Arena counters exclude coordinator/native storage, fixed owner
-objects and temporary dependency-source work.
+objects and allocations made privately by dependency sources.
 
 Host tests cover staged visibility, allocation-free activation and cache
 updates, shared dependencies, UTF-8, unavailable values, packing/exhaustion and
@@ -57,11 +67,12 @@ recovery, partial subscription failure, arena failure, reconnect invalidation,
 They also exercise the real binding coordinator adapter. These are model tests,
 not physical-device memory or visual-parity results.
 
-An optional `page_entity_state_benchmark` target reports lookup and equal-width
-update timings, fixed owner size and retained arena size for maximum S3 and
-20-slot P4 layouts with 24 synthetic attributes per card. It has no timing pass
-threshold and does not qualify device budgets or represent measured device
-heap use.
+An optional `page_entity_state_benchmark` target reports preparation, lookup and
+equal-width update timings, fixed owner size, retained arena size and requested
+arena peak for S3 and 20-slot P4 layouts with 24 synthetic attributes per card.
+It compares unique entities with a shared source, checks values and graph
+counts, and verifies peak accounting against the test allocator. It has no
+timing pass threshold and does not represent measured device heap use.
 
 The [card dependency declarations](page-card-dependencies.md) cover the
 registered drivers and have host corpus/max-layout coverage. Physical S3 and
@@ -72,4 +83,5 @@ workload scopes. Finish physical parity for every mode, hidden-page behaviour,
 parent summaries and panel-level consumers. Complete preparation peaks,
 including coordinator/native allocations and image buffers, remain a release
 gate. The selected scene uses reusable visible widgets rather than retaining
-eager widgets for every stored page.
+eager widgets for every stored page. Allocator overhead remains outside the
+requested arena-byte counters.
