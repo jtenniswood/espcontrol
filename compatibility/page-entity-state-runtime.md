@@ -27,6 +27,9 @@ replay/cache copies; shared widget and modal consumers retain their existing
 behaviour. Shared values are copied from the active graph into its replacement,
 and subsequent announcements update both until activation. There is no widget
 address in the configuration graph.
+Exhausted shared channels also retain their status during same-connection
+replacement. A fitting value recovers them; reconnect invalidation clears both
+available and exhausted state until fresh data arrives.
 
 `PageStoreRuntime` optionally reserves these resources before storage commit.
 A preparation failure cancels partially attached subscriptions and frees the

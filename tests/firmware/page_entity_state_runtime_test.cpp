@@ -165,6 +165,29 @@ void unique_dependency_graph_sizing_is_bounded() {
   assert(state.memory().peak_arena_bytes==arena.peak_bytes);
   state.retire_active();assert(arena.live.empty()&&transport.entries.empty());
 }
+void shared_exhaustion_survives_replacement() {
+  Fixture fixture;Arena arena;Subscriptions transport;Source source;
+  source.items={{0,"sensor.shared",""},{1,"sensor.other",""}};
+  PageEntityStateRuntime state(source,arena,transport,{8,4,4,4});
+  assert(state.prepare(fixture.store));state.activate_prepared(17);
+  transport.send("sensor.shared","","oversize");transport.send("sensor.other","","ok");
+  assert(state.dependency({17,0},0).status==PageEntityStatus::EXHAUSTED);
+  const auto overflows=state.memory().state_overflows;
+  source.items={{2,"sensor.shared",""},{1,"sensor.other",""}};
+  assert(state.prepare(fixture.store));state.activate_prepared(18);
+  assert(state.dependency({18,2},0).status==PageEntityStatus::EXHAUSTED);
+  assert(state.dependency({18,2},0).value.empty()&&state.dependency({18,1},0).value=="ok");
+  assert(state.memory().state_overflows==overflows);
+  transport.send("sensor.shared","","1");
+  assert(state.dependency({18,2},0).status==PageEntityStatus::AVAILABLE);
+  assert(state.prepare(fixture.store));state.activate_prepared(19);
+  assert(state.dependency({19,2},0).value=="1");
+  transport.send("sensor.shared","","oversize");
+  ++transport.connection;
+  assert(state.prepare(fixture.store));state.activate_prepared(20);
+  assert(state.dependency({20,2},0).status==PageEntityStatus::UNKNOWN);
+  assert(state.dependency({20,1},0).status==PageEntityStatus::UNKNOWN);
+}
 void lifetime_and_state_budget() {
   Fixture f; Arena arena; Subscriptions transport; Source source;
   source.items = {{0,"sensor.one",""},{1,"sensor.one",""},{0,"sensor.one",""},
@@ -1124,6 +1147,7 @@ void registration_scratch_is_fallible_counted_and_released_after_the_batch() {
 
 int main() {
   unique_dependency_graph_sizing_is_bounded();
+  shared_exhaustion_survives_replacement();
   registration_scratch_is_fallible_counted_and_released_after_the_batch();
   colliding_channel_names_keep_identity_and_card_ordinals();
   maximum_shared_state_replacement_is_atomic();
