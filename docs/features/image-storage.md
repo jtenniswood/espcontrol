@@ -50,7 +50,7 @@ For a custom ESPHome installation, follow [Manual ESPHome Setup](/getting-starte
 
 1. Reopen the display's web page and go to **Settings > System > Backup > Import**.
 2. Choose your saved backup and wait for restoration to finish. Apply the configuration if prompted.
-3. Open a supported card's settings and open **Background > Image**. The image-storage banner should be gone and **Upload image** should be enabled.
+3. Open a supported card's settings and open **Background > Image**. The image-storage banner should be gone and **Upload** should be enabled.
 4. Upload a picture, select it, and check the web preview and physical display. A configuration-only backup has no image files to restore, so upload those pictures separately.
 
 After the full USB install, future firmware updates can use OTA normally. If the banner remains, check that you installed the correct current factory firmware for your exact display and revision; another OTA update will not resolve a missing partition.

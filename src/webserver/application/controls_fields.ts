@@ -564,23 +564,28 @@ export function createControlsFieldsFeature(
         upload.className = "sp-card-bg-file";
         var uploadBtn: any = document.createElement("button");
         uploadBtn.type = "button";
-        uploadBtn.className = "sp-action-btn";
-        uploadBtn.innerHTML = '<span class="mdi mdi-plus"></span>Upload image';
-        var renameBtn: any = document.createElement("button");
-        renameBtn.type = "button";
-        renameBtn.className = "sp-action-btn";
-        renameBtn.innerHTML = '<span class="mdi mdi-pencil"></span>Rename';
+        uploadBtn.className = "sp-action-btn sp-primary-btn";
+        uploadBtn.innerHTML = '<span class="mdi mdi-plus" aria-hidden="true"></span>Upload';
         var deleteBtn: any = document.createElement("button");
         deleteBtn.type = "button";
-        deleteBtn.className = "sp-action-btn sp-card-bg-delete-btn";
-        deleteBtn.innerHTML = '<span class="mdi mdi-trash-can-outline"></span>';
+        deleteBtn.className = "sp-action-btn sp-secondary-btn sp-card-bg-delete-btn";
+        deleteBtn.innerHTML = '<span class="mdi mdi-trash-can-outline" aria-hidden="true"></span>';
         deleteBtn.setAttribute("aria-label", "Delete image");
         deleteBtn.title = "Delete image";
-        actions.append(upload, uploadBtn, renameBtn, deleteBtn);
+        actions.append(upload, uploadBtn, deleteBtn);
         field.appendChild(actions);
         var availability: any = createCardImageStorageBanner();
         field.appendChild(availability);
         const selectedImage = () => cardBackgroundImage(b);
+        let uploading = false;
+        let deleting = false;
+        const syncActions = () => {
+            const available = cardImages.info().available;
+            uploadBtn.hidden = !available || uploading;
+            deleteBtn.hidden = !available || !selectedImage() || deleting;
+            upload.disabled = !available || uploading;
+            actions.hidden = uploadBtn.hidden && deleteBtn.hidden;
+        };
         const refreshPreview = () => {
             const id = selectedImage();
             preview.style.backgroundImage = id ? "url('" + cardImageUrl(id) + "')" : "";
@@ -588,8 +593,7 @@ export function createControlsFieldsFeature(
             const iconName = iconSlug(b.icon && b.icon !== "Auto" ? b.icon : "gesture-tap-button");
             preview.innerHTML = '<span class="sp-card-bg-preview-icon mdi mdi-' + iconName + '"></span>' +
                 '<span class="sp-card-bg-preview-title">' + escHtml(b.label || b.entity || "Configure") + '</span>';
-            renameBtn.disabled = !cardImages.info().available || !id;
-            deleteBtn.disabled = !cardImages.info().available || !id;
+            syncActions();
         };
         const setBackground = (value: unknown) => {
             if (!cardImages.info().available && normalizeCardBackgroundImageId(value)) return;
@@ -604,8 +608,6 @@ export function createControlsFieldsFeature(
             const current = selectedImage();
             const info = cardImages.info();
             select.disabled = !info.available;
-            uploadBtn.disabled = !info.available;
-            upload.disabled = !info.available;
             syncCardImageStorageBanner(availability, info);
             select.innerHTML = "";
             const none = document.createElement("option");
@@ -628,26 +630,13 @@ export function createControlsFieldsFeature(
             refreshPreview();
         };
         select.addEventListener("change", function (this: HTMLSelectElement) { setBackground(this.value); });
-        renameBtn.addEventListener("click", () => {
-            if (!cardImages.info().available) return;
-            const id = selectedImage();
-            if (!id) return;
-            const selected = Array.from(select.options).find((option: any) => option.value === id) as any;
-            const name = window.prompt("Image name", selected?.textContent || id);
-            if (name == null || !name.trim()) return;
-            renameBtn.disabled = true;
-            cardImages.rename(id, name.trim()).then(() => cardImages.list(true)).then(fillSelect).then(() => {
-                showBanner("Image renamed.", "success");
-            }).catch((error) => {
-                showBanner(error?.message || "Could not rename image.", "error");
-            }).finally(() => { renameBtn.disabled = !cardImages.info().available || !selectedImage(); });
-        });
         uploadBtn.addEventListener("click", () => upload.click());
         upload.addEventListener("change", () => {
-            if (!cardImages.info().available) return;
+            if (!cardImages.info().available || uploading) return;
             const file = upload.files && upload.files[0];
             if (!file) return;
-            uploadBtn.disabled = true;
+            uploading = true;
+            syncActions();
             cardImages.upload(file).then((item) => {
                 setBackground(item.id);
                 return cardImages.list(true);
@@ -655,18 +644,19 @@ export function createControlsFieldsFeature(
                 showBanner(error?.message || "Could not upload image.", "error");
             }).finally(() => {
                 upload.value = "";
-                uploadBtn.disabled = !cardImages.info().available;
+                uploading = false;
+                syncActions();
             });
         });
         deleteBtn.addEventListener("click", () => {
-            if (!cardImages.info().available) return;
+            if (!cardImages.info().available || deleting) return;
             const id = selectedImage();
             if (!id) return;
             const used = cardImages.countUsage(id);
             if (used && !window.confirm("This image is used by " + used + " card" + (used === 1 ? "" : "s") + ". Delete it anyway?"))
                 return;
-            deleteBtn.disabled = true;
-            deleteBtn.setAttribute("aria-busy", "true");
+            deleting = true;
+            syncActions();
             cardImages.deleteSafely(id).then(() => cardImages.list(true)).then((items) => {
                 fillSelect(items);
                 showBanner("Image deleted.", "success");
@@ -674,10 +664,9 @@ export function createControlsFieldsFeature(
                 renderUi.renderButtonSettings();
             }).catch((error) => {
                 showBanner(error?.message || "Could not delete image.", "error");
-                if (deleteBtn.isConnected) {
-                    deleteBtn.disabled = !cardImages.info().available || !selectedImage();
-                    deleteBtn.removeAttribute("aria-busy");
-                }
+            }).finally(() => {
+                deleting = false;
+                if (deleteBtn.isConnected) syncActions();
             });
         });
         fillSelect(cardImages.feature.cachedImages());

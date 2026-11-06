@@ -426,8 +426,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         "-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-word}" +
         ".sp-card-bg-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}" +
         ".sp-card-bg-file{display:none}" +
-        ".sp-card-bg-actions .sp-action-btn{padding:8px 12px;display:inline-flex;align-items:center;gap:6px}" +
-        ".sp-card-bg-actions .sp-action-btn:disabled{opacity:.45;cursor:not-allowed}" +
+        ".sp-card-bg-actions .sp-action-btn{display:inline-flex;align-items:center;gap:6px}" +
         ".sp-card-image-storage{color:var(--text2);font-size:.8rem;line-height:1.35}" +
         ".sp-icon-picker{position:relative}" +
         ".sp-icon-picker-input{width:100%;padding:10px 12px;padding-left:36px;background:var(--surface2);" +
@@ -457,10 +456,10 @@ export function createWebStyles(dragAnimation: boolean): string {
         "transition:background .25s,opacity .25s,box-shadow .25s}" +
         ".sp-action-btn:focus-visible{outline:none;box-shadow:0 0 0 3px var(--accent-soft)}" +
         ".sp-action-btn:active{opacity:.85}" +
-        ".sp-delete-btn,.sp-hide-btn,.sp-cancel-btn{background:var(--surface2);color:var(--text);display:inline-flex;align-items:center;gap:6px}" +
-        ".sp-delete-btn:hover,.sp-hide-btn:hover,.sp-cancel-btn:hover{background:var(--border);color:var(--text)}" +
-        ".sp-save-btn{background:var(--accent);color:#fff}" +
-        ".sp-save-btn:hover{background:var(--accent-hover)}" +
+        ".sp-delete-btn,.sp-hide-btn,.sp-cancel-btn,.sp-secondary-btn{background:var(--surface2);color:var(--text);display:inline-flex;align-items:center;gap:6px}" +
+        ".sp-delete-btn:hover,.sp-hide-btn:hover,.sp-cancel-btn:hover,.sp-secondary-btn:hover{background:var(--border);color:var(--text)}" +
+        ".sp-save-btn,.sp-primary-btn{background:var(--accent);color:#fff}" +
+        ".sp-save-btn:hover,.sp-primary-btn:hover{background:var(--accent-hover)}" +
         ".sp-transfer-copy-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;" +
         "border:1px solid var(--border);background:var(--surface2);color:var(--text2);" +
         "transition:background .25s,color .25s,border-color .25s,opacity .25s}" +

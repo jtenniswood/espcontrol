@@ -8216,6 +8216,14 @@ async function assertCardBackgroundTabs(browser, testCase) {
       assert.deepStrictEqual(await tabs.getByRole("tab").allTextContents(), ["Colour", "Image"]);
       assert.strictEqual(await image.getAttribute("aria-selected"), "true", "saved image opens its own tab");
       assert(await images.isVisible());
+      assert.strictEqual(await images.getByRole("button", { name: "Rename", exact: true }).count(), 0);
+      await images.getByRole("button", { name: "Upload", exact: true }).waitFor({ state: "visible" });
+      assert(await images.getByRole("button", { name: "Delete image", exact: true }).isVisible());
+      const colourOf = locator => locator.evaluate(element => getComputedStyle(element).backgroundColor);
+      assert.strictEqual(await colourOf(images.getByRole("button", { name: "Upload", exact: true })),
+        await colourOf(page.getByRole("button", { name: "Save", exact: true })), "Upload uses the primary button colour");
+      assert.strictEqual(await colourOf(images.getByRole("button", { name: "Delete image", exact: true })),
+        await colourOf(page.locator('.sp-btn-row--save .sp-delete-btn')), "image deletion uses the secondary button colour");
       assert.strictEqual(await palette.isVisible(), false);
       assert.strictEqual(await reset.isVisible(), false);
       await colour.click();
@@ -8243,6 +8251,9 @@ async function assertCardBackgroundTabs(browser, testCase) {
       await image.click();
       assert.strictEqual(await palette.isVisible(), false);
       assert.strictEqual(await reset.isVisible(), false);
+      assert.strictEqual(await images.getByRole("button", { name: "Delete image", exact: true }).count(), 0,
+        "the delete action is hidden when no image is selected");
+      assert.deepStrictEqual(await images.getByRole("button").allTextContents(), ["Upload"]);
       await images.getByRole("combobox").selectOption("test-image");
       if (!subpage && process.env.ESPCONTROL_BACKGROUND_SCREENSHOT_DIR) {
         await page.locator('.sp-settings-modal').screenshot({ animations: "disabled", path: path.join(process.env.ESPCONTROL_BACKGROUND_SCREENSHOT_DIR, "image.png") });
