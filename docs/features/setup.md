@@ -35,11 +35,13 @@ Use the [card guide](/card-types/) to choose other controls, or [Subpages](/feat
 
 ### Card Background Images
 
-Useful button-style cards, including Switch, Action, Trigger, Media, Internal Switch, Subpage, and Garage Door cards, can use a custom background image. In the card settings, expand **Card Image** and use **Upload image** to add a picture, choose one already stored on the panel, select **No image** to remove it from that card, or delete it from the panel's small image library.
+Useful button-style cards, including Switch, Action, Trigger, Media, Internal Switch, Subpage, and Garage Door cards, can use a custom background image. In the card settings, open **Background > Image** and use **Upload image** to add a picture, choose one already stored on the panel, select **No image** to remove it from that card, or delete it from the panel's small image library.
 
 Every supported card position can have its own background image. The maximum therefore follows the size of the display grid: 6 on the 4.3-inch panel, 9 on the 4-inch and P4-86 panels, 15 on the 7-inch panel, and 20 on either 10.1-inch panel.
 
 Displays with an older partition layout need one full USB reinstall to enable image storage. The setup page disables the affected image controls and links to the [Enable Image Storage guide](/features/image-storage), which explains how to export a backup, reinstall and restore it. Other cards and settings continue working. OTA updates can be used again afterwards.
+
+The **Background** group shows **Colour** first and **Image** second. Only the selected controls are shown. Choosing **Colour** clears the card’s image assignment when you save, keeping the uploaded image in the library. Cards using an image hide **Change Colour** from their right-click menu.
 
 The setup page resizes uploads in the browser before sending them to the panel, and each card only stores a compact image reference. The preview shows the selected image before you apply the configuration.
 
@@ -61,7 +63,7 @@ To choose another type for a new card, close its settings and start again from t
 | Move a card | Drag it to another position. An occupied card moves to the next available slot. |
 | Resize a card | Hover over it and drag the bottom-right handle. Release to save, or press **Escape** to cancel. |
 | Rename a card | Click its title, type a name, and press **Enter**. Press **Escape** or click away to cancel. |
-| Change its colour | Right-click the card and open **Change Colour**, or edit **Custom Colours**. |
+| Change its colour | Right-click the card and open **Change Colour**, or edit **Background > Colour**. |
 | Copy between pages | Right-click and choose **Cut** or **Copy**, then **Paste** in an empty slot on the destination page. |
 | Copy to another panel | Use **Copy Code** and **Paste Code**; follow the [transfer steps](/features/subpages#copying-cards-between-controllers). |
 

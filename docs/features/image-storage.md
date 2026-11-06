@@ -21,7 +21,7 @@ The explicit layout includes a **2 MB storage partition**. Some of that space is
 | Showing uploaded backgrounds on the display or web preview | Unavailable; the cards remain usable without those pictures |
 | Restoring image files from a backup | Blocked before configuration is changed; reinstall over USB first |
 
-The **Card Image** controls and **Settings > System > Backup** show an information banner when the required storage is missing or incompatible. It explains that image support needs a USB reinstall, asks you to export a backup first, and links to this guide. Other features remain available. Export on such a display saves a configuration-only backup and explains that images were not included.
+The **Background > Image** controls and **Settings > System > Backup** show an information banner when the required storage is missing or incompatible. It explains that image support needs a USB reinstall, asks you to export a backup first, and links to this guide. Other features remain available. Export on such a display saves a configuration-only backup and explains that images were not included.
 
 ## 1. Save a Backup
 
@@ -50,7 +50,7 @@ For a custom ESPHome installation, follow [Manual ESPHome Setup](/getting-starte
 
 1. Reopen the display's web page and go to **Settings > System > Backup > Import**.
 2. Choose your saved backup and wait for restoration to finish. Apply the configuration if prompted.
-3. Open a supported card's settings and expand **Card Image**. The image-storage banner should be gone and **Upload image** should be enabled.
+3. Open a supported card's settings and open **Background > Image**. The image-storage banner should be gone and **Upload image** should be enabled.
 4. Upload a picture, select it, and check the web preview and physical display. A configuration-only backup has no image files to restore, so upload those pictures separately.
 
 After the full USB install, future firmware updates can use OTA normally. If the banner remains, check that you installed the correct current factory firmware for your exact display and revision; another OTA update will not resolve a missing partition.

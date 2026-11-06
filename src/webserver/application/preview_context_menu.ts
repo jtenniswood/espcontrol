@@ -1,6 +1,7 @@
 import { createColorSwatches } from "../components/color_swatches";
 import { configOptionValue, setCardColor } from "../model/config_primitives";
 import { defaultCardBackgroundColor } from "../state/preview_theme";
+import { cardBackgroundImage } from "./config_option_core";
 import type { ConfigPersistenceFeature } from "./config_post_api";
 import { state } from "../state/app_instance";
 import {
@@ -159,7 +160,7 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
         const c = ctx();
         if (slot === -2) return c.isSub;
         const button = c.buttons[slot - 1];
-        return !!button && button.type !== "image" && button.type !== "wifi_qr_card";
+        return !!button && button.type !== "image" && button.type !== "wifi_qr_card" && !cardBackgroundImage(button);
     }
     function addColourMenuItem(slots: number[]) {
         const colourSlots = slots.filter(supportsCardColour);

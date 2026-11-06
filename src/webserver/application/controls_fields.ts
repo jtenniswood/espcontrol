@@ -546,7 +546,6 @@ export function createControlsFieldsFeature(
     function renderCardBackgroundControl(this: any, panel?: any, b?: any, helpers?: any) {
         if (!cardBackgroundSupported(b))
             return null;
-        var disclosure: any = helpers.disclosureSection("Card Image", helpers.idPrefix + "card-image-settings", false);
         var field: any = document.createElement("div");
         field.className = "sp-field sp-card-bg-field";
         var preview: any = document.createElement("div");
@@ -593,11 +592,13 @@ export function createControlsFieldsFeature(
             deleteBtn.disabled = !cardImages.info().available || !id;
         };
         const setBackground = (value: unknown) => {
-            if (!cardImages.info().available) return;
+            if (!cardImages.info().available && normalizeCardBackgroundImageId(value)) return;
             setCardBackgroundImage(b, normalizeCardBackgroundImageId(value));
             helpers.saveField("options", b.options);
+            select.value = selectedImage();
             refreshPreview();
             renderUi.renderPreview();
+            helpers.onBackgroundChange?.();
         };
         const fillSelect = (items: readonly any[] = []) => {
             const current = selectedImage();
@@ -681,9 +682,8 @@ export function createControlsFieldsFeature(
         });
         fillSelect(cardImages.feature.cachedImages());
         void cardImages.list(false).then(fillSelect).catch(() => fillSelect([]));
-        disclosure.section.appendChild(field);
-        panel.appendChild(disclosure.panel);
-        return disclosure.panel;
+        panel.appendChild(field);
+        return { field, clear: () => setBackground("") };
     }
     function cardSensorPreviewHtml(this: any, b?: any, helpers?: any, value?: any, unit?: any, extraClass?: any, valueClass?: any) {
         var className: any = "sp-sensor-preview" + (extraClass ? " " + extraClass : "") +

@@ -3149,7 +3149,7 @@ async function assertCardActiveColourControls(page, posts, label) {
   const card = page.locator('.sp-main [data-slot="1"]');
   await card.click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
-  await page.getByRole("button", { name: "Custom Colours", exact: true }).click();
+  await page.getByRole("button", { name: "Background", exact: true }).click();
   const controls = page.locator(".sp-card-color-editor");
   const tabs = controls.getByRole("group", { name: "Active state colour", exact: true });
   const background = controls.getByRole("group", { name: "Card colour presets", exact: true });
@@ -3176,7 +3176,7 @@ async function assertCardActiveColourControls(page, posts, label) {
   await page.waitForSelector(".sp-settings-overlay.sp-visible", { state: "hidden" });
   await card.click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
-  await page.getByRole("button", { name: "Custom Colours", exact: true }).click();
+  await page.getByRole("button", { name: "Background", exact: true }).click();
   await background.locator('[data-color="6036B2"]').click();
   assert.strictEqual(await active.locator('[data-color="A086D1"]').getAttribute("aria-pressed"), "true",
     `${label}: automatic matching survives saving and reopening Custom`);
@@ -3216,7 +3216,7 @@ async function assertCardActiveColourControls(page, posts, label) {
   await page.waitForSelector(".sp-settings-overlay.sp-visible", { state: "hidden" });
   await card.click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
-  await page.getByRole("button", { name: "Custom Colours", exact: true }).click();
+  await page.getByRole("button", { name: "Background", exact: true }).click();
   assert.strictEqual(await tabs.getByRole("button", { name: "Custom", exact: true }).getAttribute("aria-pressed"), "true");
   assert.strictEqual(await active.locator('input[type="color"]').inputValue(), "#ffffff");
   if (process.env.ESPCONTROL_ACTIVE_COLOUR_SCREENSHOT) {
@@ -3567,7 +3567,7 @@ async function assertInternalControlsPanel(page, posts, label) {
       await page
         .locator(".sp-settings-modal .sp-panel > .sp-disclosure > .sp-disclosure-button > span:first-child")
         .evaluateAll((headings) => headings.map((heading) => heading.textContent)),
-      ["Controls", "Card Settings", "Card Image"],
+      ["Controls", "Card Settings"],
       `${label}: Internal groups should preserve Controls and Card Settings order`,
     );
     assert.strictEqual(
@@ -3641,7 +3641,7 @@ async function assertWebhookSettingsPanel(page, posts, label) {
     await page
       .locator(".sp-settings-modal .sp-panel > .sp-disclosure > .sp-disclosure-button > span:first-child")
       .evaluateAll((headings) => headings.map((heading) => heading.textContent)),
-    ["Webhook Settings", "Card Settings", "Card Image"],
+    ["Webhook Settings", "Card Settings"],
     `${label}: Webhook groups should preserve Webhook Settings and Card Settings order`,
   );
   for (const fieldId of ["#sp-inp-webhook-method", "#sp-inp-webhook-url"]) {
@@ -8174,6 +8174,97 @@ async function assertWeatherReadingEditors(browser) {
   }
 }
 
+async function assertCardBackgroundTabs(browser, testCase) {
+  for (const subpage of [false, true]) {
+    const context = await browser.newContext({ viewport: testCase.viewport });
+    const nativeState = nativeConfigState(testCase.slug);
+    const fields = ["light.kitchen", "Kitchen", "Lightbulb", "Lightbulb", "", "", "", "",
+      "bg_image=test-image,card_off_color=3F51B5"];
+    if (subpage) nativeState.document.subpages[3] = "B,1|" + fields.join(":");
+    else nativeState.document.buttons[1] = fields.join(";");
+    const saved = () => subpage ? nativeState.document.subpages[3] : nativeState.document.buttons[1];
+    try {
+      await installRoutes(context, testCase.slug, { nativeState });
+      await context.route("**/api/card-images", route => route.fulfill({ contentType: "application/json",
+        body: JSON.stringify({ available: true, max_active_backgrounds: 9,
+          images: [{ id: "test-image", name: "Living room", size: 4 }] }) }));
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", error => errors.push(error.message));
+      await installFakeEventSource(page);
+      await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`);
+      await page.waitForSelector("#sp-app");
+      await seedNativeDocument(page, nativeState);
+      if (subpage) await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+      const card = page.locator('.sp-main [data-slot="1"]');
+      const colourMenu = page.locator('.sp-ctx-menu').getByRole("button", { name: "Change Colour", exact: true });
+      const open = async () => {
+        await card.click({ button: "right" });
+        await page.locator(".sp-ctx-menu").getByText("Edit Card", { exact: true }).click();
+        await page.getByRole("button", { name: "Background", exact: true }).click();
+      };
+      const tabs = page.getByRole("tablist", { name: "Card background", exact: true });
+      const colour = tabs.getByRole("tab", { name: "Colour", exact: true });
+      const image = tabs.getByRole("tab", { name: "Image", exact: true });
+      const palette = page.locator('.sp-card-color-editor');
+      const images = page.locator('.sp-card-bg-field');
+      const reset = page.getByRole("button", { name: "Reset colours to defaults", exact: true });
+      await card.click({ button: "right" });
+      assert.strictEqual(await colourMenu.count(), 0, "image-backed cards hide the right-click colour picker");
+      await page.keyboard.press("Escape");
+      await open();
+      assert.deepStrictEqual(await tabs.getByRole("tab").allTextContents(), ["Colour", "Image"]);
+      assert.strictEqual(await image.getAttribute("aria-selected"), "true", "saved image opens its own tab");
+      assert(await images.isVisible());
+      assert.strictEqual(await palette.isVisible(), false);
+      assert.strictEqual(await reset.isVisible(), false);
+      await colour.click();
+      assert(await palette.isVisible());
+      assert(await reset.isVisible());
+      assert.strictEqual(await images.isVisible(), false);
+      assert(saved().includes("test-image"), "switching tabs only changes the editor draft");
+      await page.getByRole("button", { name: "Close settings", exact: true }).click();
+      await open();
+      assert.strictEqual(await image.getAttribute("aria-selected"), "true", "cancel preserves the image assignment");
+      await colour.click();
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      await page.waitForSelector('.sp-settings-overlay.sp-visible', { state: "hidden" });
+      await waitForNativeState(nativeState, () => !saved().includes("test-image"), "Colour removes only the saved image assignment");
+      assert(saved().includes("3F51B5"), "the existing colour survives switching modes");
+      await card.click({ button: "right" });
+      assert(await colourMenu.isVisible(), "solid backgrounds retain the right-click colour picker");
+      await page.keyboard.press("Escape");
+      await open();
+      assert.strictEqual(await colour.getAttribute("aria-selected"), "true");
+      if (!subpage && process.env.ESPCONTROL_BACKGROUND_SCREENSHOT_DIR) {
+        fs.mkdirSync(process.env.ESPCONTROL_BACKGROUND_SCREENSHOT_DIR, { recursive: true });
+        await page.locator('.sp-settings-modal').screenshot({ animations: "disabled", path: path.join(process.env.ESPCONTROL_BACKGROUND_SCREENSHOT_DIR, "colour.png") });
+      }
+      await image.click();
+      assert.strictEqual(await palette.isVisible(), false);
+      assert.strictEqual(await reset.isVisible(), false);
+      await images.getByRole("combobox").selectOption("test-image");
+      if (!subpage && process.env.ESPCONTROL_BACKGROUND_SCREENSHOT_DIR) {
+        await page.locator('.sp-settings-modal').screenshot({ animations: "disabled", path: path.join(process.env.ESPCONTROL_BACKGROUND_SCREENSHOT_DIR, "image.png") });
+      }
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      await page.waitForSelector('.sp-settings-overlay.sp-visible', { state: "hidden" });
+      await waitForNativeState(nativeState, () => saved().includes("test-image"), "image selection survives saving");
+      await card.click({ button: "right" });
+      assert.strictEqual(await colourMenu.count(), 0);
+      await page.keyboard.press("Escape");
+      await open();
+      await image.focus();
+      await page.keyboard.press("Home");
+      assert.strictEqual(await colour.getAttribute("aria-selected"), "true", "tabs support keyboard selection");
+      assert(await palette.isVisible());
+      await page.getByRole("button", { name: "Close settings", exact: true }).click();
+      assert.deepStrictEqual(errors, [], "background tabs have no browser errors");
+    } finally { await context.close(); }
+  }
+  console.log("Background tabs passed: Colour/Image visibility, draft cancellation, persistence, keyboard navigation and context menus on home and subpages.");
+}
+
 (async function main() {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
@@ -8193,6 +8284,8 @@ async function assertWeatherReadingEditors(browser) {
       await assertRainfallEditor(browser);
       return;
     }
+    await assertCardBackgroundTabs(browser, ACTIVE_CASES[0]);
+    if (process.env.ESPCONTROL_BACKGROUND_ONLY === "1") return;
     await assertWindSensorEditor(browser);
     if (process.env.ESPCONTROL_WIND_ONLY === "1") return;
     if (process.env.ESPCONTROL_RAINFALL_ONLY === "1") { await assertRainfallEditor(browser); return; }

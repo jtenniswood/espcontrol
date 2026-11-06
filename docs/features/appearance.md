@@ -17,9 +17,9 @@ Open **Screen > Appearance > Active Colour** on your [device setup page](/featur
 
 Choose a preset under **Active Colour**, or use the eyedropper swatch for a custom colour. This is the highlight used when a card is active. The reset icon restores the default orange. Text and icons adjust their contrast automatically.
 
-To change a single card, right-click it in **Layout** and open **Change Colour**, or edit its **Custom Colours**. You can also select several cards together or recolour a subpage's **Back** card. **Reset Colour** restores its default background.
+To change a single card, right-click it in **Layout** and open **Change Colour**, or edit its **Background > Colour**. You can also select several cards together or recolour a subpage's **Back** card. **Reset Colour** restores its default background.
 
-In a card's **Custom Colours**, choose its **Active state colour**:
+In a card's **Background > Colour** tab, choose its **Active state colour**:
 
 | Choice | Result |
 |---|---|
