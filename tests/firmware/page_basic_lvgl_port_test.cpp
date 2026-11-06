@@ -8300,6 +8300,16 @@ int main() {
       }
       continue;
     }
+    if (family && std::strcmp(family, "status_actions") == 0) {
+      switch (limits.slot_count) {
+        case 6: status_action_profile<6>(limits); break;
+        case 9: status_action_profile<9>(limits); break;
+        case 15: status_action_profile<15>(limits); break;
+        case 20: status_action_profile<20>(limits); break;
+        default: assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "controls") == 0) {
       switch (limits.slot_count) {
         case 6: control_profile<6>(limits); break;
