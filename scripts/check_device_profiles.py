@@ -283,6 +283,10 @@ def test_native_panel_config_bindings(slug: str, profile: dict, device: str) -> 
     )
 
     slots = int(profile["slots"])
+    if profile["slots"] >= 15:
+        assert panel_config.get("storage") == "card_images", (
+            f"{slug}: image-heavy subpages need partition-backed native configuration slots"
+        )
     buttons = panel_config.get("buttons")
     assert isinstance(buttons, list) and len(buttons) == slots, (
         f"{slug}: native panel config must provide exactly {slots} button bindings"

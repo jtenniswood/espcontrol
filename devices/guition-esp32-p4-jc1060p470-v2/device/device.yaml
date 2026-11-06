@@ -77,10 +77,11 @@ external_components:
 
 espcontrol:
   id: espcontrol_app
-  # The native document is imported from these restored entities on first boot.
-  # The legacy entities remain live during the compatibility releases.
+  # Image-heavy subpages need the larger native configuration slots.
+  # Older partition layouts retain the existing NVS fallback.
   panel_config:
     device_profile: ${device_slug}
+    storage: card_images
     button_order: button_order
     button_on_color: button_on_color
     buttons:

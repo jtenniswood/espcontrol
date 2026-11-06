@@ -367,7 +367,7 @@ export function createCardImageBackupAssetProvider(
   const createRestore: BackupAssetProvider<CardImageReferencePlan>["createRestore"] = (entries) => {
     let activeRestoreSession: string | null = null;
     const createdIds: string[] = [];
-    const renamedExisting: Array<{ id: string; name: string }> = [];
+    const pendingRenames: Array<{ id: string; name: string }> = [];
     let references: Record<string, string> = {};
     const restoreArchiveEntries = async (
       entries?: BackupArchiveEntries | null,
@@ -423,8 +423,8 @@ export function createCardImageBackupAssetProvider(
           references[image.item.id] = image.item.id;
           const existingImage = existingById.get(image.item.id);
           if (existingImage && existingImage.name !== image.item.name) {
-            await cardImages.rename(image.item.id, image.item.name);
-            renamedExisting.push({ id: image.item.id, name: existingImage.name });
+            // Existing names must survive a browser interruption before settings save.
+            pendingRenames.push({ id: image.item.id, name: image.item.name });
           }
           continue;
         }
@@ -461,8 +461,14 @@ export function createCardImageBackupAssetProvider(
     const commitRestore = async (): Promise<void> => {
       if (activeRestoreSession) await cardImages.commitRestore(activeRestoreSession);
       activeRestoreSession = null;
+      // The controller calls commit only after configuration persistence. Retry
+      // incomplete renames without repeating the durable image-session commit.
+      while (pendingRenames.length) {
+        const rename = pendingRenames[0]!;
+        await cardImages.rename(rename.id, rename.name);
+        pendingRenames.shift();
+      }
       createdIds.length = 0;
-      renamedExisting.length = 0;
     };
 
     const rollbackRestore = async (): Promise<void> => {
@@ -476,18 +482,9 @@ export function createCardImageBackupAssetProvider(
       } catch (error) {
         rollbackError = error;
       }
-      for (let index = renamedExisting.length - 1; index >= 0; index -= 1) {
-        const rename = renamedExisting[index];
-        if (!rename) continue;
-        try {
-          await cardImages.rename(rename.id, rename.name);
-        } catch (error) {
-          if (!rollbackError) rollbackError = error;
-        }
-      }
       activeRestoreSession = null;
       createdIds.length = 0;
-      renamedExisting.length = 0;
+      pendingRenames.length = 0;
       cardImages.invalidate();
       if (rollbackError) throw rollbackError;
     };

@@ -180,13 +180,20 @@ export async function runCardImagesFeatureTests(): Promise<void> {
   }).provider;
   const existingRestore = existingProvider.createRestore(manifestEntries([{ id: "existing-1", name: "Archived" }]));
   await existingRestore.stage();
-  deepEqual(existingRequests, ["GET /api/card-images", "POST /api/card-images/existing-1/rename"],
-    "existing images reuse their bytes and restore the archived display name");
+  deepEqual(existingRequests, ["GET /api/card-images"],
+    "staging leaves existing names unchanged if the browser closes before configuration saves");
   await existingRestore.rollback();
-  equal(existingRequests.at(-1), "POST /api/card-images/existing-1/rename",
-    "failed configuration restore puts an existing image name back");
-  deepEqual(existingRenameBodies, ["name=Archived", "name=Current"],
-    "existing image rollback restores the exact pre-import name");
+  deepEqual(existingRenameBodies, [], "failed configuration restore never renames existing images");
+  await existingRestore.commit();
+  deepEqual(existingRenameBodies, [], "rollback discards deferred renames");
+
+  const successfulExistingRestore = existingProvider.createRestore(manifestEntries([{ id: "existing-1", name: "Archived" }]));
+  await successfulExistingRestore.stage();
+  deepEqual(existingRenameBodies, [], "rename-only restore also defers names until commit");
+  await successfulExistingRestore.commit();
+  deepEqual(existingRenameBodies, ["name=Archived"], "committed configuration restores the archived name");
+  await successfulExistingRestore.commit();
+  deepEqual(existingRenameBodies, ["name=Archived"], "a retried commit does not repeat completed renames");
 
   const capacityRequests: string[] = [];
   const capacityProvider = providerFor(async (url, request) => {
