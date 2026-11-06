@@ -196,6 +196,7 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
   void release_slot(int index);
   void remove_value(Slot &slot, Channel &channel);
   bool index_dependencies(Slot &slot);
+  void record_preparation_peak(size_t extra = 0);
   void synchronize_connection();
 
   const PageDependencySource &source_;
@@ -208,6 +209,7 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
   uint32_t next_revision_{1}, connection_generation_{0};
   PageEntityMemory memory_;
   size_t preparation_scratch_bytes_{0};
+  size_t dependency_scratch_bytes_{0};
   uint64_t revision_{0};
 };
 }  // namespace espcontrol::pages

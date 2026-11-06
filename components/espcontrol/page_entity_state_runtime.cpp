@@ -30,6 +30,10 @@ uint32_t channel_hash(std::string_view entity, std::string_view attribute) {
   return value;
 }
 
+uint32_t dependency_link_hash(CardId card, uint32_t channel) {
+  return (static_cast<uint32_t>(card) * 0x85ebca6bu) ^ (channel * 0x9e3779b1u);
+}
+
 bool add_size(size_t &total, size_t count, size_t unit = 1) {
   if (unit != 0 && count > (std::numeric_limits<size_t>::max() - total) / unit) return false;
   total += count * unit;
@@ -44,30 +48,185 @@ bool valid_name(std::string_view text) { return text.find('\0') == std::string_v
 
 class PageEntityStateRuntime::Counter final : public PageDependencySink {
  public:
-  Counter(const PageStore &store, const PageEntityBudget &budget) : store(store), budget(budget) {}
+  Counter(PageEntityStateRuntime &runtime, const PageStore &store)
+      : runtime(runtime), store(store), budget(runtime.budget_) {}
+  ~Counter() override { clear(); }
   bool add(CardId card, std::string_view entity, std::string_view attribute) override {
     if (!valid || card >= store.card_count() || entity.empty() ||
-        !valid_name(entity) || !valid_name(attribute) || count >= budget.dependencies ||
-        !add_size(names, entity.size()) || !add_size(names, attribute.size()) ||
-        !add_size(names, 2) || names > UINT32_MAX) return valid = false;
+        !valid_name(entity) || !valid_name(attribute)) return valid = false;
+    if (card != previous_card) {
+      if (previous_card != NO_CARD && card < previous_card) ordered = false;
+      previous_card = card; card_links = 0;
+    }
+    uint32_t channel = find_pair(entity, attribute);
+    if (channel != UINT32_MAX && has_link(card, channel)) return true;
+    if (count >= budget.dependencies) return valid = false;
+    if (channel == UINT32_MAX) {
+      size_t total = names;
+      if (channels >= budget.channels || !add_size(total, entity.size()) ||
+          !add_size(total, attribute.size()) || !add_size(total, 2) || total > UINT32_MAX ||
+          !grow(pairs, pair_capacity, channels, channels + 1, budget.channels) ||
+          !grow_index(pair_index, pair_slots, channels + 1, true)) return valid = false;
+      char *record = reserve_name(total - names);
+      if (record == nullptr) return valid = false;
+      channel = static_cast<uint32_t>(channels);
+      new (pairs + channels) Pair{record, static_cast<uint32_t>(entity.size()),
+                                  static_cast<uint32_t>(attribute.size())};
+      std::memcpy(record, entity.data(), entity.size());
+      record[entity.size()] = '\0';
+      if (!attribute.empty()) std::memcpy(record + entity.size() + 1, attribute.data(), attribute.size());
+      record[total - names - 1] = '\0';
+      ++channels; names = total;
+      insert(pair_index, pair_slots, channel_hash(entity, attribute), channel);
+    }
+    if (!grow(links, link_capacity, count, count + 1, budget.dependencies) ||
+        !grow_index(link_index, link_slots, count + 1, false)) return valid = false;
+    new (links + count) Link{card, channel};
+    insert(link_index, link_slots, dependency_link_hash(card, channel), static_cast<uint32_t>(count));
     ++count;
+    max_card_links = std::max(max_card_links, ++card_links);
     return true;
   }
+  void release_lookup() {
+    release(pair_index, pair_slots * sizeof(uint32_t)); pair_index = nullptr; pair_slots = 0;
+    release(link_index, link_slots * sizeof(uint32_t)); link_index = nullptr; link_slots = 0;
+  }
+  void clear() {
+    // Keep scalar sizes for the next stable enumeration, but retain no scratch
+    // alongside its final arena. Name blocks never need reallocating/copying.
+    release_lookup();
+    release(pairs, pair_capacity * sizeof(Pair)); pairs = nullptr; pair_capacity = 0;
+    release(links, link_capacity * sizeof(Link)); links = nullptr; link_capacity = 0;
+    while (names_head != nullptr) {
+      auto *old = names_head; names_head = old->next;
+      release(old, sizeof(NameBlock) + old->capacity);
+    }
+  }
+  size_t count{0}, channels{0}, names{0}, max_card_links{0};
+  bool valid{true}, ordered{true};
+ private:
+  // Fallible, demand-grown scratch owns borrowed names and keeps the first
+  // declaration order. Both indexes avoid repeated scans of large graphs.
+  struct Pair { const char *text; uint32_t entity_size, attribute_size; };
+  struct Link { CardId card; uint32_t channel; };
+  struct NameBlock { NameBlock *next; size_t capacity, used; };
+  void *allocate(size_t bytes) {
+    size_t total = runtime.dependency_scratch_bytes_;
+    if (!add_size(total, bytes)) return nullptr;
+    void *result = runtime.allocator_.allocate(bytes);
+    if (result != nullptr) {
+      runtime.dependency_scratch_bytes_ = total;
+      runtime.record_preparation_peak();
+    }
+    return result;
+  }
+  void release(void *pointer, size_t bytes) {
+    if (pointer == nullptr) return;
+    runtime.allocator_.release(pointer, bytes);
+    runtime.dependency_scratch_bytes_ -= bytes;
+  }
+  template<typename T>
+  bool grow(T *&data, size_t &capacity, size_t used, size_t required, size_t limit) {
+    if (required <= capacity) return true;
+    if (required > limit) return false;
+    size_t next = capacity != 0 ? capacity : std::min(size_t{8}, limit);
+    while (next < required) next = next > limit / 2 ? limit : next * 2;
+    size_t bytes = 0;
+    if (!add_size(bytes, next, sizeof(T))) return false;
+    auto *replacement = static_cast<T *>(allocate(bytes));
+    if (replacement == nullptr) return false;
+    for (size_t i = 0; i < used; ++i) new (replacement + i) T(data[i]);
+    release(data, capacity * sizeof(T)); data = replacement; capacity = next;
+    return true;
+  }
+  char *reserve_name(size_t bytes) {
+    if (names_head == nullptr || bytes > names_head->capacity - names_head->used) {
+      size_t capacity = names_head == nullptr ? 32 :
+          (names_head->capacity >= 4096 ? 4096 : names_head->capacity * 2);
+      capacity = std::max(capacity, bytes);
+      size_t allocation = sizeof(NameBlock);
+      if (!add_size(allocation, capacity)) return nullptr;
+      void *memory = allocate(allocation);
+      if (memory == nullptr) return nullptr;
+      names_head = new (memory) NameBlock{names_head, capacity, 0};
+    }
+    auto *result = reinterpret_cast<char *>(names_head + 1) + names_head->used;
+    names_head->used += bytes;
+    return result;
+  }
+  static void insert(uint32_t *index, size_t slots, uint32_t hash, uint32_t value) {
+    size_t bucket = hash & (slots - 1);
+    while (index[bucket] != UINT32_MAX) bucket = (bucket + 1) & (slots - 1);
+    index[bucket] = value;
+  }
+  std::string_view entity(uint32_t channel) const {
+    const auto &pair = pairs[channel]; return {pair.text, pair.entity_size};
+  }
+  std::string_view attribute(uint32_t channel) const {
+    const auto &pair = pairs[channel]; return {pair.text + pair.entity_size + 1, pair.attribute_size};
+  }
+  bool grow_index(uint32_t *&index, size_t &slots, size_t required, bool pair_lookup) {
+    if (slots != 0 && required <= slots / 2) return true;
+    size_t next = slots != 0 ? slots : 16;
+    while (required > next / 2) {
+      if (next > SIZE_MAX / 2) return false;
+      next *= 2;
+    }
+    size_t bytes = 0;
+    if (!add_size(bytes, next, sizeof(uint32_t))) return false;
+    auto *replacement = static_cast<uint32_t *>(allocate(bytes));
+    if (replacement == nullptr) return false;
+    std::fill_n(replacement, next, UINT32_MAX);
+    const size_t used = pair_lookup ? channels : count;
+    for (size_t i = 0; i < used; ++i) {
+      const auto hash = pair_lookup ? channel_hash(entity(static_cast<uint32_t>(i)),
+                                                   attribute(static_cast<uint32_t>(i)))
+                                    : dependency_link_hash(links[i].card, links[i].channel);
+      insert(replacement, next, hash, static_cast<uint32_t>(i));
+    }
+    release(index, slots * sizeof(uint32_t)); index = replacement; slots = next;
+    return true;
+  }
+  uint32_t find_pair(std::string_view wanted_entity, std::string_view wanted_attribute) const {
+    if (pair_slots == 0) return UINT32_MAX;
+    size_t bucket = channel_hash(wanted_entity, wanted_attribute) & (pair_slots - 1);
+    while (pair_index[bucket] != UINT32_MAX) {
+      const auto channel = pair_index[bucket];
+      if (entity(channel) == wanted_entity && attribute(channel) == wanted_attribute) return channel;
+      bucket = (bucket + 1) & (pair_slots - 1);
+    }
+    return UINT32_MAX;
+  }
+  bool has_link(CardId card, uint32_t channel) const {
+    if (link_slots == 0) return false;
+    size_t bucket = dependency_link_hash(card, channel) & (link_slots - 1);
+    while (link_index[bucket] != UINT32_MAX) {
+      const auto &link = links[link_index[bucket]];
+      if (link.card == card && link.channel == channel) return true;
+      bucket = (bucket + 1) & (link_slots - 1);
+    }
+    return false;
+  }
+  PageEntityStateRuntime &runtime;
   const PageStore &store;
   const PageEntityBudget &budget;
-  size_t count{0}, names{0};
-  bool valid{true};
+  Pair *pairs{nullptr}; Link *links{nullptr}; NameBlock *names_head{nullptr};
+  uint32_t *pair_index{nullptr}, *link_index{nullptr};
+  size_t pair_capacity{0}, link_capacity{0}, pair_slots{0}, link_slots{0}, card_links{0};
+  CardId previous_card{NO_CARD};
 };
 
 class PageEntityStateRuntime::Builder final : public PageDependencySink {
  public:
    Builder(Slot &slot, const PageStore &store, size_t count, size_t names,
-           size_t channels, uint32_t *lookup, size_t lookup_size)
+           size_t channels, uint32_t *lookup, size_t lookup_size,
+           uint32_t *edge_lookup, size_t edge_lookup_size)
        : slot(slot), store(store), count_limit(count), names_limit(names),
-         channels_limit(channels), lookup(lookup), lookup_size(lookup_size) {}
+         channels_limit(channels), lookup(lookup), lookup_size(lookup_size),
+         edge_lookup(edge_lookup), edge_lookup_size(edge_lookup_size) {}
    bool add(CardId card, std::string_view entity,
             std::string_view attribute) override {
-     if (!valid || ++count > count_limit || card >= store.card_count() ||
+     if (!valid || card >= store.card_count() ||
          entity.empty() || !valid_name(entity) || !valid_name(attribute))
        return valid = false;
      const auto matches = [&](size_t channel) {
@@ -114,28 +273,38 @@ class PageEntityStateRuntime::Builder final : public PageDependencySink {
        if (lookup != nullptr)
          lookup[bucket] = static_cast<uint32_t>(channel);
      }
-     // Production declarations visit cards in order. Limit duplicate checks to
-     // the current card; interleaved sources retain the general stable path.
-     if (card != previous_card) {
-       if (previous_card != NO_CARD && card < previous_card)
-         ordered = false;
-       previous_card = card;
-       card_edge_begin = slot.edge_count;
+     size_t edge_bucket = 0;
+     if (edge_lookup != nullptr) {
+       edge_bucket = dependency_link_hash(card, static_cast<uint32_t>(channel)) & (edge_lookup_size - 1);
+       while (edge_lookup[edge_bucket] != UINT32_MAX) {
+         const auto &edge = slot.edges[edge_lookup[edge_bucket]];
+         if (edge.card == card && edge.channel == channel) return true;
+         edge_bucket = (edge_bucket + 1) & (edge_lookup_size - 1);
+       }
+     } else {
+       if (card != previous_card) {
+         if (previous_card != NO_CARD && card < previous_card) ordered = false;
+         previous_card = card; card_edge_begin = slot.edge_count;
+       }
+       for (size_t i = ordered ? card_edge_begin : 0; i < slot.edge_count; ++i)
+         if (slot.edges[i].card == card && slot.edges[i].channel == channel) return true;
      }
-     for (size_t i = ordered ? card_edge_begin : 0; i < slot.edge_count; ++i)
-       if (slot.edges[i].card == card && slot.edges[i].channel == channel)
-         return true;
+     if (count >= count_limit) return valid = false;
+     if (edge_lookup != nullptr) edge_lookup[edge_bucket] = static_cast<uint32_t>(slot.edge_count);
      new (slot.edges + slot.edge_count++)
          Edge{card, static_cast<uint32_t>(channel)};
+     ++count;
      return true;
    }
   Slot &slot;
   const PageStore &store;
   size_t count_limit, names_limit, channels_limit, count{0};
   uint32_t *lookup;
-  size_t lookup_size, card_edge_begin{0};
+  size_t lookup_size;
+  uint32_t *edge_lookup;
+  size_t edge_lookup_size, card_edge_begin{0};
   CardId previous_card{NO_CARD};
-  bool ordered{true}, valid{true};
+  bool valid{true}, ordered{true};
 };
 
 PageEntityStateRuntime::PageEntityStateRuntime(const PageDependencySource &source,
@@ -147,13 +316,22 @@ PageEntityStateRuntime::PageEntityStateRuntime(const PageDependencySource &sourc
 }
 PageEntityStateRuntime::~PageEntityStateRuntime() { discard_prepared(); retire_active(); }
 
+void PageEntityStateRuntime::record_preparation_peak(size_t extra) {
+  const auto current = memory();
+  memory_.peak_arena_bytes = std::max(memory_.peak_arena_bytes,
+      current.active_arena_bytes + current.staged_arena_bytes +
+      preparation_scratch_bytes_ + dependency_scratch_bytes_ + extra);
+}
+
 bool PageEntityStateRuntime::prepare(const PageStore &store) {
   discard_prepared();
-  Counter counter(store, budget_);
+  Counter counter(*this, store);
   auto fail = [this]() { ++memory_.preparation_failures; discard_prepared(); return false; };
   if (next_revision_ == 0 || budget_.state_bytes > UINT32_MAX || budget_.dependencies > UINT32_MAX ||
       budget_.channels > UINT32_MAX || !source_.enumerate(store, counter) || !counter.valid) return fail();
-  const size_t channels = std::min(counter.count, budget_.channels);
+  // Counting and final construction must not retain two copies of the graph.
+  counter.clear();
+  const size_t channels = counter.channels;
   size_t bytes = 0;
   if (!add_size(bytes, channels, sizeof(Channel)) || !align_size(bytes, alignof(Edge))) return fail();
   const size_t edge_offset = bytes;
@@ -188,43 +366,46 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
   slot.names = raw + names_offset;
   slot.values = raw + values_offset;
   slot.values_capacity = embedded_values;
-  const auto current = memory();
-  memory_.peak_arena_bytes = std::max(memory_.peak_arena_bytes,
-      current.active_arena_bytes + current.staged_arena_bytes);
+  record_preparation_peak();
   if (elastic && channels != 0 &&
       !reserve_values(slot, budget_.initial_state_bytes))
     return fail();
   {
     PreparationIndex lookup{allocator_, preparation_scratch_bytes_};
-    size_t lookup_size = 0;
-    if (channels > 16) {
-      lookup_size = 1;
+    size_t lookup_size = 0, edge_lookup_size = 0;
+    const auto table_size = [](size_t entries, size_t &slots) {
+      slots = 1;
       // Keep the table at most half full, including when all names differ.
-      while (lookup_size < channels) {
-        if (lookup_size > SIZE_MAX / 2)
-          return fail();
-        lookup_size *= 2;
+      while (slots < entries) {
+        if (slots > SIZE_MAX / 2) return false;
+        slots *= 2;
       }
-      if (lookup_size > SIZE_MAX / 2)
-        return fail();
-      lookup_size *= 2;
-      if (!add_size(preparation_scratch_bytes_, lookup_size, sizeof(uint32_t)))
+      if (slots > SIZE_MAX / 2) return false;
+      slots *= 2;return true;
+    };
+    if (channels > 16 && !table_size(channels, lookup_size)) return fail();
+    // Normal ordered card declarations need only short per-card scans. Large
+    // fan-out or interleaved sources use a link index instead of quadratic work.
+    if (counter.count > 16 && (!counter.ordered || counter.max_card_links > 32) &&
+        !table_size(counter.count, edge_lookup_size)) return fail();
+    size_t lookup_slots = lookup_size;
+    if (!add_size(lookup_slots, edge_lookup_size)) return fail();
+    if (lookup_slots != 0) {
+      if (!add_size(preparation_scratch_bytes_, lookup_slots, sizeof(uint32_t)))
         return fail();
       lookup.data = static_cast<uint32_t *>(
           allocator_.allocate(preparation_scratch_bytes_));
       if (lookup.data == nullptr)
         return fail();
-      const auto current = memory();
-      memory_.peak_arena_bytes =
-          std::max(memory_.peak_arena_bytes, current.active_arena_bytes +
-                                                 current.staged_arena_bytes +
-                                                 preparation_scratch_bytes_);
-      std::fill_n(lookup.data, lookup_size, UINT32_MAX);
+      record_preparation_peak();
+      std::fill_n(lookup.data, lookup_slots, UINT32_MAX);
     }
     Builder builder(slot, store, counter.count, counter.names, channels,
-                    lookup.data, lookup_size);
+                    lookup_size != 0 ? lookup.data : nullptr, lookup_size,
+                    edge_lookup_size != 0 ? lookup.data + lookup_size : nullptr, edge_lookup_size);
     if (!source_.enumerate(store, builder) || !builder.valid ||
-        builder.count != counter.count)
+        builder.count != counter.count || slot.channel_count != channels ||
+        slot.names_used != counter.names)
       return fail();
   } // Release build lookup before edge grouping, shared-value copy or transport
     // setup.
@@ -255,11 +436,7 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
           allocator_.allocate(preparation_scratch_bytes_));
       if (copy_index.data == nullptr)
         return fail();
-      const auto current = memory();
-      memory_.peak_arena_bytes =
-          std::max(memory_.peak_arena_bytes, current.active_arena_bytes +
-                                                 current.staged_arena_bytes +
-                                                 preparation_scratch_bytes_);
+      record_preparation_peak();
       for (size_t i = 0; i < old->channel_count; ++i)
         copy_index.data[i] = static_cast<uint32_t>(i);
       std::sort(copy_index.data, copy_index.data + old->channel_count,
@@ -312,11 +489,7 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
         allocator_.allocate(preparation_scratch_bytes_));
     if (!registration_index.data)
       return fail();
-    const auto current = memory();
-    memory_.peak_arena_bytes =
-        std::max(memory_.peak_arena_bytes, current.active_arena_bytes +
-                                               current.staged_arena_bytes +
-                                               preparation_scratch_bytes_);
+    record_preparation_peak();
   }
   struct RegistrationGuard {
     PageEntitySubscriptions &subscriptions;
@@ -354,9 +527,7 @@ bool PageEntityStateRuntime::index_dependencies(Slot &slot) {
   const size_t bytes = slot.edge_count * sizeof(Edge);
   auto *scratch = static_cast<Edge *>(allocator_.allocate(bytes));
   if (scratch == nullptr) return false;
-  const auto current = memory();
-  memory_.peak_arena_bytes = std::max(memory_.peak_arena_bytes,
-      current.active_arena_bytes + current.staged_arena_bytes + bytes);
+  record_preparation_peak(bytes);
   for (size_t i = 0; i < slot.edge_count; ++i) {
     const auto edge = slot.edges[i];
     new (scratch + slot.card_offsets[edge.card]++) Edge(edge);
@@ -534,11 +705,7 @@ bool PageEntityStateRuntime::reserve_values(Slot &slot, size_t required) {
     ++memory_.state_allocation_failures;
     return false;
   }
-  const auto current = memory();
-  memory_.peak_arena_bytes =
-      std::max(memory_.peak_arena_bytes,
-               current.active_arena_bytes + current.staged_arena_bytes +
-                   preparation_scratch_bytes_ + capacity);
+  record_preparation_peak(capacity);
   if (slot.values_used != 0)
     std::memcpy(replacement, slot.values, slot.values_used);
   if (slot.value_storage != nullptr)

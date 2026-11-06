@@ -1,5 +1,6 @@
 #include <array>
 #include <cassert>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <functional>
@@ -30,7 +31,7 @@ using namespace espcontrol::configuration;
 namespace {
 struct Arena final : PageArenaAllocator {
   void *allocate(size_t bytes) override {
-    if (fail || remaining == 0) return nullptr;
+    if (fail || remaining == 0 || bytes > max_bytes || (reject && reject(bytes))) return nullptr;
     if (remaining > 0) --remaining;
     ++calls;
     auto *p = std::malloc(bytes);
@@ -49,6 +50,8 @@ struct Arena final : PageArenaAllocator {
   bool fail{false};
   int remaining{-1};
   size_t calls{0}, peak_bytes{0};
+  size_t max_bytes{SIZE_MAX};
+  std::function<bool(size_t)> reject;
   std::unordered_map<void *, size_t> live;
 };
 struct Source final : PageDependencySource {
@@ -123,6 +126,45 @@ struct Fixture {
   alignas(std::max_align_t) std::array<uint8_t, 8192> arena{};
   std::array<uint8_t, 1024> document{}; size_t size{0}; PageStore store;
 };
+void unique_dependency_graph_sizing_is_bounded() {
+  Fixture fixture;Arena arena;Subscriptions transport;Source source;
+  source.items={{0,"sensor.shared",""},{1,"sensor.shared",""},
+                {2,"sensor.shared",""},{0,"sensor.other","unit"}};
+  PageEntityStateRuntime state(source,arena,transport,{4,2,32});
+  assert(state.prepare(fixture.store));state.activate_prepared(17);
+  const auto bytes=state.memory().active_arena_bytes;
+  const auto preparation_calls=arena.calls;
+  assert(state.memory().active_dependencies==4&&state.memory().active_channels==2);
+  const auto unique=source.items;
+  for(size_t repeat=0;repeat<100;++repeat)
+    source.items.insert(source.items.end(),unique.begin(),unique.end());
+  arena.max_bytes=bytes;
+  const bool repeated_graph_prepared=state.prepare(fixture.store);
+  assert(repeated_graph_prepared);
+  assert(state.memory().staged_arena_bytes==bytes&&arena.calls==2*preparation_calls);
+  state.activate_prepared(18);
+  assert(state.dependency_count({18,0})==2&&transport.entries.size()==2&&arena.live.size()==1);
+  {
+    Arena relaxed_arena;Subscriptions relaxed_transport;
+    PageEntityStateRuntime relaxed(source,relaxed_arena,relaxed_transport,{1024,1024,32});
+    assert(relaxed.prepare(fixture.store));relaxed.activate_prepared(19);
+    assert(relaxed.memory().active_arena_bytes==bytes);
+    assert(relaxed.memory().active_channels==2&&relaxed.memory().active_dependencies==4);
+  }
+  for(size_t failure=0;failure<preparation_calls;++failure) {
+    arena.remaining=static_cast<int>(failure);
+    assert(!state.prepare(fixture.store));
+    assert(arena.live.size()==1&&transport.entries.size()==2);
+    assert(state.memory().staged_arena_bytes==0&&state.dependency_count({18,0})==2);
+  }
+  arena.remaining=-1;
+  source.items.push_back({1,"sensor.other","unit"});
+  assert(!state.prepare(fixture.store)&&arena.live.size()==1);
+  source.items={{0,"sensor.one",""},{0,"sensor.two",""},{0,"sensor.three",""}};
+  assert(!state.prepare(fixture.store)&&arena.live.size()==1);
+  assert(state.memory().peak_arena_bytes==arena.peak_bytes);
+  state.retire_active();assert(arena.live.empty()&&transport.entries.empty());
+}
 void lifetime_and_state_budget() {
   Fixture f; Arena arena; Subscriptions transport; Source source;
   source.items = {{0,"sensor.one",""},{1,"sensor.one",""},{0,"sensor.one",""},
@@ -422,12 +464,18 @@ void interleaved_dependencies_keep_ordinals_and_fail_atomically() {
   assert(state.prepare(f.store));state.activate_prepared(17);transport.send("sensor.old","","old");
   source.items={{2,"sensor.two",""},{0,"sensor.zero","first"},{2,"sensor.two","second"},
                 {1,"sensor.one",""},{0,"sensor.zero","second"},{0,"sensor.zero","first"}};
-  arena.remaining=1; // Staged arena succeeds; temporary stable-grouping scratch fails.
-  assert(!state.prepare(f.store));arena.remaining=-1;
+  bool rejected_grouping=false;
+  // This five-channel, embedded-value fixture needs no build lookup or elastic
+  // pool. Its first allocation after metadata is stable edge-grouping scratch.
+  arena.reject=[&](size_t) {
+    if(state.memory().staged_arena_bytes==0)return false;
+    rejected_grouping=true;return true;
+  };
+  assert(!state.prepare(f.store)&&rejected_grouping);arena.reject={};
   assert(arena.live.size()==1&&transport.entries.size()==1);
   assert(state.dependency({17,0},0).value=="old"&&state.dependency_count({17,1})==0);
-  const auto before=arena.calls;
-  assert(state.prepare(f.store));assert(arena.calls==before+2&&arena.live.size()==2);
+  assert(state.prepare(f.store));assert(arena.live.size()==2);
+  assert(arena.live_bytes()==state.memory().active_arena_bytes+state.memory().staged_arena_bytes);
   state.activate_prepared(18);assert(arena.live.size()==1&&transport.entries.size()==5);
   assert(state.dependency_count({18,0})==2&&state.dependency_count({18,1})==1&&state.dependency_count({18,2})==2);
   assert(state.dependency({18,0},0).attribute=="first"&&state.dependency({18,0},1).attribute=="second");
@@ -544,12 +592,14 @@ void elastic_failures_and_atomic_copies() {
   Source source;
   source.items = {{0, "sensor.shared", ""}, {1, "sensor.old", ""}};
   PageEntityStateRuntime state(source, arena, transport, {4, 4, 128, 64, 8});
-  arena.remaining = 1;
+  arena.reject = [&](size_t bytes) {
+    return bytes == 8 && state.memory().staged_arena_bytes != 0;
+  };
   assert(!state.prepare(f.store));
   assert(arena.live.empty());
   assert(state.memory().preparation_failures == 1 &&
          state.memory().state_allocation_failures == 1);
-  arena.remaining = -1;
+  arena.reject = {};
   assert(state.prepare(f.store));
   state.activate_prepared(17);
   transport.send("sensor.shared", "", "one");
@@ -566,10 +616,11 @@ void elastic_failures_and_atomic_copies() {
   shared.deliver(shared.owner, shared.revision, shared.channel, longer);
   assert(state.dependency({17, 0}, 0).value == longer);
   source.items = {{2, "sensor.shared", ""}, {0, "sensor.new", ""}};
-  arena.remaining = 3; // Metadata, initial pool and edge-grouping scratch
-                       // succeed; copied-state growth fails.
+  arena.reject = [&](size_t bytes) {
+    return bytes >= longer.size() && state.memory().staged_state_capacity_bytes == 8;
+  }; // Reject the copied value's growth, after metadata and grouping succeed.
   assert(!state.prepare(f.store));
-  arena.remaining = -1;
+  arena.reject = {};
   assert(state.memory().state_allocation_failures == 3 &&
          state.memory().preparation_failures == 2);
   assert(state.memory().staged_arena_bytes == 0 && arena.live.size() == 2 &&
@@ -911,7 +962,8 @@ void colliding_channel_names_keep_identity_and_card_ordinals() {
 void maximum_shared_state_replacement_is_atomic() {
   Fixture fixture;
   constexpr size_t channels = 1440, capacity = 128 * 1024;
-  for (int allocation_limit = 0; allocation_limit < 12; ++allocation_limit) {
+  size_t preparation_allocations=0, injected_failures=0;
+  for (int allocation_limit = -1; allocation_limit < static_cast<int>(preparation_allocations); ++allocation_limit) {
     Arena arena;
     Subscriptions subscriptions;
     Source source;
@@ -936,9 +988,18 @@ void maximum_shared_state_replacement_is_atomic() {
       assert(used == capacity && state.memory().active_state_bytes == capacity);
       const auto old_delivery = subscriptions.entries.front();
       std::reverse(source.items.begin(), source.items.end());
+      const auto calls_before=arena.calls;
       arena.remaining = allocation_limit;
       const bool prepared = state.prepare(fixture.store);
       arena.remaining = -1;
+      if(allocation_limit<0) {
+        assert(prepared);
+        preparation_allocations=arena.calls-calls_before;
+        // Indexed, demand-grown preparation must not allocate per channel.
+        assert(preparation_allocations>0&&preparation_allocations<256);
+      } else {
+        assert(!prepared);++injected_failures;
+      }
       // Successful and failed preparation both leave the active graph intact.
       assert(state.memory().active_state_bytes == capacity);
       for (size_t i = 0; i < channels; ++i) {
@@ -1000,6 +1061,8 @@ void maximum_shared_state_replacement_is_atomic() {
     }
     assert(arena.live.empty() && subscriptions.entries.empty());
   }
+  assert(injected_failures==preparation_allocations);
+  std::printf("1440-channel replacement: all %zu fallible allocations checked; exact peaks and original-state recovery verified\n",injected_failures);
 }
 
 void registration_scratch_is_fallible_counted_and_released_after_the_batch() {
@@ -1026,9 +1089,13 @@ void registration_scratch_is_fallible_counted_and_released_after_the_batch() {
   };
   auto begins = subscriptions.registration_begins,
        ends = subscriptions.registration_ends;
-  arena.remaining = 1; // Staged arena succeeds; registration scratch fails.
-  assert(!state.prepare(fixture.store));
-  arena.remaining = -1;
+  bool rejected_registration_scratch=false;
+  arena.reject = [&](size_t bytes) {
+    if(bytes!=subscriptions.scratch_bytes||state.memory().staged_arena_bytes==0)return false;
+    rejected_registration_scratch=true;return true;
+  };
+  assert(!state.prepare(fixture.store)&&rejected_registration_scratch);
+  arena.reject = {};
   assert(subscriptions.registration_begins == begins &&
          subscriptions.registration_ends == ends);
   verify_original();
@@ -1056,6 +1123,7 @@ void registration_scratch_is_fallible_counted_and_released_after_the_batch() {
 }
 
 int main() {
+  unique_dependency_graph_sizing_is_bounded();
   registration_scratch_is_fallible_counted_and_released_after_the_batch();
   colliding_channel_names_keep_identity_and_card_ordinals();
   maximum_shared_state_replacement_is_atomic();
