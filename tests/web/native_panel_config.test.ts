@@ -84,6 +84,38 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
     return response(200, document, "\"7\"");
   });
   equal(await client.discover(), true, "native capabilities are detected");
+  equal(client.customIconsAvailable(), false,
+    "firmware that does not report custom icons keeps them hidden in the icon picker");
+
+  // Firmware compiled with extra icons reports icons.custom in the same
+  // capabilities response, so the editor makes no extra startup request.
+  const capabilityBody = (icons: unknown) => async (path: string) => ({
+    ...response(200),
+    json: async () => ({ configuration: { read: true, write: true, document_versions: [1] }, icons }),
+  });
+  const customIconClient = createNativePanelConfigClient(capabilityBody({ custom: true }));
+  equal(customIconClient.customIconsAvailable(), false, "custom icons stay hidden until the firmware answers");
+  await customIconClient.discover();
+  equal(customIconClient.customIconsAvailable(), true, "firmware with extra icons enables custom icons");
+  const officialClient = createNativePanelConfigClient(capabilityBody({ custom: false }));
+  await officialClient.discover();
+  equal(officialClient.customIconsAvailable(), false, "official prebuilt firmware keeps custom icons hidden");
+  const looseClient = createNativePanelConfigClient(capabilityBody({ custom: "true" }));
+  await looseClient.discover();
+  equal(looseClient.customIconsAvailable(), false, "only a real true value enables custom icons");
+  const customController = new NativePanelConfigController({
+    fetch: capabilityBody({ custom: true }),
+    deviceProfile: () => "panel-a",
+    slotCount: () => 2,
+    entityName: (name: string) => name,
+    entityNameForSlot: (name: string) => name,
+    normalizeHexColor: (value: string) => value,
+    showBanner: () => {},
+    delay: () => {},
+  } as any);
+  equal(customController.customIconsAvailable(), false, "the controller reports no custom icons before discovery");
+  await customController.begin();
+  equal(customController.customIconsAvailable(), true, "the controller passes custom icon support to the icon picker");
   equal(await client.save((current) => ({ ...current, settings: { ...current.settings, button_order: "1d" } })), "saved", "guarded native save succeeds");
   const put = requests.find((entry) => entry.request?.method === "PUT");
   equal(put?.request?.headers?.["If-Match"], "\"7\"", "native save uses the document generation");

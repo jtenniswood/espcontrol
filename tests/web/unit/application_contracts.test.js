@@ -1062,8 +1062,9 @@ describe("browserless application contracts", () => {
     assert.match(settings, /iconPicker: ButtonSettingsIconPickerFeature/);
     assert.match(settings, /iconPicker\.init\(picker, currentVal, onSelect\)/);
     assert.match(context, /readonly iconPicker: ButtonSettingsIconPickerFeature/);
-    assert.match(entry, /createButtonSettingsIconPickerFeature\(dom\.document, \(\) => preview\.render\(\),\s*\(\) => customIcons\.available\(\)\)/);
-    assert.match(entry, /const customIcons = createCustomIconSupport\(dom\.fetch,/);
+    // Custom icon support comes from the capabilities request the native
+    // configuration client already makes, not a separate startup request.
+    assert.match(entry, /createButtonSettingsIconPickerFeature\(dom\.document, \(\) => preview\.render\(\),\s*\(\) => nativePanelConfig\.customIconsAvailable\(\)\)/);
     assert.doesNotMatch(entry, /installGlobals\(installButtonSettingsIconPickerModule/);
     assert.doesNotMatch(globals, /\bvar initIconPicker:/);
   });

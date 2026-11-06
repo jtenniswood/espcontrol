@@ -63,9 +63,7 @@ import { createControlsFieldsFeature, type ControlsFieldsFeature } from "./appli
 import { createPreviewRenderFeature, type PreviewRenderFeature } from "./application/preview_render";
 import { createButtonSettingsSelectionFeature, type ButtonSettingsSelectionFeature } from "./application/button_settings_selection";
 import { createButtonSettingsRenderQueueFeature } from "./application/button_settings_render_queue";
-import { createButtonSettingsIconPickerFeature } from "./application/button_settings_icon_picker";
-import { createCustomIconSupport } from "./application/custom_icon_support";
-import { createButtonSettingsFeature, type ButtonSettingsFeature } from "./application/button_settings";
+import { createButtonSettingsIconPickerFeature } from "./application/button_settings_icon_picker";import { createButtonSettingsFeature, type ButtonSettingsFeature } from "./application/button_settings";
 import { createPreviewGridPlacementFeature } from "./application/preview_grid_placement";
 import { createPreviewContextMenuFeature, type PreviewContextMenuFeature } from "./application/preview_context_menu";
 import { createPreviewClipboardFeature } from "./application/preview_clipboard";
@@ -384,10 +382,8 @@ function composeApplicationContext(): ApplicationContext {
   }, dom.fetch);
   const configurationPersistence = createConfigPersistenceFeature(nativePanelConfig, runtime, layout, entityState, shell);
   const cards = createCardRegistry();
-  const customIcons = createCustomIconSupport(dom.fetch,
-    (callback, milliseconds) => dom.schedule(callback, milliseconds));
   const iconPicker = createButtonSettingsIconPickerFeature(dom.document, () => preview.render(),
-    () => customIcons.available());
+    () => nativePanelConfig.customIconsAvailable());
   const renderQueue = createButtonSettingsRenderQueueFeature(runtime, {
     document: dom.document,
     requestFrame: (callback) => requestAnimationFrame(callback),
