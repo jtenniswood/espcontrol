@@ -4,6 +4,48 @@ Recorded through 6 November 2026 for PR #2424, following runtime PR #2400.
 Production still writes native v1 at depth one. Private qualification images
 enable native v2/depth two without declaring a published reader floor.
 
+## Rebased validation and power-test readiness (6 November)
+
+Runtime PR #2400 now includes main `6a94fceed` as `14cb34df8`, preserving the
+earlier shared PR stack. PR #2424 is rebased onto it at `a1b0ae01e`. Its source
+tree is byte-identical to the validated `1c8747ff4` tree. Both published heads
+pass GitHub CI. The feature passes all 51 local CI tasks outside the separately
+run firmware host task, plus 253 core firmware host tests under Linux/GCC.
+The runtime dependency separately passes 240 core host tests.
+
+All nine supported factory profiles compile with ESPHome 2026.10.2. Each build
+passes SDK and ELF-wrapper checks; the eleven affected weather/runtime source
+files independently match in all nine actual build directories. Focused browser
+checks cover weather editors and nested creation/reload, immediate-parent Back,
+subtree operations, retries and durable-byte rejection. Real-LVGL weather tests
+pass 1,000 navigation cycles on each profile, and the all-profile nested-folder
+test passes. Four affected runtime modal tests also pass. The focused Linux
+LVGL builds disable the existing compact-line indentation warning; earlier
+failed or stopped broad attempts remain separate records.
+
+These are build, host and browser results. No display is flashed during the
+rebase, and earlier physical appearance and memory results retain their recorded
+source scope.
+
+The prepared encrypted power qualifier `66f2315df` still has byte-identical
+production storage code: `configuration_store.cpp/.h`,
+`panel_config_storage_backend.h`, `panel_config_transient_storage.h` and
+`panel_config_espidf_storage.cpp/.h`. The two private raw-partition/session
+cores also match their RAM-loss host qualification hashes. This establishes
+storage-source equivalence, not whole-firmware or renderer equivalence.
+A new read-only preflight verifies the 10-inch V3 on official `v2.13.0`, its
+exact original generation-375 dashboard, protected settings, PIN/reset state
+and encrypted API identity. No API key is read or exported and no test is armed.
+Actual before/after-publication power cuts still require fresh operator
+availability and a separate confirmation for each held checkpoint.
+
+The latest published stable release remains
+[v2.13.0](https://github.com/jtenniswood/espcontrol/releases/tag/v2.13.0).
+Its release contract declares native document version one; this branch still
+has no published minimum reader release and remains in dual-write mode.
+The rebase therefore does not establish the published depth-two reader floor
+or retire the legacy mirror required for production nesting.
+
 ## Latest S3 results (5 November)
 
 Public `d183c6898` uses a 6 MHz RGB clock, 30 bounce-buffer rows and conditional
