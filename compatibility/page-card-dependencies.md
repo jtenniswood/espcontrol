@@ -14,6 +14,10 @@ alarm targets and inputs needed by automatic folder summaries. Media policy
 honours the S3's existing low-heap control variant. Shared pure speaker-discovery
 helpers are used by the old binding code and the new source.
 
+Media control and speaker-group cards also reserve the player `source` attribute
+in both normal and low-heap policy. The shared media owner uses input changes to
+invalidate stale metadata; it must receive those updates even without cover art.
+
 All configured cards on navigable pages are considered, including cards hidden
 by the current layout/orientation. Stored-but-inactive subpages are preserved in
 PageStore but do not own subscriptions. Unsupported active types and nested

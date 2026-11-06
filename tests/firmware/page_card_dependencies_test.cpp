@@ -106,6 +106,12 @@ void actions_and_numeric_controls() {
           "light.kitchen/supported_color_modes","light.kitchen/friendly_name"}));
 }
 void complex_and_external_sources() {
+  for (bool low_heap : {false,true}) {
+    for (const char *mode : {"control_modal","speaker_group","now_playing"}) {
+      const auto pairs=declarations(std::string("media_player.room;Room;Auto;Auto;")+mode+";;media;;",low_heap);
+      assert(pairs.count("media_player.room/source")==1);
+    }
+  }
   auto climate=declarations("climate.room;Room;Auto;Auto;;;climate_control;;");
   assert(climate.size()==20);for (const auto *attribute:{"","hvac_action","current_temperature","hvac_modes","fan_mode","swing_horizontal_mode"})
     assert(climate.count(std::string("climate.room/")+attribute)==1);
