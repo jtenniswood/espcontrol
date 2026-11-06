@@ -112,13 +112,13 @@ lv_timer_t *&card_background_next_download_timer() {
 bool card_background_widget_on_page(lv_obj_t *btn, lv_obj_t *page);
 
 void card_background_sync_label_shadow_text(lv_obj_t *label,
-                                                   const std::string &text) {
+                                            const std::string &) {
   if (!label) return;
   for (lv_obj_t *parent = lv_obj_get_parent(label); parent; parent = lv_obj_get_parent(parent)) {
     lv_obj_t *shadow = image_card_label_shadow(label, parent);
     if (!shadow) continue;
-    lv_label_set_long_mode(shadow, LV_LABEL_LONG_WRAP);
-    lv_label_set_text(shadow, text.c_str());
+    lv_label_set_long_mode(shadow, lv_label_get_long_mode(label));
+    lv_label_set_text(shadow, lv_label_get_text(label));
     return;
   }
 }
@@ -160,6 +160,7 @@ void move_content_foreground(const BtnSlot &s) {
   image_card_delete_label_shadow(s.icon_lbl, s.btn);
   sync_shadow(s.text_lbl, s.btn, 1, 1);
   sync_shadow(s.subpage_lbl, s.btn, 1, 1);
+  weather_daily_set_image_background(s.btn, true);
   if (s.sensor_container) lv_obj_move_foreground(s.sensor_container);
   if (s.icon_lbl) lv_obj_move_foreground(s.icon_lbl);
   if (s.text_lbl) lv_obj_move_foreground(s.text_lbl);
@@ -844,6 +845,7 @@ void sync_image(BtnSlot &s, const ParsedCfg &p,
     image_card_delete_label_shadow(s.icon_lbl, s.btn);
     image_card_delete_label_shadow(s.text_lbl, s.btn);
     image_card_delete_label_shadow(s.subpage_lbl, s.btn);
+    weather_daily_set_image_background(s.btn, false);
   }
 
   if (!desired_id.empty()) apply_image(s, p, cfg);
@@ -877,6 +879,7 @@ void clear_image(BtnSlot &s) {
   image_card_delete_label_shadow(s.icon_lbl, s.btn);
   image_card_delete_label_shadow(s.text_lbl, s.btn);
   image_card_delete_label_shadow(s.subpage_lbl, s.btn);
+  weather_daily_set_image_background(s.btn, false);
 }
 
 }  // namespace espcontrol::card_background

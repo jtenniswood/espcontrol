@@ -130,6 +130,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-weather-day[hidden]{display:none}.sp-weather-day .mdi{font-size:var(--btn-icon);line-height:1;margin-bottom:auto}" +
         ".sp-weather-grid .sp-weather-day{justify-content:center}.sp-weather-grid .sp-weather-day .mdi{margin-bottom:var(--weather-icon-gap)}" +
         ".sp-weather-wind-speed,.sp-rainfall-value,.sp-weather-temperature-high{white-space:nowrap;font-size:var(--btn-small-text);color:var(--card-text-color,var(--preview-text-primary));opacity:.7}" +
+        ".sp-btn-has-bg .sp-weather-days{--card-text-color:#fff;color:#fff;text-shadow:1px 1px rgba(0,0,0,.8)}" +
+        ".sp-btn-has-bg .sp-weather-temperature-high{opacity:1}" +
         ".sp-sensor-value{font-size:var(--btn-icon);line-height:1;font-weight:300}" +
         ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;color:var(--card-text-color,var(--preview-text-primary))}" +
         ".sp-slider-preview{position:absolute;inset:0;border-radius:var(--r);overflow:hidden;pointer-events:none}" +

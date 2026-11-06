@@ -6,7 +6,10 @@
 // Forecast widgets exist only on configured forecast cards. The modal allocates
 // only visible forecast columns and a stale-status label, sharing the owner's source.
 enum class WeatherForecastView : uint8_t { DAILY, TODAY, TOMORROW, RAINFALL };
-struct WeatherDailyColumn { lv_obj_t *icon, *day, *high; };
+struct WeatherDailyColumn {
+  lv_obj_t *icon, *day, *high;
+  lv_obj_t *day_shadow = nullptr, *high_shadow = nullptr;
+};
 struct WeatherDailyCard {
   lv_obj_t *owner = nullptr, *root = nullptr, *caption = nullptr, *placeholder_icon = nullptr;
   WeatherDailySource *source = nullptr;
@@ -14,6 +17,7 @@ struct WeatherDailyCard {
   const lv_font_t *font = nullptr, *icon_font = nullptr, *summary_font = nullptr, *detail_font = nullptr, *temperature_font = nullptr;
   std::vector<WeatherDailyColumn> columns;
   int width = 0, height = 0;
+  bool image_background = false;
   espcontrol::weather::CardLayout layout;
 };
 inline std::vector<WeatherDailyCard *> &weather_daily_cards() {
@@ -90,6 +94,32 @@ inline int weather_daily_forecast_minimum_width(const lv_font_t *font, const lv_
 }
 #include "button_grid_weather_modal.h"
 
+inline void weather_daily_set_caption(WeatherDailyCard *card, const std::string &text) {
+  lv_label_set_display_text(card->caption, text.c_str());
+  // The image background's normal caption shadow must also leave Loading behind
+  // when the forecast switches to its separately owned day/temperature labels.
+  if (button_label_text_sync_hook()) button_label_text_sync_hook()(card->caption, text);
+}
+
+inline void weather_daily_sync_text_shadow(lv_obj_t *target, lv_obj_t *&shadow, bool enabled) {
+  if (!enabled) {
+    if (shadow) lv_obj_del(shadow);
+    shadow = nullptr;
+    return;
+  }
+  if (!shadow) shadow = weather_daily_label(lv_obj_get_parent(target), nullptr);
+  theme_set_content_foreground(shadow);
+  lv_obj_set_style_text_font(shadow, lv_obj_get_style_text_font(target, LV_PART_MAIN), LV_PART_MAIN);
+  lv_obj_set_style_text_color(shadow, lv_color_hex(0x000000), LV_PART_MAIN);
+  lv_obj_set_style_text_opa(shadow, LV_OPA_80, LV_PART_MAIN);
+  lv_obj_set_style_text_align(shadow, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+  // Copy the rendered text: display conversion has already happened on target.
+  lv_label_set_text(shadow, lv_label_get_text(target));
+  lv_obj_set_size(shadow, lv_obj_get_width(target), lv_obj_get_height(target));
+  lv_obj_set_pos(shadow, lv_obj_get_x(target) + 1, lv_obj_get_y(target) + 1);
+  lv_obj_move_background(shadow);
+}
+
 inline void weather_daily_render_card(WeatherDailyCard *card) {
   if (!card || !card->source || !card->root) return;
   auto &forecast = card->source->forecast;
@@ -108,7 +138,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
       ? find_icon("Weather Cloudy Clock") : weather_icon_for_state("unavailable"));
     lv_obj_clear_flag(card->placeholder_icon, LV_OBJ_FLAG_HIDDEN);
     const char *status_key = card->source->loading ? "Loading" : "Forecast unavailable";
-    lv_label_set_display_text(card->caption, espcontrol_i18n(std::string(status_key)).c_str());
+    weather_daily_set_caption(card, espcontrol_i18n(std::string(status_key)));
     return;
   }
   lv_obj_add_flag(card->placeholder_icon, LV_OBJ_FLAG_HIDDEN);
@@ -153,9 +183,9 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
       card->columns.push_back(col);
     }
   }
-  lv_label_set_display_text(card->caption, "");
+  weather_daily_set_caption(card, "");
   for (size_t i = 0; i < card->columns.size(); ++i) {
-    const auto &col = card->columns[i];
+    auto &col = card->columns[i];
     const auto &day = forecast.days[first + i];
     const int column = static_cast<int>(i % layout.columns), row = static_cast<int>(i / layout.columns);
     const int usable_width = width - day_gap * static_cast<int>(layout.columns - 1);
@@ -186,10 +216,13 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     const auto high = card->view == WeatherForecastView::RAINFALL
       ? espcontrol::rainfall::amount(day.precipitation, forecast.precipitation_unit)
       : weather_daily_temperature_range(day, forecast.temperature_unit);
-    // Blend secondary text with the card surface instead of painting opaque grey.
+    // Secondary text stays muted on a solid surface, but needs full contrast
+    // over a photo. Its shadow follows the same live text and geometry.
     lv_obj_set_style_text_color(col.high, foreground, LV_PART_MAIN);
-    lv_obj_set_style_text_opa(col.high, LV_OPA_70, LV_PART_MAIN);
+    lv_obj_set_style_text_opa(col.high, card->image_background ? LV_OPA_COVER : LV_OPA_70, LV_PART_MAIN);
     lv_label_set_display_text(col.high, high.c_str());
+    weather_daily_sync_text_shadow(col.day, col.day_shadow, card->image_background);
+    weather_daily_sync_text_shadow(col.high, col.high_shadow, card->image_background);
   }
 }
 inline void weather_daily_card_clicked(lv_event_t *event);
@@ -202,6 +235,13 @@ inline void weather_daily_refresh_visuals() {
 inline WeatherDailyCard *weather_daily_card_for(lv_obj_t *owner) {
   for (auto *card : weather_daily_cards()) if (card->owner == owner) return card;
   return nullptr;
+}
+inline void weather_daily_set_image_background(lv_obj_t *owner, bool enabled) {
+  if (auto *card = weather_daily_card_for(owner)) {
+    card->image_background = enabled;
+    weather_daily_render_card(card);
+    if (enabled) lv_obj_move_foreground(card->root);
+  }
 }
 inline void weather_daily_card_clicked(lv_event_t *event) {
   weather_daily_open_modal(weather_daily_card_for(static_cast<lv_obj_t *>(lv_event_get_target(event))));

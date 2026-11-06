@@ -8390,10 +8390,48 @@ async function assertCardBackgroundTabs(browser, testCase) {
   console.log("Background tabs passed: Colour/Image visibility, draft cancellation, persistence, keyboard navigation and context menus on home and subpages.");
 }
 
+async function assertForecastImageText(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  const nativeState = nativeConfigState(testCase.slug);
+  for (let slot = 1; slot <= 4; slot++) {
+    nativeState.document.buttons[slot] = 'weather.home;;Auto;Auto;;;weather;' +
+      (slot <= 2 ? 'today' : 'daily') + ';' + (slot % 2 ? 'bg_image=test-image' : '');
+  }
+  try {
+    await installRoutes(context, testCase.slug, { nativeState });
+    const page = await context.newPage();
+    await installFakeEventSource(page);
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`);
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await seedNativeDocument(page, nativeState);
+    for (let slot = 1; slot <= 4; slot++) {
+      const card = page.locator(`.sp-main [data-slot="${slot}"].sp-weather-daily-card`);
+      const image = slot % 2 === 1;
+      assert.strictEqual(await card.evaluate(el => el.classList.contains('sp-btn-has-bg')), image);
+      const style = await card.locator('.sp-weather-day').first().evaluate(day => {
+        const temperature = getComputedStyle(day.querySelector('.sp-weather-temperature-high'));
+        const date = getComputedStyle(day.children[1]);
+        return { opacity: temperature.opacity, color: temperature.color,
+          dateColor: date.color, shadow: date.textShadow, temperatureShadow: temperature.textShadow };
+      });
+      assert.strictEqual(style.opacity, image ? '1' : '0.7');
+      if (image) {
+        assert.strictEqual(style.color, 'rgb(255, 255, 255)');
+        assert.strictEqual(style.dateColor, style.color);
+        assert.notStrictEqual(style.shadow, 'none');
+        assert.strictEqual(style.temperatureShadow, style.shadow);
+      } else assert.strictEqual(style.shadow, 'none');
+    }
+    console.log('Forecast image text passed: solid temperature opacity and shadows on both lines, with muted solid-card text preserved.');
+  } finally { await context.close(); }
+}
+
 (async function main() {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    await assertForecastImageText(browser, ACTIVE_CASES[0]);
+    if (process.env.ESPCONTROL_FORECAST_IMAGE_ONLY === "1") return;
     if (process.env.ESPCONTROL_PIN_ONLY === "1") {
       await assertScreensaverPinSettings(browser);
       console.log("PIN settings browser checks passed.");

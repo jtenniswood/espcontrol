@@ -40,6 +40,7 @@ using lv_text_align_t=int;
 constexpr int LV_TEXT_ALIGN_LEFT=1, LV_TEXT_ALIGN_RIGHT=2;
 constexpr int LV_ALIGN_TOP_MID=0, LV_ALIGN_TOP_LEFT=0;
 constexpr int LV_OPA_70=178;
+constexpr int LV_OPA_80=204, LV_OPA_COVER=255;
 constexpr int LV_OPA_TRANSP=0, LV_OBJ_FLAG_SCROLLABLE=1, LV_OBJ_FLAG_CLICKABLE=2, LV_COORD_MAX=32767, LV_TEXT_FLAG_NONE=0;
 constexpr int LV_OBJ_FLAG_HIDDEN=4, LV_OBJ_FLAG_USER_2=1<<28;
 constexpr int LV_EVENT_ALL=0, LV_EVENT_DELETE=1, LV_EVENT_SIZE_CHANGED=2, LV_EVENT_CLICKED=3, LV_EVENT_STYLE_CHANGED=4;
@@ -61,6 +62,10 @@ void lv_obj_set_width(lv_obj_t *obj,int w){obj->width=w;}
 void lv_obj_set_height(lv_obj_t *obj,int h){obj->height=h;}
 int lv_obj_get_content_width(lv_obj_t *obj){return obj->width;}
 int lv_obj_get_width(lv_obj_t *obj){return obj->width;}
+int lv_obj_get_height(lv_obj_t *obj){return obj->height;}
+int lv_obj_get_x(lv_obj_t *obj){return obj->x;}
+int lv_obj_get_y(lv_obj_t *obj){return obj->y;}
+lv_obj_t *lv_obj_get_parent(lv_obj_t *obj){return obj->parent;}
 int lv_obj_get_content_height(lv_obj_t *obj){return obj->height;}
 int lv_font_get_line_height(const lv_font_t *f){return f->line_height;}
 void lv_text_get_size(lv_point_t *point,const char *text,const lv_font_t *measured_font,int,int,int,int){
@@ -76,6 +81,9 @@ void lv_text_get_size(lv_point_t *point,const char *text,const lv_font_t *measur
 }
 void lv_label_set_display_text(lv_obj_t *obj,const char *text){obj->text=text;}
 void lv_label_set_text(lv_obj_t *obj,const char *text){obj->text=text;}
+const char *lv_label_get_text(lv_obj_t *obj){return obj->text.c_str();}
+using ButtonLabelTextSyncHook=void (*)(lv_obj_t *,const std::string &);
+ButtonLabelTextSyncHook &button_label_text_sync_hook(){static ButtonLabelTextSyncHook hook=nullptr;return hook;}
 void lv_obj_set_style_text_font(lv_obj_t *obj,const lv_font_t *f,int){obj->font=f;obj->height=f->line_height;}
 const lv_font_t *lv_obj_get_style_text_font(lv_obj_t *obj,int){return obj->font;}
 #define NOOP(name) template<class... T> void name(T...) {}
@@ -92,6 +100,8 @@ void lv_obj_add_flag(lv_obj_t *obj,int flag){obj->flags|=flag;}
 void lv_obj_clear_flag(lv_obj_t *obj,int flag){obj->flags&=~flag;}
 void lv_obj_align(lv_obj_t *obj,int,int x,int y){obj->x=(obj->parent?obj->parent->width-obj->width:0)/2+x;obj->y=y;}
 NOOP(lv_obj_set_style_bg_color) NOOP(lv_obj_center)
+void lv_obj_move_background(lv_obj_t *obj){auto &c=obj->parent->children;c.erase(std::find(c.begin(),c.end(),obj));c.insert(c.begin(),obj);}
+void lv_obj_move_foreground(lv_obj_t *obj){auto &c=obj->parent->children;c.erase(std::find(c.begin(),c.end(),obj));c.push_back(obj);}
 NOOP(lv_obj_set_style_radius) NOOP(lv_obj_set_style_bg_opa) NOOP(lv_obj_set_style_border_width) NOOP(lv_obj_set_style_pad_all)
 NOOP(lv_obj_add_state) NOOP(lv_obj_clear_state) NOOP(apply_text_width_compensation)
 NOOP(control_modal_apply_pressed_fill) NOOP(set_clock_bar_modal_label)
@@ -624,4 +634,66 @@ int main(){
   }
   weather_daily_cleanup(daily_owner);lv_obj_del(daily_owner);
   assert(weather_daily_sources().empty() && lv_obj_t::live==0);
+
+  // Image-backed forecasts replace the loading caption with live shadows for
+  // both text lines. Cover single-day, rainfall and multi-row daily layouts.
+  static lv_obj_t *shadow_caption=nullptr;
+  static std::string shadow_caption_text;
+  button_label_text_sync_hook()=[](lv_obj_t *label,const std::string &text){
+    if(label==shadow_caption)shadow_caption_text=text;
+  };
+  for(const auto &mode:{"today","tomorrow","daily","rainfall"}) {
+    auto *owner=lv_obj_create(nullptr);
+    BtnSlot slot{owner,lv_label_create(owner),lv_label_create(owner)};
+    shadow_caption=slot.text_lbl;shadow_caption_text.clear();
+    weather_daily_setup(slot,{"weather.images","",mode},{});
+    auto *card=weather_daily_card_for(owner);
+    weather_daily_set_image_background(owner,true);
+    assert(shadow_caption_text=="Loading" && card->columns.empty());
+    auto &forecast=card->source->forecast;
+    assert(espcontrol::weather::parse(payload,forecast));
+    card->source->loading=false;
+    weather_daily_refresh_visuals();
+    auto check_shadows=[&](){
+      assert(shadow_caption_text.empty() && slot.text_lbl->text.empty());
+      assert(owner->children.back()==card->root);
+      for(const auto &col:card->columns){
+        assert(col.high->text_opa==LV_OPA_COVER);
+        for(const auto &pair:{std::make_pair(col.day,col.day_shadow),std::make_pair(col.high,col.high_shadow)}){
+          const auto *text=pair.first,*shadow=pair.second;
+          assert(shadow && shadow->text==text->text && shadow->font==text->font);
+          assert(shadow->x==text->x+1 && shadow->y==text->y+1);
+          assert(shadow->width==text->width && shadow->height==text->height);
+          assert(shadow->text_color==0 && shadow->text_opa==LV_OPA_80 && (shadow->flags & LV_OBJ_FLAG_USER_2));
+          const auto &children=card->root->children;
+          assert(std::find(children.begin(),children.end(),shadow)<std::find(children.begin(),children.end(),text));
+        }
+      }
+    };
+    check_shadows();
+    const auto old_temperature=card->columns.front().high->text;
+    for(size_t i=0;i<forecast.count;++i){forecast.days[i].high=22;forecast.days[i].low=12;forecast.days[i].precipitation=4.5f;}
+    translated_today="Today translated";
+    weather_daily_refresh_visuals();check_shadows();
+    assert(card->columns.front().high->text!=old_temperature);
+    const int live=lv_obj_t::live;
+    for(int i=0;i<20;++i)weather_daily_refresh_visuals();
+    assert(lv_obj_t::live==live);
+    lv_obj_set_size(owner,220,360);check_shadows();
+    if(std::string(mode)=="daily")assert(card->layout.rows>1);
+    weather_daily_set_image_background(owner,false);
+    for(const auto &col:card->columns){
+      assert(!col.day_shadow && !col.high_shadow && col.high->text_opa==LV_OPA_70);
+    }
+    weather_daily_set_image_background(owner,true);check_shadows();
+    forecast.count=0;card->source->loading=false;weather_daily_refresh_visuals();
+    assert(card->columns.empty() && card->root->children.empty() && shadow_caption_text=="Forecast unavailable");
+    card->source->loading=true;weather_daily_refresh_visuals();
+    assert(shadow_caption_text=="Loading");
+    assert(espcontrol::weather::parse(payload,forecast));weather_daily_refresh_visuals();check_shadows();
+    weather_daily_cleanup(owner);lv_obj_del(owner);
+    translated_today.clear();
+    assert(weather_daily_sources().empty() && lv_obj_t::live==0);
+  }
+  shadow_caption=nullptr;button_label_text_sync_hook()=nullptr;
 }
