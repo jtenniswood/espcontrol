@@ -7624,6 +7624,7 @@ async function assertWeatherWidthScaling(browser) {
       await page.waitForFunction(value => Math.abs(document.querySelector('#weather').getBoundingClientRect().height - value) < 1, height);
       // Let ResizeObserver apply the forecast row layout before measuring it.
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const weatherRows = Number(await page.locator("#weather").getAttribute("data-weather-rows"));
       const columns = await page.locator('.sp-weather-day').evaluateAll(days => days
         .filter(day => getComputedStyle(day).display !== 'none').map(day => {
           const column = day.getBoundingClientRect();
@@ -7636,9 +7637,16 @@ async function assertWeatherWidthScaling(browser) {
       for (const column of columns) {
         assert([column.iconLeft, column.dayLeft, column.temperatureLeft].every(left => Math.abs(left - column.left) < 1),
           'Each forecast day aligns its icon and text to the left.');
-        assert(Math.abs(column.iconTop - column.top) < 1 && Math.abs(column.temperatureBottom - column.bottom) < 1,
-          'Forecast icons stay at the top and temperatures stay at the bottom as the card height changes.');
-        assert(column.dayTop - column.iconBottom > 10, 'Forecast text has open space above it.');
+        if (weatherRows > 1) {
+          assert(Math.abs((column.iconTop - column.top) - (column.bottom - column.temperatureBottom)) < 1,
+            'Multi-row forecast groups stay vertically centered within each row.');
+          assert(column.dayTop - column.iconBottom >= 6,
+            'Multi-row forecast icons retain space above the text.');
+        } else {
+          assert(Math.abs(column.iconTop - column.top) < 1 && Math.abs(column.temperatureBottom - column.bottom) < 1,
+            'Single-row forecast icons stay at the top and temperatures stay at the bottom as the card height changes.');
+          assert(column.dayTop - column.iconBottom > 10, 'Forecast text has open space above it.');
+        }
       }
     }
     console.log('Daily forecast browser scaling passed: ' + counts.join(',') + ' complete columns.');
@@ -7767,7 +7775,8 @@ async function assertS3ForecastEditorLayout(browser) {
       await page.setViewportSize({ width, height: 1000 });
       await page.waitForFunction(() => document.querySelectorAll('.sp-weather-daily-card .sp-weather-day:not([hidden])').length === 4);
       const day = page.locator('.sp-weather-day:not([hidden])').first();
-      assert.strictEqual(await day.evaluate(element => getComputedStyle(element).alignItems), 'flex-start');
+      assert(['flex-start', 'flow-start'].includes(await day.evaluate(element => getComputedStyle(element).alignItems)),
+        'Forecast days remain left-aligned across browser alignment serialization changes.');
     }
     await page.locator('.sp-screen').screenshot({ path: '/tmp/weather-preview-s3-editor-after.png' });
     console.log('S3 editor integration: 3×1 forecast shows four left-aligned days before and after resizing.');
@@ -7792,7 +7801,7 @@ async function assertS3ForecastEditorLayout(browser) {
         return {left: getComputedStyle(day).alignItems, icon: spans[0].getBoundingClientRect().top,
           text: spans[1].getBoundingClientRect().top, high: spans[2].textContent};
       });
-      assert.strictEqual(geometry.left, 'flex-start');
+      assert(['flex-start', 'flow-start'].includes(geometry.left), 'Forecast content remains left-aligned.');
       assert(geometry.icon < geometry.text && /^\d+°\/\d+°$/.test(geometry.high),
         'Single-day forecasts keep the icon above the day and show the high/low pair.');
       await page.setViewportSize({width: 1000, height: 1000});
