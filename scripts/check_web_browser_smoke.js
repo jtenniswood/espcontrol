@@ -8237,6 +8237,10 @@ async function assertImageLibrarySettings(browser, testCase) {
     await library.locator('.card-header').click();
     await library.getByRole('button', { name: 'Upload', exact: true }).waitFor({ state: 'visible' });
     let row = library.getByRole('group', { name: 'Living room', exact: true });
+    const renameButton = row.getByRole('button', { name: 'Rename', exact: true });
+    assert.strictEqual((await renameButton.textContent()).trim(), '', 'Rename is icon-only');
+    assert.strictEqual(await renameButton.getAttribute('title'), 'Rename');
+    assert.strictEqual(await renameButton.locator('.mdi-pencil').count(), 1);
     assert(await row.getByText('Used by 1 card', { exact: true }).isVisible());
     await row.scrollIntoViewIfNeeded();
     await row.locator('img').evaluate(image => image.decode());

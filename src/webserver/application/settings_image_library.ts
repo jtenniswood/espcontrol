@@ -84,7 +84,8 @@ export function createSettingsImageLibraryFeature(
           details.append(name, usage);
           const actions = document.createElement("div");
           actions.className = "sp-image-library-actions";
-          const rename = shell.createActionButton("sp-action-btn sp-secondary-btn", "Rename", "pencil");
+          const rename = shell.createActionButton("sp-action-btn sp-secondary-btn", "", "pencil", "Rename");
+          rename.title = "Rename";
           rename.addEventListener("click", () => {
             if (!canEdit() || busy || loading) return;
             const value = window.prompt("Image name", image.name || image.id);
