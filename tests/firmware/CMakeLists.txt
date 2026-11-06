@@ -184,6 +184,8 @@ add_executable(icons_custom_mdi_test icons_custom_mdi_test.cpp)
 target_compile_features(icons_custom_mdi_test PRIVATE cxx_std_17)
 target_compile_options(icons_custom_mdi_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(icons_custom_mdi_test PRIVATE ../../components/espcontrol)
+find_package(Threads REQUIRED)
+target_link_libraries(icons_custom_mdi_test PRIVATE Threads::Threads)
 add_test(NAME icons_custom_mdi_test COMMAND icons_custom_mdi_test)
 add_test(NAME custom_icons_detection_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/custom_icons_detection_test.py)

@@ -7,6 +7,7 @@
 // =============================================================================
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <cstring>
 #include <cstddef>
@@ -449,22 +450,33 @@ inline const char* custom_mdi_icon_glyph(const char* name) {
   if (cp < 0xF0000 || cp > 0x10FFFD) return nullptr;
   // Callers keep the returned pointer (e.g. ternaries feeding LVGL labels),
   // so each codepoint gets its own slot that is never rewritten. The table is
-  // fixed-size (no heap) and locked because lookups can come from any task.
+  // fixed-size (no heap). Cards look icons up on every state update, so a
+  // repeat lookup reads without locking: a slot is fully written before the
+  // published count (release) covers it, and readers load that count
+  // (acquire) before reading slots. Only adding a new codepoint locks.
   struct CustomGlyphSlot {
     uint32_t codepoint;
     char utf8[5];
   };
   static CustomGlyphSlot slots[CUSTOM_MDI_ICON_CACHE_SLOTS];
-  static size_t used = 0;
+  static std::atomic<size_t> published{0};
   static std::mutex lock;
+  auto find_slot = [cp](size_t count) -> const char * {
+    for (size_t i = 0; i < count; i++) {
+      if (slots[i].codepoint == cp) return slots[i].utf8;
+    }
+    return nullptr;
+  };
+  if (const char *cached = find_slot(published.load(std::memory_order_acquire))) return cached;
   std::lock_guard<std::mutex> guard(lock);
-  for (size_t i = 0; i < used; i++) {
-    if (slots[i].codepoint == cp) return slots[i].utf8;
-  }
+  // Another task may have added it between the unlocked read and the lock.
+  const size_t used = published.load(std::memory_order_relaxed);
+  if (const char *cached = find_slot(used)) return cached;
   if (used == CUSTOM_MDI_ICON_CACHE_SLOTS) return nullptr;
-  CustomGlyphSlot &slot = slots[used++];
+  CustomGlyphSlot &slot = slots[used];
   slot.codepoint = cp;
   slot.utf8[encode_utf8_codepoint(cp, slot.utf8)] = '\0';
+  published.store(used + 1, std::memory_order_release);
   return slot.utf8;
 }
 
