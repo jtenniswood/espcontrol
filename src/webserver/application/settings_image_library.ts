@@ -40,6 +40,7 @@ export function createSettingsImageLibraryFeature(
       let loading = false;
       let loadFailed = false;
       let imageActions: HTMLButtonElement[] = [];
+      let renameDialog: HTMLDialogElement | null = null;
 
       const canEdit = () => images.info().available && !shell.isConfigLocked();
       function syncActions() {
@@ -65,6 +66,7 @@ export function createSettingsImageLibraryFeature(
           row.className = "sp-image-library-item";
           row.setAttribute("role", "group");
           row.setAttribute("aria-label", image.name || image.id);
+          row.dataset.imageId = image.id;
           const info = document.createElement("div");
           info.className = "sp-image-library-info";
           const thumbnail = document.createElement("img");
@@ -88,9 +90,7 @@ export function createSettingsImageLibraryFeature(
           rename.title = "Rename";
           rename.addEventListener("click", () => {
             if (!canEdit() || busy || loading) return;
-            const value = window.prompt("Image name", image.name || image.id);
-            if (value == null || !value.trim() || value.trim() === image.name) return;
-            void change("Renaming image…", "Image renamed.", () => images.rename(image.id, value.trim()));
+            openRename(image, rename);
           });
           const remove = shell.createActionButton("sp-action-btn sp-secondary-btn", "", "trash-can-outline", "Delete image");
           remove.addEventListener("click", () => {
@@ -108,6 +108,86 @@ export function createSettingsImageLibraryFeature(
           row.append(info, actions);
           list.appendChild(row);
         }
+      }
+
+      function openRename(image: CardImageItem, trigger: HTMLButtonElement) {
+        if (renameDialog) return;
+        const dialog = document.createElement("dialog");
+        renameDialog = dialog;
+        dialog.className = "sp-dialog";
+        dialog.setAttribute("aria-labelledby", "sp-image-rename-title");
+        const heading = document.createElement("h2");
+        heading.id = "sp-image-rename-title";
+        heading.textContent = "Rename image";
+        const form = document.createElement("form");
+        const field = document.createElement("div");
+        field.className = "sp-field";
+        const label = document.createElement("label");
+        label.className = "sp-field-label";
+        label.htmlFor = "sp-image-rename-input";
+        label.textContent = "Image name";
+        const input = document.createElement("input");
+        input.id = label.htmlFor;
+        input.className = "sp-input";
+        input.type = "text";
+        input.required = true;
+        input.autocomplete = "off";
+        input.autofocus = true;
+        const original = image.name || image.id;
+        input.value = original;
+        const error = document.createElement("div");
+        error.id = "sp-image-rename-error";
+        error.className = "sp-field-error";
+        error.setAttribute("role", "alert");
+        error.hidden = true;
+        input.setAttribute("aria-describedby", error.id);
+        field.append(label, input, error);
+        const actions = document.createElement("div");
+        actions.className = "sp-btn-row sp-dialog-actions";
+        const cancel = shell.createActionButton("sp-action-btn sp-cancel-btn", "Cancel");
+        const save = shell.createActionButton("sp-action-btn sp-primary-btn", "Save");
+        save.type = "submit";
+        let saving = false;
+        const syncSave = () => { save.disabled = saving || !input.value.trim() || input.value.trim() === original; };
+        input.addEventListener("input", () => {
+          error.hidden = true;
+          syncSave();
+        });
+        cancel.addEventListener("click", () => dialog.close("cancel"));
+        dialog.addEventListener("cancel", event => { if (saving) event.preventDefault(); });
+        form.addEventListener("submit", async event => {
+          event.preventDefault();
+          if (save.disabled) return;
+          saving = true;
+          input.disabled = cancel.disabled = true;
+          save.textContent = "Saving…";
+          syncSave();
+          dialog.setAttribute("aria-busy", "true");
+          const message = await change("Renaming image…", "Image renamed.", () => images.rename(image.id, input.value.trim()));
+          saving = false;
+          if (message === null) { dialog.close("saved"); return; }
+          input.disabled = cancel.disabled = false;
+          save.textContent = "Save";
+          dialog.setAttribute("aria-busy", "false");
+          error.textContent = message;
+          error.hidden = false;
+          syncSave();
+          input.focus();
+        });
+        dialog.addEventListener("close", () => {
+          dialog.remove();
+          renameDialog = null;
+          const row = Array.from(list.children).find(row => (row as HTMLElement).dataset.imageId === image.id);
+          const replacement = row?.querySelector<HTMLButtonElement>('button[aria-label="Rename"]');
+          (trigger.isConnected ? trigger : replacement)?.focus();
+        }, { once: true });
+        actions.append(cancel, save);
+        form.append(field, actions);
+        dialog.append(heading, form);
+        document.body.append(dialog);
+        syncSave();
+        dialog.showModal();
+        input.select();
       }
 
       async function refresh() {
@@ -130,8 +210,8 @@ export function createSettingsImageLibraryFeature(
         }
       }
 
-      async function change(progress: string, success: string, operation: () => Promise<unknown>) {
-        if (!canEdit() || busy || loading) return;
+      async function change(progress: string, success: string, operation: () => Promise<unknown>): Promise<string | null> {
+        if (!canEdit() || busy || loading) return "The image library is unavailable. Try again when it is ready.";
         busy = true;
         status.hidden = false;
         status.textContent = progress;
@@ -140,10 +220,12 @@ export function createSettingsImageLibraryFeature(
           await operation();
           shell.showBanner(success, "success");
           await refresh();
+          return null;
         } catch (error) {
           const message = error instanceof Error ? error.message : "Could not update the image library.";
           status.textContent = message;
           shell.showBanner(message, "error");
+          return message;
         } finally {
           busy = false;
           file.value = "";

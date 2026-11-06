@@ -8182,6 +8182,9 @@ async function assertImageLibrarySettings(browser, testCase) {
   nativeState.document.buttons[1] = "light.kitchen;Kitchen;Auto;Auto;;;;;bg_image=library-image";
   let images = [{ id: "library-image", name: "Living room", size: 1024 }];
   let mode = "ready";
+  let renameFails = false;
+  let holdRename = false;
+  let releaseRename;
   const requests = [];
   try {
     await installRoutes(context, testCase.slug, { nativeState });
@@ -8198,6 +8201,8 @@ async function assertImageLibrarySettings(browser, testCase) {
           images: mode === "unavailable" ? [] : images,
         }) });
       } else if (method === "POST" && url.pathname.endsWith("/rename")) {
+        if (holdRename) await new Promise(resolve => { releaseRename = resolve; });
+        if (renameFails) { await route.fulfill({ status: 503, body: 'Rename failed' }); return; }
         const image = images.find(image => url.pathname.includes('/' + image.id + '/'));
         image.name = new URLSearchParams(request.postData()).get("name");
         await route.fulfill({ contentType: "application/json", body: JSON.stringify(image) });
@@ -8272,10 +8277,70 @@ async function assertImageLibrarySettings(browser, testCase) {
     if (process.env.ESPCONTROL_IMAGE_LIBRARY_SCREENSHOT) {
       await library.screenshot({ path: process.env.ESPCONTROL_IMAGE_LIBRARY_SCREENSHOT, animations: 'disabled', style: '.sp-support-btn{visibility:hidden!important}' });
     }
-    page.once('dialog', dialog => dialog.accept('Kitchen picture'));
     await row.getByRole('button', { name: 'Rename', exact: true }).click();
+    const renameDialog = page.getByRole('dialog', { name: 'Rename image', exact: true });
+    const nameInput = renameDialog.getByRole('textbox', { name: 'Image name', exact: true });
+    const saveName = renameDialog.getByRole('button', { name: 'Save', exact: true });
+    assert.strictEqual(await nameInput.inputValue(), 'Living room');
+    assert(await nameInput.evaluate(el => document.activeElement === el && el.selectionStart === 0 && el.selectionEnd === el.value.length));
+    assert(await saveName.isDisabled(), 'unchanged names cannot be saved');
+    if (process.env.ESPCONTROL_RENAME_MODAL_SCREENSHOT_DIR) {
+      fs.mkdirSync(process.env.ESPCONTROL_RENAME_MODAL_SCREENSHOT_DIR, { recursive: true });
+      await page.screenshot({ path: path.join(process.env.ESPCONTROL_RENAME_MODAL_SCREENSHOT_DIR, 'wide.png'), animations: 'disabled' });
+    }
+    await nameInput.fill('   ');
+    assert(await saveName.isDisabled(), 'blank names cannot be saved');
+    await nameInput.fill('Cancelled name');
+    await nameInput.press('Tab');
+    assert(await renameDialog.getByRole('button', { name: 'Cancel', exact: true }).evaluate(el => document.activeElement === el));
+    await page.keyboard.press('Shift+Tab');
+    assert(await nameInput.evaluate(el => document.activeElement === el));
+    await library.getByRole('button', { name: 'Upload', exact: true }).evaluate(el => el.focus());
+    assert(await renameDialog.evaluate(el => el.matches(':modal') && el.contains(document.activeElement)), 'background controls are inert while the dialog is open');
+    await renameDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await renameDialog.waitFor({ state: 'detached' });
+    assert.strictEqual(requests.filter(request => request.endsWith('/rename')).length, 0, 'Cancel sends no rename');
+    assert(await row.getByRole('button', { name: 'Rename', exact: true }).evaluate(el => document.activeElement === el));
+    await row.getByRole('button', { name: 'Rename', exact: true }).click();
+    await nameInput.fill('Escape name');
+    await page.keyboard.press('Escape');
+    await renameDialog.waitFor({ state: 'detached' });
+    assert.strictEqual(requests.filter(request => request.endsWith('/rename')).length, 0, 'Escape sends no rename');
+    await row.getByRole('button', { name: 'Rename', exact: true }).click();
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 700 });
+      assert(await renameDialog.evaluate(el => {
+        const rect = el.getBoundingClientRect();
+        return rect.left >= 0 && rect.right <= innerWidth && rect.top >= 0 && rect.bottom <= innerHeight && el.scrollWidth <= el.clientWidth;
+      }), 'rename modal fits narrow windows');
+      if (process.env.ESPCONTROL_RENAME_MODAL_SCREENSHOT_DIR) {
+        await page.screenshot({ path: path.join(process.env.ESPCONTROL_RENAME_MODAL_SCREENSHOT_DIR, `${width}.png`), animations: 'disabled' });
+      }
+    }
+    await page.setViewportSize(testCase.viewport);
+    await nameInput.fill('Kitchen picture');
+    renameFails = true;
+    await saveName.click();
+    await renameDialog.getByRole('alert').waitFor({ state: 'visible' });
+    assert.strictEqual(await nameInput.inputValue(), 'Kitchen picture', 'failed rename keeps the entered name');
+    assert(await saveName.isEnabled(), 'failed rename can be retried');
+    renameFails = false;
+    holdRename = true;
+    await nameInput.press('Enter');
+    await page.waitForFunction(() => document.querySelector('dialog[aria-busy="true"]'));
+    assert(await renameDialog.getByRole('button', { name: 'Cancel', exact: true }).isDisabled());
+    await page.keyboard.press('Escape');
+    assert(await renameDialog.isVisible(), 'in-flight rename stays open');
+    const renameRequestCount = requests.filter(request => request.endsWith('/rename')).length;
+    await nameInput.press('Enter');
+    assert.strictEqual(requests.filter(request => request.endsWith('/rename')).length, renameRequestCount, 'duplicate submits do not send a second rename');
+    await waitForNativeState(nativeState, () => typeof releaseRename === 'function', 'rename request started');
+    releaseRename();
+    holdRename = false;
+    await renameDialog.waitFor({ state: 'detached' });
     row = library.getByRole('group', { name: 'Kitchen picture', exact: true });
     await row.waitFor({ state: 'visible' });
+    assert(await row.getByRole('button', { name: 'Rename', exact: true }).evaluate(el => document.activeElement === el), 'save restores focus to the refreshed row');
     assert(nativeState.document.buttons[1].includes('bg_image=library-image'), 'renaming keeps the card reference stable');
     await library.locator('input[type="file"]').setInputFiles({
       name: 'test.png', mimeType: 'image/png', buffer: await page.screenshot(),
