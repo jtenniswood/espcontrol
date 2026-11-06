@@ -12,6 +12,7 @@
 #include "button_grid_subpage_parser.h"
 #include "calendar_card_text.h"
 #include "climate_state_logic.h"
+#include "i18n_generated.h"
 #include "media_playlist_match.h"
 #include "page_fan_mode.h"
 #include "page_media_group.h"
@@ -168,7 +169,7 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     // The text value replaces the icon for both the dedicated and Action form.
     out.icon = out.icon_on = "";
   } else if (type.empty() || type == "light_switch") {
-    out.text_overlay=precision=="text";
+    out.text_overlay=!out.sensor.empty()&&precision=="text";
     out.kind=out.entity.empty()?BasicCardKind::EMPTY:BasicCardKind::TOGGLE;
   } else if (type == "sensor") {
     if (out.sensor == "local") {
@@ -208,7 +209,10 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     if(type=="action"||local) {
       if(out.icon.empty()||out.icon=="Auto")out.icon=local?"Gesture Tap":"Flash";
       if(out.label.empty()) {
-        if(out.entity.empty())out.default_label=local?"Local Action":"Action";
+        if(out.entity.empty()) {
+          out.default_label=local?"label_local_action":"Action";
+          out.default_label_is_key=local;
+        }
         else if(local) {if(!copy(sentence_cap_text(std::string(out.entity)),out.label))return false;}
         else out.label=out.entity;
       }
@@ -710,6 +714,11 @@ PageAlarmCardSnapshot read_basic_alarm(const BasicCardDefinition& card, Configur
   result.glyph = alarm_card_glyph(result.history.state, result.history.arm_mode);
   return result;
 }
+const char *basic_card_default_label(const BasicCardDefinition &card,PageCardTranslate translate) {
+  if(card.default_label&&card.default_label_is_key)return espcontrol_i18n_key(card.default_label);
+  const auto *translated=card.default_label&&translate?translate(card.default_label):nullptr;
+  return translated?translated:card.default_label;
+}
 BasicCardState read_basic_card(
     const BasicCardDefinition& card, ConfigurationHandle handle, PageEntityStateRuntime& state,
     int duration_components, std::string_view temperature_unit, PageCardTranslate translate,
@@ -1112,8 +1121,7 @@ BasicCardState read_basic_card(
       card.kind == BasicCardKind::MEDIA_CONTROL) {
     result.label=card.label;
     if(result.label.empty()&&card.default_label) {
-      const auto *translated=translate?translate(card.default_label):nullptr;
-      result.label=translated?translated:card.default_label;
+      result.label=basic_card_default_label(card,translate);
     }
     const auto playback=find(state,handle,card.entity);
     // Playback state uses the same exact "playing" predicate as the existing
@@ -1276,8 +1284,7 @@ BasicCardState read_basic_card(
     if(friendly.status==PageEntityStatus::AVAILABLE)result.label=friendly.value.substr(0,HA_FRIENDLY_NAME_MAX_LEN);
   }
   if(result.label.empty()&&card.default_label) {
-    const auto *translated=translate?translate(card.default_label):nullptr;
-    result.label=translated?translated:card.default_label;
+    result.label=basic_card_default_label(card,translate);
   }
   const auto text_value=[&](const PageEntityValue &value,bool mapping) {
     result.unit={};

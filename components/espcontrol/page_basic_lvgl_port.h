@@ -662,8 +662,7 @@ class PageBasicLvglPort final:public PageRendererPort {
             view.action_display == BasicActionDisplay::TEXT)
           label_capacity = std::max<size_t>(label_capacity, 257);
         if(view.default_label) {
-          const auto *translated=theme_.translate?theme_.translate(view.default_label):nullptr;
-          label_capacity=std::max(label_capacity,std::strlen(translated?translated:view.default_label)+1);
+          label_capacity=std::max(label_capacity,std::strlen(basic_card_default_label(view,theme_.translate))+1);
         }
         label_capacity=std::max(label_capacity,view.label.size()+1);unit_capacity=std::max(unit_capacity,view.unit.size()+1);
       }

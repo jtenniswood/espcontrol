@@ -12,6 +12,7 @@
 
 #include "basic_number_layout.h"
 #include "bounded_display_text.h"
+#include "i18n_generated.h"
 #include "button_grid_subpage_parser.h"
 #include "light_temperature_color.h"
 #include "page_card_dependencies.h"
@@ -177,6 +178,16 @@ void profile(const DeviceUiLimits &limits) {
   assert(state.prepare(overlay.store));state.activate_prepared(overlay.store);subs.send("light.test","","on");subs.send("sensor.temp","","pre_wash");
   value=read_basic_card(definition,{17,0},state);assert(value.formatted_label&&std::strcmp(value.text,"Pre Wash")==0);
   subs.send("light.test","","off");value=read_basic_card(definition,{17,0},state);assert(!value.formatted_label&&value.label=="Standby");
+  for(const auto type:{"","light_switch"})for(const auto label:{"Standby",""}) {
+    Fixture no_overlay(limits,std::string("light.test;")+label+";Auto;Auto;;;"+type+";text;");
+    assert(prepare_basic_card(no_overlay.store,0,definition)&&!definition.text_overlay);
+    assert(state.prepare(no_overlay.store));state.activate_prepared(no_overlay.store);
+    subs.send("light.test","friendly_name","Room light");
+    for(const auto state_text:{"on","off"}) {
+      subs.send("light.test","",state_text);value=read_basic_card(definition,{17,0},state);
+      assert(!value.formatted_label&&!value.numeric&&value.label==(label[0]?label:"Room light"));
+    }
+  }
   Fixture duration(limits,";;;;sensor.temp;;sensor;time;");assert(prepare_basic_card(duration.store,0,definition));assert(definition.kind==BasicCardKind::DURATION);
   assert(state.prepare(duration.store));state.activate_prepared(duration.store);subs.send("sensor.temp","","90");assert(!read_basic_card(definition,{17,0},state).numeric);
   subs.send("sensor.temp","unit_of_measurement","seconds");value=read_basic_card(definition,{17,0},state,2);assert(value.numeric&&std::strcmp(value.number,"1m 30s")==0&&value.unit.empty());
@@ -316,6 +327,17 @@ void status_actions_profile(const DeviceUiLimits &limits) {
     assert(state.memory().active_channels==0);
   }
   Fixture confirmation(limits,"script.scene;;;;script.turn_on;;action;;confirm_on");
+  Fixture local_default(limits,";;;;local;;action;;");
+  assert(prepare_basic_card(local_default.store,0,definition,&strings));
+  assert(state.prepare(local_default.store));state.activate_prepared(local_default.store);
+  const auto phrases=[](const char *text)->const char *{return espcontrol_i18n(text);};
+  for(const auto language:{"de","fi","en"}) {
+    set_espcontrol_language(language);
+    const auto expected=espcontrol_i18n_key("label_local_action");const auto before=allocations;
+    value=read_basic_card(definition,{17,0},state,2,u8"°C",phrases);
+    assert(value.label==expected&&allocations==before);
+    assert(read_basic_card(definition,{17,0},state).label==expected);
+  }
   assert(prepare_basic_card(confirmation.store, 0, definition, &strings));
   assert(definition.kind == BasicCardKind::ACTION && definition.needs_confirmation(false) &&
          !definition.needs_confirmation(true));
