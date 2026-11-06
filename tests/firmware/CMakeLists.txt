@@ -770,3 +770,9 @@ add_test(NAME panel_backup_bindings_test COMMAND ${Python3_EXECUTABLE}
 add_test(NAME panel_backup_endpoint_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/panel_backup_endpoint_test.py)
+
+add_executable(weather_metric_test weather_metric_test.cpp)
+target_compile_features(weather_metric_test PRIVATE cxx_std_17)
+target_compile_options(weather_metric_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(weather_metric_test PRIVATE ../../components/espcontrol)
+add_test(NAME weather_metric_test COMMAND weather_metric_test)

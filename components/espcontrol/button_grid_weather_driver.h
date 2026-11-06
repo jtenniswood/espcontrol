@@ -7,6 +7,7 @@
 #include "card_modal_target.h"
 #include "button_grid_weather_wind.h"
 #include "button_grid_rainfall.h"
+#include "button_grid_weather_metric.h"
 
 namespace espcontrol::cards {
 
@@ -46,6 +47,10 @@ inline bool weather_driver_setup_visual(
     return true;
   }
 
+  if (weather_metric_mode(config.precision)) {
+    weather_metric_setup(slot, config.precision, display);
+    return true;
+  }
   if (config.precision == "rainfall" && !rainfall_uses_forecast(config)) {
     rainfall_setup(slot, display);
     return true;
@@ -86,6 +91,10 @@ inline bool weather_driver_bind_data(
     subscribe_weather_wind(slot, config.entity, config.sensor, weather_wind_uses_sensors(config));
     return true;
   }
+  if (weather_metric_mode(config.precision)) {
+    subscribe_weather_metric(slot, config.entity, config.precision, weather_metric_uses_forecast(config));
+    return true;
+  }
   if (config.precision == "rainfall") {
     if (!config.entity.empty()) subscribe_rainfall_sensor(slot, config.entity, config.unit);
     return true;
@@ -102,6 +111,7 @@ inline bool weather_driver_refresh_layout(
   if (!weather_driver_matches(context)) return false;
   (void) row_span; (void) col_span;
   if (config.precision == "wind") weather_wind_layout(slot, display);
+  if (weather_metric_mode(config.precision)) weather_reading_layout(slot, display);
   if (config.precision == "rainfall" && !rainfall_uses_forecast(config)) rainfall_layout(slot, display);
   if (weather_driver_shows_forecast(config))
     weather_daily_render_card(weather_daily_card_for(slot.btn));

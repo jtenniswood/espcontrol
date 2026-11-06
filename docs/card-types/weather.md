@@ -17,12 +17,13 @@ Show current conditions or daily forecasts from a Home Assistant weather entity.
 1. Select a card and change its type to **Weather**.
 2. Enter a **Weather Entity**, for example `weather.forecast_home`.
 3. Choose **Type**:
+   - **Air Pressure** — pressure from a weather entity or sensor.
    - **Current Conditions** — the live condition icon and label.
-   - **Wind** — a direction arrow, direction name, and current wind speed below.
+   - **Forecast** — choose **Period**: **Today**, **Tomorrow**, or **Week**. Today and Tomorrow show one day's icon and high/low temperatures; Week shows up to eight days in a row or grid, depending on card size and provider data.
+   - **Humidity** — relative humidity from a weather entity or sensor.
    - **Rainfall** — a rain icon, label and measured or predicted rainfall amount.
-   - **Today's Forecast** — today's icon and high/low temperatures.
-   - **Tomorrow's Forecast** — tomorrow's icon and high/low temperatures.
-   - **Daily Forecast** — up to eight days in a row or grid.
+   - **Visibility** — visibility from a weather entity, with no source tabs.
+   - **Wind** — a direction arrow, direction name, and current wind speed below.
 4. Resize the card in the preview, optionally choose **Custom Colours**, then press **Save**.
 
 ::: tip Home Assistant actions permission
@@ -31,7 +32,7 @@ Enable **Allow the device to perform Home Assistant actions** so the panel can r
 
 ### Configuration Examples
 
-The admin webserver examples below use `weather.forecast_home`; replace it with your own entity. The preview uses sample data. Your panel loads real conditions and forecasts from Home Assistant.
+The examples below use `weather.forecast_home`; replace it with your own entity. Older screenshots show separate forecast types; in the current editor choose **Forecast**, then **Period → Today**, **Tomorrow**, or **Week**. The preview uses sample data. Your panel loads real conditions and forecasts from Home Assistant.
 
 <div class="weather-configuration-grid">
   <figure>
@@ -69,7 +70,7 @@ The admin webserver examples below use `weather.forecast_home`; replace it with 
 
 ## How It Works on the Panel
 
-Forecasts show whole-degree high/low temperatures, such as **18°/2°**, using the panel's **Temperature Unit** setting. Today and Tomorrow always show one day. Daily Forecast adapts to the card's size: a row on wide cards, a grid on larger cards, or a column on tall narrow cards. Enlarge the card to show more days; the count also depends on your provider's data and font sizes.
+Forecasts show whole-degree high/low temperatures, such as **18°/2°**, using the panel's **Temperature Unit** setting. The Today and Tomorrow periods always show one day. Week adapts to the card's size: a row on wide cards, a grid on larger cards, or a column on tall narrow cards. Enlarge the card to show more days; the count also depends on your provider's data and font sizes.
 
 Forecasts refresh hourly and after reconnecting. **Loading** appears while fetching data. If a refresh fails, the previous forecast keeps the same card layout, with **Last forecast** shown in the details popup; if no data is available for the requested date, the card shows **Forecast unavailable**. Your Home Assistant provider must support daily forecasts.
 
@@ -94,6 +95,14 @@ Choose **Weather → Rainfall**, then choose **Rainfall Source**:
 
 Both sources use the same small secondary text and 70% alpha as forecast temperatures, on home cards and subpages. Amounts show up to three decimal places without trailing zeros. Zero remains **0**; missing, invalid or unavailable sensor readings show **--**. Forecast refreshes, missing dates and stale data follow the existing forecast behavior. A provider's precipitation total can include snow or other precipitation, not only rain.
 
+## Air Pressure, Humidity and Visibility
+
+Choose **Weather → Air Pressure** or **Humidity**, then use the **Forecast / Sensor** tabs to select a weather entity or a numeric sensor. **Visibility** uses only a weather entity and has no source tabs.
+
+Like Wind, the **Forecast** source reads the weather provider's current attributes; these cards do not request daily forecasts or need Home Assistant actions permission. The provider must expose the selected reading. Pressure and visibility retain the provider's units (such as hPa or km); weather humidity uses %. Sensors use their `unit_of_measurement`.
+
+Each card uses the Rainfall layout: an icon, a fixed label, and a smaller reading underneath. They work on the home screen and subpages. Missing, invalid or unavailable readings show **--**, while zero remains visible. Values show up to three decimal places without trailing zeros. These cards do not open forecast details.
+
 ## Forecast Details
 
 Tap any forecast card to open up to six days in a **3×2 grid**, showing conditions, high/low temperatures, wind speed, rain chance and rainfall where available. Wind and rainfall retain the provider's units. **Last forecast** marks stale data. Current Conditions cards do not open forecast details.
@@ -103,5 +112,5 @@ Tap any forecast card to open up to six days in a **3×2 grid**, showing conditi
 Standard Home Assistant weather states use matching icons. Current Conditions keeps provider-specific labels, such as **Light Rain**; unknown or unavailable states show a fallback icon and readable label.
 
 ::: details Older configurations
-**Temperatures Today** and **Temperatures Tomorrow** cards retain their day selection and use the current forecast layout. A separate **Weather Forecast** card loads as **Tomorrow's Forecast**. The old custom label and large temperature number controls no longer apply.
+**Temperatures Today** and **Temperatures Tomorrow** cards retain their day selection and use the current forecast layout. A separate **Weather Forecast** card loads as **Forecast → Period → Tomorrow**. Existing Today, Tomorrow and Daily Forecast cards retain their period under the grouped Forecast type. The old custom label and large temperature number controls no longer apply.
 :::

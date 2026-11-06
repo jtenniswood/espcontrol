@@ -3755,7 +3755,10 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "tomorrow",
           "daily",
           "wind",
-          "rainfall"
+          "rainfall",
+          "pressure",
+          "humidity",
+          "visibility"
         ],
         "defaultValue": "",
         "storageField": "precision",
@@ -3808,6 +3811,54 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
             "rainfall"
           ]
         }
+      },
+      {
+        "name": "pressure_source",
+        "label": "Air Pressure Source",
+        "kind": "choice",
+        "values": [
+          "sensor",
+          "forecast"
+        ],
+        "defaultValue": "sensor",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "precision",
+            "operator": "equals",
+            "value": "pressure"
+          }
+        ],
+        "supportedWhen": {
+          "precision": [
+            "pressure"
+          ]
+        }
+      },
+      {
+        "name": "humidity_source",
+        "label": "Humidity Source",
+        "kind": "choice",
+        "values": [
+          "sensor",
+          "forecast"
+        ],
+        "defaultValue": "sensor",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "precision",
+            "operator": "equals",
+            "value": "humidity"
+          }
+        ],
+        "supportedWhen": {
+          "precision": [
+            "humidity"
+          ]
+        }
       }
     ],
     "normalization": {
@@ -3848,7 +3899,9 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "unknownOptions": "drop",
       "canonicalOptionOrder": [
         "wind_source",
-        "rainfall_source"
+        "rainfall_source",
+        "pressure_source",
+        "humidity_source"
       ],
       "migrationActions": [
         "legacy_weather_forecast"
@@ -4928,6 +4981,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "garage_mode": "garage_mode",
   "gate_mode": "gate_mode",
   "hidden": "hidden",
+  "humidity_source": "humidity_source",
   "icon_display": "icon_display",
   "image_icon": "image_icon",
   "image_label": "image_label",
@@ -4955,6 +5009,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "playlist_content_type": "playlist_content_type",
   "playlist_player_source": "playlist_player_source",
   "power_entity": "power_entity",
+  "pressure_source": "pressure_source",
   "rainfall_source": "rainfall_source",
   "screensaver_on_lock": "screensaver_on_lock",
   "script_fields": "script_fields",
