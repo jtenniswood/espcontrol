@@ -892,6 +892,7 @@ export function registerMediaCardTypes(
                         ? cardSensorPreviewHtml(b, helpers, "42", null)
                         : '<span class="sp-btn-icon mdi mdi-' + controlIcon + '"></span>',
                     labelHtml: cardBadgeLabelHtml(helpers, mediaLabelDisplayMode(b) === "status" ? "Playing" : label, MEDIA_CARD_METADATA.preview.badge),
+                    labelEditable: mediaLabelDisplayMode(b) === "label",
                 };
             }
             if (mode === "speaker_group") {
@@ -921,6 +922,7 @@ export function registerMediaCardTypes(
                         '<span class="' + positionClass + '">' +
                         '<span class="sp-sensor-value">0:00</span></span>',
                     labelHtml: cardBadgeLabelHtml(helpers, positionLabel, MEDIA_CARD_METADATA.preview.badge),
+                    labelEditable: b.precision !== "state",
                 };
             }
             if (mode === "cover_art") {
@@ -974,6 +976,7 @@ export function registerMediaCardTypes(
             return {
                 iconHtml: '<span class="sp-btn-icon mdi mdi-' + (b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : info.icon) + '"></span>',
                 labelHtml: cardBadgeLabelHtml(helpers, mode === "play_pause" && b.precision === "state" ? "Playing" : label, MEDIA_CARD_METADATA.preview.badge),
+                labelEditable: mode !== "play_pause" || b.precision !== "state",
             };
         },
     });

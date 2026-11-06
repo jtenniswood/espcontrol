@@ -1,5 +1,8 @@
 #pragma once
 
+#include "card_curve.h"
+#include "external_memory_allocator.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 #ifdef ESP_PLATFORM
@@ -17,6 +20,8 @@ struct GridConfig {
   int num_slots;
   int cols;
   bool width_compensation_vertical = false;
+  bool continuous_card_corners = false;
+  int card_corner_radius = -1;
   bool wrap_tall_labels;
   bool info_only = false;
   bool subpage_chevrons_enabled = true;
@@ -30,6 +35,7 @@ struct GridConfig {
   int color_correction_red_percent = COLOR_CORRECTION_RED_PERCENT;
   int color_correction_green_percent = COLOR_CORRECTION_GREEN_PERCENT;
   int color_correction_blue_percent = COLOR_CORRECTION_BLUE_PERCENT;
+  const lv_font_t *small_text_font = nullptr;
   const lv_font_t *icon_font;
   const lv_font_t *sp_sensor_font;
   const lv_font_t *sp_large_sensor_font = nullptr;
@@ -93,6 +99,7 @@ inline bool grid_phase2_complete() {
 
 inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   DisplayProfile profile;
+  profile.fonts.small_text = cfg.small_text_font;
   profile.fonts.icon = cfg.icon_font;
   profile.fonts.sensor = cfg.sp_sensor_font;
   profile.fonts.large_sensor = cfg.sp_large_sensor_font;
@@ -281,6 +288,8 @@ inline void apply_large_sensor_number_style(const BtnSlot &s, const lv_font_t *l
 }
 
 inline void apply_standard_sensor_number_style(const BtnSlot &s, const DisplayProfile &display) {
+  // A reused Wind slot must not dim the next card's ordinary sensor value.
+  if (s.sensor_lbl) lv_obj_set_style_text_opa(s.sensor_lbl, LV_OPA_COVER, LV_PART_MAIN);
   if (s.sensor_lbl && display_sensor_font(display)) {
     lv_obj_set_style_text_font(s.sensor_lbl, display_sensor_font(display), LV_PART_MAIN);
   }
@@ -615,6 +624,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   espcontrol::cards::alarm_driver_cleanup(s, p, context);
   espcontrol::cards::media_driver_cleanup(s, p, context);
   reset_card_slot_dynamic_children(s);
+  apply_grid_card_corners(s.btn, cfg.card_corner_radius, cfg.continuous_card_corners);
   theme_set_content_background(s.btn, palette.custom_background);
   apply_button_colors(s.btn, palette.has_on, palette.on_val,
     palette.has_off, palette.off_val);
@@ -986,6 +996,11 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
   if (card_background_configured_for_card(p)) {
     card_background_move_content_foreground(s);
   }
+  if (espcontrol::cards::weather_driver_matches(context) &&
+      (p.precision == "wind" || p.precision == "rainfall" || espcontrol::cards::weather_driver_shows_forecast(p))) {
+    espcontrol::cards::weather_driver_refresh_layout(s, p, context, display, row_span, col_span);
+    return;
+  }
   if (espcontrol::cards::navigation_driver_refresh_layout(
         s, p, context, cfg)) return;
 
@@ -1176,7 +1191,8 @@ inline void grid_phase1(
   bump_ha_subscription_generation();
   reset_calendar_cards();
   reset_timezone_cards();
-  weather_forecast_cancel_pending_requests();
+  weather_forecast_cancel_pending_requests(false);
+  weather_daily_reset_cards();
   reset_weather_forecast_cards();
   reset_climate_control_refs();
   screen_lock_reset_registry();
@@ -1912,6 +1928,14 @@ inline void grid_clear_navigation_targets(BtnSlot *slots, int slot_count) {
   }
 }
 
+// Button callbacks retain pointers to these strings across grid updates.
+// Allocate the full capacity once so addresses remain stable in PSRAM.
+inline std::string *subpage_toggle_entity_ids() {
+  static std::vector<std::string, EspControlExternalAllocator<std::string>>
+      ids(MAX_SUBPAGE_ITEMS);
+  return ids.data();
+}
+
 inline void grid_phase2(
     BtnSlot *slots, const GridConfig &cfg,
     esphome::text::Text **sp_configs,
@@ -1953,7 +1977,7 @@ inline void grid_phase2(
   static const char* icon_off_cp[MAX_GRID_SLOTS] = {};
   static const char* icon_on_cp[MAX_GRID_SLOTS] = {};
 
-  static std::string sp_entity_ids[MAX_SUBPAGE_ITEMS];
+  std::string *sp_entity_ids = subpage_toggle_entity_ids();
   static int sp_entity_alloc_idx = 0;
   static espcontrol::cards::NavigationDriverChildIndicators
     navigation_child_indicators;
@@ -1964,9 +1988,10 @@ inline void grid_phase2(
   memset(sensor_text_mode, 0, sizeof(sensor_text_mode));
   memset(has_icon_on, 0, sizeof(has_icon_on));
   bump_ha_subscription_generation();
-  weather_forecast_cancel_pending_requests();
+  weather_forecast_cancel_pending_requests(false);
   reset_climate_control_refs();
   clear_internal_relay_watchers();
+  local_sensor_registry().clear();
   grid_release_main_runtime_allocations(slots, NS);
   grid_clear_navigation_targets(slots, NS);
   navigation_clear_home_targets();
@@ -2105,7 +2130,8 @@ inline void grid_phase2(
       break;
     }
   }
-  lv_coord_t sp_radius = lv_obj_get_style_radius(ref_btn, LV_PART_MAIN);
+  lv_coord_t sp_radius = cfg.card_corner_radius >= 0
+    ? cfg.card_corner_radius : lv_obj_get_style_radius(ref_btn, LV_PART_MAIN);
   lv_coord_t sp_pad = lv_obj_get_style_pad_top(ref_btn, LV_PART_MAIN);
   const lv_font_t *sp_btn_fnt = lv_obj_get_style_text_font(ref_btn, LV_PART_MAIN);
   lv_color_t sp_txt_color = lv_obj_get_style_text_color(ref_btn, LV_PART_MAIN);
@@ -2165,7 +2191,7 @@ inline void grid_phase2(
     clock_bar_clear_responsive_grid_cards(sub_scr);
 
     lv_obj_t *back_btn = create_grid_card_button(
-      sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color);
+      sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color, cfg.continuous_card_corners);
     set_grid_card_cell(
       back_btn, sub_scr,
       sp_ord.back_pos % COLS, sp_ord.back_pos / COLS,
@@ -2232,7 +2258,7 @@ inline void grid_phase2(
       int rs = sp_ord.row_span[bn - 1] > 0 ? sp_ord.row_span[bn - 1] : 1;
 
       lv_obj_t *sb_btn = create_grid_card_button(
-        sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color);
+        sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color, cfg.continuous_card_corners);
       int cs = sp_ord.col_span[bn - 1] > 0 ? sp_ord.col_span[bn - 1] : 1;
       set_grid_card_cell(sb_btn, sub_scr, col, row, cs, rs, COLS, ROWS);
       BtnSlot sub_slot = create_dynamic_card_slot(

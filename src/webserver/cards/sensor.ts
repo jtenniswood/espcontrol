@@ -350,6 +350,7 @@ export function registerSensorCardTypes(
                 return {
                     iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
                     labelHtml: cardBadgeLabelHtml(helpers, "State", SENSOR_CARD_METADATA.preview.textBadge),
+                    labelEditable: false,
                 };
             }
             if (b.precision === "time") {
@@ -585,6 +586,7 @@ export function registerSensorCardTypes(
             return {
                 iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
                 labelHtml: cardBadgeLabelHtml(helpers, "State", SENSOR_CARD_METADATA.preview.numericBadge),
+                labelEditable: false,
             };
         }
         var label: any = b.label || b.entity || "Local Sensor";

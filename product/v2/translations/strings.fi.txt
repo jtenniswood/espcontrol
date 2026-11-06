@@ -81,6 +81,7 @@ lightning=Ukkonen
 lightning_and_rain=Ukkosta ja sadetta
 light=Valo
 loading=Ladataan
+loading_forecast=Loading forecast
 locate=Paikanna
 lock=Lukko
 lawn_mower=Ruohonleikkuri
@@ -265,3 +266,40 @@ then_visit_192_168_4_1_in_your_browser=Avaa sitten selaimessa 192.168.4.1
 
 screensaver=Näytönsäästäjä
 incorrect_pin=Väärä PIN
+
+forecast_unavailable=Forecast unavailable
+rain=Sade
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast
+weekday_sun=su
+weekday_mon=ma
+weekday_tues=ti
+weekday_weds=ke
+weekday_thurs=to
+weekday_fri=pe
+weekday_sat=la
+
+# Default card labels (label_ keys use key-based lookup only)
+label_connect=Yhdistä
+label_local_action=Paikallinen toiminto
+label_switch=Kytkin
+label_lighting=Valaistus
+label_garage=Autotalli
+label_sensor=Anturi
+label_camera=Kamera
+wind_north=North
+wind_north_east=North East
+wind_east=East
+wind_south_east=South East
+wind_south=South
+wind_south_west=South West
+wind_west=West
+wind_north_west=North West
+
+# Home Assistant connection repair
+ha_disconnected_title=Home Assistant disconnected
+ha_disconnected_instructions=Check this device in Home Assistant\nfor an encryption key or connection alert
+ha_disconnected_path=Settings > Devices & Services\n> ESPHome

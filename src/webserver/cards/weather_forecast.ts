@@ -39,6 +39,7 @@ export function registerWeatherForecastCardTypes(
             return {
                 iconHtml: cardSensorPreviewHtml(b, helpers, "18/10", temperatureUnitSymbol(), "sp-forecast-preview", "sp-forecast-value"),
                 labelHtml: cardBadgeLabelHtml(helpers, "Temperatures Tomorrow", WEATHER_FORECAST_CARD_METADATA.preview.forecastBadge),
+                labelEditable: false,
             };
         },
     });

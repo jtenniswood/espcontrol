@@ -125,8 +125,7 @@ static int lv_test_hor_res = 480;
 static int lv_test_ver_res = 480;
 static int lv_obj_move_background_calls = 0;
 static lv_obj_t *lv_active_screen = nullptr;
-inline const char *espcontrol_i18n(const char *text) { return text ? text : ""; }
-inline std::string espcontrol_i18n(const std::string &text) { return text; }
+#include "i18n_generated.h"
 constexpr int LV_PART_MAIN = 0;
 constexpr int LV_STATE_CHECKED = 1;
 constexpr int LV_STATE_PRESSED = 2;
@@ -150,6 +149,7 @@ constexpr int LV_OPA_50 = 128;
 constexpr int LV_OBJ_FLAG_CLICKABLE = 1;
 constexpr int LV_OBJ_FLAG_HIDDEN = 2;
 constexpr int LV_OBJ_FLAG_USER_1 = 4;
+constexpr int LV_OBJ_FLAG_USER_2 = 8;
 constexpr int LV_GRAD_DIR_HOR = 1;
 inline int lv_color_hex(uint32_t value) { return static_cast<int>(value); }
 inline int lv_pct(int value) { return value; }
@@ -530,8 +530,8 @@ int main() {
   auto weather_today = parse_cfg("weather.home;;;;;;weather;today;large_numbers");
   assert(weather_today.type == "weather");
   assert(weather_today.precision == "today");
-  assert(weather_today.options == "large_numbers");
-  assert(card_large_numbers_enabled(weather_today));
+  assert(weather_today.options.empty()); // Forecast layouts discard the obsolete size option.
+  assert(!card_large_numbers_enabled(weather_today));
   auto weather_invalid_mode = parse_cfg("weather.home;;;;;;weather;bad;large_numbers");
   assert(weather_invalid_mode.type == "weather");
   assert(weather_invalid_mode.precision == "");
@@ -1076,6 +1076,8 @@ def main() -> int:
     with TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         shutil.copy2(PARSER_HEADER, tmp_path / "button_grid_config_parser.h")
+        shutil.copy2(PARSER_HEADER.parent / "config_field_decode.h", tmp_path / "config_field_decode.h")
+        shutil.copy2(PARSER_HEADER.with_name("i18n_generated.h"), tmp_path / "i18n_generated.h")
         shutil.copy2(DISPLAY_COLOR_HEADER, tmp_path / "display_color.h")
         shutil.copy2(MEDIA_CONFIG_HEADER, tmp_path / "button_grid_media_config.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "temperature_unit.h", tmp_path / "temperature_unit.h")

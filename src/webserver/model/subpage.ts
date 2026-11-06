@@ -320,7 +320,9 @@ export function splitSubpageConfigChunks(
     chunks.push(full.substring(charPos, end));
     charPos = end;
   }
-  return chunks;
+  // UTF-8 boundaries can leave unused bytes in each chunk. A total byte
+  // count alone does not guarantee that the complete value fitted.
+  return charPos === full.length ? chunks : null;
 }
 
 export function buildSubpageGrid(

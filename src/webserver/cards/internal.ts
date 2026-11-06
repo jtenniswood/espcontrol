@@ -39,13 +39,23 @@ export function registerInternalCardTypes(
         b.entity = relays[0].key;
     }
     function renderInternalRelayField(this: any, panel?: any, b?: any, helpers?: any) {
-        ensureInternalRelaySelection(b);
         var relays: any = internalRelayOptions();
-        var relayField: any = helpers.selectField("Internal Relay", helpers.idPrefix + "internal-relay", relays.length ? relays.map(function (this: any, relay?: any) {
+        var options: any = relays.map(function (this: any, relay?: any) {
             return { value: relay.key, label: relay.label };
-        }) : [["", "No relays"]], relays.length ? b.entity : "");
+        });
+        if (!relays.some(function (relay: any) { return relay.key === b.entity; })) {
+            options.unshift({
+                value: b.entity || "",
+                label: b.entity ? "Unavailable relay (" + b.entity + ")" : (relays.length ? "Choose a relay" : "No relays"),
+            });
+        }
+        var relayField: any = helpers.selectField("Internal Relay", helpers.idPrefix + "internal-relay", options, b.entity || "");
         var relaySelect: any = relayField.select;
         relaySelect.disabled = !relays.length;
+        helpers.requireField(relaySelect, "Choose an available internal relay before saving.", undefined,
+            function (value: string) {
+                return internalRelayOptions().some(function (relay: any) { return relay.key === value; });
+            });
         relaySelect.addEventListener("change", function (this: any) {
             b.entity = this.value;
             helpers.saveField("entity", b.entity);
@@ -99,7 +109,6 @@ export function registerInternalCardTypes(
             panel.appendChild(cardSettingsDisclosure.panel);
         },
         renderSettings: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
-            ensureInternalRelaySelection(b);
             var controlsButton: any = panel.querySelector("#" + helpers.idPrefix + "internal-controls");
             var controls: any = controlsButton && controlsButton.nextElementSibling || panel;
             var mode: any = internalRelayMode(b);

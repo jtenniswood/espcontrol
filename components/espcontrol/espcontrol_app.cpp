@@ -29,6 +29,7 @@
 #include "panel_config_write_endpoint.h"
 #include "panel_config_http_context.h"
 #include "panel_identity_endpoint.h"
+#include "panel_backup_endpoint.h"
 #include "screensaver_pin_endpoint.h"
 #include "button_grid.h"
 
@@ -39,6 +40,7 @@ extern "C" void espcontrol_register_web_server_handlers(
   espcontrol::reset::register_handlers(*server);
   espcontrol::card_asset_http::register_endpoints(*server);
   espcontrol::register_panel_identity_endpoint(*server);
+  espcontrol::backup::register_panel_backup_endpoint(*server);
   espcontrol::register_screensaver_pin_endpoint(*server);
   register_local_sensor_endpoint(*server);
   register_local_action_endpoint(*server);
@@ -154,6 +156,7 @@ bool EspControlApp::create_native_configuration_runtime() {
                configuration::PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS>
         legacy_subpages{};
     for (size_t subpage = 0; subpage < sources.subpages.size(); ++subpage) {
+      if (sources.subpages[subpage] == nullptr) continue;
       legacy_sources.subpages[subpage].bind(sources.subpages[subpage]);
       legacy_subpages[subpage] = &legacy_sources.subpages[subpage];
     }
@@ -452,9 +455,15 @@ void EspControlApp::loop() {
   register_panel_config_endpoints();
 }
 
+void EspControlApp::on_safe_shutdown() {
+  // ESPHome runs all safe-shutdown hooks before any on_shutdown hook. mDNS
+  // shuts down before this AFTER_WIFI component, freeing outstanding query
+  // handles, so release our discovery query while the service is still alive.
+  home_assistant_endpoint_.shutdown();
+}
+
 void EspControlApp::on_shutdown() {
   esphome::artwork_image::TransferObserver::instance().set({}, {});
-  home_assistant_endpoint_.shutdown();
   cards::set_card_runtime_registry_service(nullptr);
   card_assets_.stop();
   core_.stop();

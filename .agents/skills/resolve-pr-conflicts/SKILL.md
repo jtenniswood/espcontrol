@@ -121,7 +121,6 @@ repository include:
 npm run check:config
 python3 scripts/build.py --check
 python3 scripts/generate_device_slots.py --check
-python3 scripts/check_icon_groups.py
 python3 scripts/check_timezones.py
 npm run docs:build
 ```

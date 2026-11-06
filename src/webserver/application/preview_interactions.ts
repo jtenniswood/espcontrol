@@ -76,6 +76,70 @@ export function createPreviewInteractionsFeature(
         saveSubpageConfig,
         subpageFirstFreeSlot,
     } = dependencies.codec;
+    function editCardTitle(title: HTMLElement) {
+        if (title.querySelector("input")) return;
+        const card = title.closest<HTMLElement>("[data-slot]");
+        const slot = Number(card?.dataset.slot);
+        const c = ctx();
+        const homeSlot = state.editingSubpage;
+        const button = c.buttons[slot - 1];
+        const back = slot === -2 && c.isSub ? getSubpage(homeSlot) : null;
+        if (!button && !back) return;
+        const input = title.ownerDocument.createElement("input");
+        input.type = "text";
+        input.className = "sp-card-name-input";
+        input.setAttribute("aria-label", "Card name");
+        input.dataset.homeSlot = String(homeSlot || "");
+        input.value = back ? back.backLabel || "Back" : button.label || "";
+        input.placeholder = title.textContent || "Card name";
+        let finished = false;
+        function finish(save: boolean) {
+            if (finished) return;
+            finished = true;
+            const current = ctx();
+            if (save && !isConfigLocked() && current.isSub === c.isSub &&
+                state.editingSubpage === homeSlot && current.grid.includes(slot)) {
+                const label = input.value.trim();
+                if (back) {
+                    getSubpage(homeSlot).backLabel = label || "Back";
+                    saveSubpageConfig(homeSlot);
+                } else {
+                    const live = current.buttons[slot - 1];
+                    if (live && live.label !== label) {
+                        live.label = label;
+                        const draft = state.settingsDraft;
+                        if (draft && draft.slot === slot && draft.isSub === c.isSub &&
+                            (!c.isSub || draft.homeSlot === homeSlot)) draft.button.label = label;
+                        if (c.isSub) saveSubpageConfig(homeSlot);
+                        else configPersistence.saveButtonConfig(slot);
+                    }
+                }
+                renderButtonSettings();
+            }
+            // Remove before rendering so the preview does not restore this editor.
+            input.remove();
+            renderPreview();
+        }
+        input.addEventListener("keydown", (event) => {
+            event.stopPropagation();
+            if (event.isComposing) return;
+            if (event.key === "Enter" || event.key === "Escape") {
+                event.preventDefault();
+                finish(event.key === "Enter");
+                (els.previewMain as HTMLElement).querySelector<HTMLElement>('[data-slot="' + slot + '"] .sp-editable-title')?.focus();
+            }
+        });
+        input.addEventListener("blur", () => {
+            // A preview refresh temporarily detaches and then refocuses the input.
+            window.setTimeout(() => {
+                if (input.isConnected && input.ownerDocument.activeElement !== input) finish(false);
+            }, 0);
+        });
+        if (card) card.draggable = false;
+        title.replaceChildren(input);
+        input.focus();
+        input.select();
+    }
     // ── Preview event delegation & drag ────────────────────────────────────
     function clearPlaceholder(this: any) {
         if (runtime.previewPlaceholder) {
@@ -147,11 +211,27 @@ export function createPreviewInteractionsFeature(
             if (e.shiftKey || e.ctrlKey || e.metaKey)
                 e.preventDefault();
         });
+        container.addEventListener("keydown", (event: KeyboardEvent) => {
+            const title = (event.target as HTMLElement).closest<HTMLElement>(".sp-editable-title");
+            if (title && event.target === title && !isConfigLocked() && (event.key === "Enter" || event.key === " ")) {
+                event.preventDefault();
+                event.stopPropagation();
+                editCardTitle(title);
+            }
+        });
         // Click delegation
         container.addEventListener("click", function (this: any, e?: any) {
             if (isConfigLocked()) {
                 e.preventDefault();
                 e.stopPropagation();
+                return;
+            }
+            if (e.target.closest(".sp-card-name-input")) return;
+            var title: HTMLElement | null = e.target.closest(".sp-editable-title");
+            if (title && !e.shiftKey && !e.ctrlKey && !e.metaKey && !runtime.didDrag) {
+                e.preventDefault();
+                e.stopPropagation();
+                editCardTitle(title);
                 return;
             }
             if (e.target.closest(".sp-subpage-badge")) {
@@ -200,6 +280,7 @@ export function createPreviewInteractionsFeature(
                 e.preventDefault();
                 return;
             }
+            if (e.target.closest(".sp-card-name-input")) return;
             var target: any = e.target.closest("[data-pos]");
             if (!target)
                 return;
@@ -219,6 +300,10 @@ export function createPreviewInteractionsFeature(
         });
         // Drag delegation
         container.addEventListener("dragstart", function (this: any, e?: any) {
+            if (e.target.closest(".sp-resize-handle,.sp-resizing,.sp-card-name-input")) {
+                e.preventDefault();
+                return;
+            }
             if (isConfigLocked()) {
                 e.preventDefault();
                 return;

@@ -81,6 +81,7 @@ lightning=Fulger
 lightning_and_rain=Fulger și ploaie
 light=Lumină
 loading=Se încarcă
+loading_forecast=Loading forecast
 locate=Localizare
 lock=Încuietoare
 lawn_mower=Mașină de tuns iarba
@@ -265,3 +266,40 @@ then_visit_192_168_4_1_in_your_browser=Apoi deschideți 192.168.4.1 în browser
 
 screensaver=Economizor de ecran
 incorrect_pin=PIN incorect
+
+forecast_unavailable=Forecast unavailable
+rain=Ploaie
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast
+weekday_sun=dum.
+weekday_mon=lun.
+weekday_tues=mar.
+weekday_weds=mie.
+weekday_thurs=joi
+weekday_fri=vin.
+weekday_sat=sâm.
+
+# Default card labels (label_ keys use key-based lookup only)
+label_connect=Conectare
+label_local_action=Acțiune locală
+label_switch=Întrerupător
+label_lighting=Iluminat
+label_garage=Garaj
+label_sensor=Senzor
+label_camera=Cameră
+wind_north=North
+wind_north_east=North East
+wind_east=East
+wind_south_east=South East
+wind_south=South
+wind_south_west=South West
+wind_west=West
+wind_north_west=North West
+
+# Home Assistant connection repair
+ha_disconnected_title=Home Assistant disconnected
+ha_disconnected_instructions=Check this device in Home Assistant\nfor an encryption key or connection alert
+ha_disconnected_path=Settings > Devices & Services\n> ESPHome

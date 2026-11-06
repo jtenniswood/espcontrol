@@ -53,6 +53,31 @@ export function runPanelConfigTests(fixture: PanelConfigFixture): void {
   equal(decodedProtoSettings.settings.__proto__, "preserved", "reserved setting values round-trip");
   expectPanelConfigError(() => encodePanelConfig({ ...document, deviceProfile: "x".repeat(65) }), "oversized device profiles must be rejected");
 
+  for (const collection of ["buttons", "subpages"] as const) {
+    const boundaryDocument: PanelConfigDocument = {
+      deviceProfile: "panel-a", buttons: {}, subpages: {}, settings: {},
+      [collection]: { 1: "x".repeat(4095) },
+    };
+    const boundary = encodePanelConfig(boundaryDocument);
+    equal(decodePanelConfig(boundary)[collection][1]?.length, 4095,
+      `${collection} accept the 4 KB record boundary`);
+    expectPanelConfigError(
+      () => encodePanelConfig({ ...boundaryDocument, [collection]: { 1: "x".repeat(4096) } }),
+      `${collection} reject values exceeding the 4 KB record budget`,
+    );
+    // Simulate a larger document from an older experimental build. Keep its
+    // lengths valid so rejection specifically checks the record-size limit.
+    const oversized = new Uint8Array(boundary.length + 1);
+    oversized.set(boundary);
+    oversized[boundary.length] = 0x78;
+    const view = new DataView(oversized.buffer);
+    const slotRecord = 16 + 3 + new TextEncoder().encode(boundaryDocument.deviceProfile).length;
+    view.setUint16(slotRecord + 1, 4097, true);
+    view.setUint32(8, oversized.length - 16, true);
+    expectPanelConfigError(() => decodePanelConfig(oversized),
+      `${collection} reject oversized incoming records too`);
+  }
+
   const backup = createPanelConfigBackupPayload(encoded);
   equal(backup.document_version, 1, "backup records the native document version");
   equal(backup.device_profile, document.deviceProfile, "backup records the native device profile");

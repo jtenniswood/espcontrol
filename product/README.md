@@ -70,6 +70,16 @@ generated output.
 byte-for-byte equivalent to the generated card contract and device catalogue,
 and rejects an incomplete card or device source set.
 
+## Firmware translations
+
+`v2/translations/strings.en.txt` defines firmware display strings; every language
+file must contain the same keys. Keys starting with `label_` are available only
+through `espcontrol_i18n_key(...)`: they are excluded from English-text lookup
+so a matching Home Assistant name or option is not translated as a card label.
+The firmware recognizes editor-generated English defaults for Wi-Fi sharing,
+preset subpage categories and alarm actions in their corresponding card context;
+other custom labels remain unchanged.
+
 ## Generated Outputs
 
 Do not hand-edit generated sections or files. Rebuild them with

@@ -30,12 +30,14 @@ void lv_label_set_display_text(lv_obj_t *label, const char *text) { label->text 
 void lv_timer_pause(lv_timer_t *) {}
 void lv_timer_reset(lv_timer_t *) {}
 void lv_timer_resume(lv_timer_t *) {}
-constexpr int LV_STATE_CHECKED = 1;
 void set_card_checked_state(lv_obj_t *button, bool checked) { button->checked = checked; }
-std::string espcontrol_i18n(const std::string &text) { return text; }
-std::string fan_option_label(const std::string &text) { return text; }
+#include "esphome/core/string_ref.h"
+#include "i18n_generated.h"
+void lv_label_set_text(lv_obj_t *, const char *) {}
+#include "button_grid_config_parser.h"
 bool fan_preset_active(const std::string &text) { return !text.empty() && text != "none"; }
 '''
+source += "\n" + definition("button_grid_fan.h", "fan_option_label")
 access = (firmware / "button_grid_access_cards.h").read_text()
 source += re.search(r"^struct TransientStatusLabel \{.*?^\};", access, re.M | re.S)[0]
 for name in ("transient_status_label_set_steady", "transient_status_label_show_if_changed"):
@@ -108,6 +110,17 @@ int main() {
   fan_control_refresh_card(&fan);
   assert(label.text == "Fan");
   fan_control_refresh_card(nullptr);
+
+  // Static label entries must not change arbitrary HA preset names.
+  set_espcontrol_language("fi");
+  assert(std::string(espcontrol_i18n_key("label_garage")) == "Autotalli");
+  assert(fan_option_label("garage") == "Garage");
+  assert(fan_option_label("lighting") == "Lighting");
+  assert(fan_option_label("connect") == "Connect");
+  assert(fan_option_label("camera") == "Camera");
+  assert(fan_option_label("sensor") == "Sensor");
+  assert(fan_option_label("switch") == "Switch");
+  assert(fan_option_label("local_action") == "Local Action");
 }
 '''
 with tempfile.TemporaryDirectory(prefix="fan-control-label-") as temp:
@@ -115,6 +128,7 @@ with tempfile.TemporaryDirectory(prefix="fan-control-label-") as temp:
     binary = Path(temp) / "test"
     cpp.write_text(source)
     subprocess.run([sys.argv[1] if len(sys.argv) > 1 else "c++", "-std=c++17",
-                    "-Wall", "-Wextra", "-Werror", str(cpp), "-o", str(binary)], check=True)
+                    "-Wall", "-Wextra", "-Werror", "-I" + str(firmware),
+                    "-I" + str(root / "tests/firmware/stubs"), str(cpp), "-o", str(binary)], check=True)
     subprocess.run([str(binary)], check=True)
 print("Fan All Controls labels, title fallbacks and power visuals passed.")

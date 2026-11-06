@@ -202,6 +202,9 @@ int main() {
   assert(media_group_mean_volume(above_max, &mean) && mean == 50);
   assert((media_group_delta_volumes(above_max, 49, 50) == std::vector<int>{79, 19}));
   assert((media_group_delta_volumes(above_max, 40, 50) == std::vector<int>{70, 10}));
+  above_max[1].volume_pct = 80;
+  assert((media_group_delta_volumes(above_max, 79, 50) == std::vector<int>{79, 79}));
+  assert((media_group_delta_volumes(above_max, 81, 50) == std::vector<int>{80, 80}));
   volumes[1].volume_known = false;
   assert(!media_group_mean_volume(volumes, &mean));
   assert(media_group_delta_volumes(volumes, 35, 100).empty());
@@ -279,8 +282,8 @@ def main() -> int:
     )[1].split("\n}\n\ninline void media_control_create_speakers_tab_content", 1)[0]
     if "row->volume_known = item.volume_known;" not in refresh_speakers:
         raise SystemExit("Discovery updates must clear stale unknown speaker volumes")
-    if media_header.count("media_control_store_group_volume(") < 4:
-        raise SystemExit("Primary and discovered speaker volumes must persist in the group cache")
+    if "media_control_set_group_volume_target(" not in media_header:
+        raise SystemExit("Local speaker volume targets must persist in the group cache")
     for reset in (
         "ctx->speaker_helper_members.clear();",
         "ctx->speaker_discovery.clear();",

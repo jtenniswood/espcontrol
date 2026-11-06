@@ -7,6 +7,8 @@ import json
 import re
 from pathlib import Path
 
+import yaml
+
 import device_matrix
 import generate_device_slots
 from device_profiles import (
@@ -256,37 +258,52 @@ def test_s3_low_heap_policy() -> None:
     )
 
 
+class _EsphomeLoader(yaml.SafeLoader):
+    """Reads ESPHome YAML, keeping the value of tags such as !include or !lambda."""
+
+
+def _construct_tagged(loader: yaml.SafeLoader, _tag: str, node: yaml.Node):
+    if isinstance(node, yaml.ScalarNode):
+        return loader.construct_scalar(node)
+    if isinstance(node, yaml.SequenceNode):
+        return loader.construct_sequence(node, deep=True)
+    return loader.construct_mapping(node, deep=True)
+
+
+_EsphomeLoader.add_multi_constructor("!", _construct_tagged)
+
+
 def test_native_panel_config_bindings(slug: str, profile: dict, device: str) -> None:
-    espcontrol = re.search(r"(?ms)^espcontrol:\n(?P<body>(?:^  .*\n|^\s*$\n)*)", device)
-    assert espcontrol, f"{slug}: device.yaml is missing its espcontrol block"
-    body = espcontrol.group("body")
-    assert "  panel_config:\n" in body, (
+    espcontrol = (yaml.load(device, _EsphomeLoader) or {}).get("espcontrol")
+    assert isinstance(espcontrol, dict), f"{slug}: device.yaml is missing its espcontrol block"
+    panel_config = espcontrol.get("panel_config")
+    assert isinstance(panel_config, dict), (
         f"{slug}: device.yaml must enable native panel configuration so "
         "cards that contain device-owned settings remain available"
     )
 
     slots = int(profile["slots"])
+    buttons = panel_config.get("buttons")
+    assert isinstance(buttons, list) and len(buttons) == slots, (
+        f"{slug}: native panel config must provide exactly {slots} button bindings"
+    )
     bindings = [
-        int(slot)
-        for slot in re.findall(r"(?m)^      - config: button_(\d+)_config$", body)
+        button.get("config") if isinstance(button, dict) else None
+        for button in buttons
     ]
-    assert bindings == list(range(1, slots + 1)), (
+    assert bindings == [f"button_{slot}_config" for slot in range(1, slots + 1)], (
         f"{slug}: native panel config bindings must cover slots 1-{slots} exactly; "
         f"found {bindings}"
     )
 
-    chunk_rows = re.findall(r"(?m)^        subpage_chunks: \[([^\n]+)\]$", body)
-    assert len(chunk_rows) == slots, (
-        f"{slug}: native panel config must provide subpage chunks for all {slots} slots"
-    )
     chunk_count = 4 if "button_template_4chunk.yaml" in (
         ROOT / "devices" / slug / "packages.yaml"
     ).read_text(encoding="utf-8") else 8
-    for slot, row in enumerate(chunk_rows, start=1):
+    for slot, button in enumerate(buttons, start=1):
         expected = [f"subpage_{slot}_config", f"subpage_{slot}_config_ext"] + [
             f"subpage_{slot}_config_ext_{suffix}" for suffix in range(2, chunk_count)
         ]
-        actual = [value.strip() for value in row.split(",")]
+        actual = button.get("subpage_chunks")
         assert actual == expected, (
             f"{slug}: slot {slot} native subpage bindings differ: {actual} != {expected}"
         )
@@ -693,17 +710,22 @@ def test_web_screen_aspect_matches_public_resolution() -> None:
             )
 
 
-def test_web_grid_spacing_matches_across_screen_sizes() -> None:
+def test_web_card_geometry_matches_firmware() -> None:
     profiles = load_device_profiles()
-    expected = None
     for slug, profile in profiles.items():
-        grid = profile["web"]["grid"]
-        rendered_gap = float(grid["gap"]) * web_screen_width_percent(profile) / 100.0
-        if expected is None:
-            expected = rendered_gap
-        assert abs(rendered_gap - expected) <= 0.01, (
-            f"{slug}: web preview grid spacing must match the other generated screen layouts"
-        )
+        substitutions = profile["firmware"]["package"]["substitutions"]
+        width = float(substitutions["screen_width"].strip('"'))
+        gap = float(substitutions["main_page_card_gap"].strip('"'))
+        radius = float(substitutions["radius"].removesuffix("px"))
+        for field, web_value, expected in (
+            ("grid.gap", profile["web"]["grid"]["gap"], gap),
+            ("btn.radius", profile["web"]["btn"]["radius"], radius),
+            ("emptyCell.radius", profile["web"]["emptyCell"]["radius"], radius),
+        ):
+            preview_pixels = float(web_value) * width / 100.0
+            assert abs(preview_pixels - expected) <= 0.0001, (
+                f"{slug}: web.{field} must scale to the firmware's {expected}px"
+            )
 
 
 def test_setup_icon_glyphs() -> None:
@@ -761,8 +783,8 @@ def test_weather_card_visual_matches_preview() -> None:
     assert '"HA Actions"' not in weather_forecast, (
         "forecast weather errors should keep the configured/default label like the web preview"
     )
-    assert 'lv_label_set_display_text(slot.unit_lbl, display_temperature_unit_symbol())' in weather_driver, (
-        "forecast weather placeholder should show the configured unit like the web preview"
+    assert 'weather_daily_setup(slot, config, display)' in weather_driver, (
+        "all forecast modes should use the shared forecast layout"
     )
     assert 'lv_label_set_display_text(ref.unit_lbl, normalized_unit.c_str())' in weather_forecast, (
         "forecast weather unavailable state should keep showing the configured unit"
@@ -815,7 +837,7 @@ def test_weather_card_visual_matches_preview() -> None:
     assert "return sentence_cap_text(trim_display_unit(state));" in weather_forecast, (
         "current weather device cards should retain provider-specific condition text in their labels"
     )
-    assert 'if (b.type == "weather" && !card_runtime_weather_forecast_precision(b.precision))' in subpages, (
+    assert 'if (b.type == "weather" && b.precision != "wind" && b.precision != "rainfall" && !card_runtime_weather_forecast_precision(b.precision))' in subpages, (
         "subpage weather cards must normalize invalid weather modes like main grid cards"
     )
     for alias, state in (
@@ -988,7 +1010,7 @@ def test_current_weather_state_keeps_normal_card_visuals() -> None:
     assert "bump_ha_subscription_generation();" in grid, (
         "dashboard reconfiguration must invalidate stale current weather subscriptions"
     )
-    assert "weather_forecast_cancel_pending_requests();" in grid, (
+    assert "weather_forecast_cancel_pending_requests(false);" in grid, (
         "dashboard reconfiguration must cancel stale weather forecast action responses"
     )
     assert grid.count("if (bind_basic_sensor_card(") >= 2, (
@@ -1040,7 +1062,7 @@ def main() -> int:
     test_seven_inch_width_compensation_rotates_with_screen()
     test_subpage_config_changes_schedule_live_refresh()
     test_web_screen_aspect_matches_public_resolution()
-    test_web_grid_spacing_matches_across_screen_sizes()
+    test_web_card_geometry_matches_firmware()
     test_setup_icon_glyphs()
     test_weather_card_visual_matches_preview()
     test_s3_exposes_weather_forecasts(profiles)

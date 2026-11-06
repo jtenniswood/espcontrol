@@ -81,6 +81,7 @@ lightning=Villámlás
 lightning_and_rain=Villámlás és eső
 light=Fény
 loading=Betöltés
+loading_forecast=Loading forecast
 locate=Keresés
 lock=Zár
 lawn_mower=Fűnyíró
@@ -265,3 +266,40 @@ then_visit_192_168_4_1_in_your_browser=Ezután nyissa meg a 192.168.4.1 címet a
 
 screensaver=Képernyőkímélő
 incorrect_pin=Helytelen PIN
+
+forecast_unavailable=Forecast unavailable
+rain=Eső
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast
+weekday_sun=vas.
+weekday_mon=hétf.
+weekday_tues=kedd
+weekday_weds=szer.
+weekday_thurs=csüt.
+weekday_fri=pén.
+weekday_sat=szomb.
+
+# Default card labels (label_ keys use key-based lookup only)
+label_connect=Csatlakozás
+label_local_action=Helyi művelet
+label_switch=Kapcsoló
+label_lighting=Világítás
+label_garage=Garázs
+label_sensor=Érzékelő
+label_camera=Kamera
+wind_north=North
+wind_north_east=North East
+wind_east=East
+wind_south_east=South East
+wind_south=South
+wind_south_west=South West
+wind_west=West
+wind_north_west=North West
+
+# Home Assistant connection repair
+ha_disconnected_title=Home Assistant disconnected
+ha_disconnected_instructions=Check this device in Home Assistant\nfor an encryption key or connection alert
+ha_disconnected_path=Settings > Devices & Services\n> ESPHome

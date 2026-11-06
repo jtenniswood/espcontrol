@@ -26,6 +26,7 @@ import {
     normalizeScheduleWakeTimeout,
     normalizeScreensaverAction,
     normalizeScreensaverCameraImageMode,
+    normalizeScreensaverCameraDimming,
     normalizeScreensaverDimmedBrightness,
     normalizeTemperatureUnit,
     normalizeTimeOfDay,
@@ -34,6 +35,8 @@ import {
     parseThemeSunOffset,
 } from "../model/settings";
 import { syncThemeSettingsUi } from "./theme_settings_ui";
+import { syncCardCurveUi } from "./card_curve_ui";
+import { normalizeCardCurve } from "../model/settings";
 import type { UiRuntimeState } from "./state";
 import type { CoreFeature } from "./core";
 import { languageOptionsWithFallback, syncLanguageSelect } from "./language_state";
@@ -401,6 +404,13 @@ export function createAppStateEventHandlersFeature(
                 state.screensaverMetadataEntity = val;
                 syncInput(els.setScreensaverMetadata, val);
             },
+            "number-screen_saver__camera_dimming": function (this: any, val?: any, d?: any) {
+                const value = d?.value ?? val;
+                if (!Number.isFinite(parseFloat(String(value)))) return;
+                state.screensaverCameraDimmingSupported = true;
+                state.screensaverCameraDimming = normalizeScreensaverCameraDimming(value);
+                syncClockScreensaverControls();
+            },
             "select-screen_saver__camera_image_mode": function (this: any, val?: any, d?: any) {
                 state.screensaverCameraImageMode = normalizeScreensaverCameraImageMode(d.value || val);
                 syncClockScreensaverControls();
@@ -426,6 +436,13 @@ export function createAppStateEventHandlersFeature(
             "select-screen__theme_mode": function (this: any, val?: any, d?: any) {
                 state.themeMode = normalizeThemeMode(d.value || val);
                 syncThemeSettingsUi(state, runtime);
+                renderPreview();
+            },
+            "select-screen__card_curve": function (val?: any, d?: any) {
+                state.cardCurve = normalizeCardCurve(d.value || val);
+                state.cardCurveSupported = true;
+                syncCardCurveUi(state, runtime);
+                syncPreviewOrientation(true);
                 renderPreview();
             },
             "select-screen__theme_auto_method": function (this: any, val?: any, d?: any) {

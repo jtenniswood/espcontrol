@@ -78,8 +78,8 @@ inline bool status_entity_driver_setup_visual(
   if (config.sensor.empty()) return true;
   lv_obj_clear_flag(slot.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN);
-  lv_label_set_display_text(
-    slot.icon_lbl, status_entity_driver_inactive_icon(config, context));
+  lv_label_set_display_text(slot.icon_lbl, find_icon("Minus"));
+  set_card_disabled_state(slot.btn, true);
   const std::string label = config.label.empty()
     ? status_entity_driver_default_label(config, context)
     : config.label;
@@ -121,6 +121,8 @@ inline bool status_entity_driver_bind_data(
   const char *active_icon = status_entity_driver_active_icon(config, context);
   const bool active_color =
     status_entity_driver_active_color_enabled(config, context);
+  lv_label_set_display_text(slot.icon_lbl, find_icon("Minus"));
+  set_card_disabled_state(slot.btn, true);
   ha_subscribe_state(
     config.sensor,
     std::function<void(esphome::StringRef)>(
@@ -130,7 +132,9 @@ inline bool status_entity_driver_bind_data(
         const bool unavailable = ha_state_unavailable_ref(state);
         const bool active = !unavailable &&
           status_entity_driver_state_active(type, state);
-        lv_label_set_display_text(icon, active ? active_icon : inactive_icon);
+        set_card_disabled_state(btn, unavailable);
+        lv_label_set_display_text(icon, unavailable
+          ? find_icon("Minus") : (active ? active_icon : inactive_icon));
         if (btn && active_color) {
           const uint32_t inactive_color = custom_background ? sensor_color : current_grid_sensor_surface_color();
           theme_set_content_background(btn, active || custom_background);

@@ -32,7 +32,7 @@ The **Card Image** controls and **Settings > System > Backup** show an informati
 Backups preserve cards, subpages and display settings. When image storage is available, a full backup also includes uploaded images. If storage is missing, configuration-only export is expected. Keep the original image files if you will need to upload them later.
 
 ::: warning Keep connection details ready
-A USB reinstall can erase saved settings, Wi-Fi credentials and the Home Assistant encryption key. Backups do not restore the Wi-Fi login or encryption key. Have your network details ready and be prepared to pair the display with Home Assistant again. See [Backup and Restore](/features/backup) for what a backup includes.
+A USB reinstall can erase saved settings, Wi-Fi credentials and the Home Assistant encryption key. Backups do not restore the Wi-Fi login or encryption key. Have your network details ready and be prepared to pair the display with Home Assistant again. See [Backup and Restore](/settings/system#backup) for what a backup includes.
 :::
 
 ## 2. Reinstall Over USB

@@ -81,6 +81,7 @@ lightning=Blesky
 lightning_and_rain=Blesky a dážď
 light=Svetlo
 loading=Načítanie
+loading_forecast=Loading forecast
 locate=Nájsť
 lock=Zamknúť
 lawn_mower=Kosačka
@@ -265,3 +266,40 @@ then_visit_192_168_4_1_in_your_browser=Potom v prehliadači otvorte 192.168.4.1
 
 screensaver=Šetrič obrazovky
 incorrect_pin=Nesprávny PIN
+
+forecast_unavailable=Forecast unavailable
+rain=Dážď
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast
+weekday_sun=ne
+weekday_mon=po
+weekday_tues=ut
+weekday_weds=st
+weekday_thurs=št
+weekday_fri=pi
+weekday_sat=so
+
+# Default card labels (label_ keys use key-based lookup only)
+label_connect=Pripojiť
+label_local_action=Miestna akcia
+label_switch=Spínač
+label_lighting=Osvetlenie
+label_garage=Garáž
+label_sensor=Senzor
+label_camera=Kamera
+wind_north=North
+wind_north_east=North East
+wind_east=East
+wind_south_east=South East
+wind_south=South
+wind_south_west=South West
+wind_west=West
+wind_north_west=North West
+
+# Home Assistant connection repair
+ha_disconnected_title=Home Assistant disconnected
+ha_disconnected_instructions=Check this device in Home Assistant\nfor an encryption key or connection alert
+ha_disconnected_path=Settings > Devices & Services\n> ESPHome

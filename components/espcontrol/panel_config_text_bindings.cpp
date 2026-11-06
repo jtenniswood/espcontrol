@@ -10,17 +10,14 @@ namespace {
 constexpr char BUTTON_ORDER_KEY[] = "button_order";
 constexpr char BUTTON_ON_COLOR_KEY[] = "button_on_color";
 
-bool append_text(std::array<uint8_t, PANEL_CONFIG_MAX_RECORD_BODY_BYTES - 1>
-                     *output,
-                 size_t *output_size, const std::string &value) {
-  if (output == nullptr || output_size == nullptr ||
-      value.size() > output->size() - *output_size)
-    return false;
-  if (!value.empty()) {
-    std::memcpy(output->data() + *output_size, value.data(), value.size());
-    *output_size += value.size();
+// Legacy text fields are independently validated as UTF-8. Never split a code
+// point between fields, even when the byte budget itself would otherwise fit.
+size_t legacy_chunk_size(const uint8_t *value, size_t remaining) {
+  size_t size = std::min<size_t>(255, remaining);
+  if (size < remaining) {
+    while (size > 0 && (value[size] & 0xC0U) == 0x80U) --size;
   }
-  return true;
+  return size;
 }
 
 }  // namespace
@@ -63,17 +60,17 @@ bool PanelConfigTextBindings::write_document(uint8_t *output,
       return false;
     }
 
-    std::array<uint8_t, PANEL_CONFIG_MAX_RECORD_BODY_BYTES - 1> subpage{};
-    size_t subpage_size = 0;
+    std::string subpage;
     for (PanelConfigTextValue *chunk : sources.subpage_chunks) {
-      if (chunk != nullptr &&
-          !append_text(&subpage, &subpage_size, chunk->value())) {
-        return false;
-      }
+      if (chunk == nullptr) continue;
+      if (chunk->value().size() >
+          PANEL_CONFIG_MAX_RECORD_BODY_BYTES - 1 - subpage.size()) return false;
+      subpage.append(chunk->value());
     }
-    if (subpage_size > 0 &&
-        writer.append_subpage(static_cast<uint8_t>(index + 1), subpage.data(),
-                              subpage_size) != PanelConfigStatus::OK) {
+    if (!subpage.empty() &&
+        writer.append_subpage(static_cast<uint8_t>(index + 1),
+                              reinterpret_cast<const uint8_t *>(subpage.data()),
+                              subpage.size()) != PanelConfigStatus::OK) {
       return false;
     }
   }
@@ -99,7 +96,27 @@ bool PanelConfigTextBindings::write_document(uint8_t *output,
 
 bool PanelConfigTextBindings::persist_document(const uint8_t *document,
                                                size_t document_size) {
-  return apply_document(document, document_size, true);
+  // Check the entire mirror before touching preferences. Larger native values
+  // remain durable and usable, but cannot be restored by older firmware.
+  PanelConfigReader reader(document, document_size);
+  if (reader.validate() != PanelConfigStatus::OK ||
+      reader.begin() != PanelConfigStatus::OK) return false;
+  PanelConfigRecord record;
+  while (reader.next(&record) == PanelConfigStatus::OK) {
+    if ((record.type == PanelConfigRecordType::BUTTON ||
+         record.type == PanelConfigRecordType::SETTING) && record.value_size > 255)
+      return false;
+    if (record.type != PanelConfigRecordType::SUBPAGE) continue;
+    size_t offset = 0;
+    for (PanelConfigTextValue *chunk : buttons_[record.slot - 1].subpage_chunks) {
+      if (chunk != nullptr)
+        offset += legacy_chunk_size(record.value + offset, record.value_size - offset);
+    }
+    if (offset != record.value_size) return false;
+  }
+  const bool mirrored = apply_document(document, document_size, true);
+  legacy_mirror_current_ = mirrored;
+  return mirrored;
 }
 
 bool PanelConfigTextBindings::publish_document(const uint8_t *document,
@@ -112,10 +129,11 @@ bool PanelConfigTextBindings::write_value(PanelConfigTextValue *target,
                                           bool persist) {
   if (target == nullptr) return false;
   const std::string &current = target->value();
-  if (current.size() == value_size &&
+  if ((!persist || legacy_mirror_current_) && current.size() == value_size &&
       (value_size == 0 || std::memcmp(current.data(), value, value_size) == 0)) {
     return true;
   }
+  if (!persist) legacy_mirror_current_ = false;
   return persist ? target->set_value(value, value_size)
                  : target->publish_value(value, value_size);
 }
@@ -151,10 +169,17 @@ bool PanelConfigTextBindings::apply_document(const uint8_t *document,
     } else if (record.type == PanelConfigRecordType::SUBPAGE) {
       ButtonSources &sources = buttons_[record.slot - 1];
       size_t offset = 0;
+      size_t remaining_chunks = static_cast<size_t>(std::count_if(
+          sources.subpage_chunks.begin(), sources.subpage_chunks.end(),
+          [](PanelConfigTextValue *chunk) { return chunk != nullptr; }));
       for (PanelConfigTextValue *chunk : sources.subpage_chunks) {
         if (chunk == nullptr) continue;
-        const size_t chunk_size =
-            std::min<size_t>(255, record.value_size - offset);
+        --remaining_chunks;
+        // Runtime publication bypasses the preference-backed 255-byte text
+        // calls. Keep existing chunks, with native overflow in the final field.
+        const size_t chunk_size = !persist && remaining_chunks == 0
+            ? record.value_size - offset
+            : legacy_chunk_size(record.value + offset, record.value_size - offset);
         if (!write_value(chunk,
                          reinterpret_cast<const char *>(record.value + offset),
                          chunk_size, persist)) {

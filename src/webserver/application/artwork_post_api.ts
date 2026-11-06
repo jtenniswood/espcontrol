@@ -1,10 +1,11 @@
-import { normalizeCoverArtDelay, normalizeHomeAssistantArtworkEndpointMode, normalizeHomeAssistantArtworkProtocol, normalizeScreensaverCameraImageMode } from "../model/settings";
+import { normalizeCoverArtDelay, normalizeHomeAssistantArtworkEndpointMode, normalizeHomeAssistantArtworkProtocol, normalizeScreensaverCameraImageMode, normalizeScreensaverCameraDimming } from "../model/settings";
 import type { EntityStateFeature } from "./entity_state";
 import type { ApplicationApiFeature } from "./api";
 export interface ArtworkPostApiFeature {
     postPresenceSensorEntity(value?: any): any;
     postScreensaverCameraEntity(value?: any): any;
     postScreensaverCameraImageMode(value?: any): any;
+    postScreensaverCameraDimming(value?: any): any;
     postMediaPlayerSleepPrevention(on?: any): any;
     postMediaPlayerSleepPreventionEntity(value?: any): any;
     postCoverArtPlaybackControl(on?: any): any;
@@ -39,6 +40,9 @@ export function createArtworkPostApiFeature(
     }
     function postScreensaverCameraEntity(this: any, value?: any) {
         return postTextWithObjectIds(entityName("screen_saver_camera_entity"), entityObjectIds("screen_saver_camera_entity"), value);
+    }
+    function postScreensaverCameraDimming(this: any, value?: any) {
+        return post(entityPostUrls("number", entityName("screen_saver_camera_dimming"), entityObjectIds("screen_saver_camera_dimming"), "set?value=" + encodeURIComponent(normalizeScreensaverCameraDimming(value))));
     }
     function postScreensaverCameraImageMode(this: any, value?: any) {
         return postSelectWithObjectIds(entityName("screen_saver_camera_image_mode"), entityObjectIds("screen_saver_camera_image_mode"), normalizeScreensaverCameraImageMode(value));
@@ -107,6 +111,7 @@ export function createArtworkPostApiFeature(
         postPresenceSensorEntity,
         postScreensaverCameraEntity,
         postScreensaverCameraImageMode,
+        postScreensaverCameraDimming,
         postMediaPlayerSleepPrevention,
         postMediaPlayerSleepPreventionEntity,
         postCoverArtPlaybackControl,

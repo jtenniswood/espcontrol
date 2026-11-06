@@ -1,54 +1,96 @@
 ---
 title: "Appearance Settings"
-description:
-  Choose the panel theme and customise its active colour.
+description: Configure EspControl active colour, card style, theme, idle timeout, and clock bar in one guide.
 ---
 
 # Appearance
 
-Find these controls in **Settings → Appearance** on the [Setup](/features/setup) page. Your selection is saved on the panel and applies without a reboot. Existing panels default to Dark.
+Open **Screen > Appearance** on your [device setup page](/features/setup). Use the sections below to change your cards, choose a theme, return home after inactivity, or configure the top bar.
 
-## Theme
+Changes are saved on the panel and included in [backups](/settings/system#backup). Check the physical screen after making changes.
 
-- **Dark** and **Light** select a fixed appearance.
-- Under **Automatic theme**, **Time** uses the panel's local clock. Set **Light from** and **Dark from** in 24-hour `HH:MM` format. The Light period can cross midnight. If both times are the same, Dark remains active.
-- Under **Automatic theme**, **Automatic** switches to Light at sunrise and Dark at sunset. The panel shows the calculated sunrise and sunset times when this method is selected. It uses its existing on-device calculation based on the configured timezone and approximate location. Set the correct timezone under **Settings → Time**. A Home Assistant `sun.sun` entity is not required.
+For one card's label or icon, open **Layout**, select the card, and choose **Edit** on your [device setup page](/features/setup). For brightness or orientation, open [Display](/settings/display).
 
-When clock or solar data is temporarily unavailable, Automatic keeps the last active appearance. A fresh boot falls back to Dark until the required data is known. The **Screen: Active Theme** Home Assistant sensor reports the effective Dark or Light palette even while Automatic is selected.
+## Active Colour
 
-Home Assistant can also change the saved settings through **Screen: Theme Mode**, **Screen: Theme Auto Method**, **Screen: Theme Light Start**, **Screen: Theme Dark Start**, **Screen: Theme Sunrise Offset**, and **Screen: Theme Sunset Offset**. Changes apply without a reboot. The setup-page preview follows the chosen manual theme or, in Automatic, the reported Active Theme.
+Open **Screen > Appearance > Active Colour** on your [device setup page](/features/setup).
 
-The theme changes the panel's neutral backgrounds, controls and text, including setup and loading screens. Primary/accent, artwork, camera images, cover art, QR codes and status colours keep their own colours. The clock screensaver keeps a black background and its saved text colour in both themes; theme changes do not wake the panel or reset navigation.
+Choose a preset under **Active Colour**, or use the eyedropper swatch for a custom colour. This is the highlight used when a card is active. The reset icon restores the default orange. Text and icons adjust their contrast automatically.
 
-Backups include the theme mode, automatic method, times and offsets. Older backups without these fields leave the panel's current theme settings unchanged. Older Schedule and Sun selections migrate to Automatic with the corresponding method.
+To change a single card, right-click it in **Layout** and open **Change Colour**, or edit its **Custom Colours**. You can also select several cards together or recolour a subpage's **Back** card. **Reset Colour** restores its default background.
 
-## Active colour
+In a card's **Custom Colours**, choose its **Active state colour**:
 
-- **Primary** — the colour cards show when an entity is active. Choose from the same compact grid used in individual card settings. It contains 19 preset colours and a final swatch with an eyedropper icon that opens your browser's native colour picker for any colour, including white. The custom swatch is transparent and dashed until a custom colour is chosen, then shows that colour without the dashed border. Choosing a preset keeps the last custom colour available while editing; clicking the custom swatch restores it. A checkmark shows the selected preset; an accent outline highlights a custom colour. The orange swatch is `FF8C00`, the panel's default active colour.
-- Secondary inactive cards and tertiary information cards use fixed panel colours so setup stays simpler and modal styling remains consistent.
+| Choice | Result |
+|---|---|
+| **Matching** | Uses a lighter or darker shade of the card colour; default cards use the global active colour. |
+| **Global** | Uses the colour from **Screen > Appearance > Active Colour**. |
+| **Custom** | Lets you pick a separate active colour. |
 
-Text and icons keep white on dark and mid-tone backgrounds, including the orange, green, teal and blue presets. Pale backgrounds use dark grey content. The panel and web preview use the same rule. Custom cards use a brighter tint when active for darker colours, or a darker shade for pale colours and white, making on and off easier to distinguish.
-
-Slider cards use a contrasting fill that keeps labels readable as values change.
-
-Striped active cards use lighter or darker stripes to keep text readable across both tones.
-
-Custom card colours stay in place when changing a card’s controls, reopening its editor or switching themes. Media Cover Art uses the chosen card colour while artwork is loading or unavailable; visible artwork keeps white text. Media progress bars use a lighter or darker shade of the chosen card colour so progress remains visible.
-
-Cards using their default background highlight the matching preset or custom picker for the current theme. Resetting a card’s colours restores this default selection.
-
-In a card’s **Custom Colours** controls, **Active state colour** offers three choices:
-
-- **Matching** uses a brighter shade of a darker custom card colour, a darker shade of a pale colour, or the Appearance active colour when the card uses its default background.
-- **Theme** uses the active colour selected in **Settings → Appearance**, including when the card has a custom background.
-- **Custom** shows a second colour picker for a separate active colour. It starts with Matching’s shade selected and follows the card colour until you choose an alternative. Its presets use the same shades as Matching; the eyedropper still lets you choose any colour.
-
-These choices apply on the main screen and subpages wherever a card normally uses an active colour. Sensor, Door/Window and Presence cards still need their **Active Colour** option enabled to highlight their active state. Resetting colours also restores **Matching**.
-
-Slider cards also use the selected Theme or Custom colour for their fill. Text and icons change contrast where the fill passes behind them. Matching keeps its existing shade adjustment for readable slider content.
-
-Disabled Home Assistant cards keep their background colour and show muted labels and icons. Their normal text and icon colours return when the card becomes available again.
+Sensor, Door/Window, and Presence cards also need **Active Colour** enabled in their card settings. Artwork, full QR images, and status colours keep their own appearance.
 
 Uploaded card backgrounds stay fully opaque, including when a card is pressed, active or unavailable. The web preview also shows these images at full opacity.
 
-Colour changes apply to the panel automatically after a brief pause (about 200 ms), plus the time needed to redraw the cards, including cards on subpages. You do not need to restart the panel. The reset icon beside the **Appearance** arrow applies the default orange in the same way.
+## Card Style
+
+Open **Screen > Appearance > Card Style** on your [device setup page](/features/setup).
+
+Choose **Card curve > Small**, **Medium**, or **Large**. Medium is the default. This changes the corners of home-screen and subpage cards, including **Back**, and the preview follows the panel.
+
+## Theme
+
+Open **Screen > Appearance > Theme** on your [device setup page](/features/setup).
+
+Choose a mode:
+
+- **Dark** or **Light** for a fixed appearance.
+- **Automatic > Sunrise & Sunset** to switch using the panel's calculated solar times. Set the correct [timezone](/settings/system#time) first; no Home Assistant sun entity is needed.
+- **Automatic > Manual** to set **Light from** and **Dark from** in 24-hour `HH:MM` format. The light period can cross midnight; equal times keep Dark active.
+
+Automatic keeps the last appearance while time or solar data is unavailable, and starts in Dark after a fresh boot until that data is known. The clock screensaver keeps its black background and saved text colour.
+
+## Idle
+
+If you navigate to a [subpage](/features/subpages) or leave a popup open and walk away, the panel can automatically return to the home screen after a set amount of time. This keeps the display on the main card grid so it's ready to use the next time you glance at it.
+
+### Idle Settings
+
+Configured in **Screen > Appearance > Idle** in [Setup](/features/setup).
+
+**Return Home After** — how long the panel waits without a touch before switching back to the home screen. Choose from:
+
+- **Disabled** — stay on whatever screen was last shown
+- 10, 20, or 30 seconds
+- **1 minute** (the default), 2 minutes, or 5 minutes
+
+### How Idle Works
+
+The idle timer restarts every time you touch the screen. If you're already on the home screen with no popup open, nothing changes. If a subpage or popup is active, the timer closes it and returns to the home screen.
+
+The idle timer runs independently from the [screensaver](/settings/sleep#screensaver). Each uses its own timeout; the panel only returns home first if the idle timeout is shorter.
+
+## Clock Bar
+
+The top bar has fixed positions: temperature on the left, time in the middle, and connectivity on the right.
+
+### Clock Bar Settings
+
+Open **Screen > Appearance > Clock Bar**:
+
+- **Show Clock Bar** turns the whole bar on or off.
+- **Show Night Mode Icon** adds a moon while [Night Schedule](/settings/sleep#night-schedule) is active. Off by default.
+
+To change individual items, open **Layout** and select them in the preview:
+
+- **Temperature > Edit** selects the Home Assistant sensor and degree-symbol display.
+- **Clock** or **Connectivity > Hide / Show** changes visibility.
+
+Hidden items stay greyed in the preview so you can show them again. Only one temperature reading is displayed. Set [time and timezone](/settings/system#time) and [temperature units](/settings/system#temperature) under **System > Preferences**.
+
+### Open Device Information
+
+Tap the connectivity icon on the physical panel to open **Settings**. It shows the IP address, Wi-Fi quality on Wi-Fi builds, firmware build, and device name. Tap **Back** to return to your previous page.
+
+If a PIN is saved, Settings also offers **Screen Lock**, even with automatic wake protection off. Tap it to lock the current view, then touch the screen and enter the PIN to unlock. See [PIN protection](/settings/sleep#pin-protection-after-wake).
+
+When a subpage or card popup is open, its title temporarily replaces the temperature reading.

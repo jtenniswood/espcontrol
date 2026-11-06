@@ -1,5 +1,6 @@
 import {
   PANEL_CONFIG_DOCUMENT_VERSION,
+  PANEL_CONFIG_MAX_RECORD_BODY_BYTES,
   decodePanelConfig,
   encodePanelConfig,
   type PanelConfigDocument,
@@ -26,7 +27,7 @@ export type NativePanelConfigFetch = (
   request?: NativePanelConfigRequest,
 ) => Promise<NativePanelConfigResponse>;
 
-export type NativePanelConfigSaveResult = "saved" | "unsupported" | "conflict" | "mirror-failed" | "authentication-required" | "failed";
+export type NativePanelConfigSaveResult = "saved" | "unsupported" | "conflict" | "mirror-failed" | "authentication-required" | "too-large" | "failed";
 export type NativePanelConfigCollection = "buttons" | "subpages" | "settings";
 
 interface Capabilities {
@@ -34,6 +35,7 @@ interface Capabilities {
     read?: unknown;
     write?: unknown;
     document_versions?: unknown;
+    max_record_body_bytes?: unknown;
   };
 }
 
@@ -75,10 +77,15 @@ export class NativePanelConfigClient {
   private retryable_ = false;
   private confirmedUnsupported_ = false;
   private discovery_: Promise<boolean> | null = null;
+  private maxRecordBodyBytes_: number | null = null;
 
   constructor(private readonly fetch_: NativePanelConfigFetch) {}
 
   supported(): boolean { return this.supported_; }
+  maxConfigValueBytes(): number | null {
+    return this.supported_ && this.maxRecordBodyBytes_ !== null
+      ? this.maxRecordBodyBytes_ - 1 : null;
+  }
   retryable(): boolean { return this.retryable_; }
   confirmedUnsupported(): boolean { return this.confirmedUnsupported_; }
 
@@ -99,7 +106,11 @@ export class NativePanelConfigClient {
         this.retryable_ = response.status === 404 || response.status === 503;
         this.confirmedUnsupported_ = false;
         if (!response.ok) return false;
-        const supported = supportedCapabilities(await response.json());
+        const capabilities = await response.json();
+        const supported = supportedCapabilities(capabilities);
+        const limit = (capabilities as Capabilities | null)?.configuration?.max_record_body_bytes;
+        this.maxRecordBodyBytes_ = supported && Number.isInteger(limit) && Number(limit) > 1
+          ? Math.min(Number(limit), PANEL_CONFIG_MAX_RECORD_BODY_BYTES) : null;
         this.confirmedUnsupported_ = supported === false;
         return supported === true;
       })
@@ -135,6 +146,14 @@ export class NativePanelConfigClient {
         const generation = current.headers.get("ETag");
         if (!generation) return "failed";
         const currentDocument = decodePanelConfig(new Uint8Array(await current.arrayBuffer()));
+        const updated = update(currentDocument);
+        const limit = this.maxRecordBodyBytes_ ?? 2048;
+        const byteLength = (value: string) => new TextEncoder().encode(value).length;
+        if (Object.values(updated.buttons).some((value) => byteLength(value) + 1 > limit) ||
+            Object.values(updated.subpages).some((value) => byteLength(value) + 1 > limit) ||
+            Object.entries(updated.settings).some(([key, value]) => byteLength(key) + byteLength(value) + 1 > limit)) {
+          return "too-large";
+        }
         const next = await this.fetch_("/api/v1/config", {
           method: "PUT",
           cache: "no-store",
@@ -142,11 +161,12 @@ export class NativePanelConfigClient {
             "Content-Type": "application/vnd.espcontrol.panel-config",
             "If-Match": generation,
           },
-          body: encodePanelConfig(update(currentDocument)),
+          body: encodePanelConfig(updated),
         });
         // A 202 means the document itself is safe, but firmware could not
         // update its legacy entity mirror. Treat it as a failed compatibility
         // save so callers do not claim that an older firmware can restore it.
+        if (next.status === 413) return "too-large";
         if (next.status === 202) return "mirror-failed";
         if (next.ok) return "saved";
         if (next.status === 401 || next.status === 403) return "authentication-required";

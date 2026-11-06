@@ -81,6 +81,7 @@ lightning=Gewitter
 lightning_and_rain=Gewitter und Regen
 light=Licht
 loading=Laden
+loading_forecast=Wettervorhersage wird geladen
 locate=Orten
 lock=Sperren
 lawn_mower=Rasenmäher
@@ -265,3 +266,40 @@ then_visit_192_168_4_1_in_your_browser=Öffne dann 192.168.4.1 in deinem Browser
 
 screensaver=Bildschirmschoner
 incorrect_pin=Falsche PIN
+
+forecast_unavailable=Vorhersage nicht verfügbar
+rain=Regen
+rain_chance=Regenwahrscheinlichkeit
+rainfall=Niederschlag
+wind=Wind
+humidity=Luftfeuchtigkeit
+last_forecast=Letzte Vorhersage
+weekday_sun=So.
+weekday_mon=Mo.
+weekday_tues=Di.
+weekday_weds=Mi.
+weekday_thurs=Do.
+weekday_fri=Fr.
+weekday_sat=Sa.
+
+# Default card labels (label_ keys use key-based lookup only)
+label_connect=Verbinden
+label_local_action=Lokale Aktion
+label_switch=Schalter
+label_lighting=Beleuchtung
+label_garage=Garage
+label_sensor=Sensor
+label_camera=Kamera
+wind_north=North
+wind_north_east=North East
+wind_east=East
+wind_south_east=South East
+wind_south=South
+wind_south_west=South West
+wind_west=West
+wind_north_west=North West
+
+# Home Assistant connection repair
+ha_disconnected_title=Home Assistant disconnected
+ha_disconnected_instructions=Check this device in Home Assistant\nfor an encryption key or connection alert
+ha_disconnected_path=Settings > Devices & Services\n> ESPHome

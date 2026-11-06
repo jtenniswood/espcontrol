@@ -376,6 +376,7 @@ export function registerSliderCardTypes(
                     };
                 }
                 return {
+                    buttonClass: opts.type === "cover" ? "sp-cover-preview" : "",
                     iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>' +
                         '<span class="sp-slider-preview"><span class="sp-slider-track">' +
                         '<span class="sp-slider-fill"></span>' +

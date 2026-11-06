@@ -440,6 +440,16 @@ def cfg_lines(device: dict) -> list[str]:
     else:
         lines.append(f"            cfg.cols = {device['cols']};")
     lines.append("            cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;")
+    base_radius = int(device["package"]["substitutions"]["radius"].removesuffix("px"))
+    substitutions = device["package"]["substitutions"]
+    radius_overrides = ""
+    if "card_curve_small_radius" in substitutions or "card_curve_medium_radius" in substitutions:
+        small_radius = int(substitutions.get("card_curve_small_radius", "-1px").removesuffix("px"))
+        medium_radius = int(substitutions.get("card_curve_medium_radius", "-1px").removesuffix("px"))
+        radius_overrides = f", {small_radius}, {medium_radius}"
+    lines.append(f"            cfg.card_corner_radius = card_curve_radius({base_radius}, id(card_curve_select).current_option(){radius_overrides});")
+    if device.get("continuous_card_corners"):
+        lines.append("            cfg.continuous_card_corners = true;")
     if device.get("info_only"):
         lines.append("            cfg.info_only = true;")
     if device.get("subpage_chevron_x", 0) != 0:
@@ -527,6 +537,8 @@ def cfg_lines(device: dict) -> list[str]:
             f"            cfg.volume_number_compact_font = id({device['volume_number_compact_font']})->get_lv_font();"
         )
     lines.append(f"            cfg.volume_label_font = id({device['volume_label_font']})->get_lv_font();")
+    if device.get("small_text_font"):
+        lines.append(f"            cfg.small_text_font = id({device['small_text_font']})->get_lv_font();")
     if device.get("climate_card_icon_font"):
         lines.append(
             f"            cfg.climate_card_icon_font = id({device['climate_card_icon_font']})->get_lv_font();"
@@ -580,16 +592,16 @@ def cfg_lines(device: dict) -> list[str]:
     lines.append("            register_webhook_sender([](const std::string &url, const std::string &method, const std::string &body, const std::vector<esphome::http_request::Header> &headers) {")
     lines.append("              auto response = id(http_req).start(url, method, body, headers);")
     lines.append("              if (response == nullptr) {")
-    lines.append("                ESP_LOGW(\"webhook\", \"Webhook request failed to start: %s\", url.c_str());")
+    lines.append("                ESP_LOGW(\"webhook\", \"Webhook %s request failed to start\", method.c_str());")
     lines.append("                return false;")
     lines.append("              }")
     lines.append("              int status = response->status_code;")
     lines.append("              response->end();")
     lines.append("              if (!esphome::http_request::is_success(status)) {")
-    lines.append("                ESP_LOGW(\"webhook\", \"Webhook %s returned HTTP %d\", url.c_str(), status);")
+    lines.append("                ESP_LOGW(\"webhook\", \"Webhook %s returned HTTP %d\", method.c_str(), status);")
     lines.append("                return false;")
     lines.append("              }")
-    lines.append("              ESP_LOGI(\"webhook\", \"Webhook %s returned HTTP %d\", url.c_str(), status);")
+    lines.append("              ESP_LOGI(\"webhook\", \"Webhook %s returned HTTP %d\", method.c_str(), status);")
     lines.append("              return true;")
     lines.append("            });")
     lines.append("            set_width_compensation_vertical_axis(cfg.width_compensation_vertical);")

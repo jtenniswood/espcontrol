@@ -6,7 +6,7 @@ import { createMediaPlaybackController } from "../../src/webserver/features/medi
 import { createVoiceServicesController } from "../../src/webserver/features/voice_services_controller";
 import { createClockBarController } from "../../src/webserver/features/clock_bar_controller";
 import { createScreenScheduleController } from "../../src/webserver/features/screen_schedule_controller";
-import { normalizeThemeAutoMethod, normalizeThemeMode, normalizeTimeOfDay, parseThemeSunOffset } from "../../src/webserver/model/settings";
+import { cardCurveRadius, normalizeCardCurve, normalizeThemeAutoMethod, normalizeThemeMode, normalizeTimeOfDay, parseThemeSunOffset } from "../../src/webserver/model/settings";
 import { PREVIEW_THEME_COLORS, previewEffectiveTheme, previewThemeCss } from "../../src/webserver/state/preview_theme";
 import { createBackupEnvelope, normalizeBackupEnvelope } from "../../src/webserver/model/backup";
 
@@ -37,6 +37,20 @@ function placeholderOutline(textMuted: string, background: string): string {
 }
 
 export function runSettingsFeatureTests(): void {
+  equal(normalizeCardCurve(undefined), "Medium", "new curve settings default to Medium");
+  equal(normalizeCardCurve("medium"), "Medium", "curve values normalize for backup restore");
+  for (const [large, small, medium] of [[20, 12, 16], [22, 13, 18], [35, 21, 28], [26, 16, 21]]) {
+    equal(cardCurveRadius(large!, "Small"), small, "Small radius matches firmware rounding");
+    equal(cardCurveRadius(large!, "Medium"), medium, "Medium radius matches firmware rounding");
+    equal(cardCurveRadius(large!, "Large"), large, "Large uses the configured panel radius");
+  }
+  const s3Radii = { Small: 16, Medium: 21 };
+  equal(cardCurveRadius(26, "Small", s3Radii), 16, "S3 Small radius");
+  equal(cardCurveRadius(26, "Medium", s3Radii), 21, "S3 Medium radius");
+  equal(cardCurveRadius(26, "Large", s3Radii), 26, "S3 Large radius");
+  const curveBackup = createBackupEnvelope({ device: "panel", slots: 0, screen: { card_curve: "Medium" } }, { buttons: [], subpages: {} });
+  equal(normalizeBackupEnvelope(curveBackup as unknown as Record<string, unknown>, { buttons: [], subpages: {} }).screen?.card_curve,
+    "Medium", "backup preserves the chosen card curve");
   for (const mode of ["Dark", "Light", "Auto"])
     equal(normalizeThemeMode(mode.toLowerCase()), mode, "theme mode backup round trip");
   equal(normalizeThemeMode("Sun"), "Auto", "old Sun backups migrate to Auto");

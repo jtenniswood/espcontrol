@@ -81,6 +81,7 @@ lightning=Fulmini
 lightning_and_rain=Fulmini e pioggia
 light=Luce
 loading=Caricamento
+loading_forecast=Caricamento previsioni
 locate=Localizza
 lock=Blocca
 lawn_mower=Tagliaerba
@@ -265,3 +266,40 @@ then_visit_192_168_4_1_in_your_browser=Poi apri 192.168.4.1 nel browser
 
 screensaver=Salvaschermo
 incorrect_pin=PIN errato
+
+forecast_unavailable=Previsioni non disponibili
+rain=Pioggia
+rain_chance=Probabilità di pioggia
+rainfall=Precipitazioni
+wind=Vento
+humidity=Umidità
+last_forecast=Ultime previsioni
+weekday_sun=dom.
+weekday_mon=lun.
+weekday_tues=mar.
+weekday_weds=mer.
+weekday_thurs=gio.
+weekday_fri=ven.
+weekday_sat=sab.
+
+# Default card labels (label_ keys use key-based lookup only)
+label_connect=Connetti
+label_local_action=Azione locale
+label_switch=Interruttore
+label_lighting=Illuminazione
+label_garage=Garage
+label_sensor=Sensore
+label_camera=Telecamera
+wind_north=North
+wind_north_east=North East
+wind_east=East
+wind_south_east=South East
+wind_south=South
+wind_south_west=South West
+wind_west=West
+wind_north_west=North West
+
+# Home Assistant connection repair
+ha_disconnected_title=Home Assistant disconnected
+ha_disconnected_instructions=Check this device in Home Assistant\nfor an encryption key or connection alert
+ha_disconnected_path=Settings > Devices & Services\n> ESPHome

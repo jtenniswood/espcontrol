@@ -28,7 +28,7 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
   const grid = Array.from({ length: deviceConfig.slots }, () => 0);
   const buttons = Array.from({ length: deviceConfig.slots }, emptyCardConfig);
   return {
-    grid, sizes: {}, buttons, onColor: WEB_UI_COLORS.primary,
+    grid, sizes: {}, buttons, onColor: WEB_UI_COLORS.primary, cardCurve: "Medium", cardCurveSupported: false,
     selectedSlots: [], lastClickedSlot: -1, clockBarSelectedItem: "", activeTab: "screen",
     _indoorOn: false, _outdoorOn: false, _indoorVal: null, _outdoorVal: null,
     indoorEntity: "", outdoorEntity: "", clockBarTemperatureEntities: [],
@@ -42,7 +42,7 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     alarmDelayBeepVolume: 0.45, alarmDelayFinalCountdown: 10,
     networkTransport: "wifi", wifiStrengthPercent: 100,
     temperatureDegreeSymbolOn: true, subpageChevronsOn: true, presenceEntity: "",
-    screensaverCameraEntity: "", screensaverCameraImageMode: "Fit", screensaverCameraSupported: false,
+    screensaverCameraEntity: "", screensaverCameraImageMode: "Fit", screensaverCameraDimming: 0, screensaverCameraDimmingSupported: false, screensaverCameraSupported: false,
     clockDateSupported: false, clockDateOn: false,
     clockOverlaySupported: false,
     screensaverMetadataEntity: "",

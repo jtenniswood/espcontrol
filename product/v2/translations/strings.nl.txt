@@ -81,6 +81,7 @@ lightning=Bliksem
 lightning_and_rain=Bliksem en regen
 light=Licht
 loading=Laden
+loading_forecast=Weersverwachting laden
 locate=Lokaliseren
 lock=Vergrendelen
 lawn_mower=Grasmaaier
@@ -265,3 +266,40 @@ then_visit_192_168_4_1_in_your_browser=Open daarna 192.168.4.1 in je browser
 
 screensaver=Schermbeveiliging
 incorrect_pin=Onjuiste pincode
+
+forecast_unavailable=Verwachting niet beschikbaar
+rain=Regen
+rain_chance=Kans op regen
+rainfall=Neerslag
+wind=Wind
+humidity=Luchtvochtigheid
+last_forecast=Laatste verwachting
+weekday_sun=zo.
+weekday_mon=ma.
+weekday_tues=di.
+weekday_weds=wo.
+weekday_thurs=do.
+weekday_fri=vr.
+weekday_sat=za.
+
+# Default card labels (label_ keys use key-based lookup only)
+label_connect=Verbinden
+label_local_action=Lokale actie
+label_switch=Schakelaar
+label_lighting=Verlichting
+label_garage=Garage
+label_sensor=Sensor
+label_camera=Camera
+wind_north=North
+wind_north_east=North East
+wind_east=East
+wind_south_east=South East
+wind_south=South
+wind_south_west=South West
+wind_west=West
+wind_north_west=North West
+
+# Home Assistant connection repair
+ha_disconnected_title=Home Assistant disconnected
+ha_disconnected_instructions=Check this device in Home Assistant\nfor an encryption key or connection alert
+ha_disconnected_path=Settings > Devices & Services\n> ESPHome

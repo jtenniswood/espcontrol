@@ -13,6 +13,7 @@
 #include "button_grid_card_runtime.h"
 #include "media_control_tabs.h"
 #include "button_grid_string.h"
+#include "config_field_decode.h"
 #include "camera_refresh_policy.h"
 #include "button_grid_saved_config_action_generated.h"
 #include "button_grid_saved_config_access_generated.h"
@@ -89,72 +90,6 @@ inline std::vector<std::string> split_config_fields(const std::string &value, ch
     start = end + 1;
   }
   return out;
-}
-
-inline int hex_digit(char c) {
-  if (c >= '0' && c <= '9') return c - '0';
-  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-  return -1;
-}
-
-inline bool valid_utf8_bytes(const std::string &value) {
-  size_t index = 0;
-  while (index < value.size()) {
-    const unsigned char first = static_cast<unsigned char>(value[index]);
-    if (first <= 0x7F) { ++index; continue; }
-    size_t count = 0;
-    if (first >= 0xC2 && first <= 0xDF) count = 1;
-    else if (first >= 0xE0 && first <= 0xEF) count = 2;
-    else if (first >= 0xF0 && first <= 0xF4) count = 3;
-    else return false;
-    if (index + count >= value.size()) return false;
-    const unsigned char second = static_cast<unsigned char>(value[index + 1]);
-    if ((second & 0xC0) != 0x80) return false;
-    if (first == 0xE0 && second < 0xA0) return false;
-    if (first == 0xED && second > 0x9F) return false;
-    if (first == 0xF0 && second < 0x90) return false;
-    if (first == 0xF4 && second > 0x8F) return false;
-    for (size_t offset = 2; offset <= count; ++offset) {
-      if ((static_cast<unsigned char>(value[index + offset]) & 0xC0) != 0x80) return false;
-    }
-    index += count + 1;
-  }
-  return true;
-}
-
-inline std::string decode_compact_field(const std::string &value, size_t start, size_t len) {
-  if (start > value.size()) return "";
-  size_t end = start + len;
-  if (end < start || end > value.size()) end = value.size();
-  std::string out;
-  out.reserve(end - start);
-  for (size_t i = start; i < end;) {
-    if (value[i] == '%' && i + 2 < end) {
-      size_t run_end = i;
-      std::string decoded;
-      while (run_end + 2 < end && value[run_end] == '%') {
-        int hi = hex_digit(value[run_end + 1]);
-        int lo = hex_digit(value[run_end + 2]);
-        if (hi < 0 || lo < 0) break;
-        decoded.push_back(static_cast<char>((hi << 4) | lo));
-        run_end += 3;
-      }
-      if (run_end > i) {
-        if (valid_utf8_bytes(decoded)) out += decoded;
-        else out.append(value, i, run_end - i);
-        i = run_end;
-        continue;
-      }
-    }
-    out.push_back(value[i]);
-    ++i;
-  }
-  return out;
-}
-
-inline std::string decode_compact_field(const std::string &value) {
-  return decode_compact_field(value, 0, value.size());
 }
 
 inline char compact_hex_char(uint8_t value) {
@@ -542,17 +477,17 @@ inline void normalize_saved_config_media_fields(ParsedCfg &p) {
   if (p.sensor == "now_playing" && cfg_option_token_present(p.options, MEDIA_COVER_ART_OPTION)) {
     p.sensor = "cover_art";
   }
-  if (p.sensor == "previous" && p.label == "Skip Previous") p.label = "Previous";
-  if (p.sensor == "next" && p.label == "Skip Next") p.label = "Next";
+  if (p.sensor == "previous" && p.label == "Skip Previous") p.label = espcontrol_i18n("Previous");
+  if (p.sensor == "next" && p.label == "Skip Next") p.label = espcontrol_i18n("Next");
   if (p.sensor == "volume") {
-    if (p.label.empty() || p.label == "Media") p.label = "Volume";
+    if (p.label.empty() || p.label == "Media") p.label = espcontrol_i18n("Volume");
     p.icon = "Auto";
   }
   if (p.sensor == "playlist") {
-    if (p.label.empty() || p.label == "Media") p.label = "Playlist";
+    if (p.label.empty() || p.label == "Media") p.label = espcontrol_i18n("Playlist");
     if (p.icon.empty() || p.icon == "Auto") p.icon = "Music";
   }
-  if (p.sensor == "position" && (p.label.empty() || p.label == "Track")) p.label = "Position";
+  if (p.sensor == "position" && (p.label.empty() || p.label == "Track")) p.label = espcontrol_i18n("Position");
   if (p.sensor == "now_playing") {
     p.precision = card_runtime_media_now_playing_control(p.precision) ? p.precision : "";
   } else if (p.sensor == "cover_art") {
@@ -564,12 +499,17 @@ inline void normalize_saved_config_media_fields(ParsedCfg &p) {
   }
 }
 
-inline std::string weather_card_options_normalized(const std::string &options,
-                                                   const ParsedCfg &p) {
-  if (!card_runtime_weather_forecast_precision(p.precision)) return "";
-  std::string out;
-  append_large_numbers_option(out, options);
-  return out;
+inline bool weather_wind_uses_sensors(const ParsedCfg &config) {
+  return config.precision == "wind" && cfg_option_value(config.options, "wind_source") == "sensors";
+}
+inline bool rainfall_uses_forecast(const ParsedCfg &config) {
+  return config.precision == "rainfall" && card_runtime_weather_forecast_supported() &&
+    cfg_option_value(config.options, "rainfall_source") == "forecast";
+}
+inline std::string weather_card_options_normalized(const std::string &options, const ParsedCfg &config) {
+  if (config.precision == "wind" && cfg_option_value(options, "wind_source") == "sensors") return "wind_source=sensors";
+  return config.precision == "rainfall" && card_runtime_weather_forecast_supported() &&
+    cfg_option_value(options, "rainfall_source") == "forecast" ? "rainfall_source=forecast" : "";
 }
 
 inline std::string normalize_image_modal_mode(const std::string &value) {
@@ -1309,7 +1249,8 @@ inline std::string normalize_saved_config_security_options(
 
 inline void normalize_saved_config_weather_fields(ParsedCfg &p, bool was_legacy_forecast) {
   if (was_legacy_forecast && p.label == "Weather") p.label.clear();
-  if (!card_runtime_weather_forecast_precision(p.precision)) p.precision.clear();
+  if (p.precision != "wind" && p.precision != "rainfall" && !card_runtime_weather_forecast_precision(p.precision)) p.precision.clear();
+  if (!weather_wind_uses_sensors(p)) p.sensor.clear();
 }
 
 inline std::string normalize_saved_config_weather_options(
@@ -1353,22 +1294,22 @@ inline std::string normalize_saved_config_webhook_options(
   return webhook_card_options_normalized(options);
 }
 
-inline const char *saved_config_subpage_default_label(const std::string &kind) {
-  if (kind == "switch") return "Switch";
-  if (kind == "lights") return "Lighting";
-  if (kind == "climate") return "Climate";
-  if (kind == "presence") return "Presence";
-  if (kind == "media") return "Media";
-  if (kind == "alarm") return "Alarm";
-  if (kind == "cover") return "Cover";
-  if (kind == "garage") return "Garage";
-  if (kind == "gate") return "Gate";
-  if (kind == "lock") return "Lock";
-  if (kind == "vacuum") return "Vacuum";
-  if (kind == "lawn_mower") return "Lawn Mower";
-  if (kind == "weather") return "Weather";
-  if (kind == "sensor") return "Sensor";
-  if (kind == "image") return "Camera";
+inline const char *saved_config_subpage_default_label_key(const std::string &kind) {
+  if (kind == "switch") return "label_switch";
+  if (kind == "lights") return "label_lighting";
+  if (kind == "climate") return "climate";
+  if (kind == "presence") return "presence";
+  if (kind == "media") return "media";
+  if (kind == "alarm") return "alarm";
+  if (kind == "cover") return "cover";
+  if (kind == "garage") return "label_garage";
+  if (kind == "gate") return "gate";
+  if (kind == "lock") return "lock";
+  if (kind == "vacuum") return "vacuum";
+  if (kind == "lawn_mower") return "lawn_mower";
+  if (kind == "weather") return "weather";
+  if (kind == "sensor") return "label_sensor";
+  if (kind == "image") return "label_camera";
   return "";
 }
 
@@ -1394,7 +1335,11 @@ inline const char *saved_config_subpage_default_icon(const std::string &kind) {
 inline void normalize_saved_config_subpage_fields(ParsedCfg &p) {
   const std::string kind = normalize_subpage_kind(cfg_option_value(p.options, "subpage_kind"));
   if (kind.empty()) return;
-  if (p.label.empty()) p.label = saved_config_subpage_default_label(kind);
+  const char *label_key = saved_config_subpage_default_label_key(kind);
+  // The editor serializes preset defaults as English labels.
+  if (p.label.empty() || p.label == espcontrol_i18n_key_en(label_key)) {
+    p.label = espcontrol_i18n_key(label_key);
+  }
   if (p.icon.empty() || p.icon == "Auto") p.icon = saved_config_subpage_default_icon(kind);
   p.icon_on = "Auto";
   p.sensor = "indicator";
@@ -1457,11 +1402,12 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   const bool normalized_saved_occupancy = normalize_saved_config_occupancy(
       p, normalize_saved_config_occupancy_fields,
       normalize_saved_config_occupancy_options);
-  if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "sensor" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "wifi_qr" && p.type != "wifi_qr_card" && p.type != "light_control" && p.type != "vacuum" && !card_large_numbers_supported(p)) {
+  if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "sensor" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "wifi_qr" && p.type != "wifi_qr_card" && p.type != "light_control" && p.type != "vacuum" && p.type != "weather" && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
-  if ((p.type == "wifi_qr" || p.type == "wifi_qr_card") && p.label.empty()) {
-    p.label = "Connect";
+  if ((p.type == "wifi_qr" || p.type == "wifi_qr_card") &&
+      (p.label.empty() || p.label == "Connect")) {
+    p.label = espcontrol_i18n_key("label_connect");
   }
   normalize_saved_config_sensor(p, was_legacy_text_sensor,
                                 normalize_saved_config_sensor_fields,

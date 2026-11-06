@@ -224,6 +224,7 @@ export function createCoverLikeCardRegistration(registry: CardRegistry, renderQu
                     label = config.statusLabel || "Closed";
                 return cardBadgePreview(b, helpers, {
                     label: label,
+                    labelEditable: config.labelDisplayMode(b) !== "status",
                     iconFallback: config.defaultIcon(mode),
                     badge: metadata.preview.badge,
                 });

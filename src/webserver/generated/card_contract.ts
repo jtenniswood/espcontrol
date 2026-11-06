@@ -3740,7 +3740,9 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "label": "Weather",
     "allowInSubpage": true,
     "domains": [
-      "weather"
+      "weather",
+      "sensor",
+      "input_number"
     ],
     "options": [
       {
@@ -3750,21 +3752,60 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "values": [
           "",
           "today",
-          "tomorrow"
+          "tomorrow",
+          "daily",
+          "wind",
+          "rainfall"
         ],
         "defaultValue": "",
         "storageField": "precision",
         "omitDefault": true
       },
       {
-        "name": "large_numbers",
-        "label": "Large Temperature Numbers",
-        "kind": "flag",
+        "name": "wind_source",
+        "label": "Wind Source",
+        "kind": "choice",
+        "values": [
+          "weather",
+          "sensors"
+        ],
+        "defaultValue": "weather",
         "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "precision",
+            "operator": "equals",
+            "value": "wind"
+          }
+        ],
         "supportedWhen": {
           "precision": [
-            "today",
-            "tomorrow"
+            "wind"
+          ]
+        }
+      },
+      {
+        "name": "rainfall_source",
+        "label": "Rainfall Source",
+        "kind": "choice",
+        "values": [
+          "sensor",
+          "forecast"
+        ],
+        "defaultValue": "sensor",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "precision",
+            "operator": "equals",
+            "value": "rainfall"
+          }
+        ],
+        "supportedWhen": {
+          "precision": [
+            "rainfall"
           ]
         }
       }
@@ -3785,7 +3826,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "policy": "keep"
         },
         "sensor": {
-          "policy": "clear"
+          "policy": "hook",
+          "hook": "normalize_weather_fields"
         },
         "unit": {
           "policy": "keep"
@@ -3805,7 +3847,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       },
       "unknownOptions": "drop",
       "canonicalOptionOrder": [
-        "large_numbers"
+        "wind_source",
+        "rainfall_source"
       ],
       "migrationActions": [
         "legacy_weather_forecast"
@@ -4672,10 +4715,10 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
     "capabilities": {
       "informationOnly": true,
       "subscriptions": true,
-      "actions": false,
+      "actions": true,
       "numericControl": false,
-      "modal": false,
-      "runtimeAllocation": false,
+      "modal": true,
+      "runtimeAllocation": true,
       "subpage": true
     }
   },
@@ -4720,10 +4763,10 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
     "capabilities": {
       "informationOnly": true,
       "subscriptions": true,
-      "actions": false,
+      "actions": true,
       "numericControl": false,
-      "modal": false,
-      "runtimeAllocation": false,
+      "modal": true,
+      "runtimeAllocation": true,
       "subpage": true
     }
   }
@@ -4853,12 +4896,6 @@ export const CARD_CONTRACT_LARGE_NUMBERS: Readonly<Record<string, LargeNumbersRu
       "text"
     ]
   },
-  "weather": {
-    "precisions": [
-      "today",
-      "tomorrow"
-    ]
-  },
   "calendar": true,
   "clock": true,
   "climate": true,
@@ -4919,6 +4956,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "playlist_content_type": "playlist_content_type",
   "playlist_player_source": "playlist_player_source",
   "power_entity": "power_entity",
+  "rainfall_source": "rainfall_source",
   "screensaver_on_lock": "screensaver_on_lock",
   "script_fields": "script_fields",
   "security": "security",
@@ -4941,7 +4979,8 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "volume_max": "volume_max",
   "weather_mode": "weather_mode",
   "webhook_headers": "webhook_headers",
-  "wifi_tabs": "wifi_tabs"
+  "wifi_tabs": "wifi_tabs",
+  "wind_source": "wind_source"
 };
 export const CARD_CONTRACT_BACKGROUND_IMAGE_TYPES = ["", "action", "vacuum", "lawn_mower", "alarm", "alarm_action", "calendar", "clock", "climate", "climate_control", "cover", "door_window", "presence", "fan_direction", "fan_oscillate", "fan_preset", "fan_speed", "fan_control", "fan_switch", "garage", "gate", "internal", "light_brightness", "light_switch", "light_temperature", "light_control", "lock", "media", "option_select", "push", "screen_lock", "webhook", "sensor", "local_sensor", "slider", "subpage", "timezone", "weather", "weather_forecast"] as const;
 

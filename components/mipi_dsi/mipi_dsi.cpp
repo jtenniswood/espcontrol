@@ -1,6 +1,8 @@
 #ifdef USE_ESP32_VARIANT_ESP32P4
 #include <utility>
 #include "mipi_dsi.h"
+#include "dpi_timing.h"
+#include "esp_clk_tree.h"
 #include "esphome/core/helpers.h"
 
 namespace esphome::mipi_dsi {
@@ -94,6 +96,23 @@ void MipiDsi::setup() {
 #endif
                                            }};
   // clang-format on
+  uint32_t source_hz = 0;
+  err = esp_clk_tree_src_get_freq_hz(static_cast<soc_module_clk_t>(dpi_config.dpi_clk_src),
+                                    ESP_CLK_TREE_SRC_FREQ_PRECISION_CACHED, &source_hz);
+  if (err != ESP_OK) {
+    this->smark_failed(LOG_STR("Could not read DPI clock source"), err);
+    return;
+  }
+  DpiTiming timing{};
+  if (!normalize_dpi_timing(source_hz / 1.0e6f, this->pclk_frequency_, this->hsync_pulse_width_,
+                            this->hsync_back_porch_, this->width_, this->hsync_front_porch_, timing)) {
+    this->mark_failed(LOG_STR("DPI clock cannot preserve horizontal timing; use an exact clock divider"));
+    return;
+  }
+  dpi_config.dpi_clock_freq_mhz = timing.clock_mhz;
+  dpi_config.video_timing.hsync_front_porch = timing.front_porch;
+  ESP_LOGCONFIG(TAG, "DPI clock: requested %.2f MHz, actual %.2f MHz; front porch: %lu", this->pclk_frequency_,
+                timing.clock_mhz, static_cast<unsigned long>(timing.front_porch));
   err = esp_lcd_new_panel_dpi(this->bus_handle_, &dpi_config, &this->handle_);
   if (err != ESP_OK) {
     this->smark_failed(LOG_STR("esp_lcd_new_panel_dpi failed"), err);
@@ -228,7 +247,8 @@ void MipiDsi::write_to_display_(int x_start, int y_start, int w, int h, const ui
   // x_ and y_offset are offsets into the source buffer, unrelated to our own offsets into the display.
   if (x_offset == 0 && x_pad == 0) {
     err = esp_lcd_panel_draw_bitmap(this->handle_, x_start, y_start, x_start + w, y_start + h, ptr);
-    xSemaphoreTake(this->io_lock_, portMAX_DELAY);
+    if (err == ESP_OK)
+      xSemaphoreTake(this->io_lock_, portMAX_DELAY);
 
   } else {
     // draw line by line

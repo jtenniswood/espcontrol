@@ -45,9 +45,14 @@ class MultipartReader {
   // Check if we found a file upload
   bool has_file() const { return !current_part_.filename.empty(); }
 
+  // A fully consumed HTTP body is not necessarily a finished multipart file.
+  bool is_complete() const { return body_complete_ && file_complete_; }
+
  private:
   static int on_header_field(multipart_parser *parser, const char *at, size_t length);
   static int on_header_value(multipart_parser *parser, const char *at, size_t length);
+  static int on_headers_complete(multipart_parser *parser);
+  static int on_body_end(multipart_parser *parser);
   static int on_part_data(multipart_parser *parser, const char *at, size_t length);
   static int on_part_data_end(multipart_parser *parser);
 
@@ -56,11 +61,16 @@ class MultipartReader {
 
   Part current_part_;
   std::string current_header_field_;
+  std::string current_header_value_;
+  bool reading_header_value_{false};
+  bool file_has_data_{false};
+  bool file_complete_{false};
+  bool body_complete_{false};
 
   DataCallback data_callback_;
   PartCompleteCallback part_complete_callback_;
 
-  void process_header_(const char *value, size_t length);
+  void finish_header_();
 };
 
 // ========== Utility Functions ==========

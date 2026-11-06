@@ -81,6 +81,7 @@ lightning=Молния
 lightning_and_rain=Гроза с дождём
 light=Свет
 loading=Загрузка
+loading_forecast=Loading forecast
 locate=Найти
 lock=Замок
 lawn_mower=Газонокосилка
@@ -265,3 +266,40 @@ then_visit_192_168_4_1_in_your_browser=Затем откройте 192.168.4.1 �
 
 screensaver=Заставка
 incorrect_pin=Неверный PIN
+
+forecast_unavailable=Forecast unavailable
+rain=Дождь
+rain_chance=Rain chance
+rainfall=Rainfall
+wind=Wind
+humidity=Humidity
+last_forecast=Last forecast
+weekday_sun=вс
+weekday_mon=пн
+weekday_tues=вт
+weekday_weds=ср
+weekday_thurs=чт
+weekday_fri=пт
+weekday_sat=сб
+
+# Default card labels (label_ keys use key-based lookup only)
+label_connect=Подключиться
+label_local_action=Локальное действие
+label_switch=Выключатель
+label_lighting=Освещение
+label_garage=Гараж
+label_sensor=Датчик
+label_camera=Камера
+wind_north=North
+wind_north_east=North East
+wind_east=East
+wind_south_east=South East
+wind_south=South
+wind_south_west=South West
+wind_west=West
+wind_north_west=North West
+
+# Home Assistant connection repair
+ha_disconnected_title=Home Assistant disconnected
+ha_disconnected_instructions=Check this device in Home Assistant\nfor an encryption key or connection alert
+ha_disconnected_path=Settings > Devices & Services\n> ESPHome

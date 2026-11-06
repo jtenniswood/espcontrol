@@ -28,7 +28,8 @@ Choose **Lit When Active** when an active status should use the on colour. It is
 ## Useful Details
 
 - A Time card needs a value in days, hours, minutes, seconds, milliseconds, or microseconds. You can select the unit manually when Auto cannot identify it.
-- Unknown, unavailable, or invalid values are left blank rather than guessed.
+- Icon cards show a dimmed dash while waiting for a reading or when the entity is unknown or unavailable. Their chosen icons return when valid data arrives. Door/Window and Presence cards use the same treatment, so missing data never looks like a confirmed closed or clear state.
+- Numeric and Time cards show a placeholder for unknown, unavailable, or invalid values.
 - Changes made in Home Assistant update the panel automatically.
 - To show a device-local sensor, change **Source** to **Local Sensor** and follow the [Local Sensor](/card-types/local-sensors) setup.
 
