@@ -89,7 +89,7 @@ Wind updates with the entity and does not need forecast actions permission. It w
 
 Choose **Weather → Rainfall**, then choose **Rainfall Source**:
 
-- **Sensor** — select a sensor such as `sensor.rainfall_today`. The card shows its current numeric value and `unit_of_measurement`; the selected sensor determines the measurement period. Sensor units are retained, including mm, inches, or a rate unit if you deliberately select a rate sensor. No Home Assistant actions permission is needed.
+- **Sensor** — select a sensor such as `sensor.rainfall_today`. The card shows its current numeric value; the selected sensor determines the measurement period. Enter an optional **Units** suffix such as `mm` or `in`, or leave it blank to use the sensor's `unit_of_measurement`. This changes the displayed suffix without converting the value. Sensor units can include mm, inches, or a rate unit if you deliberately select a rate sensor. No Home Assistant actions permission is needed.
 - **Forecast** — select a weather entity. The card shows today's **predicted precipitation amount**, not measured rain or rain probability, using the provider's precipitation unit. Enable Home Assistant actions permission as for the other forecast cards. Tap the card for forecast details.
 
 Both sources use the same small secondary text and 70% alpha as forecast temperatures, on home cards and subpages. Amounts show up to three decimal places without trailing zeros. Zero remains **0**; missing, invalid or unavailable sensor readings show **--**. Forecast refreshes, missing dates and stale data follow the existing forecast behavior. A provider's precipitation total can include snow or other precipitation, not only rain.

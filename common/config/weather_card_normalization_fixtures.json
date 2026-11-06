@@ -135,6 +135,21 @@
     }
   },
   {
+    "name": "rainfall sensor unit override is retained",
+    "input": "sensor.rainfall_today;;Auto;Auto;;in;weather;rainfall;",
+    "expected": {
+      "entity": "sensor.rainfall_today",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "in",
+      "type": "weather",
+      "precision": "rainfall",
+      "options": ""
+    }
+  },
+  {
     "name": "rainfall forecast source is retained",
     "input": "weather.home;;Auto;Auto;;;weather;rainfall;ignored=1,rainfall_source=forecast",
     "expected": {

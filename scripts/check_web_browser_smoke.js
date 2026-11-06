@@ -8003,6 +8003,7 @@ async function assertRainfallEditor(browser) {
     await page.locator('[id$="rainfall-source-settings"]').click();
     assert.strictEqual(await page.locator('.sp-settings-modal input[id$="entity"]').inputValue(),"sensor.rainfall_today");
     await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Forecast",exact:true}).click();
+    assert.strictEqual(await page.locator('.sp-settings-modal input[id$="unit"]').count(), 0, "Forecast rainfall keeps provider units");
     await page.locator('.sp-settings-modal input[id$="entity"]').fill("weather.home");
     await page.locator('.sp-settings-modal input[id$="entity"]').press("Tab");
     await save();
@@ -8018,6 +8019,17 @@ async function assertRainfallEditor(browser) {
     await save();
     await waitForNativeState(nativeState,()=>nativeState.document.buttons[1].includes("sensor.rainfall_today"),"Rainfall sensor saved");
     assert(!nativeState.document.buttons[1].includes("rainfall_source"));
+    for (const suffix of ["in", "mm", ""]) {
+      await open();
+      await page.locator('.sp-settings-modal input[id$="unit"]').fill(suffix);
+      await page.locator('.sp-settings-modal input[id$="unit"]').press("Tab");
+      await save();
+      await page.reload(); await page.waitForSelector('#sp-app'); await seedNativeDocument(page,nativeState);
+      assert.strictEqual(await page.locator('.sp-main [data-slot="1"] .sp-rainfall-value').innerText(), "2.4 " + (suffix || "mm"));
+      await open();
+      assert.strictEqual(await page.locator('.sp-settings-modal input[id$="unit"]').inputValue(), suffix, "Rainfall unit suffix survives save and reload");
+      await save();
+    }
     const styles=await page.evaluate(()=>{
       const keys=["fontFamily","fontSize","fontWeight","color","opacity"];
       const style=selector=>{const css=getComputedStyle(document.querySelector(selector));return Object.fromEntries(keys.map(key=>[key,css[key]]))};
@@ -8027,7 +8039,7 @@ async function assertRainfallEditor(browser) {
     });
     assert.deepStrictEqual(styles.rain,styles.forecast,"Rainfall matches forecast secondary text");
     assert(styles.left>=10 && styles.bottom>=10,"Rainfall retains card padding");
-    console.log("Rainfall editor source changes, save/reload, padding and forecast text-style parity passed.");
+    console.log("Rainfall editor source changes, unit suffix save/reload, padding and forecast text-style parity passed.");
   } finally {await context.close()}
 }
 
