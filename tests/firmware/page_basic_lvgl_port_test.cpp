@@ -886,8 +886,6 @@ template<size_t Slots>struct Actions {
            : name == "Lock"                     ? "LOCKED"
            : name == "Lock Open"                ? "UNLOCKED"
            : name == "Fan"                      ? "FAN"
-           : name == "Wind arrow-right"         ? "WIND_E"
-           : name == "Wind arrow-bottom-left"   ? "WIND_SW"
            : name == "Weather Sunny"            ? "SUN"
            : name == "Wind arrow-right"         ? "WIND_E"
            : name == "Wind arrow-bottom-left"   ? "WIND_SW"
