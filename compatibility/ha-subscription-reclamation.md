@@ -29,10 +29,13 @@ encode length-delimited borrowed views synchronously, avoiding a conversion
 back to default-allocator strings. Older host transport policies can continue
 to accept `std::string` arguments.
 
-ESPHome 2026.10.0 has no public unsubscribe operation. A small version-pinned
+ESPHome 2026.10.2 has no public unsubscribe operation. A small version-pinned
 bridge mutates its public subscription-record view from the main loop. It
 identifies EspControl entries by their exact owned name-buffer addresses,
 preserving foreign registrations even when their entity/attribute text matches.
+Host transport tests derive their version header from `.github/esphome.env`.
+The guard accepts the audited 2026.10.1/2 API and rejects an unaudited patch;
+an old hard-coded host version cannot conceal a repository pin mismatch.
 It restarts authenticated clients' positional subscription enumeration after
 changes. Audit this bridge when changing the pinned ESPHome version.
 
