@@ -2,9 +2,9 @@
 
 #include <cstdint>
 #include <cstdio>
-#include <initializer_list>
 #include <vector>
 
+#include "custom_icon_glyphs.h"
 #include "panel_config_document.h"
 
 namespace espcontrol::configuration {
@@ -36,27 +36,12 @@ inline void set_panel_config_write_supported(bool supported) {
   panel_config_write_supported() = supported;
 }
 
-// Codepoints of the icons compiled into font_icon_main beyond the built-in
-// set (empty on official prebuilt firmware). The web icon picker only offers
-// these as custom icons, so it never suggests a glyph the display lacks.
-// Set once during setup, before the web server handles requests.
-inline std::vector<uint32_t> &panel_config_custom_icons() {
-  static std::vector<uint32_t> icons;
-  return icons;
-}
-
-inline void set_panel_config_custom_icons(std::initializer_list<uint32_t> codepoints) {
-  std::vector<uint32_t> &icons = panel_config_custom_icons();
-  icons.clear();
-  for (uint32_t codepoint : codepoints) {
-    // Matches the custom icon range accepted by find_icon() in icons.h.
-    if (codepoint >= 0xF0000 && codepoint <= 0x10FFFD) icons.push_back(codepoint);
-  }
-}
-
+// The icons compiled into font_icon_main beyond the built-in set come from
+// custom_icon_glyphs.h, the same list find_icon() draws from. The web icon
+// picker only offers these, so it never suggests a glyph the display lacks.
 inline size_t panel_config_capabilities_json_capacity() {
   return PANEL_CONFIG_CAPABILITIES_BASE_JSON_BYTES +
-         panel_config_custom_icons().size() * PANEL_CONFIG_CAPABILITIES_BYTES_PER_CUSTOM_ICON;
+         custom_icon_glyphs().size() * PANEL_CONFIG_CAPABILITIES_BYTES_PER_CUSTOM_ICON;
 }
 
 // The delivery marker lets the hosted bridge distinguish firmware that
@@ -82,10 +67,10 @@ inline bool write_panel_config_capabilities_json(char *output,
   if (written < 0 || static_cast<size_t>(written) >= output_capacity)
     return false;
   size_t length = static_cast<size_t>(written);
-  const std::vector<uint32_t> &icons = panel_config_custom_icons();
+  const std::vector<CustomIconGlyph> &icons = custom_icon_glyphs();
   for (size_t i = 0; i < icons.size(); i++) {
     written = std::snprintf(output + length, output_capacity - length, "%s\"%X\"",
-                            i == 0 ? "" : ",", static_cast<unsigned>(icons[i]));
+                            i == 0 ? "" : ",", static_cast<unsigned>(icons[i].codepoint));
     if (written < 0 || static_cast<size_t>(written) >= output_capacity - length)
       return false;
     length += static_cast<size_t>(written);

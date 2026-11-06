@@ -44,8 +44,8 @@ int main() {
       std::strstr(capabilities.data(), "\"read\":true") != nullptr &&
       std::strstr(capabilities.data(), "\"write\":true") != nullptr;
   // Firmware compiled with extra icons lists each one for the web picker,
-  // dropping anything outside the custom icon range.
-  set_panel_config_custom_icons({0xF00E6, 0x41, 0xF194B, 0x10FFFD, 0x110000});
+  // sorted, dropping anything outside the custom icon range.
+  set_custom_icon_codepoints({0xF194B, 0x41, 0xF00E6, 0x10FFFD, 0x110000});
   std::vector<char> listed(panel_config_capabilities_json_capacity());
   size_t listed_size = 0;
   const bool listed_ok = write_panel_config_capabilities_json(
@@ -57,13 +57,12 @@ int main() {
           std::string::npos &&
       listed_json.back() == '}';
   // The response grows with the list instead of being cut off.
-  std::vector<uint32_t> many;
   std::string many_json;
   {
+    std::vector<CustomIconGlyph> &icons = custom_icon_glyph_table();
+    icons.clear();
     for (uint32_t codepoint = 0x100000; codepoint < 0x100000 + 200; codepoint++)
-      many.push_back(codepoint);
-    auto &icons = panel_config_custom_icons();
-    icons = many;
+      icons.push_back(CustomIconGlyph{codepoint, {}});
     std::vector<char> large(panel_config_capabilities_json_capacity());
     size_t large_size = 0;
     if (write_panel_config_capabilities_json(large.data(), large.size(), &large_size))
@@ -74,7 +73,7 @@ int main() {
   // A buffer sized without the list is rejected rather than truncated.
   const bool small_buffer_is_rejected = !write_panel_config_capabilities_json(
       capabilities.data(), capabilities.size(), &capabilities_size);
-  set_panel_config_custom_icons({});
+  set_custom_icon_codepoints({});
   set_panel_config_http_context_initialization_complete(false);
   const bool startup_capability_is_retryable =
       !panel_config_http_context_initialization_complete();

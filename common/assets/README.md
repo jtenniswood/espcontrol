@@ -140,8 +140,8 @@ Users who compile their own firmware can use icons that are not in
 `icons.json`. They add the glyph to `font_icon_main` with
 `- id: !extend font_icon_main` in their device YAML and type the codepoint in
 the web icon picker. Cards then save the icon as `mdi:<hex codepoint>`, for
-example `mdi:F0EFA`. `find_icon()` in `components/espcontrol/icons.h` renders
-that codepoint directly, and `iconSlug()` in
+example `mdi:F0EFA`. `find_icon()` in `components/espcontrol/icons.h` draws it
+from the compiled-in list, and `iconSlug()` in
 `src/webserver/application/ui_primitives.ts` adds a matching CSS class for
 previews. User docs: `docs/getting-started/manual-esphome-setup.md`.
 
@@ -151,6 +151,12 @@ time, `components/espcontrol/custom_icons.py` lists the glyphs in
 firmware reports them in `/api/v1/capabilities` as `"icons":{"custom":[...]}`
 (hex codepoints, for example `"F0EFA"`). Official prebuilt firmware reports an
 empty list, so typed codepoints are not offered there.
+
+Codegen passes the same list to `set_custom_icon_codepoints()` in
+`components/espcontrol/custom_icon_glyphs.h` during setup, which prepares each
+glyph's text once. Lookups only read that table, so they need no locks and
+there is no limit on the number of custom icons. A well-formed codepoint the
+font lacks returns an empty string (no icon); a malformed value shows the cog.
 
 ## Domain defaults
 

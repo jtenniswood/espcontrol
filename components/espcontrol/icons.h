@@ -7,14 +7,13 @@
 // =============================================================================
 #pragma once
 
-#include <atomic>
 #include <cstdint>
 #include <cstring>
 #include <cstddef>
-#include <mutex>
 #include <string>
 
 #include "config_field_decode.h"
+#include "custom_icon_glyphs.h"
 
 struct IconEntry {
   const char* name;   // display name used in web UI icon picker
@@ -428,11 +427,10 @@ static constexpr size_t NUM_ICONS = sizeof(ICON_ENTRIES) / sizeof(ICON_ENTRIES[0
 
 // Custom icons are saved as "mdi:<hex codepoint>" (e.g. "mdi:F0F92") so any
 // Material Design Icon can be used without a built-in table entry. The glyph
-// must also be added to the font_icon_main glyph list in the device YAML,
-// otherwise LVGL renders an empty box. Returns nullptr for malformed values,
-// or once more distinct custom icons are in use than the cache holds.
-static constexpr size_t CUSTOM_MDI_ICON_CACHE_SLOTS = 64;
-
+// must also be added to the font_icon_main glyph list in the device YAML.
+// Returns nullptr for malformed values (shown as the cog). A well-formed
+// codepoint that the icon font does not contain returns "", so the card shows
+// no icon, as LVGL would for any missing glyph.
 inline const char* custom_mdi_icon_glyph(const char* name) {
   if (name == nullptr || std::strncmp(name, "mdi:", 4) != 0) return nullptr;
   const char* hex = name + 4;
@@ -444,40 +442,17 @@ inline const char* custom_mdi_icon_glyph(const char* name) {
     if (v < 0) return nullptr;
     cp = (cp << 4) | static_cast<uint32_t>(v);
   }
-  // MDI glyphs live in the supplementary Private Use Areas (U+F0000 and up).
-  // The bundled MDI font has nothing in the older U+E000-F8FF area, and
-  // rejecting other ranges keeps text characters out.
-  if (cp < 0xF0000 || cp > 0x10FFFD) return nullptr;
-  // Callers keep the returned pointer (e.g. ternaries feeding LVGL labels),
-  // so each codepoint gets its own slot that is never rewritten. The table is
-  // fixed-size (no heap). Cards look icons up on every state update, so a
-  // repeat lookup reads without locking: a slot is fully written before the
-  // published count (release) covers it, and readers load that count
-  // (acquire) before reading slots. Only adding a new codepoint locks.
-  struct CustomGlyphSlot {
-    uint32_t codepoint;
-    char utf8[5];
-  };
-  static CustomGlyphSlot slots[CUSTOM_MDI_ICON_CACHE_SLOTS];
-  static std::atomic<size_t> published{0};
-  static std::mutex lock;
-  auto find_slot = [cp](size_t count) -> const char * {
-    for (size_t i = 0; i < count; i++) {
-      if (slots[i].codepoint == cp) return slots[i].utf8;
-    }
-    return nullptr;
-  };
-  if (const char *cached = find_slot(published.load(std::memory_order_acquire))) return cached;
-  std::lock_guard<std::mutex> guard(lock);
-  // Another task may have added it between the unlocked read and the lock.
-  const size_t used = published.load(std::memory_order_relaxed);
-  if (const char *cached = find_slot(used)) return cached;
-  if (used == CUSTOM_MDI_ICON_CACHE_SLOTS) return nullptr;
-  CustomGlyphSlot &slot = slots[used];
-  slot.codepoint = cp;
-  slot.utf8[encode_utf8_codepoint(cp, slot.utf8)] = '\0';
-  published.store(used + 1, std::memory_order_release);
-  return slot.utf8;
+  // Rejecting other ranges keeps text characters out.
+  if (cp < CUSTOM_ICON_MIN_CODEPOINT || cp > CUSTOM_ICON_MAX_CODEPOINT) return nullptr;
+  if (const char* custom = find_custom_icon_glyph(cp)) return custom;
+  // Built-in icons can also be referenced by codepoint.
+  char utf8[5] = {};
+  encode_utf8_codepoint(cp, utf8);
+  if (std::strcmp(utf8, "\U000F0493") == 0) return "\U000F0493";
+  for (size_t i = 0; i < NUM_ICONS; i++) {
+    if (std::strcmp(ICON_ENTRIES[i].glyph, utf8) == 0) return ICON_ENTRIES[i].glyph;
+  }
+  return "";
 }
 
 // Linear search for an icon name; returns fallback (cog) if not found
