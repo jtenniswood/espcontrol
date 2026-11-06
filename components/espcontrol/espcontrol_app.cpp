@@ -94,8 +94,8 @@ EspControlApp::EspControlApp() = default;
 
 EspControlApp::~EspControlApp() = default;
 
-void EspControlApp::set_custom_icons_available(bool available) {
-  configuration::set_panel_config_custom_icons_available(available);
+void EspControlApp::set_custom_icons(std::initializer_list<uint32_t> codepoints) {
+  configuration::set_panel_config_custom_icons(codepoints);
 }
 
 void EspControlApp::set_panel_config_device_profile(const char *device_profile) {

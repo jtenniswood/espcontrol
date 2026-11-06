@@ -1,8 +1,9 @@
 """Detect icons added to the main icon font beyond EspControl's built-in set.
 
 People who compile their own firmware can extend font_icon_main with extra
-Material Design Icons. The web icon picker only offers custom icons when the
-firmware reports that it has some, so official prebuilt firmware never does.
+Material Design Icons. The firmware reports exactly which ones it has, so the
+web icon picker only offers glyphs the display can draw, and offers none on
+official prebuilt firmware.
 """
 import re
 from pathlib import Path
@@ -10,6 +11,9 @@ from pathlib import Path
 ICON_FONT_ID = "font_icon_main"
 # The cog is the fallback icon and is always in the font (see icon_glyphs.yaml).
 FALLBACK_ICON_CODEPOINT = 0xF0493
+# Matches the custom icon range accepted by find_icon() in icons.h.
+CUSTOM_ICON_MIN = 0xF0000
+CUSTOM_ICON_MAX = 0x10FFFD
 _ICONS_H = Path(__file__).with_name("icons.h")
 
 
@@ -31,15 +35,21 @@ def _font_id(font):
     return getattr(font_id, "id", font_id)
 
 
-def icon_font_has_custom_glyphs(fonts, builtin=None):
-    """True when font_icon_main lists any glyph outside the built-in icons."""
+def custom_icon_codepoints(fonts, builtin=None):
+    """Sorted codepoints in font_icon_main that are not built-in icons.
+
+    Only codepoints in the range the picker and find_icon() accept
+    (U+F0000-10FFFD) are returned, since only those can be chosen as icons.
+    """
     builtin = builtin_icon_codepoints() if builtin is None else builtin
     for font in fonts or []:
         if _font_id(font) != ICON_FONT_ID:
             continue
-        return any(
-            ord(character) not in builtin
+        return sorted({
+            ord(character)
             for glyph in font.get("glyphs", []) or []
             for character in str(glyph)
-        )
-    return False
+            if ord(character) not in builtin
+            and CUSTOM_ICON_MIN <= ord(character) <= CUSTOM_ICON_MAX
+        })
+    return []

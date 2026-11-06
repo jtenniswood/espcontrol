@@ -145,7 +145,7 @@ The icon picker includes a few hundred icons from [Material Design Icons](https:
 3. Flash the firmware onto your device
 4. In the card's **Icon** field, type the codepoint (`F0EFA`) and choose **Custom icon mdi:F0EFA**.
 
-The **Custom icon** option only appears on displays running firmware that you compiled with at least one extra icon. It does not appear on the official prebuilt firmware.
+The **Custom icon** option only appears for icons that are in that display's firmware, so it never offers an icon the screen can't show. It does not appear on the official prebuilt firmware.
 
 Add the icon to every display where you want to use it. If a card uses a custom icon that isn't in that display's YAML, the web page preview still shows it, but the display shows an empty space where the icon should be.
 

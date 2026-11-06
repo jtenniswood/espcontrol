@@ -79,14 +79,14 @@ export class NativePanelConfigClient {
   private confirmedUnsupported_ = false;
   private discovery_: Promise<boolean> | null = null;
   private maxRecordBodyBytes_: number | null = null;
-  private customIconsAvailable_ = false;
+  private customIcons_: readonly string[] = [];
 
   constructor(private readonly fetch_: NativePanelConfigFetch) {}
 
   supported(): boolean { return this.supported_; }
-  // Firmware compiled with extra icons in its icon font reports
-  // icons.custom; official prebuilt and older firmware do not.
-  customIconsAvailable(): boolean { return this.customIconsAvailable_; }
+  // Codepoints (hex, e.g. "F0EFA") the firmware was compiled with beyond the
+  // built-in icons. Empty on official prebuilt and older firmware.
+  customIcons(): readonly string[] { return this.customIcons_; }
   maxConfigValueBytes(): number | null {
     return this.supported_ && this.maxRecordBodyBytes_ !== null
       ? this.maxRecordBodyBytes_ - 1 : null;
@@ -112,7 +112,9 @@ export class NativePanelConfigClient {
         this.confirmedUnsupported_ = false;
         if (!response.ok) return false;
         const capabilities = await response.json();
-        this.customIconsAvailable_ = (capabilities as Capabilities | null)?.icons?.custom === true;
+        const custom = (capabilities as Capabilities | null)?.icons?.custom;
+        this.customIcons_ = Array.isArray(custom)
+          ? custom.filter((value): value is string => typeof value === "string") : [];
         const supported = supportedCapabilities(capabilities);
         const limit = (capabilities as Capabilities | null)?.configuration?.max_record_body_bytes;
         this.maxRecordBodyBytes_ = supported && Number.isInteger(limit) && Number(limit) > 1

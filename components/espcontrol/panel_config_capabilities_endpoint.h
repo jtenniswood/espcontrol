@@ -3,8 +3,9 @@
 #include "panel_config_capabilities.h"
 
 #ifdef USE_WEBSERVER
-#include <array>
 #include <cstring>
+#include <memory>
+#include <new>
 
 #include <esp_http_server.h>
 
@@ -35,9 +36,12 @@ class PanelConfigCapabilitiesHandler final
                       HTTPD_RESP_USE_STRLEN);
       return;
     }
-    std::array<char, PANEL_CONFIG_CAPABILITIES_MAX_JSON_BYTES> response{};
+    // Sized for the compiled-in custom icon list, which has no fixed length.
+    const size_t capacity = panel_config_capabilities_json_capacity();
+    std::unique_ptr<char[]> response(new (std::nothrow) char[capacity]);
     size_t response_size = 0;
-    if (!write_panel_config_capabilities_json(response.data(), response.size(),
+    if (!response ||
+        !write_panel_config_capabilities_json(response.get(), capacity,
                                               &response_size)) {
       httpd_resp_send_err(raw_request, HTTPD_500_INTERNAL_SERVER_ERROR,
                           "Could not build capabilities response");
@@ -46,7 +50,7 @@ class PanelConfigCapabilitiesHandler final
     httpd_resp_set_status(raw_request, "200 OK");
     httpd_resp_set_type(raw_request, "application/json");
     httpd_resp_set_hdr(raw_request, "Cache-Control", "no-store");
-    httpd_resp_send(raw_request, response.data(), response_size);
+    httpd_resp_send(raw_request, response.get(), response_size);
   }
 };
 

@@ -29,26 +29,31 @@ class CustomIconDetectionTest(unittest.TestCase):
 
     def test_official_font_has_no_custom_icons(self):
         fonts = [{"id": FontId("font_icon_main"), "glyphs": builtin_glyphs()}]
-        self.assertFalse(custom_icons.icon_font_has_custom_glyphs(fonts))
+        self.assertEqual(custom_icons.custom_icon_codepoints(fonts), [])
 
-    def test_extended_font_reports_custom_icons(self):
-        fonts = [{"id": FontId("font_icon_main"), "glyphs": builtin_glyphs() + ["\U000F0EFA"]}]
-        self.assertTrue(custom_icons.icon_font_has_custom_glyphs(fonts))
+    def test_extended_font_reports_each_added_icon(self):
+        fonts = [{"id": FontId("font_icon_main"),
+                  "glyphs": builtin_glyphs() + ["\U000F194B", "\U000F00E6", "\U000F00E6"]}]
+        self.assertEqual(custom_icons.custom_icon_codepoints(fonts), [0xF00E6, 0xF194B])
 
     def test_multi_character_glyph_strings_are_checked(self):
         fonts = [{"id": "font_icon_main", "glyphs": ["\U000F0493\U000F0EFA"]}]
-        self.assertTrue(custom_icons.icon_font_has_custom_glyphs(fonts))
+        self.assertEqual(custom_icons.custom_icon_codepoints(fonts), [0xF0EFA])
+
+    def test_glyphs_outside_the_icon_range_are_not_offered(self):
+        fonts = [{"id": "font_icon_main", "glyphs": ["A", "\ue000", "\U000F0EFA", "\U0010FFFD"]}]
+        self.assertEqual(custom_icons.custom_icon_codepoints(fonts), [0xF0EFA, 0x10FFFD])
 
     def test_other_fonts_are_ignored(self):
         fonts = [
             {"id": FontId("font_icon_status"), "glyphs": ["\U000F0EFA"]},
             {"id": FontId("font_icon_main"), "glyphs": builtin_glyphs()},
         ]
-        self.assertFalse(custom_icons.icon_font_has_custom_glyphs(fonts))
+        self.assertEqual(custom_icons.custom_icon_codepoints(fonts), [])
 
     def test_missing_icon_font_reports_no_custom_icons(self):
-        self.assertFalse(custom_icons.icon_font_has_custom_glyphs([]))
-        self.assertFalse(custom_icons.icon_font_has_custom_glyphs(None))
+        self.assertEqual(custom_icons.custom_icon_codepoints([]), [])
+        self.assertEqual(custom_icons.custom_icon_codepoints(None), [])
 
     def test_missing_generated_table_is_an_error(self):
         with self.assertRaises(ValueError):

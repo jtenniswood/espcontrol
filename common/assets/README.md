@@ -145,11 +145,12 @@ that codepoint directly, and `iconSlug()` in
 `src/webserver/application/ui_primitives.ts` adds a matching CSS class for
 previews. User docs: `docs/getting-started/manual-esphome-setup.md`.
 
-The picker only offers custom icons when the firmware has some. At compile
-time, `components/espcontrol/custom_icons.py` compares `font_icon_main`'s
-glyphs with the built-in table in `icons.h`; if any were added, the firmware
-reports `"icons":{"custom":true}` in `/api/v1/capabilities`. Official prebuilt
-firmware reports `false`, so typed codepoints are not offered there.
+The picker only offers custom icons the firmware actually has. At compile
+time, `components/espcontrol/custom_icons.py` lists the glyphs in
+`font_icon_main` that are not in the built-in table in `icons.h`, and the
+firmware reports them in `/api/v1/capabilities` as `"icons":{"custom":[...]}`
+(hex codepoints, for example `"F0EFA"`). Official prebuilt firmware reports an
+empty list, so typed codepoints are not offered there.
 
 ## Domain defaults
 

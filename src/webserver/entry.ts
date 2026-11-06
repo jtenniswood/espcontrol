@@ -383,7 +383,7 @@ function composeApplicationContext(): ApplicationContext {
   const configurationPersistence = createConfigPersistenceFeature(nativePanelConfig, runtime, layout, entityState, shell);
   const cards = createCardRegistry();
   const iconPicker = createButtonSettingsIconPickerFeature(dom.document, () => preview.render(),
-    () => nativePanelConfig.customIconsAvailable());
+    () => nativePanelConfig.customIcons());
   const renderQueue = createButtonSettingsRenderQueueFeature(runtime, {
     document: dom.document,
     requestFrame: (callback) => requestAnimationFrame(callback),

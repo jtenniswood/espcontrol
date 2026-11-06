@@ -84,27 +84,30 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
     return response(200, document, "\"7\"");
   });
   equal(await client.discover(), true, "native capabilities are detected");
-  equal(client.customIconsAvailable(), false,
-    "firmware that does not report custom icons keeps them hidden in the icon picker");
+  deepEqual(client.customIcons(), [],
+    "firmware that does not list custom icons keeps them hidden in the icon picker");
 
-  // Firmware compiled with extra icons reports icons.custom in the same
-  // capabilities response, so the editor makes no extra startup request.
-  const capabilityBody = (icons: unknown) => async (path: string) => ({
+  // Firmware compiled with extra icons lists them in the same capabilities
+  // response, so the editor makes no extra startup request.
+  const capabilityBody = (icons: unknown) => async (_path: string) => ({
     ...response(200),
     json: async () => ({ configuration: { read: true, write: true, document_versions: [1] }, icons }),
   });
-  const customIconClient = createNativePanelConfigClient(capabilityBody({ custom: true }));
-  equal(customIconClient.customIconsAvailable(), false, "custom icons stay hidden until the firmware answers");
+  const customIconClient = createNativePanelConfigClient(capabilityBody({ custom: ["F00E6", "F194B"] }));
+  deepEqual(customIconClient.customIcons(), [], "custom icons stay hidden until the firmware answers");
   await customIconClient.discover();
-  equal(customIconClient.customIconsAvailable(), true, "firmware with extra icons enables custom icons");
-  const officialClient = createNativePanelConfigClient(capabilityBody({ custom: false }));
+  deepEqual(customIconClient.customIcons(), ["F00E6", "F194B"], "the firmware's extra icons reach the editor");
+  const officialClient = createNativePanelConfigClient(capabilityBody({ custom: [] }));
   await officialClient.discover();
-  equal(officialClient.customIconsAvailable(), false, "official prebuilt firmware keeps custom icons hidden");
-  const looseClient = createNativePanelConfigClient(capabilityBody({ custom: "true" }));
+  deepEqual(officialClient.customIcons(), [], "official prebuilt firmware lists no custom icons");
+  const looseClient = createNativePanelConfigClient(capabilityBody({ custom: true }));
   await looseClient.discover();
-  equal(looseClient.customIconsAvailable(), false, "only a real true value enables custom icons");
+  deepEqual(looseClient.customIcons(), [], "a value that is not a list enables no custom icons");
+  const mixedClient = createNativePanelConfigClient(capabilityBody({ custom: ["F00E6", 7, null] }));
+  await mixedClient.discover();
+  deepEqual(mixedClient.customIcons(), ["F00E6"], "only text entries are kept from the list");
   const customController = new NativePanelConfigController({
-    fetch: capabilityBody({ custom: true }),
+    fetch: capabilityBody({ custom: ["F00E6"] }),
     deviceProfile: () => "panel-a",
     slotCount: () => 2,
     entityName: (name: string) => name,
@@ -113,9 +116,9 @@ export async function runNativePanelConfigTests(migrationFixture?: MigrationFixt
     showBanner: () => {},
     delay: () => {},
   } as any);
-  equal(customController.customIconsAvailable(), false, "the controller reports no custom icons before discovery");
+  deepEqual(customController.customIcons(), [], "the controller reports no custom icons before discovery");
   await customController.begin();
-  equal(customController.customIconsAvailable(), true, "the controller passes custom icon support to the icon picker");
+  deepEqual(customController.customIcons(), ["F00E6"], "the controller passes the custom icon list to the icon picker");
   equal(await client.save((current) => ({ ...current, settings: { ...current.settings, button_order: "1d" } })), "saved", "guarded native save succeeds");
   const put = requests.find((entry) => entry.request?.method === "PUT");
   equal(put?.request?.headers?.["If-Match"], "\"7\"", "native save uses the document generation");

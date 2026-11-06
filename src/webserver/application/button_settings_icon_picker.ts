@@ -12,9 +12,10 @@ export interface ButtonSettingsIconPickerFeature {
 export function createButtonSettingsIconPickerFeature(
     document: Document,
     renderPreview: () => void,
-    // Official prebuilt firmware has no extra icon glyphs, so typed codepoints
-    // are only offered when the firmware reports custom icon support.
-    customIconsAvailable: () => boolean = () => false,
+    // Codepoints the firmware was compiled with beyond the built-in icons.
+    // A typed codepoint is only offered when the display's font contains it,
+    // so official prebuilt firmware (an empty list) never offers one.
+    availableCustomIcons: () => readonly string[] = () => [],
 ): ButtonSettingsIconPickerFeature {
     // ── Button Settings Icon Picker ───────────────────────────────────
     // ── Icon picker (optimized) ────────────────────────────────────────────
@@ -30,6 +31,14 @@ export function createButtonSettingsIconPickerFeature(
         // current custom icon, and below any name matches when it shows a
         // typed codepoint, so Enter prefers a matching built-in icon.
         var customFirst: any = false;
+        function isAvailableCustomIcon(this: any, icon?: any) {
+            var available: readonly string[] = availableCustomIcons();
+            for (var i: any = 0; i < available.length; i++) {
+                if (sameCustomIcon(normalizeCustomIcon(available[i]), icon))
+                    return true;
+            }
+            return false;
+        }
         function ensureBuilt(this: any) {
             if (optionEls)
                 return;
@@ -71,7 +80,9 @@ export function createButtonSettingsIconPickerFeature(
             highlighted = -1;
             var lc: any = (filter || "").toLowerCase();
             var hasMatch: any = false;
-            var typed: any = customIconsAvailable() ? normalizeCustomIcon(filter) : null;
+            var typed: any = normalizeCustomIcon(filter);
+            if (typed && !isAvailableCustomIcon(typed))
+                typed = null;
             var custom: any = typed || (!lc && customIconCodepoint(currentIcon) !== null ? currentIcon : null);
             customFirst = !typed;
             dropdown.insertBefore(customEl, customFirst ? optionEls[0] || emptyEl : emptyEl);

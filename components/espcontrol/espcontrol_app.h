@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
 #include <memory>
 
 #include "esphome/components/text/text.h"
@@ -55,7 +56,8 @@ class EspControlApp : public esphome::Component {
       esphome::text::Text *subpage_5 = nullptr,
       esphome::text::Text *subpage_6 = nullptr,
       esphome::text::Text *subpage_7 = nullptr);
-  void set_custom_icons_available(bool available);
+  // Codepoints added to font_icon_main beyond the built-in icons (from codegen).
+  void set_custom_icons(std::initializer_list<uint32_t> codepoints);
   void set_panel_config_card_images_storage(bool enabled) {
     panel_config_card_images_storage_ = enabled;
   }
