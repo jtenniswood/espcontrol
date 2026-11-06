@@ -9,6 +9,7 @@ from generate_media_lifecycle_integration import definition
 root = Path(__file__).resolve().parents[2]
 source = r'''
 #include <cassert>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
