@@ -201,6 +201,20 @@ def firmware_ha_binding_errors(firmware_dir: Path, root: Path) -> list[str]:
     return errors
 
 
+def firmware_ha_refresh_errors(text: str, rel: Path) -> list[str]:
+    helper = re.search(
+        r"inline\s+void\s+ha_reannounce_state_subscriptions\s*\(\s*\)\s*\{(?P<body>.*?)\n\}",
+        text, re.DOTALL,
+    )
+    body = helper.group("body") if helper else ""
+    errors: list[str] = []
+    if "espcontrol::ha::request_state_refresh();" not in body:
+        errors.append(f"{rel}: schedule runtime card value refresh through the paced one-shot transport")
+    if "on_subscribe_home_assistant_states_request" in body:
+        errors.append(f"{rel}: do not replay persistent HA subscription lists for value refresh")
+    return errors
+
+
 def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
     path = firmware_dir / "button_grid_ha.h"
     if not path.exists():
@@ -286,12 +300,7 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         or "transport_.subscribe(" not in coordinator_text
     ):
         errors.append(f"{rel}: reuse one Home Assistant transport subscription across grid rebuilds")
-    if (
-        "inline void ha_reannounce_state_subscriptions()" not in text
-        or "client->get_name()" not in text
-        or "client->on_subscribe_home_assistant_states_request();" not in text
-    ):
-        errors.append(f"{rel}: re-announce runtime card subscriptions to the connected Home Assistant client")
+    errors.extend(firmware_ha_refresh_errors(text, rel))
     if (
         "ha_log_subscription_diagnostics" not in text
         or "get_state_subs().size()" not in text
@@ -5063,6 +5072,27 @@ def test_camera_refresh_package_mcu_errors() -> None:
 
 
 def run_self_test() -> int:
+    refresh_rel = Path("components/espcontrol/button_grid_ha.h")
+    valid_refresh = (
+        "inline void ha_reannounce_state_subscriptions() {\n"
+        "  espcontrol::ha::request_state_refresh();\n"
+        "}\n"
+    )
+    assert not firmware_ha_refresh_errors(valid_refresh, refresh_rel)
+    # A valid token elsewhere must not conceal a missing or incorrect helper.
+    assert firmware_ha_refresh_errors("// espcontrol::ha::request_state_refresh();\n", refresh_rel)
+    assert firmware_ha_refresh_errors(valid_refresh.replace("espcontrol::ha::request_state_refresh();", ""), refresh_rel)
+    old_refresh = valid_refresh.replace(
+        "espcontrol::ha::request_state_refresh();",
+        "client->on_subscribe_home_assistant_states_request();",
+    )
+    assert any("do not replay persistent" in error for error in firmware_ha_refresh_errors(old_refresh, refresh_rel))
+    # Keeping the new call alongside live enumeration must also fail.
+    mixed_refresh = valid_refresh.replace(
+        "espcontrol::ha::request_state_refresh();",
+        "espcontrol::ha::request_state_refresh();\n  client->on_subscribe_home_assistant_states_request();",
+    )
+    assert any("do not replay persistent" in error for error in firmware_ha_refresh_errors(mixed_refresh, refresh_rel))
     test_camera_refresh_package_mcu_errors()
     assert SUBSCRIPTION_TRACKING_PATTERN.search(
         "subscriptions_.push_back({callback_ref, scope, owner, channel, retain_latest});"
