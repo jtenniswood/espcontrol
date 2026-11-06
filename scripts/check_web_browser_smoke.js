@@ -1516,7 +1516,7 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     assert.strictEqual(
       await firmwareCard
         .locator(".sp-fw-overview .sp-fw-actions")
-        .evaluate((node) => getComputedStyle(node).justifyContent),
+        .evaluate((node) => getComputedStyle(node).justifyContent.replace(/^flow-/, "flex-")),
       "flex-end",
       `${label}: firmware actions should align with the version values`,
     );
@@ -7874,7 +7874,8 @@ async function assertCameraScreensaverDimming(browser, testCase) {
       await openBackupControls(page);
       const downloadPromise = page.waitForEvent("download");
       await page.getByRole("button", { name: "Export", exact: true }).click();
-      return JSON.parse(fs.readFileSync(await (await downloadPromise).path(), "utf8"));
+      const archive = readStoredZip(new Uint8Array(fs.readFileSync(await (await downloadPromise).path())));
+      return JSON.parse(Buffer.from(archive["backup.json"]).toString("utf8"));
     };
     if (!await action.locator('option[value="camera"]').count()) {
       assert.strictEqual(await timer.isVisible(), false, "unsupported displays hide camera dimming");
