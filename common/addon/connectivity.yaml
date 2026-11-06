@@ -18,9 +18,6 @@
 # as well as release build entry points. An AP alone has no setup DNS/form.
 captive_portal:
 
-# ESP Web Tools can provision WiFi through USB after installation as well.
-improv_serial:
-
 wifi:
   power_save_mode: none
   reboot_timeout: 30min
@@ -78,7 +75,7 @@ script:
     then:
       - if:
           condition:
-            lambda: 'return ha_api_connected();'
+            lambda: 'return ha_api_connected() && !id(ha_connection_warning_active);'
           then:
             - if:
                 condition:

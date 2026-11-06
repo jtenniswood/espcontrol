@@ -7,6 +7,7 @@
 #include <limits>
 
 #include "bounded_sensor_text.h"
+#include "bounded_display_text.h"
 #include "button_grid_contract_generated.h"
 #include "button_grid_subpage_parser.h"
 #include "calendar_card_text.h"
@@ -14,9 +15,12 @@
 #include "media_playlist_match.h"
 #include "page_fan_mode.h"
 #include "page_media_group.h"
+#include "page_modal_admission.h"
 #include "page_toggle_state.h"
 #include "timer_state_policy.h"
 #include "weather_condition.h"
+#include "wind_direction.h"
+#include "rainfall_display.h"
 #include "wifi_qr_codec.h"
 
 namespace espcontrol::pages {
@@ -50,9 +54,8 @@ PageEntityValue find(PageEntityStateRuntime &state,ConfigurationHandle handle,
 }
 bool basic_card_is_forecast(const PageStore &store,CardId id) {
   const auto *card=store.card(id);if(!card)return false;
-  const auto type=store.field(*card,CardField::TYPE);
-  return card_runtime_weather_forecast_supported()&&(type=="weather_forecast"||
-    (type=="weather"&&card_runtime_weather_forecast_precision(std::string(store.field(*card,CardField::PRECISION)))));
+  return card_runtime_weather_forecast_supported() && admission::weather_forecast(store.field(*card,CardField::TYPE),
+    store.field(*card,CardField::PRECISION), store.field(*card,CardField::OPTIONS));
 }
 bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& out,
                         BasicCardTextSink* strings, PageLocalRelayRuntime* relay) {
@@ -292,9 +295,27 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
       else if(!copy(content_type,out.media.playlist_type))return false;
     }
   } else if (type == "weather" || type == "weather_forecast") {
-    out.kind=basic_card_is_forecast(store,id)?BasicCardKind::FORECAST:BasicCardKind::WEATHER;
-    out.forecast_view=precision=="today"?weather::View::TODAY:precision=="tomorrow"||type=="weather_forecast"?weather::View::TOMORROW:weather::View::DAILY;out.label={};out.sensor={};out.unit={};
-    out.icon=out.icon_on="Weather Cloudy";
+    out.label={};
+    if (precision!="rainfall") out.unit={};
+    if (type=="weather" && precision=="wind") {
+      out.kind=BasicCardKind::WEATHER_WIND;
+      out.wind_sensors=admission::option_equals(options,"wind_source","sensors");
+      out.icon=out.icon_on="Weather Windy";
+    } else if (type=="weather" && (precision=="pressure" || precision=="humidity" || precision=="visibility")) {
+      out.kind=precision=="pressure"?BasicCardKind::WEATHER_PRESSURE:
+               precision=="humidity"?BasicCardKind::WEATHER_HUMIDITY:BasicCardKind::WEATHER_VISIBILITY;
+      out.weather_metric_forecast=precision=="visibility" ||
+          admission::option_equals(options,precision=="pressure"?"pressure_source":"humidity_source","forecast");
+      out.sensor={};
+      out.icon=out.icon_on=precision=="pressure"?"Gauge":precision=="humidity"?"Water Percent":"Weather Hazy";
+    } else if (type=="weather" && precision=="rainfall" && !basic_card_is_forecast(store,id)) {
+      out.kind=BasicCardKind::WEATHER_RAINFALL;
+      out.sensor={};out.icon=out.icon_on="Weather Rainy";
+    } else {
+      out.kind=basic_card_is_forecast(store,id)?BasicCardKind::FORECAST:BasicCardKind::WEATHER;
+      out.forecast_view=precision=="rainfall"?weather::View::RAINFALL:precision=="today"?weather::View::TODAY:precision=="tomorrow"||type=="weather_forecast"?weather::View::TOMORROW:weather::View::DAILY;
+      out.sensor={};out.icon=out.icon_on="Weather Cloudy";
+    }
   } else if (type == "alarm" || type == "alarm_action") {
     out.kind = BasicCardKind::ALARM;
     const bool panel = type == "alarm";
@@ -1159,6 +1180,54 @@ BasicCardState read_basic_card(
       else if(playback.value=="off")key="Off";
       if(key){const auto *translated=translate?translate(key):nullptr;result.label=translated?translated:key;}
       else {format_sensor_text(result.text,sizeof(result.text),playback.value,HA_SHORT_STATE_MAX_LEN);result.formatted_label=true;}
+    }
+    return result;
+  }
+  if(basic_card_weather_reading(card.kind)) {
+    result.numeric=true;
+    PageEntityValue unit;
+    std::string_view unit_text;
+    const char *key="Rainfall";
+    if(card.kind==BasicCardKind::WEATHER_WIND) {
+      int direction=-1;
+      std::strcpy(result.number,"--");
+      if(card.wind_sensors || available(find(state,handle,card.entity))) {
+        const auto bearing=find(state,handle,card.entity,card.wind_sensors?"":"wind_bearing");
+        if(available(bearing))direction=wind::direction(bearing.value);
+        const auto speed=find(state,handle,card.wind_sensors?card.sensor:card.entity,
+                              card.wind_sensors?"":"wind_speed");
+        wind::speed(available(speed)?speed.value:std::string_view{},result.number,sizeof(result.number));
+        unit=find(state,handle,card.wind_sensors?card.sensor:card.entity,
+                  card.wind_sensors?"unit_of_measurement":"wind_speed_unit");
+      }
+      key=wind::label(direction);result.weather_condition=static_cast<uint8_t>(direction+1);
+    } else if(card.kind==BasicCardKind::WEATHER_RAINFALL) {
+      const auto primary=find(state,handle,card.entity);
+      rainfall::format(available(primary)?rainfall::value(primary.value):NAN,result.number,sizeof(result.number));
+      unit=find(state,handle,card.entity,"unit_of_measurement");
+      unit_text=card.unit;
+    }
+    if(card.kind!=BasicCardKind::WEATHER_WIND && card.kind!=BasicCardKind::WEATHER_RAINFALL) {
+      const bool humidity=card.kind==BasicCardKind::WEATHER_HUMIDITY;
+      const char *attribute=card.kind==BasicCardKind::WEATHER_PRESSURE?"pressure":humidity?"humidity":"visibility";
+      key=card.kind==BasicCardKind::WEATHER_PRESSURE?"Air Pressure":humidity?"Humidity":"Visibility";
+      const auto primary=find(state,handle,card.entity);
+      const auto reading=card.weather_metric_forecast?find(state,handle,card.entity,attribute):primary;
+      double number=available(reading)?weather_reading::value(reading.value):NAN;
+      if((humidity && number>100) || (card.weather_metric_forecast &&
+          (!available(primary) || primary.value.empty()))) number=NAN;
+      weather_reading::format(number,result.number,sizeof(result.number));
+      if(card.weather_metric_forecast && humidity) unit_text="%";
+      else unit=find(state,handle,card.entity,card.weather_metric_forecast?
+          (card.kind==BasicCardKind::WEATHER_PRESSURE?"pressure_unit":"visibility_unit"):"unit_of_measurement");
+    }
+    if(unit_text.empty() && available(unit)) unit_text=unit.value;
+    const auto *translated=translate?translate(key):nullptr;result.label=translated?translated:key;
+    const size_t size=copy_display_text(result.text,sizeof(result.text),result.number).bytes;
+    if(std::strcmp(result.number,"--")!=0 && !unit_text.empty() &&
+       unit_text!="unknown" && unit_text!="unavailable" && size+1<sizeof(result.text)) {
+      result.text[size]=' ';
+      copy_display_text(result.text+size+1,sizeof(result.text)-size-1,unit_text);
     }
     return result;
   }

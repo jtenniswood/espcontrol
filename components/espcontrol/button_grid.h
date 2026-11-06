@@ -36,6 +36,7 @@
 #include "display_text.h"
 
 #include "button_grid_ha.h"
+#include "ha_connection_warning.h"
 #include "button_grid_config.h"
 #include "button_grid_style.h"
 #include "button_grid_continuous_corners.h"

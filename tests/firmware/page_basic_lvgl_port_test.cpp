@@ -724,6 +724,25 @@ struct Fixture {
     assert(PageStore::stage_v1(document.data(), size, limits, 11, arena.data(), arena.size(), &store) ==
            PageStoreStatus::OK);
   }
+  struct WeatherMetrics {};
+  Fixture(const DeviceUiLimits& limits, WeatherMetrics) {
+    PanelConfigWriter writer(document.data(),document.size());
+    assert(writer.begin()==PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),std::strlen(limits.device_profile))==PanelConfigStatus::OK);
+    const std::array<const char*,4> buttons{{";Metrics;Home;Auto;;;subpage;;",
+      "weather.home;Ignored;Auto;Auto;;;weather;wind;",
+      "sensor.rain;Ignored;Auto;Auto;;;weather;rainfall;",
+      "weather.home;Ignored;Auto;Auto;;;weather;pressure;pressure_source=forecast"}};
+    for(size_t i=0;i<buttons.size();++i)
+      assert(writer.append_button(i+1,reinterpret_cast<const uint8_t*>(buttons[i]),std::strlen(buttons[i]))==PanelConfigStatus::OK);
+    const std::string child="~B,1,2,3|S,,Temperature,Auto,Auto,sensor.temp,°C,1,|W,sensor.bearing,Ignored,Auto,Auto,sensor.speed,,wind,wind_source=sensors|W,sensor.rain,Ignored,Auto,Auto,,,rainfall,";
+    assert(writer.append_subpage(1,reinterpret_cast<const uint8_t*>(child.data()),child.size())==PanelConfigStatus::OK);
+    const std::string order="1,2,3,4",key="button_order";
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>(key.data()),key.size(),
+      reinterpret_cast<const uint8_t*>(order.data()),order.size())==PanelConfigStatus::OK);
+    assert(writer.finish(&size)==PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(),size,limits,11,arena.data(),arena.size(),&store)==PageStoreStatus::OK);
+  }
   explicit Fixture(const DeviceUiLimits& limits, bool unsupported = false, bool portrait = false,
                    bool stateless = false, bool controls = false, bool weather = false,
                    bool forecasts = false, bool media = false, bool positions = false,
@@ -866,6 +885,8 @@ template<size_t Slots>struct Actions {
            : name == "Lock"                     ? "LOCKED"
            : name == "Lock Open"                ? "UNLOCKED"
            : name == "Fan"                      ? "FAN"
+           : name == "Wind arrow-right"         ? "WIND_E"
+           : name == "Wind arrow-bottom-left"   ? "WIND_SW"
            : name == "Weather Sunny"            ? "SUN"
            : name == "Lightbulb"                ? "ON"
            : name == "Blinds Open"              ? "OPEN"
@@ -2220,6 +2241,96 @@ void fan_mode_profile(const DeviceUiLimits& limits) {
   }
   assert(arena.live == 0);
   lv_obj_delete(page);
+}
+
+template<size_t Slots>void weather_metrics_profile(const DeviceUiLimits &limits) {
+  PageForecastSnapshot rain;
+  rain.forecast.count=1;
+  std::strcpy(rain.forecast.today,"2026-11-02");
+  std::strcpy(rain.forecast.days[0].date,"2026-11-02");
+  std::strcpy(rain.forecast.days[0].condition,"sunny");
+  std::strcpy(rain.forecast.precipitation_unit,"mm");
+  rain.forecast.days[0].precipitation=0.45f;
+  PageForecastFrame frame;PageForecastTextStyle text_style;
+  std::array<const char*,weather::CONDITION_COUNT> glyphs{};glyphs.fill("I");
+  glyphs[weather::condition_index("rainy")]="RAIN";
+  frame.build(rain,weather::View::RAINFALL,200,200,text_style,glyphs.data(),"LOADING");
+  assert(frame.count==3 && std::strcmp(frame.texts[1].text,"Rainfall")==0);
+  assert(std::strcmp(frame.texts[2].text,"0.45 mm")==0 && frame.texts[2].opacity==LV_OPA_70);
+  assert(std::strcmp(frame.texts[0].glyph,"RAIN")==0);
+  Fixture fixture(limits,Fixture::WeatherMetrics{});
+  Arena arena;Subscriptions subscriptions;PageCardDependencies dependencies;
+  PageEntityStateRuntime state(dependencies,arena,subscriptions,{128,128,8192});
+  auto* page=lv_obj_create(lv_screen_active());
+  std::array<lv_coord_t,Slots+1> columns{},rows{};
+  const auto row_count=(Slots+limits.grid_columns-1)/limits.grid_columns;
+  for(size_t i=0;i<limits.grid_columns;++i)columns[i]=LV_GRID_FR(1);
+  columns[limits.grid_columns]=LV_GRID_TEMPLATE_LAST;
+  for(size_t i=0;i<row_count;++i)rows[i]=LV_GRID_FR(1);
+  rows[row_count]=LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_size(page,480,480);lv_obj_set_grid_dsc_array(page,columns.data(),rows.data());
+  std::array<PageBasicWidgets,Slots> widgets{};
+  for(auto& w:widgets) {
+    w.button=lv_button_create(page);w.icon=lv_label_create(w.button);w.label=lv_label_create(w.button);
+    w.sensor_container=lv_obj_create(w.button);w.value=lv_label_create(w.sensor_container);w.unit=lv_label_create(w.sensor_container);
+  }
+  PageBasicTheme theme;Actions<Slots> actions;
+  {
+    PageLabelRefresh cache(arena);
+    PageBasicLvglPort<Slots> port(arena,state,widgets,{limits.slot_count,limits.grid_columns},theme,actions.callbacks());
+    assert(port.initialize());
+    std::array<lv_obj_t*,Slots*4> labels{};size_t index=0;
+    for(const auto& w:widgets)for(auto* label:{w.icon,w.label,w.value,w.unit})labels[index++]=label;
+    assert(cache.initialize(labels.data(),labels.size()));
+    PageRendererRuntime<Slots> renderer(limits,arena,port);actions.renderer=&renderer;
+    assert(renderer.prepare(fixture.store)&&state.prepare(fixture.store));
+    renderer.activate_prepared(fixture.store);state.activate_prepared(fixture.store);
+    subscriptions.send("weather.home","","sunny");
+    subscriptions.send("weather.home","wind_bearing","90");
+    subscriptions.send("weather.home","wind_speed","12.5");
+    subscriptions.send("weather.home","wind_speed_unit","km/h");
+    subscriptions.send("weather.home","pressure","1013.250");
+    subscriptions.send("weather.home","pressure_unit","hPa");
+    subscriptions.send("sensor.bearing","","225");subscriptions.send("sensor.speed","","8.5");
+    subscriptions.send("sensor.speed","unit_of_measurement","m/s");
+    subscriptions.send("sensor.rain","","0.450");subscriptions.send("sensor.rain","unit_of_measurement","mm");
+    subscriptions.send("sensor.temp","","19.5");
+    renderer.update_visible();lv_obj_update_layout(page);lv_refr_now(lv_display_get_default());
+    assert(std::strcmp(lv_label_get_text(widgets[1].label),"East")==0);
+    assert(std::strcmp(lv_label_get_text(widgets[1].icon),"WIND_E")==0);
+    assert(std::strcmp(lv_label_get_text(widgets[1].value),"12.5 km/h")==0);
+    assert(std::strcmp(lv_label_get_text(widgets[2].label),"Rainfall")==0);
+    assert(std::strcmp(lv_label_get_text(widgets[2].value),"0.45 mm")==0);
+    assert(std::strcmp(lv_label_get_text(widgets[3].label),"Air Pressure")==0);
+    assert(std::strcmp(lv_label_get_text(widgets[3].value),"1013.25 hPa")==0);
+    assert(lv_obj_get_style_text_opa(widgets[3].value,LV_PART_MAIN)==LV_OPA_70);
+    assert(lv_obj_get_style_text_opa(widgets[1].value,LV_PART_MAIN)==LV_OPA_70);
+    assert(lv_obj_has_flag(widgets[1].unit,LV_OBJ_FLAG_HIDDEN));
+    assert(!lv_obj_has_flag(widgets[1].sensor_container,LV_OBJ_FLAG_HIDDEN));
+    const auto child=fixture.store.card(0)->target;
+    assert(renderer.open_page(child));renderer.update_visible();lv_obj_update_layout(page);
+    assert(std::strcmp(lv_label_get_text(widgets[1].value),"19.5")==0);
+    assert(!lv_obj_has_flag(widgets[1].unit,LV_OBJ_FLAG_HIDDEN));
+    assert(lv_obj_get_style_text_opa(widgets[1].value,LV_PART_MAIN)==LV_OPA_COVER);
+    assert(std::strcmp(lv_label_get_text(widgets[2].label),"South West")==0);
+    assert(std::strcmp(lv_label_get_text(widgets[2].icon),"WIND_SW")==0);
+    assert(std::strcmp(lv_label_get_text(widgets[2].value),"8.5 m/s")==0);
+    assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);
+    const auto cpp=cpp_allocations,reserved=arena.allocations,descriptors=cache.memory().descriptor_adds,
+      retained=lv_live_bytes,resolves=actions.icon_resolves,channels=subscriptions.bindings.size();
+    for(size_t cycle=0;cycle<1000;++cycle) {
+      assert(renderer.open_page(child));renderer.update_visible();lv_obj_update_layout(page);
+      assert(renderer.back());renderer.update_visible();lv_obj_update_layout(page);
+      assert(cpp_allocations==cpp && arena.allocations==reserved && cache.memory().descriptor_adds==descriptors &&
+        lv_live_bytes==retained && actions.icon_resolves==resolves && subscriptions.bindings.size()==channels);
+    }
+    ++subscriptions.generation;renderer.update_visible();
+    assert(std::strcmp(lv_label_get_text(widgets[1].label),"--")==0);
+    assert(std::strcmp(lv_label_get_text(widgets[1].value),"--")==0);
+    renderer.retire_active();state.retire_active();
+    std::printf("%s: weather metrics, cross-type reuse and 1000 bounded cycles pass\n",limits.device_profile);
+  }
+  assert(arena.live==0);lv_obj_delete(page);
 }
 
 template<size_t Slots>void weather_profile(const DeviceUiLimits &limits) {
@@ -8232,6 +8343,7 @@ int main() {
         local_sensor_profile<6>(limits);
         local_relay_profile<6>(limits);
         weather_profile<6>(limits);
+        weather_metrics_profile<6>(limits);
         forecast_profile<6>(limits);
         media_action_profile<6>(limits);
         media_position_profile<6>(limits);
@@ -8268,6 +8380,7 @@ int main() {
         local_sensor_profile<9>(limits);
         local_relay_profile<9>(limits);
         weather_profile<9>(limits);
+        weather_metrics_profile<9>(limits);
         forecast_profile<9>(limits);
         media_action_profile<9>(limits);
         media_position_profile<9>(limits);
@@ -8307,6 +8420,7 @@ int main() {
         local_sensor_profile<15>(limits);
         local_relay_profile<15>(limits);
         weather_profile<15>(limits);
+        weather_metrics_profile<15>(limits);
         forecast_profile<15>(limits);
         media_action_profile<15>(limits);
         media_position_profile<15>(limits);
@@ -8343,6 +8457,7 @@ int main() {
         local_sensor_profile<20>(limits);
         local_relay_profile<20>(limits);
         weather_profile<20>(limits);
+        weather_metrics_profile<20>(limits);
         forecast_profile<20>(limits);
         media_action_profile<20>(limits);
         media_position_profile<20>(limits);

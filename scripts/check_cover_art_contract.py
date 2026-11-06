@@ -917,5 +917,11 @@ compensation_call = "apply_width_compensation(id(cover_art_playback_button), ico
 assert compensation_call in layout_script
 assert layout_script.index(compensation_call) < layout_script.index("if (signature ==")
 assert "!${cover_art_square_overlay} || id(cover_art_playback_control_enabled).state" in layout_script
-assert "lv_obj_add_flag(id(cover_art_playback_button), LV_OBJ_FLAG_HIDDEN)" in layout_script
+assert "script.execute: cover_art_update_playback_control" in layout_script
+playback_update = yaml_script_body(screen, "cover_art_update_playback_control") or ""
+assert "espcontrol::screensaver_pin().cover_art_playback_allowed()" in playback_update
+assert "!${cover_art_square_overlay} || id(cover_art_playback_control_enabled).state" in playback_update
+assert "lv_obj_add_flag(id(cover_art_playback_button), LV_OBJ_FLAG_HIDDEN)" in playback_update
+pin_refresh = yaml_script_body((ROOT / "common/addon/backlight.yaml").read_text(), "screensaver_pin_refresh_ui") or ""
+assert "script.execute: cover_art_update_playback_control" in pin_refresh
 print("Cover art policy, layout, and state contract checks passed.")

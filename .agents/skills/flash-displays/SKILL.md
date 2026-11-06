@@ -13,8 +13,8 @@ Use the local development ESPHome configs in the active repository worktree to f
 
 | Request names | ESPHome config directory | Default OTA target |
 |---|---|---|
-| `7inch`, `7-inch`, `7inch P4`, `7-inch P4`, `7inch V1`, `7-inch V1`, `JC1060P470` | `devices/guition-esp32-p4-jc1060p470` | `192.168.6.102` |
-| `7inch V2`, `7-inch V2`, `JC1060P470 V2` | `devices/guition-esp32-p4-jc1060p470-v2` | Ask for the target |
+| `7inch`, `7-inch`, `7inch P4`, `7-inch P4`, `7inch V2`, `7-inch V2`, `JC1060P470`, `JC1060P470 V2` | `devices/guition-esp32-p4-jc1060p470-v2` | `192.168.6.102` |
+| `7inch V1`, `7-inch V1`, `JC1060P470 V1` | `devices/guition-esp32-p4-jc1060p470` | Ask for the target |
 | `10inch`, `10-inch`, `10inch P4`, `10-inch P4`, `10inch V3`, `10-inch V3`, `JC8012P4A1`, `JC8012P4A1 V3` | `devices/guition-esp32-p4-jc8012p4a1-v3` | `192.168.6.103` |
 | `10inch V1`, `10-inch V1`, `JC8012P4A1 V1` | `devices/guition-esp32-p4-jc8012p4a1` | Ask for the target |
 | `10inch V2`, `10-inch V2`, `JC8012P4A1 V2` | `devices/guition-esp32-p4-jc8012p4a1-v2` | Ask for the target |
@@ -22,7 +22,7 @@ Use the local development ESPHome configs in the active repository worktree to f
 | `4.3inch P4`, `4.3-inch P4`, `P4 4.3inch`, `P4 4.3-inch`, `JC4880P443` | `devices/guition-esp32-p4-jc4880p443` | `192.168.6.101` |
 | `S3`, `4inch S3`, `4-inch S3`, `4848S040` | `devices/guition-esp32-s3-4848s040` | `192.168.6.105` |
 
-Treat the 7-inch panel at `192.168.6.102`, and an ambiguous or default `7inch` request, as V1 hardware. Always flash that panel with the V1 `JC1060P470` configuration in `devices/guition-esp32-p4-jc1060p470`; never substitute the V2 configuration because that firmware will not work on this panel. Select the V2 directory only when the user explicitly requests the 7-inch V2 panel and supplies a different OTA target or explicitly requests USB.
+Treat the 7-inch panel at `192.168.6.102`, and an ambiguous or default `7inch` request, as V2 hardware. Always flash that panel with the V2 `JC1060P470` configuration in `devices/guition-esp32-p4-jc1060p470-v2`. Use the V1 directory only when the user explicitly requests that version; ask for a different OTA target or USB when one is not supplied.
 
 Treat the 10-inch panel at `192.168.6.103`, and an ambiguous or default `10inch` request, as V3 hardware. Always flash that panel with the V3 `JC8012P4A1` configuration in `devices/guition-esp32-p4-jc8012p4a1-v3`. Use the V1 or V2 directories only when the user explicitly requests that version; ask for a different OTA target or USB when one is not supplied.
 
@@ -32,7 +32,7 @@ If the user says only `4inch` or `4-inch`, ask whether they mean the 4-inch P4 s
 
 For `/flash-displays` with no extra target, or for `all`, flash in this sequence by default over OTA using the default targets above:
 
-1. 7-inch P4 V1.
+1. 7-inch P4 V2.
 2. 10-inch P4 V3.
 3. 4-inch P4 / P4-86.
 4. 4.3-inch P4.
@@ -45,7 +45,7 @@ Use `dev.yaml` by default. If the user names another YAML file, use that file in
 - If the user explicitly says `dev`, `dev file`, or `dev.yaml`, use `dev.yaml` instead.
 - If the user gives a bare filename such as `esphome.yaml`, resolve it inside the selected display's config directory.
 - If the user gives a repo-relative path such as `devices/guition-esp32-p4-jc8012p4a1/esphome.yaml`, resolve it from the repository root.
-- For the 7-inch panel at `192.168.6.102`, or an ambiguous/default 7-inch request, require the selected YAML to resolve inside `devices/guition-esp32-p4-jc1060p470`, which is the V1 configuration. Allow `devices/guition-esp32-p4-jc1060p470-v2` only when the user explicitly requests V2 and supplies a different OTA target or explicitly requests USB; otherwise stop and clarify instead of flashing it.
+- For the 7-inch panel at `192.168.6.102`, or an ambiguous/default 7-inch request, require the selected YAML to resolve inside `devices/guition-esp32-p4-jc1060p470-v2`, which is the V2 configuration. Allow the V1 directory only when the user explicitly requests V1 and supplies a different OTA target or explicitly requests USB; otherwise stop and clarify instead of flashing it.
 - For the 10-inch panel at `192.168.6.103`, or an ambiguous/default 10-inch request, require the selected YAML to resolve inside `devices/guition-esp32-p4-jc8012p4a1-v3`, which is the V3 configuration. Allow the V1 or V2 directories only when the user explicitly requests that version and supplies a different OTA target or explicitly requests USB; otherwise stop and clarify instead of flashing it.
 - Only use YAML files inside this repository. If the selected file does not exist, ask for the correct file instead of guessing.
 - Use the required local secrets file described below. Do not create secret values or print, modify, copy, or commit the file contents.
@@ -112,7 +112,9 @@ Never display the secrets file, include its contents in command output, or add i
 Use the project wrapper so a flash always uses the ESPHome version pinned by
 `.github/esphome.env`. It stops before compiling if the installed executable is
 older or newer than the release version. The wrapper also builds from the local
-repository checkout:
+repository checkout. It also rejects a `run` or `upload` to the known 7-inch V2
+target `192.168.6.102` unless the YAML is inside
+`devices/guition-esp32-p4-jc1060p470-v2`:
 
 ```bash
 python3 scripts/local_esphome.py <yaml-file> run --device <target> --no-logs
@@ -123,12 +125,12 @@ run from each appropriate config directory under that root. These examples
 work from any linked worktree:
 
 ```bash
-# 7-inch P4 over OTA
-cd "$REPO_ROOT/devices/guition-esp32-p4-jc1060p470"
+# 7-inch P4 V2 over OTA
+cd "$REPO_ROOT/devices/guition-esp32-p4-jc1060p470-v2"
 python3 ../../scripts/local_esphome.py dev.yaml run --device 192.168.6.102 --no-logs
 
-# 7-inch P4 over USB, only when explicitly requested
-cd "$REPO_ROOT/devices/guition-esp32-p4-jc1060p470"
+# 7-inch P4 V2 over USB, only when explicitly requested
+cd "$REPO_ROOT/devices/guition-esp32-p4-jc1060p470-v2"
 python3 ../../scripts/local_esphome.py dev.yaml run --device /dev/cu.usbmodem201301 --no-logs
 
 # 10-inch P4 V3 over OTA

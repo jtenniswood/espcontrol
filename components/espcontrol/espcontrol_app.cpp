@@ -32,6 +32,7 @@
 #include "panel_config_transient_storage.h"
 #include "panel_config_write_endpoint.h"
 #include "panel_identity_endpoint.h"
+#include "panel_backup_endpoint.h"
 #include "screensaver_pin_endpoint.h"
 
 extern "C" void espcontrol_register_web_server_handlers(
@@ -40,6 +41,7 @@ extern "C" void espcontrol_register_web_server_handlers(
   if (server == nullptr) return;
   espcontrol::reset::register_handlers(*server);
   espcontrol::register_panel_identity_endpoint(*server);
+  espcontrol::backup::register_panel_backup_endpoint(*server);
   espcontrol::register_screensaver_pin_endpoint(*server);
   register_local_sensor_endpoint(*server);
   register_local_action_endpoint(*server);

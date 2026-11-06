@@ -67,4 +67,28 @@ inline bool option_equals_ascii(std::string_view options, std::string_view name,
   const auto high = hex_digit(value[1]), low = hex_digit(value[2]);
   return high >= 0 && low >= 0 && high * 16 + low == static_cast<unsigned char>(expected);
 }
+
+inline bool option_equals(std::string_view options, std::string_view name, std::string_view expected) {
+  const auto value = encoded_option(options, name);
+  size_t offset = 0;
+  for (const auto wanted : expected) {
+    if (offset == value.size()) return false;
+    auto actual = static_cast<unsigned char>(value[offset++]);
+    if (actual == '%' && value.size() - offset >= 2) {
+      const int high = hex_digit(value[offset]), low = hex_digit(value[offset + 1]);
+      if (high >= 0 && low >= 0) {
+        actual = static_cast<unsigned char>(high * 16 + low);
+        offset += 2;
+      }
+    }
+    if (actual != static_cast<unsigned char>(wanted)) return false;
+  }
+  return offset == value.size();
+}
+
+inline bool weather_forecast(std::string_view type, std::string_view precision, std::string_view options) {
+  return type == "weather_forecast" || (type == "weather" &&
+      (forecast_precision(precision) ||
+       (precision == "rainfall" && option_equals(options, "rainfall_source", "forecast"))));
+}
 }  // namespace espcontrol::pages::admission

@@ -1503,6 +1503,110 @@ void fan_mode_profile(const DeviceUiLimits& limits) {
   }
 }
 
+void weather_readings_profile(const DeviceUiLimits &limits) {
+  for(const std::string mode:{"pressure","humidity","visibility"}) {
+    for(const bool forecast:{false,true}) {
+      if(mode=="visibility" && !forecast)continue;
+      Fixture fixture(limits,"weather.reading;Ignored;Auto;Auto;;;weather;"+mode+";"+
+          mode+"_source="+(forecast?"forecast":"sensor"));
+      BasicCardDefinition definition;assert(prepare_basic_card(fixture.store,0,definition));
+      PageCardDependencies source;Arena arena;Subscriptions transport;
+      PageEntityStateRuntime state(source,arena,transport,{16,16,2048});
+      assert(state.prepare(fixture.store));state.activate_prepared(fixture.store);
+      const bool humidity=mode=="humidity";
+      transport.send("weather.reading","","sunny");
+      const std::string unit_attr=forecast?mode+"_unit":"unit_of_measurement";
+      const char* value_attr=forecast?mode.c_str():"";
+      transport.send("weather.reading",unit_attr.c_str(),humidity?"%":"units");
+      transport.send("weather.reading",value_attr,"42.500");
+      auto value=read_basic_card(definition,{17,0},state);
+      assert(value.numeric && std::strcmp(value.text,humidity?"42.5 %":"42.5 units")==0);
+      assert(value.label==(mode=="pressure"?"Air Pressure":humidity?"Humidity":"Visibility"));
+      const auto before=allocations;
+      for(size_t i=0;i<1000;++i)value=read_basic_card(definition,{17,0},state);
+      assert(allocations==before);
+      for(const char* invalid:{"NaN","-1","unavailable","1e20"}) {
+        transport.send("weather.reading",value_attr,invalid);
+        assert(std::strcmp(read_basic_card(definition,{17,0},state).text,"--")==0);
+      }
+      if(humidity) {
+        transport.send("weather.reading",value_attr,"101");
+        assert(std::strcmp(read_basic_card(definition,{17,0},state).text,"--")==0);
+      }
+      transport.send("weather.reading",value_attr,"42.5");
+      if(forecast) {
+        transport.send("weather.reading","","unavailable");
+        assert(std::strcmp(read_basic_card(definition,{17,0},state).text,"--")==0);
+      }
+      ++transport.generation;
+      assert(std::strcmp(read_basic_card(definition,{17,0},state).text,"--")==0);
+    }
+  }
+  Fixture rain(limits,"sensor.rain;Ignored;Auto;Auto;;inches;weather;rainfall;");
+  BasicCardDefinition definition;assert(prepare_basic_card(rain.store,0,definition));
+  PageCardDependencies source;Arena arena;Subscriptions transport;
+  PageEntityStateRuntime state(source,arena,transport,{16,16,2048});
+  assert(state.prepare(rain.store));state.activate_prepared(rain.store);
+  transport.send("sensor.rain","","1.250");transport.send("sensor.rain","unit_of_measurement","mm");
+  assert(std::strcmp(read_basic_card(definition,{17,0},state).text,"1.25 inches")==0);
+}
+
+void weather_metrics_profile(const DeviceUiLimits &limits) {
+  for (const bool sensors : {false, true}) {
+    Fixture fixture(limits, sensors
+      ? "sensor.bearing;Ignored;Auto;Auto;sensor.speed;;weather;wind;wind_source=sensors"
+      : "weather.home;Ignored;Auto;Auto;;;weather;wind;");
+    BasicCardDefinition definition;
+    assert(prepare_basic_card(fixture.store,0,definition));
+    PageCardDependencies source;Arena arena;Subscriptions transport;
+    PageEntityStateRuntime state(source,arena,transport,{16,16,2048});
+    assert(state.prepare(fixture.store));state.activate_prepared(fixture.store);
+    if (sensors) {
+      transport.send("sensor.bearing","","90");
+      transport.send("sensor.speed","","12.5");
+      transport.send("sensor.speed","unit_of_measurement","km/h");
+    } else {
+      transport.send("weather.home","","sunny");
+      transport.send("weather.home","wind_bearing","90");
+      transport.send("weather.home","wind_speed","12.5");
+      transport.send("weather.home","wind_speed_unit","km/h");
+    }
+    auto value=read_basic_card(definition,{17,0},state);
+    assert(value.label=="East" && value.numeric && std::strcmp(value.text,"12.5 km/h")==0);
+    auto translate=[](const char* key)->const char* {return std::strcmp(key,"East")==0?"Translated East":key;};
+    assert(read_basic_card(definition,{17,0},state,2,"°C",translate).label=="Translated East");
+    const auto before=allocations;
+    for(size_t i=0;i<1000;++i)value=read_basic_card(definition,{17,0},state);
+    assert(allocations==before);
+    if (!sensors) {
+      transport.send("weather.home","","unavailable");
+      value=read_basic_card(definition,{17,0},state);
+      assert(value.label=="--" && std::strcmp(value.text,"--")==0);
+    }
+    ++transport.generation;
+    assert(read_basic_card(definition,{17,0},state).label=="--");
+  }
+  Fixture rain(limits,"sensor.rain;Ignored;Auto;Auto;;;weather;rainfall;");
+  BasicCardDefinition definition;assert(prepare_basic_card(rain.store,0,definition));
+  PageCardDependencies source;Arena arena;Subscriptions transport;
+  PageEntityStateRuntime state(source,arena,transport,{16,16,2048});
+  assert(state.prepare(rain.store));state.activate_prepared(rain.store);
+  transport.send("sensor.rain","","0.450");transport.send("sensor.rain","unit_of_measurement","mm");
+  auto value=read_basic_card(definition,{17,0},state);
+  assert(value.label=="Rainfall" && value.numeric && std::strcmp(value.text,"0.45 mm")==0);
+  const auto before=allocations;
+  for(size_t i=0;i<1000;++i)value=read_basic_card(definition,{17,0},state);
+  assert(allocations==before);
+  for(const auto* invalid:{"unavailable","-1","NaN","1e20"}) {
+    transport.send("sensor.rain","",invalid);
+    assert(std::strcmp(read_basic_card(definition,{17,0},state).text,"--")==0);
+  }
+  Fixture forecast(limits,"weather.home;;;;;;weather;rainfall;rainfall_source=forecast");
+  assert(prepare_basic_card(forecast.store,0,definition));
+  if(card_runtime_weather_forecast_supported())
+    assert(definition.kind==BasicCardKind::FORECAST && definition.forecast_view==weather::View::RAINFALL);
+}
+
 void weather_profile(const DeviceUiLimits &limits) {
   Fixture fixture(limits,"weather.home;Ignored;Custom;Custom;;;weather;0;");BasicCardDefinition definition;assert(prepare_basic_card(fixture.store,0,definition));assert(definition.kind==BasicCardKind::WEATHER&&definition.label.empty()&&definition.unit.empty());PageCardDependencies source;Arena arena;Subscriptions transport;PageEntityStateRuntime state(source,arena,transport,{16,16,1024});assert(state.prepare(fixture.store));state.activate_prepared(fixture.store);
   auto value=read_basic_card(definition,{17,0},state);assert(value.label=="Unavailable");
@@ -1957,6 +2061,8 @@ int main() {
     light_temperature_profile(limits);
     timer_profile(limits);
     weather_profile(limits);
+    weather_metrics_profile(limits);
+    weather_readings_profile(limits);
     media_action_profile(limits);
     media_position_profile(limits);
     now_playing_profile(limits);

@@ -135,6 +135,22 @@ void complex_and_external_sources() {
   assert(declarations("switch.guest;WiFi;Auto;Auto;;;wifi_qr;;wifi_tabs=qr").empty());
   assert(declarations("weather.home;Weather;Auto;Auto;;;weather;tomorrow;").empty());
   assert(declarations("weather.home;Weather;Auto;Auto;;;weather;;")==std::set<std::string>{"weather.home/"});
+  assert((declarations("sensor.rain;;;;;inches;weather;rainfall;") == std::set<std::string>{"sensor.rain/"}));
+  assert((declarations("sensor.pressure;;;;;;weather;pressure;") ==
+      std::set<std::string>{"sensor.pressure/","sensor.pressure/unit_of_measurement"}));
+  assert((declarations("weather.home;;;;;;weather;pressure;pressure_source=forecast") ==
+      std::set<std::string>{"weather.home/","weather.home/pressure","weather.home/pressure_unit"}));
+  assert((declarations("weather.home;;;;;;weather;humidity;humidity_source=forecast") ==
+      std::set<std::string>{"weather.home/","weather.home/humidity"}));
+  assert((declarations("weather.home;;;;;;weather;visibility;") ==
+      std::set<std::string>{"weather.home/","weather.home/visibility","weather.home/visibility_unit"}));
+  assert((declarations("weather.home;;;;;;weather;wind;") == std::set<std::string>{
+      "weather.home/", "weather.home/wind_bearing", "weather.home/wind_speed", "weather.home/wind_speed_unit"}));
+  assert((declarations("sensor.bearing;;;;sensor.speed;;weather;wind;wind_source=sensors") ==
+      std::set<std::string>{"sensor.bearing/", "sensor.speed/", "sensor.speed/unit_of_measurement"}));
+  assert((declarations("sensor.rain;;;;;;weather;rainfall;") ==
+      std::set<std::string>{"sensor.rain/", "sensor.rain/unit_of_measurement"}));
+  assert(declarations("weather.home;;;;;;weather;rainfall;rainfall_source=forecast").empty());
   const auto fan=declarations("fan.room;Fan;Auto;Auto;;;fan_control;;fan_light_entity=light.room");
   assert(fan.size()==10);assert(fan.count("fan.room/preset_modes")==1);assert(fan.count("light.room/")==1);
   assert((declarations("timer.cooking;Timer;Auto;Auto;;;timer;;")==

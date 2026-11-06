@@ -48,13 +48,13 @@ class PageWeatherModalPort final : public PageModalPort {
     if (!card) return ControlModalKind::NONE;
     const auto type = store.field(*card, CardField::TYPE),
                precision = store.field(*card, CardField::PRECISION);
-    if (!card_runtime_weather_forecast_supported() ||
-        (type != "weather_forecast" && (type != "weather" || !admission::forecast_precision(precision))))
+    if (!card_runtime_weather_forecast_supported() || !admission::weather_forecast(type, precision, store.field(*card, CardField::OPTIONS)))
       return ControlModalKind::NONE;
     PageForecastSnapshot snapshot;
     if (!forecasts_.snapshot(handle, store.field(*card, CardField::ENTITY), snapshot))
       return ControlModalKind::NONE;
-    const auto view = precision == "today"                                    ? weather::View::TODAY
+    const auto view = precision == "rainfall"                                 ? weather::View::RAINFALL
+                      : precision == "today"                                 ? weather::View::TODAY
                       : precision == "tomorrow" || type == "weather_forecast" ? weather::View::TOMORROW
                                                                               : weather::View::DAILY;
     return view == weather::View::DAILY ||
@@ -98,7 +98,8 @@ class PageWeatherModalPort final : public PageModalPort {
     }
     record->source.entity_id = std::move(config.entity);
     record->card.source = &record->source;
-    record->card.view = config.precision == "today" ? weather::View::TODAY
+    record->card.view = config.precision == "rainfall" ? weather::View::RAINFALL
+                        : config.precision == "today" ? weather::View::TODAY
                         : config.precision == "tomorrow" || config.type == "weather_forecast"
                             ? weather::View::TOMORROW
                             : weather::View::DAILY;

@@ -29,6 +29,7 @@
 #include "page_media_label.h"
 #include "page_qr_tile_view.h"
 #include "weather_condition_maps_generated.h"
+#include "wind_direction.h"
 
 namespace espcontrol::pages {
 // The selected firmware supplies exactly one existing bank of grid widgets.
@@ -223,6 +224,8 @@ class PageBasicLvglPort final:public PageRendererPort {
       lv_obj_set_style_translate_y(w.unit, 0, LV_PART_MAIN);
       shells_[i].value_font =
           theme_.sensor_font ? theme_.sensor_font : lv_obj_get_style_text_font(w.value, LV_PART_MAIN);
+      shells_[i].value_opacity = lv_obj_get_style_text_opa(w.value, LV_PART_MAIN);
+      lv_obj_set_style_text_opa(w.value, shells_[i].value_opacity, LV_PART_MAIN);
       shells_[i].unit_font = lv_obj_get_style_text_font(w.unit, LV_PART_MAIN);
       lv_obj_set_style_text_font(w.unit, shells_[i].unit_font, LV_PART_MAIN);
       lv_obj_set_style_transform_scale_x(
@@ -469,7 +472,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if (!initialized_ || count != Slots) return false;
     TextCounter strings;
     size_t summary_count = 0;
-    bool has_weather = false, has_forecast = false, has_cleaning = false, has_alarm = false;
+    bool has_weather = false, has_forecast = false, has_cleaning = false, has_alarm = false, has_wind = false;
     size_t forecast_frames = 0;
     size_t number_capacity=48,label_capacity=std::max<size_t>(65,std::max({theme_.back_label.size(),theme_.empty_label.size(),theme_.folder_label.size()})+1),unit_capacity=1;
     // Back labels are decoded by the layout compiler; their source order size
@@ -588,6 +591,14 @@ class PageBasicLvglPort final:public PageRendererPort {
           }
         }
         if(view.kind==BasicCardKind::WEATHER||view.kind==BasicCardKind::FORECAST)has_weather=true;
+        if(basic_card_weather_reading(view.kind)) {
+          has_wind |= view.kind==BasicCardKind::WEATHER_WIND;
+          number_capacity=std::max(number_capacity,static_cast<size_t>(HA_SHORT_STATE_MAX_LEN+40));
+          for(const auto* key:{"Air Pressure","Humidity","Visibility","Rainfall","--","North","North East","East","South East","South","South West","West","North West"}) {
+            const auto* caption=theme_.translate?theme_.translate(key):nullptr;
+            label_capacity=std::max(label_capacity,std::strlen(caption?caption:key)+1);
+          }
+        }
         if(view.kind==BasicCardKind::FORECAST) {
           has_forecast=true;if(!forecasts_||!actions_.forecast)return false;
           for(const auto &w:widgets_)if(!w.forecast)return false;
@@ -700,6 +711,12 @@ class PageBasicLvglPort final:public PageRendererPort {
       if(padding>SIZE_MAX-bytes||sizeof(WeatherGlyphs)>SIZE_MAX-bytes-padding)return false;
       weather_offset=bytes+padding;bytes=weather_offset+sizeof(WeatherGlyphs);
     }
+    size_t wind_offset=0;
+    if(has_wind) {
+      const auto padding=(alignof(WindGlyphs)-bytes%alignof(WindGlyphs))%alignof(WindGlyphs);
+      if(padding>SIZE_MAX-bytes || sizeof(WindGlyphs)>SIZE_MAX-bytes-padding)return false;
+      wind_offset=bytes+padding;bytes=wind_offset+sizeof(WindGlyphs);
+    }
     size_t cleaning_offset = 0;
     if (has_cleaning) {
       const auto padding =
@@ -759,6 +776,14 @@ class PageBasicLvglPort final:public PageRendererPort {
       }
       if(has_forecast){staged_.weather->loading=actions_.icon(actions_.owner,"Weather Cloudy Clock",{});if(!staged_.weather->loading){discard_prepared();return false;}}
 
+    }
+    if(has_wind) {
+      staged_.wind=new(static_cast<char*>(memory)+wind_offset)WindGlyphs{};
+      for(size_t index=0;index<staged_.wind->glyphs.size();++index) {
+        const auto* glyph=actions_.icon(actions_.owner,wind::icon(static_cast<int>(index)-1),{});
+        if(!glyph){discard_prepared();return false;}
+        staged_.wind->glyphs[index]=glyph;
+      }
     }
     std::memset(static_cast<char *>(memory)+records,0,Slots*stride);
     memory_.peak_bytes=std::max(memory_.peak_bytes,active_.bytes+bytes);
@@ -881,6 +906,8 @@ class PageBasicLvglPort final:public PageRendererPort {
   void bind(size_t index,const PageStore &,const PageCellLayout &cell,PageBackStyleView back,PageBindingToken token)override {
     if(index>=Slots||!active_.arena||(!cell.back&&cell.card>=active_.cards))return;auto &s=shells_[index];const auto &w=widgets_[index];
     restore_label(w.icon,s.icon_layout);restore_label(w.label,s.label_layout);
+    lv_obj_clear_flag(w.unit,LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_text_opa(w.value,s.value_opacity,LV_PART_MAIN);
     lv_obj_set_style_text_font(w.unit, s.unit_font, LV_PART_MAIN);
     if (theme_.device_width_profile) {
       lv_obj_set_style_transform_scale_x(w.icon, theme_.icon_scale_x,
@@ -1108,6 +1135,8 @@ class PageBasicLvglPort final:public PageRendererPort {
         glyph = active_.cleaning->glyphs[static_cast<size_t>(value.cleaning.glyph)];
       else if (definition.kind == BasicCardKind::WEATHER)
         glyph = active_.weather->glyphs[value.weather_condition];
+      else if (definition.kind == BasicCardKind::WEATHER_WIND)
+        glyph = active_.wind->glyphs[value.weather_condition];
       else
         glyph = definition.kind == BasicCardKind::ACCESS && definition.access.command &&
                         definition.access.status && !value.access.history.reported
@@ -1141,6 +1170,7 @@ class PageBasicLvglPort final:public PageRendererPort {
         lv_obj_add_flag(w.button, LV_OBJ_FLAG_CLICKABLE);
     }
     const bool now_playing = media_text(definition.kind);
+    const bool weather_metric = basic_card_weather_reading(definition.kind);
     if (definition.kind == BasicCardKind::MEDIA_CONTROL && definition.media.volume_number) {
       volume_feedback(s, value);
       lv_obj_align(w.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);
@@ -1161,7 +1191,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     if(now_playing){const char* empty="";if(lv_label_get_text(w.value)!=empty)lv_label_set_text_static(w.value,empty);}
     else {
       write(w.value, s.number, active_.number_capacity,
-            value.numeric ? std::string_view(definition.kind == BasicCardKind::OPTION_SELECT ? value.text
+            value.numeric ? std::string_view(definition.kind == BasicCardKind::OPTION_SELECT || weather_metric ? value.text
                                                                                              : value.number)
                           : std::string_view{});
       if(std::strcmp(lv_label_get_text(w.icon),glyph)!=0)lv_label_set_text_static(w.icon,glyph);
@@ -1204,13 +1234,23 @@ class PageBasicLvglPort final:public PageRendererPort {
         lv_obj_set_pos(w.sensor_container, s.sensor_x, s.sensor_y);
       }
     }
-    const auto font = option ? (theme_.option_select_font ? theme_.option_select_font
+    const auto font = weather_metric ? (theme_.forecast_small_font?theme_.forecast_small_font:s.value_font)
+                      : option ? (theme_.option_select_font ? theme_.option_select_font
                                 : theme_.media_title_font ? theme_.media_title_font
                                                           : s.label_layout.font)
                       : large && theme_.large_sensor_font ? theme_.large_sensor_font
                       : theme_.sensor_font                ? theme_.sensor_font
                                                           : s.value_font;
     if(font&&s.painted_font!=font){lv_obj_set_style_text_font(w.value,font,LV_PART_MAIN);s.painted_font=font;}
+    if(weather_metric) {
+      lv_obj_clear_flag(w.icon,LV_OBJ_FLAG_HIDDEN);
+      lv_obj_clear_flag(w.sensor_container,LV_OBJ_FLAG_HIDDEN);
+      lv_obj_add_flag(w.unit,LV_OBJ_FLAG_HIDDEN);
+      lv_obj_align(w.icon,LV_ALIGN_TOP_LEFT,0,0);
+      lv_obj_align(w.sensor_container,LV_ALIGN_BOTTOM_LEFT,0,0);
+      lv_obj_align(w.label,LV_ALIGN_BOTTOM_LEFT,0,-((font?font->line_height:16)+2));
+      lv_obj_set_style_text_opa(w.value,LV_OPA_70,LV_PART_MAIN);
+    }
     if(checked!=lv_obj_has_state(w.button,LV_STATE_CHECKED)){if(checked)lv_obj_add_state(w.button,LV_STATE_CHECKED);else lv_obj_clear_state(w.button,LV_STATE_CHECKED);}
     const auto correct=[this](uint32_t raw){return correct_display_color(raw,theme_.red_percent,theme_.green_percent,theme_.blue_percent);};
     uint32_t background =
@@ -1221,7 +1261,7 @@ class PageBasicLvglPort final:public PageRendererPort {
            definition.kind == BasicCardKind::OPTION_SELECT || definition.kind == BasicCardKind::NUMBER ||
            definition.kind == BasicCardKind::TEXT || definition.kind == BasicCardKind::DURATION ||
            definition.kind == BasicCardKind::CLOCK || definition.kind == BasicCardKind::CALENDAR ||
-           definition.kind == BasicCardKind::STATUS || definition.kind == BasicCardKind::WEATHER ||
+           definition.kind == BasicCardKind::STATUS || definition.kind == BasicCardKind::WEATHER || weather_metric ||
            definition.kind == BasicCardKind::FORECAST || definition.kind == BasicCardKind::IMAGE)
             ? theme_.sensor_surface
             : theme_.surface;
@@ -1479,6 +1519,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     std::array<const char*, static_cast<size_t>(AlarmCardGlyph::COUNT)> glyphs{};
   };
   struct WeatherGlyphs {std::array<const char *,espcontrol::weather::CONDITION_COUNT>glyphs{};const char *loading{nullptr};};
+  struct WindGlyphs {std::array<const char*,9> glyphs{};};
   struct Arena {
     void* arena{nullptr};
     size_t bytes{0}, label_capacity{0}, unit_capacity{0}, stride{0}, cards{0};
@@ -1487,6 +1528,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     size_t frame_count{0}, number_capacity{48};
     CleaningGlyphs* cleaning{nullptr};
     AlarmGlyphs* alarm{nullptr};
+    WindGlyphs* wind{nullptr};
   };
   struct LabelLayout {
     const lv_font_t* font{nullptr};
@@ -1540,6 +1582,7 @@ class PageBasicLvglPort final:public PageRendererPort {
     lv_coord_t sensor_x{0}, sensor_y{0}, sensor_width{0}, value_width{0};
     lv_label_long_mode_t value_mode{LV_LABEL_LONG_WRAP};
     const lv_font_t *value_font{nullptr}, *unit_font{nullptr};
+    lv_opa_t value_opacity{LV_OPA_COVER};
     size_t index{0};
     PageBindingToken token, pressed;
     PageCellLayout cell;

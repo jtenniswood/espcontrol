@@ -1,5 +1,6 @@
 #pragma once
 
+#include "external_memory_allocator.h"
 #include "calendar_state_events.h"
 #include "timezone_state_events.h"
 #include "page_scene_selection.h"
@@ -14,8 +15,10 @@ struct CalendarCardRef {
 };
 
 inline CalendarCardRef *calendar_card_refs() {
-  static CalendarCardRef refs[MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS];
-  return refs;
+  // Fixed capacity keeps card references stable while storing metadata in PSRAM.
+  static std::vector<CalendarCardRef, EspControlExternalAllocator<CalendarCardRef>>
+      refs(MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS);
+  return refs.data();
 }
 
 inline int &calendar_card_count() {
@@ -278,8 +281,10 @@ inline TimezoneCardState &timezone_card_state() {
 }
 
 inline TimezoneCardRef *timezone_card_refs() {
-  static TimezoneCardRef refs[MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS];
-  return refs;
+  // Fixed capacity keeps card references stable while storing metadata in PSRAM.
+  static std::vector<TimezoneCardRef, EspControlExternalAllocator<TimezoneCardRef>>
+      refs(MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS);
+  return refs.data();
 }
 
 inline int &timezone_card_count() {

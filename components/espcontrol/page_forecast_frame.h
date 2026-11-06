@@ -10,6 +10,7 @@
 #include "weather_card_layout.h"
 #include "weather_card_view.h"
 #include "weather_condition.h"
+#include "rainfall_display.h"
 namespace espcontrol::pages {
 using PageForecastView = weather::View;
 struct PageForecastTextStyle {
@@ -52,6 +53,16 @@ struct PageForecastFrame {
     temperature(high, sizeof(high), day.high, unit, style);
     temperature(low, sizeof(low), day.low, unit, style);
     std::snprintf(output, capacity, "%s°/%s°", high, low);
+  }
+  static void precipitation(char* output, size_t capacity, const weather::Day& day, const char* unit) {
+    char amount[40];
+    rainfall::format(day.precipitation,amount,sizeof(amount));
+    const auto size=copy_display_text(output,capacity,amount).bytes;
+    if(std::strcmp(amount,"--")!=0 && unit && *unit &&
+       std::strcmp(unit,"unknown")!=0 && std::strcmp(unit,"unavailable")!=0 && size+1<capacity) {
+      output[size]=' ';
+      copy_display_text(output+size+1,capacity-size-1,unit);
+    }
   }
   static const char* weekday(const weather::Day& day, const PageForecastTextStyle& style) {
     static const char* keys[] = {"Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"};
@@ -118,13 +129,16 @@ struct PageForecastFrame {
     for (size_t i = 0; i < arrangement.layout.count; ++i) {
       const auto& day = forecast.days[first + i];
       const auto& boxes = arrangement.days[i];
-      const char* date = view == PageForecastView::TOMORROW           ? translated(style, "Tomorrow")
+      const char* date = view == PageForecastView::RAINFALL           ? translated(style, "Rainfall")
+                        : view == PageForecastView::TOMORROW         ? translated(style, "Tomorrow")
                          : std::strcmp(day.date, forecast.today) == 0 ? translated(style, "Today")
                                                                       : weekday(day, style);
-      add(boxes.icon, style.icon_font, glyphs[weather::condition_index(day.condition)], true);
+      add(boxes.icon, style.icon_font,
+          glyphs[weather::condition_index(view==PageForecastView::RAINFALL?"rainy":day.condition)],true);
       add(boxes.day, style.font, date);
       char text[40];
-      range(text, sizeof(text), day, forecast.temperature_unit, style);
+      if(view==PageForecastView::RAINFALL)precipitation(text,sizeof(text),day,forecast.precipitation_unit);
+      else range(text, sizeof(text), day, forecast.temperature_unit, style);
       add(boxes.temperature, style.temperature_font, text, false, LV_OPA_70);
     }
   }

@@ -107,14 +107,14 @@ const DeviceUiLimits& large_profile() {
 }
 struct Fixture {
   Fixture(size_t count = 2, uint32_t generation = 17, bool duplicate = true,
-          const std::string& prefix = "weather.room") {
+          const std::string& prefix = "weather.room", const std::string& variant = "daily") {
     const auto& limits = large_profile();
     PanelConfigWriter writer(document.data(), document.size());
     assert(writer.begin() == PanelConfigStatus::OK);
     assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
                                         std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
     for (size_t i = 0; i < count; ++i) {
-      const std::string text = prefix + std::to_string(duplicate ? 0 : i) + ";;;;;;weather;daily;";
+      const std::string text = prefix + std::to_string(duplicate ? 0 : i) + ";;;;;;weather;"+variant+";";
       assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(text.data()), text.size()) ==
              PanelConfigStatus::OK);
     }
@@ -130,6 +130,26 @@ struct Fixture {
 constexpr const char* PAYLOAD =
     "WF1|2026-10-17|2026-10-18|°C|mm|km/"
     "h\n2026-10-17|sunny|20|10|0|0|1|50\n2026-10-18|rainy|18|9|20|1|2|75\n";
+void rainfall_sources() {
+  for(const auto* option:{"forecast","fore%63ast"}) {
+    Fixture fixture(2,17,true,"weather.room",std::string("rainfall;rainfall_source=")+option);
+    Arena arena;Transport transport;
+    {
+      PageForecastRuntime runtime(arena,transport);
+      assert(runtime.prepare(fixture.store));runtime.activate_prepared(fixture.store);
+      assert(runtime.memory().sources==1);
+      transport.advance(PageForecastRuntime::READY_DELAY_MS);runtime.loop();
+      assert(transport.starts==1);transport.reply(PAYLOAD);
+      PageForecastSnapshot snapshot;
+      assert(runtime.snapshot({17,1},"weather.room0",snapshot) && snapshot.forecast.count==2);
+      assert(snapshot.forecast.days[1].precipitation==1);
+      const auto before=cpp_allocations;
+      for(size_t i=0;i<1000;++i)assert(runtime.snapshot({17,0},"weather.room0",snapshot));
+      assert(cpp_allocations==before);
+    }
+    assert(arena.live.empty());
+  }
+}
 void lifecycle() {
   Fixture fixture;
   Arena arena;
@@ -368,6 +388,7 @@ void no_hidden_setup_allocation() {
 
 }  // namespace
 int main() {
+  rainfall_sources();
   no_hidden_setup_allocation();
   lifecycle();
   preparation();

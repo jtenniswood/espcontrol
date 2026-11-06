@@ -39,6 +39,11 @@ enum class BasicCardKind : uint8_t {
   LIGHT,
   COVER,
   WEATHER,
+  WEATHER_WIND,
+  WEATHER_RAINFALL,
+  WEATHER_PRESSURE,
+  WEATHER_HUMIDITY,
+  WEATHER_VISIBILITY,
   FORECAST,
   MEDIA_ACTION,
   MEDIA_POSITION,
@@ -69,6 +74,9 @@ enum class BasicCardKind : uint8_t {
   WIFI_QR,
   SCREEN_LOCK
 };
+inline bool basic_card_weather_reading(BasicCardKind kind) {
+  return kind >= BasicCardKind::WEATHER_WIND && kind <= BasicCardKind::WEATHER_VISIBILITY;
+}
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode : uint8_t { NONE, ENTITY, CLIMATE, MOWER, TIMER, CHILDREN, NUMBER, TEXT };
 enum class BasicAccessKind : uint8_t { GARAGE, GATE, LOCK };
@@ -87,6 +95,8 @@ struct BasicCardDefinition {
     BasicAccessOptions access;
     cleaning::Options cleaning;
     bool calendar_time;
+    bool wind_sensors;
+    bool weather_metric_forecast;
     ClockCardOptions clock;
     AlarmCardOptions alarm;
     BasicImageOptions image;

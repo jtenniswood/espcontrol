@@ -7,6 +7,7 @@
 #include <new>
 
 #include "button_grid_subpage_parser.h"
+#include "page_modal_admission.h"
 namespace espcontrol::pages {
 namespace {
 struct Depth {
@@ -33,12 +34,6 @@ bool same(PageForecastToken a, PageForecastToken b) {
 }
 bool due(uint32_t now, uint32_t when) {
   return static_cast<int32_t>(now - when) >= 0;
-}
-bool forecast_precision(std::string_view precision) {
-  if (!card_runtime_weather_forecast_supported()) return false;
-  for (const auto* known : CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS)
-    if (precision == known) return true;
-  return false;
 }
 }  // namespace
 PageForecastRuntime::~PageForecastRuntime() {
@@ -90,7 +85,8 @@ bool PageForecastRuntime::prepare(const PageStore& store) {
       const auto* definition = store.card(card);
       const auto type = store.field(*definition, CardField::TYPE);
       if (type != "weather" && type != "weather_forecast") continue;
-      if (!forecast_precision(store.field(*definition, CardField::PRECISION))) continue;
+      if (!card_runtime_weather_forecast_supported() || !admission::weather_forecast(type, store.field(*definition, CardField::PRECISION),
+                                      store.field(*definition, CardField::OPTIONS))) continue;
       const auto entity = store.field(*definition, CardField::ENTITY);
       if (!weather::entity_id_safe(entity)) continue;
       if (cards == weather::MAX_CARDS) continue;
@@ -142,8 +138,8 @@ bool PageForecastRuntime::prepare(const PageStore& store) {
       for (CardId card = page->first_card; card < page->first_card + page->runtime_card_count; ++card) {
         const auto* definition = store.card(card);
         const auto type = store.field(*definition, CardField::TYPE);
-        if ((type != "weather" && type != "weather_forecast") ||
-            !forecast_precision(store.field(*definition, CardField::PRECISION)))
+        if (!card_runtime_weather_forecast_supported() || !admission::weather_forecast(type, store.field(*definition, CardField::PRECISION),
+                                        store.field(*definition, CardField::OPTIONS)))
           continue;
         if (cards == weather::MAX_CARDS) continue;
         const auto entity = store.field(*definition, CardField::ENTITY);
