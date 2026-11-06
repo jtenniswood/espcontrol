@@ -36,6 +36,7 @@ void *lv_event_get_user_data(lv_event_t *event) { return event->data; }
 void set_card_checked_state(lv_obj_t *obj, bool checked) { obj->checked = checked; }
 std::vector<std::string> actions;
 void send_toggle_action(const std::string &entity) { actions.push_back(entity); }
+#undef ESP_LOGW
 #define ESP_LOGW(...) ((void) 0)
 '''
 harness += f'\n#line {line} "{HEADER.as_posix()}"\n{storage}\n'

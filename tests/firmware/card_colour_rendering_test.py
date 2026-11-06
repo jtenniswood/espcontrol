@@ -68,7 +68,7 @@ uint32_t lv_obj_get_style_text_color(lv_obj_t *obj, int) {
   return obj->text[(obj->state & LV_STATE_PRESSED) ? LV_STATE_PRESSED
     : ((obj->state & LV_STATE_CHECKED) ? LV_STATE_CHECKED : LV_STATE_DEFAULT)];
 }
-constexpr int LV_OBJ_FLAG_USER_2 = 16;
+constexpr int LV_OBJ_FLAG_USER_2 = 1<<28;
 constexpr int CARD_TEXT_COLOR_PROTECTED_FLAG = LV_OBJ_FLAG_USER_2;
 bool lv_obj_has_flag(lv_obj_t *obj, int flag) { return (obj->flags & flag) != 0; }
 bool lv_obj_has_state(lv_obj_t *obj, int state) { return (obj->state & state) != 0; }
@@ -106,13 +106,12 @@ struct MediaNowPlayingCtx {
 };
 bool image_card_media_artwork_visible(const ImageCardCtx *ctx) { return ctx && ctx->artwork_visible; }
 void set_card_content_disabled(lv_obj_t *, bool) {}
-constexpr int LV_STATE_DISABLED = 4, LV_OBJ_FLAG_HIDDEN = 1, LV_OBJ_FLAG_CLICKABLE = 2, LV_OBJ_FLAG_USER_2 = 1<<28;
+constexpr int LV_STATE_DISABLED = 4, LV_OBJ_FLAG_HIDDEN = 1, LV_OBJ_FLAG_CLICKABLE = 2;
 void set_card_disabled_state(lv_obj_t *obj, bool disabled) {
   if (!obj) return;
   if (disabled) lv_obj_add_state(obj, LV_STATE_DISABLED);
   else lv_obj_clear_state(obj, LV_STATE_DISABLED);
 }
-bool lv_obj_has_flag(lv_obj_t *obj,int flag){return (obj->flags & flag)!=0;}
 constexpr int LV_OPA_50 = 128, MEDIA_CONTROL_SPEAKER_VOLUME_TEXT_OPA = 204;
 using lv_coord_t = int;
 void lv_obj_add_flag(lv_obj_t *obj, int flag) { obj->flags |= flag; }

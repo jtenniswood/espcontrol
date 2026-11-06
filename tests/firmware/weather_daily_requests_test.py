@@ -40,6 +40,7 @@ source = r'''
 #include "button_grid_limits.h"
 #include "button_grid_weather_daily_data.h"
 template<class... T> void test_log(T...) {}
+#undef ESP_LOGW
 #define ESP_LOGW(...) test_log(__VA_ARGS__)
 namespace esphome { uint32_t millis() { return 60000; } }
 constexpr uint32_t WEATHER_FORECAST_REQUEST_TIMEOUT_MS=30000, WEATHER_FORECAST_RETRY_DELAY_MS=10000;

@@ -7399,7 +7399,8 @@ async function assertCardCurveSettings(browser, testCase) {
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: "Export", exact: true }).click();
     const download = await downloadPromise;
-    const backup = JSON.parse(fs.readFileSync(await download.path(), "utf8"));
+    const archive = readStoredZip(new Uint8Array(fs.readFileSync(await download.path())));
+    const backup = JSON.parse(Buffer.from(archive["backup.json"]).toString("utf8"));
     assert.strictEqual(backup.screen.card_curve, "Medium", "export includes the saved curve");
   } finally { await context.close(); }
 }
@@ -7621,6 +7622,8 @@ async function assertWeatherWidthScaling(browser) {
     for (const height of [120, 240]) {
       await page.locator('#weather').evaluate((card, value) => { card.style.height = value + 'px'; }, height);
       await page.waitForFunction(value => Math.abs(document.querySelector('#weather').getBoundingClientRect().height - value) < 1, height);
+      // Let ResizeObserver apply the forecast row layout before measuring it.
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       const columns = await page.locator('.sp-weather-day').evaluateAll(days => days
         .filter(day => getComputedStyle(day).display !== 'none').map(day => {
           const column = day.getBoundingClientRect();
