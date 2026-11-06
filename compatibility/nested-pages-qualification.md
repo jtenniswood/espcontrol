@@ -1958,11 +1958,48 @@ change stamp: a regression fails with the runtime's local stamp and passes
 with the feature's monotonic stamp. All four focused feature state/consumer
 checks pass under ASan/UBSan.
 
-The semantic carry-forward audit remains open for HA subscription refresh,
-media dependencies and host-budget/portability changes. Earlier device results
-retain their original source scopes; no new device flash or factory matrix is
-claimed by these host checks. This audit must finish before treating the reader
-bridge as ready for release.
+Runtime `6a88bb6d4` reconnects only authenticated HA sessions after native
+registration changes, allowing the peer to remove old listeners. Runtime
+`49a6278b3` changes existing-value refresh to coalesced one-shot requests, paced
+at one pair per loop tick. Six feature transport/index checks pass; three
+weakened refresh implementations fail their negative controls. Actual pinned
+upstream HA method bodies with event/state doubles confirm that one-shot reads
+do not add listeners. This remains source/host evidence for HA, rather than a
+claim about the user's installed HA integration.
+
+Runtime `1406c2a4d` restores input-source dependencies for ordinary media
+controls and speaker groups. Its restored declaration regression fails before
+the fix; dependency, media-state and real-LVGL modal checks pass afterward.
+The older fan-speed and alarm-name fixes are already represented by the current
+implementation. The actual core binding test passes under GCC with the existing
+224-byte slot; no host or firmware slot increase is needed.
+
+Cumulative feature source `656fc078c` then passes all **289 Linux/GCC checks**
+with real LVGL, including nested-folder and full port coverage. The first build
+fails on ambiguous statement formatting, a missing `<cstddef>` include and a
+C++-only flag applied to C; runtime `84ee476c1` corrects these without changing
+firmware behaviour. Its focused ASan/UBSan checks and nine-profile, 1,000-cycle
+status/action checks also pass. The failed first cohort remains separate from
+the passing run, whose 1,004 tested files match the committed source.
+
+All **nine factory profiles** compile sequentially with ESPHome 2026.10.2 on
+that same source. Every profile passes compiled-source, stock API, target MCU,
+ELF handler/wrapper and production depth-one writer checks. The later
+`8478b46fd` CI-only correction replaces a stale source guard requiring live
+subscription replay with a paced-refresh guard; scan and rejecting self-tests
+pass. Integration leaves all tested firmware sources unchanged. These build
+results do not extend earlier physical appearance or memory evidence to the
+new source. Physical HA/runtime qualification remains outstanding.
+
+A fresh read-only S3 preflight finds the newer Card Images build from its
+separate task, compiled 6 November at 18:30:40. Its exact retained OTA/ELF and
+partition files are verified; current generation-1227 dashboard, 78 protected
+settings, PIN/reset state and five uploaded JPEGs are preserved for recovery.
+The older S3 recovery is historical. The current dashboard also passes actual
+PageStore/dependency staging and fixture-to-original legacy mirroring/native
+merge under ASan/UBSan, preserving all 14 original records and opaque image
+options. No device is flashed during this carry-forward qualification. Stable
+reader/compatibility release gates remain unchanged.
 
 ## Remaining qualification gates
 
