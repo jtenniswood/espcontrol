@@ -243,6 +243,7 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 var bgImage: any = cardBackgroundSupported(b) ? cardBackgroundImage(b) : "";
                 if (bgImage) {
                     btn.className += " sp-btn-has-bg";
+                    btn.style.setProperty("--card-text-color", "#fff");
                     btn.style.backgroundImage = "url('" + cardImageUrl(bgImage) + "')";
                     btn.style.backgroundSize = "cover";
                     btn.style.backgroundPosition = "center";

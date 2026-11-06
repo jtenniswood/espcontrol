@@ -128,6 +128,12 @@ class CardAssetService {
     return static_cast<RuntimeHolder<Runtime> *>(card_background_runtime_.get())->state;
   }
 
+  template<typename Runtime>
+  const Runtime *card_background_runtime_if_present() const {
+    if (!card_background_runtime_) return nullptr;
+    return &static_cast<const RuntimeHolder<Runtime> *>(card_background_runtime_.get())->state;
+  }
+
   void clear_card_background_runtime() {
     if (card_background_runtime_) card_background_runtime_->shutdown();
     card_background_runtime_.reset();

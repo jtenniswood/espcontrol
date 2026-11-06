@@ -111,56 +111,55 @@ lv_timer_t *&card_background_next_download_timer() {
 
 bool card_background_widget_on_page(lv_obj_t *btn, lv_obj_t *page);
 
-void card_background_sync_label_shadow_text(lv_obj_t *label,
-                                            const std::string &) {
-  if (!label) return;
-  for (lv_obj_t *parent = lv_obj_get_parent(label); parent; parent = lv_obj_get_parent(parent)) {
-    lv_obj_t *shadow = image_card_label_shadow(label, parent);
-    if (!shadow) continue;
-    lv_label_set_long_mode(shadow, lv_label_get_long_mode(label));
-    lv_label_set_text(shadow, lv_label_get_text(label));
-    return;
+bool card_background_text_on_image(lv_obj_t *object) {
+  auto *assets = espcontrol::card_asset_service();
+  const auto *runtime = assets
+    ? assets->card_background_runtime_if_present<CardBackgroundRuntimeState>() : nullptr;
+  if (!runtime || runtime->widget_refs.empty()) return false;
+  for (auto *parent = object; parent; parent = lv_obj_get_parent(parent)) {
+    for (const auto &ref : runtime->widget_refs) {
+      if (ref.btn == parent) return true;
+    }
   }
+  return false;
+}
+
+void card_background_bind_text_tree(lv_obj_t *object) {
+  if (!object) return;
+  bool slider = false;
+  for (uint32_t i = 0; i < lv_obj_get_event_count(object); ++i) {
+    if (lv_event_dsc_get_cb(lv_obj_get_event_dsc(object, i)) == slider_text_contrast_event_cb) {
+      slider = true;
+      break;
+    }
+  }
+  card_background_bind_text_label(object, slider);
+  for (uint32_t i = 0; i < lv_obj_get_child_cnt(object); ++i)
+    card_background_bind_text_tree(lv_obj_get_child(object, i));
+}
+
+void card_background_text_child_created(lv_event_t *event) {
+  // CHILD_CREATED bubbles even through nested containers. Forecast columns and
+  // other late-created labels receive the same rendering as initial labels.
+  card_background_bind_text_tree(static_cast<lv_obj_t *>(lv_event_get_param(event)));
+}
+
+void card_background_unbind_text_tree(lv_obj_t *object) {
+  if (!object) return;
+  lv_obj_remove_event_cb(object, card_background_text_event_cb);
+  lv_obj_remove_event_cb(object, card_background_text_child_created);
+  for (uint32_t i = 0; i < lv_obj_get_child_cnt(object); ++i)
+    card_background_unbind_text_tree(lv_obj_get_child(object, i));
 }
 
 void move_content_foreground(const BtnSlot &s) {
-  button_label_text_sync_hook() = card_background_sync_label_shadow_text;
-  auto sync_shadow = [](lv_obj_t *target, lv_obj_t *btn, lv_coord_t x_offset, lv_coord_t y_offset) {
-    if (!target || !btn || lv_obj_has_flag(target, LV_OBJ_FLAG_HIDDEN)) return;
-    lv_obj_update_layout(btn);
-    lv_obj_update_layout(target);
-    lv_obj_t *shadow = image_card_label_shadow(target, btn);
-    if (!shadow) {
-      shadow = lv_label_create(btn);
-      lv_obj_set_user_data(shadow, target);
-    }
-    lv_obj_add_flag(shadow, CARD_TEXT_COLOR_PROTECTED_FLAG);
-    const lv_font_t *font = lv_obj_get_style_text_font(target, LV_PART_MAIN);
-    if (font) lv_obj_set_style_text_font(shadow, font, LV_PART_MAIN);
-    lv_obj_set_style_text_color(shadow, lv_color_hex(0x000000), LV_PART_MAIN);
-    lv_obj_set_style_text_opa(shadow, LV_OPA_80, LV_PART_MAIN);
-    lv_obj_set_style_text_align(shadow, lv_obj_get_style_text_align(target, LV_PART_MAIN), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(shadow, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_set_style_radius(shadow, 0, LV_PART_MAIN);
-    lv_label_set_long_mode(shadow, lv_label_get_long_mode(target));
-    const char *text = lv_label_get_text(target);
-    lv_label_set_text(shadow, text ? text : "");
-    lv_obj_set_size(shadow, lv_obj_get_width(target), lv_obj_get_height(target));
-    lv_obj_set_style_pad_left(shadow, lv_obj_get_style_pad_left(target, LV_PART_MAIN), LV_PART_MAIN);
-    lv_obj_set_style_pad_right(shadow, lv_obj_get_style_pad_right(target, LV_PART_MAIN), LV_PART_MAIN);
-    lv_obj_set_style_pad_top(shadow, lv_obj_get_style_pad_top(target, LV_PART_MAIN), LV_PART_MAIN);
-    lv_obj_set_style_pad_bottom(shadow, lv_obj_get_style_pad_bottom(target, LV_PART_MAIN), LV_PART_MAIN);
-    lv_obj_align_to(shadow, target, LV_ALIGN_TOP_LEFT, x_offset, y_offset);
-    lv_obj_clear_flag(shadow, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_move_foreground(shadow);
-  };
-
-  // State-driven cards replace their icon glyph directly, bypassing the label
-  // text hook. Avoid a second icon label that could retain the old glyph.
+  card_background_text_query() = card_background_text_on_image;
   image_card_delete_label_shadow(s.icon_lbl, s.btn);
-  sync_shadow(s.text_lbl, s.btn, 1, 1);
-  sync_shadow(s.subpage_lbl, s.btn, 1, 1);
-  weather_daily_set_image_background(s.btn, true);
+  image_card_delete_label_shadow(s.text_lbl, s.btn);
+  image_card_delete_label_shadow(s.subpage_lbl, s.btn);
+  card_background_bind_text_tree(s.btn);
+  lv_obj_remove_event_cb(s.btn, card_background_text_child_created);
+  lv_obj_add_event_cb(s.btn, card_background_text_child_created, LV_EVENT_CHILD_CREATED, nullptr);
   if (s.sensor_container) lv_obj_move_foreground(s.sensor_container);
   if (s.icon_lbl) lv_obj_move_foreground(s.icon_lbl);
   if (s.text_lbl) lv_obj_move_foreground(s.text_lbl);
@@ -845,7 +844,7 @@ void sync_image(BtnSlot &s, const ParsedCfg &p,
     image_card_delete_label_shadow(s.icon_lbl, s.btn);
     image_card_delete_label_shadow(s.text_lbl, s.btn);
     image_card_delete_label_shadow(s.subpage_lbl, s.btn);
-    weather_daily_set_image_background(s.btn, false);
+    card_background_unbind_text_tree(s.btn);
   }
 
   if (!desired_id.empty()) apply_image(s, p, cfg);
@@ -879,7 +878,7 @@ void clear_image(BtnSlot &s) {
   image_card_delete_label_shadow(s.icon_lbl, s.btn);
   image_card_delete_label_shadow(s.text_lbl, s.btn);
   image_card_delete_label_shadow(s.subpage_lbl, s.btn);
-  weather_daily_set_image_background(s.btn, false);
+  card_background_unbind_text_tree(s.btn);
 }
 
 }  // namespace espcontrol::card_background

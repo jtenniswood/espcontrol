@@ -448,17 +448,10 @@ inline void configure_button_label_wrap(lv_obj_t *label) {
   lv_obj_set_width(label, lv_pct(100));
 }
 
-using ButtonLabelTextSyncHook = void (*)(lv_obj_t *, const std::string &);
-inline ButtonLabelTextSyncHook &button_label_text_sync_hook() {
-  static ButtonLabelTextSyncHook hook = nullptr;
-  return hook;
-}
-
 inline void set_wrapped_button_label_text(lv_obj_t *label, const std::string &text) {
   if (!label) return;
   configure_button_label_wrap(label);
   lv_label_set_display_text(label, text.c_str());
-  if (button_label_text_sync_hook()) button_label_text_sync_hook()(label, text);
   lv_obj_align(label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
 }
 

@@ -8390,6 +8390,60 @@ async function assertCardBackgroundTabs(browser, testCase) {
   console.log("Background tabs passed: Colour/Image visibility, draft cancellation, persistence, keyboard navigation and context menus on home and subpages.");
 }
 
+async function assertAllImageCardText(browser, testCase) {
+  const inventory = JSON.parse(fs.readFileSync(path.join(ROOT, 'common/config/card_runtime_inventory.json'), 'utf8'));
+  const { cardBackgroundSupported } = loadTypeScriptModule(path.join(ROOT, 'src/webserver/application/config_option_core.ts'));
+  const cases = Object.entries(inventory.types).flatMap(([type, spec]) => spec.modes.map(mode =>
+    ({ name: `${type || 'toggle'}/${mode.name}`, config: { type, ...mode.config } })))
+    .filter(item => cardBackgroundSupported(item.config));
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  const nativeState = nativeConfigState(testCase.slug);
+  const fields = ['entity', 'label', 'icon', 'icon_on', 'sensor', 'unit', 'type', 'precision', 'options'];
+  try {
+    await installRoutes(context, testCase.slug, { nativeState });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await installFakeEventSource(page);
+    for (let start = 0; start < cases.length; start += 4) {
+      const batch = cases.slice(start, start + 4);
+      nativeState.document.buttons = {};
+      nativeState.document.settings.button_order = '1,2,3,4,5,6,7,8';
+      batch.forEach((item, index) => {
+        for (const image of [true, false]) {
+          const config = { label: 'Example', icon: 'Auto', icon_on: 'Auto', ...item.config };
+          config.options = [config.options, 'card_off_color=FFFFFF', image ? 'bg_image=test-image' : ''].filter(Boolean).join(',');
+          nativeState.document.buttons[index * 2 + (image ? 1 : 2)] = fields.map(key => config[key] || '').join(';');
+        }
+      });
+      await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`);
+      await page.waitForFunction(() => window.__eventSources?.length > 0);
+      await seedNativeDocument(page, nativeState);
+      for (const [index, item] of batch.entries()) {
+        for (const image of [true, false]) {
+          const card = page.locator(`.sp-main [data-slot="${index * 2 + (image ? 1 : 2)}"]`);
+          assert.strictEqual(await card.evaluate(el => el.classList.contains('sp-btn-has-bg')), image, item.name);
+          const styles = await card.locator('.sp-btn-icon,.sp-btn-label,.sp-sensor-badge,.sp-subpage-badge,.sp-sensor-value,.sp-sensor-unit,.sp-weather-day>span,.sp-weather-wind-speed,.sp-rainfall-value,.sp-media-now-title,.sp-media-now-artist').evaluateAll(nodes =>
+            nodes.filter(el => el.getClientRects().length).map(el => {
+              const css = getComputedStyle(el);
+              return { className: el.className, color: css.color, opacity: css.opacity, shadow: css.textShadow };
+            }));
+          assert(styles.length, item.name + ' renders card text');
+          for (const style of styles) {
+            if (image) {
+              assert.strictEqual(style.color, 'rgb(255, 255, 255)', item.name + ' ' + style.className);
+              assert.strictEqual(style.opacity, '1', item.name + ' ' + style.className);
+              assert.notStrictEqual(style.shadow, 'none', item.name + ' ' + style.className);
+            } else assert.strictEqual(style.shadow, 'none', item.name + ' preserves solid-card styling');
+          }
+        }
+      }
+    }
+    assert.deepStrictEqual(errors, []);
+    console.log(`All image card text passed: ${cases.length} inventory modes, including paired solid-background controls.`);
+  } finally { await context.close(); }
+}
+
 async function assertForecastImageText(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
   const nativeState = nativeConfigState(testCase.slug);
@@ -8430,6 +8484,8 @@ async function assertForecastImageText(browser, testCase) {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    await assertAllImageCardText(browser, ACTIVE_CASES[0]);
+    if (process.env.ESPCONTROL_IMAGE_TEXT_ONLY === "1") return;
     await assertForecastImageText(browser, ACTIVE_CASES[0]);
     if (process.env.ESPCONTROL_FORECAST_IMAGE_ONLY === "1") return;
     if (process.env.ESPCONTROL_PIN_ONLY === "1") {

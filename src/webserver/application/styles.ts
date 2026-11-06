@@ -100,9 +100,10 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-wifi-qr-card.sp-btn-big .sp-wifi-qr-preview,.sp-wifi-qr-card.sp-btn-extra-large .sp-wifi-qr-preview," +
         ".sp-wifi-qr-card.sp-btn-max-tall .sp-wifi-qr-preview,.sp-wifi-qr-card.sp-btn-portrait-large .sp-wifi-qr-preview{width:97%;height:97%}" +
         ".sp-btn-has-bg{background-repeat:no-repeat;opacity:1}" +
-        ".sp-btn-has-bg .sp-btn-icon,.sp-btn-has-bg .sp-btn-label,.sp-btn-has-bg .sp-sensor-badge," +
-        ".sp-btn-has-bg .sp-sensor-preview,.sp-btn-has-bg .sp-media-now-title,.sp-btn-has-bg .sp-media-now-artist{" +
-        "color:#fff;filter:drop-shadow(0 2px 3px rgba(0,0,0,.72)) drop-shadow(0 0 8px rgba(0,0,0,.35))}" +
+        ".sp-btn-has-bg .sp-btn-icon,.sp-btn-has-bg .sp-btn-label,.sp-btn-has-bg .sp-sensor-badge,.sp-btn-has-bg .sp-subpage-badge," +
+        ".sp-btn-has-bg .sp-sensor-preview,.sp-btn-has-bg .sp-sensor-unit,.sp-btn-has-bg .sp-media-now-title,.sp-btn-has-bg .sp-media-now-artist," +
+        ".sp-btn-has-bg .sp-weather-days,.sp-btn-has-bg .sp-weather-temperature-high,.sp-btn-has-bg .sp-weather-wind-speed,.sp-btn-has-bg .sp-rainfall-value{" +
+        "color:#fff;opacity:1;text-shadow:1px 1px rgba(0,0,0,.8)}" +
         ".sp-btn-icon{position:absolute;left:var(--btn-pad);top:var(--btn-pad);" +
         "font-size:var(--btn-icon);line-height:1;color:var(--card-text-color,var(--preview-text-primary));z-index:1}" +
         ".sp-btn>.sp-btn-label,.sp-btn>.sp-btn-label-row{margin-top:auto}" +
@@ -130,8 +131,6 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-weather-day[hidden]{display:none}.sp-weather-day .mdi{font-size:var(--btn-icon);line-height:1;margin-bottom:auto}" +
         ".sp-weather-grid .sp-weather-day{justify-content:center}.sp-weather-grid .sp-weather-day .mdi{margin-bottom:var(--weather-icon-gap)}" +
         ".sp-weather-wind-speed,.sp-rainfall-value,.sp-weather-temperature-high{white-space:nowrap;font-size:var(--btn-small-text);color:var(--card-text-color,var(--preview-text-primary));opacity:.7}" +
-        ".sp-btn-has-bg .sp-weather-days{--card-text-color:#fff;color:#fff;text-shadow:1px 1px rgba(0,0,0,.8)}" +
-        ".sp-btn-has-bg .sp-weather-temperature-high{opacity:1}" +
         ".sp-sensor-value{font-size:var(--btn-icon);line-height:1;font-weight:300}" +
         ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;color:var(--card-text-color,var(--preview-text-primary))}" +
         ".sp-slider-preview{position:absolute;inset:0;border-radius:var(--r);overflow:hidden;pointer-events:none}" +

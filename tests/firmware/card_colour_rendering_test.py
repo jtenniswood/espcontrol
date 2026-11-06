@@ -162,6 +162,9 @@ constexpr int LV_DRAW_TASK_TYPE_LABEL = 1;
 struct lv_layer_t { lv_area_t _clip_area; };
 struct lv_draw_label_dsc_t { struct { lv_layer_t *layer; } base; uint32_t color; int text_local = 0; };
 struct lv_draw_task_t { int type; lv_area_t area, clip_area; lv_draw_label_dsc_t *descriptor; };
+// Solid-surface contrast coverage; image-backed task composition is exercised
+// with the production helper in card_background_text_test.py.
+lv_draw_task_t *card_background_prepare_text_task(lv_draw_task_t *task) { return task; }
 struct DrawnLabel { lv_area_t area, clip; uint32_t color; };
 std::vector<DrawnLabel> drawn_labels;
 int lv_draw_task_get_type(lv_draw_task_t *task) { return task->type; }

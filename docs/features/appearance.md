@@ -31,6 +31,8 @@ Sensor, Door/Window, and Presence cards also need **Active Colour** enabled in t
 
 Uploaded card backgrounds stay fully opaque, including when a card is pressed, active or unavailable. The web preview also shows these images at full opacity.
 
+Text, values and units stay solid over an image, with shadows that follow live content changes, wrapping and resizing. Removing the image restores the card's normal text appearance.
+
 ## Card Style
 
 Open **Screen > Appearance > Card Style** on your [device setup page](/features/setup).
