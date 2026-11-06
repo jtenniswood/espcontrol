@@ -66,8 +66,10 @@ and presentation ordering still need the selected scene and physical tests.
 
 A fallible, caller-budgeted gesture arena is reserved before panel creation. It
 adds preprocessing guards to interactive objects, captures presses, and rejects
-click/arc events from another opening or after retirement. Deleted option-list
-objects release arena entries for reuse. A full arena fails the panel setup and
+click/arc events from another opening or after retirement. Objects with existing
+callbacks receive their guard even while disabled, so a later state update
+cannot enable an unguarded control. Deleted option-list objects release arena
+entries for reuse. A full arena fails the panel setup and
 closes it; controls are never silently left unguarded. The default 128-entry
 reservation is a modal setup budget, not a qualified device capability increase.
 The pool outlives widget deletion and event dispatch.

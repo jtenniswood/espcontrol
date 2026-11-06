@@ -30,7 +30,9 @@ class PageModalGestures {
   // returning to the event loop. On failure the caller must close that UI.
   bool attach(lv_obj_t *root) {
     if(!enabled_||!entries_||!root)return false;
-    if(lv_obj_has_flag(root,LV_OBJ_FLAG_CLICKABLE)&&!track(root))return false;
+    // Controls can start disabled until their first complete state arrives.
+    // Their callbacks already exist, so attach the guard before enabling them.
+    if((lv_obj_has_flag(root,LV_OBJ_FLAG_CLICKABLE)||lv_obj_get_event_count(root)>0)&&!track(root))return false;
     const uint32_t children=lv_obj_get_child_count(root);
     for(uint32_t i=0;i<children;++i)if(!attach(lv_obj_get_child(root,i)))return false;
     return true;
