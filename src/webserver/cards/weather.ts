@@ -204,6 +204,15 @@ export function registerWeatherCardTypes(
                         domains: forecast ? ["weather"] : ["sensor", "input_number"],
                     },
                 });
+                if (mode === "rainfall" && !forecast) {
+                    helpers.renderCardTextField(group, b, helpers, {
+                        label: "Units",
+                        idSuffix: "unit",
+                        field: "unit",
+                        placeholder: "e.g. mm or in (blank uses sensor units)",
+                        rerender: true,
+                    });
+                }
                 return;
             }
             helpers.renderCardEntityField(panel, b, helpers, {
@@ -221,10 +230,12 @@ export function registerWeatherCardTypes(
             }
             const reading = readings[b.precision];
             if (reading) {
+                const sample = b.precision === "rainfall" && !rainfallUsesForecast(b) && b.unit
+                    ? "2.4 " + helpers.escHtml(b.unit) : reading.sample;
                 return {
                     buttonClass: "sp-rainfall-card",
                     iconHtml: '<span class="sp-btn-icon mdi mdi-' + reading.icon + '"></span>',
-                    labelHtml: '<span class="sp-btn-label">' + reading.label + '<span class="sp-rainfall-value">' + reading.sample + '</span></span>',
+                    labelHtml: '<span class="sp-btn-label">' + reading.label + '<span class="sp-rainfall-value">' + sample + '</span></span>',
                     labelEditable: false,
                 };
             }
