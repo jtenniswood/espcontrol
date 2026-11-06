@@ -1868,7 +1868,8 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
     ../../components/espcontrol/page_alarm_ack_runtime.cpp ../../components/espcontrol/page_alarm_commands.cpp
     ../../components/espcontrol/page_alarm_presentation.cpp)
   target_compile_features(page_native_scene_test PRIVATE cxx_std_17)
-  target_compile_options(page_native_scene_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG
+  target_compile_options(page_native_scene_test PRIVATE -Wall -Wextra -Werror -UNDEBUG
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
     $<$<COMPILE_LANGUAGE:C>:-Wno-unused-function>)
   target_compile_definitions(page_native_scene_test PRIVATE USE_LVGL LV_USE_QRCODE=1 ESPCONTROL_REAL_LVGL_TEST)
   target_include_directories(page_native_scene_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}

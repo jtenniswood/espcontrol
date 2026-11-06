@@ -880,7 +880,8 @@ class PageBasicLvglPort final:public PageRendererPort {
     release(active_);store_={};media_layout_dirty_=false;
   }
   void unbind(size_t index,PageBindingToken)override {
-    if(index>=Slots)return;auto &s=shells_[index];
+    if(index>=Slots)return;
+    auto &s=shells_[index];
     clear_cover(s);
     const bool feedback=s.definition&&s.definition->definition.push_feedback;
     cancel_position_gesture(s);
@@ -904,7 +905,8 @@ class PageBasicLvglPort final:public PageRendererPort {
     // firmware glyphs; keep it attached until rebind or arena retirement.
   }
   void bind(size_t index,const PageStore &,const PageCellLayout &cell,PageBackStyleView back,PageBindingToken token)override {
-    if(index>=Slots||!active_.arena||(!cell.back&&cell.card>=active_.cards))return;auto &s=shells_[index];const auto &w=widgets_[index];
+    if(index>=Slots||!active_.arena||(!cell.back&&cell.card>=active_.cards))return;
+    auto &s=shells_[index];const auto &w=widgets_[index];
     restore_label(w.icon,s.icon_layout);restore_label(w.label,s.label_layout);
     lv_obj_clear_flag(w.unit,LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_style_text_opa(w.value,s.value_opacity,LV_PART_MAIN);
@@ -1529,7 +1531,8 @@ class PageBasicLvglPort final:public PageRendererPort {
     TextWriter(char *memory,size_t capacity):memory(memory),capacity(capacity){}
     bool copy(std::string_view value,std::string_view &out)override {
       if(value.size()>capacity-used)return false;
-      if(!value.empty())std::memcpy(memory+used,value.data(),value.size());out={memory+used,value.size()};used+=value.size();return true;
+      if(!value.empty())std::memcpy(memory+used,value.data(),value.size());
+      out={memory+used,value.size()};used+=value.size();return true;
     }
     char *memory;size_t capacity,used{0};
   };
