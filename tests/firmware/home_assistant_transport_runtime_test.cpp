@@ -103,5 +103,66 @@ int main() {
   espcontrol::ha::unsubscribe_owned(final_token);
   espcontrol::ha::maintain_subscriptions();
   assert(server.clients[0]->disconnects == 203); // Already marked; no repeated disconnect.
+  reconnect();
+  // Freshness requests must not enumerate again, disconnect or multiply HA
+  // listeners. They are deferred/coalesced and send one pair per loop tick.
+  std::vector<uint32_t> fresh_tokens;
+  for (int i=0;i<3;++i)
+    fresh_tokens.push_back(espcontrol::ha::subscribe_owned("sensor.fresh_"+std::to_string(i),"",[](auto) {}));
+  espcontrol::ha::maintain_subscriptions(); reconnect();
+  auto second=std::make_unique<esphome::api::APIConnection>();
+  auto *second_ha=second.get();server.clients.push_back(std::move(second));
+  const auto disconnects=server.clients[0]->disconnects;
+  const auto enumerations=server.clients[0]->enumerations;
+  for(int i=0;i<10;++i)espcontrol::ha::request_state_refresh();
+  assert(server.clients[0]->requests.empty());
+  for(size_t i=0;i<4;++i) {
+    espcontrol::ha::maintain_subscriptions();
+    assert(server.clients[0]->requests.size()==i+1 && second_ha->requests.size()==i+1);
+  }
+  for(int i=0;i<10;++i)espcontrol::ha::maintain_subscriptions();
+  assert(server.clients[0]->requests.size()==4);
+  assert(server.clients[0]->requests[0]==std::make_pair(std::string("sensor.same"),std::string("unit")));
+  assert(server.clients[0]->requests[1].second.empty()); // Null native attribute -> empty wire attribute.
+  assert(server.clients[0]->enumerations==enumerations && server.clients[0]->disconnects==disconnects);
+  assert(!server.clients[0]->removed && listeners.size()==4);
+  assert(server.clients[3]->requests.empty() && server.clients[4]->requests.empty());
+  // A blocked peer keeps the cursor on the same pair until every eligible
+  // peer accepts; repeated one-shot requests add no persistent listeners.
+  second_ha->writable=false;
+  espcontrol::ha::request_state_refresh();
+  espcontrol::ha::maintain_subscriptions();
+  assert(server.clients[0]->requests.size()==5 && second_ha->requests.size()==4);
+  second_ha->writable=true;
+  espcontrol::ha::maintain_subscriptions();
+  assert(server.clients[0]->requests.size()==6 && second_ha->requests.size()==5);
+  assert(server.clients[0]->requests[4]==server.clients[0]->requests[5]);
+  // Changing the list resets a partial refresh and marks both HA sessions;
+  // refresh cannot send using retired names or an obsolete positional cursor.
+  for(auto id:fresh_tokens)espcontrol::ha::unsubscribe_owned(id);
+  espcontrol::ha::maintain_subscriptions();
+  assert(server.clients[0]->removed && second_ha->removed);
+  assert(server.clients[0]->requests.size()==6 && second_ha->requests.size()==5);
+  reconnect();second_ha->removed=false;
+  espcontrol::ha::maintain_subscriptions();
+  assert(server.clients[0]->requests.size()==7 && second_ha->requests.size()==6);
+  assert(server.clients[0]->requests.back().first=="sensor.same");
+  assert(second_ha->requests.back().first=="sensor.same");
+  const auto sent=server.clients[0]->requests.size();
+  espcontrol::ha::maintain_subscriptions();
+  assert(server.clients[0]->requests.size()==sent && listeners.size()==1);
+  // An unavailable backend retains a requested refresh without dereferencing it.
+  esphome::api::global_api_server=nullptr;
+  espcontrol::ha::request_state_refresh();espcontrol::ha::maintain_subscriptions();
+  esphome::api::global_api_server=&server;
+  espcontrol::ha::maintain_subscriptions();
+  assert(server.clients[0]->requests.size()==sent+1);
+  // Unconfigured foreign/wizard records are skipped as in native enumeration.
+  server.subscriptions.push_back({"",nullptr,[](auto) {},false});
+  server.subscriptions.push_back({nullptr,nullptr,[](auto) {},false});
+  const auto before_empty=server.clients[0]->requests.size();
+  espcontrol::ha::request_state_refresh();
+  for(int i=0;i<5;++i)espcontrol::ha::maintain_subscriptions();
+  assert(server.clients[0]->requests.size()==before_empty+1);
   esphome::api::global_api_server = nullptr;
 }

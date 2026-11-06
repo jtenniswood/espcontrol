@@ -53,8 +53,21 @@ sources: repeating a persistent request adds another listener, while disconnect
 runs their cleanup callbacks. This is source/host evidence, not qualification of
 the user's installed HA version. Audit this bridge when changing the pinned SDK.
 
-Legacy value-refresh helpers are still under the carry-forward audit; this
-change covers native registration maintenance, not every refresh call site.
+Existing grid, climate and media value-refresh helpers now schedule one-shot
+requests instead of restarting persistent enumeration. Maintenance coalesces
+requests and visits one entity/attribute pair per loop tick, sending only to
+eligible HA clients. Backpressure retries that pair; list compaction resets the
+cursor before another request. Empty wizard IDs are skipped. A refresh alone
+neither reconnects HA nor installs another remote listener. The cursor and flag
+use fixed scalar storage, with no additional retained value cache.
+
+The actual pinned HA subscription, one-shot and disconnect method bodies were
+also executed with state/event doubles: 100 persistent replays install 100
+listeners, disconnect removes them, and 100 one-shot reads retain only the
+single original listener. Production-transport host checks cover deferred and
+coalesced refreshes, pacing, two HA clients, backpressure, changed-list cursors,
+null attributes, empty IDs and backend unavailability. Weakened persistent,
+unpaced and obsolete-cursor implementations fail the regression checks.
 
 Host coverage exercises 1,000 disjoint configurations, deferred add/remove
 during dispatch, late callbacks, owner destruction, shared channels, retained
