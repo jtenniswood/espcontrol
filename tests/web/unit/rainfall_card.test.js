@@ -6,6 +6,7 @@ const {loadTypeScriptModule}=require("../../../scripts/load_typescript_module");
 const root=path.resolve(__dirname,"../../..");
 const {createConfigWeatherOptionsFeature}=loadTypeScriptModule(path.join(root,"src/webserver/application/config_weather_options.ts"));
 const {registerWeatherCardTypes}=loadTypeScriptModule(path.join(root,"src/webserver/cards/weather.ts"));
+const {escHtml}=loadTypeScriptModule(path.join(root,"src/webserver/application/ui_primitives.ts"));
 test("rainfall supports sensors and daily forecast data without making sensor cards forecast cards",()=>{
  for(const disabledCardTypes of [[],["weather_forecast"]]){
   const options=createConfigWeatherOptionsFeature({disabledCardTypes});
@@ -43,4 +44,38 @@ test("changing existing weather modes to Rainfall clears incompatible entities",
   assert.equal(config.precision, "rainfall");
   assert.equal(options.rainfallUsesForecast(config), false);
  }
+});
+
+test("rainfall sensor settings offer an optional unit suffix while forecast retains provider units", () => {
+ const options = createConfigWeatherOptionsFeature({});
+ let card;
+ registerWeatherCardTypes({register: (_, definition) => card = definition}, options, {}, {}, {});
+ const group = {appendChild() {}};
+ for (const forecast of [false, true]) {
+  const button = {precision: "rainfall", options: forecast ? "rainfall_source=forecast" : "", unit: "in"};
+  const textFields = [];
+  card.renderSettings(group, button, 0, {
+   idPrefix: "test-",
+   renderCardModeSelector() {}, markCardPrimaryField() {}, renderCardEntityField() {},
+   disclosureSection: () => ({panel: group, section: {className: "", appendChild() {}}}),
+   segmentControl: () => ({segment: {}}), fieldWithControl() {},
+   renderCardTextField: (_, config, helpers, metadata) => textFields.push({config, metadata}),
+  });
+  assert.equal(textFields.length, forecast ? 0 : 1);
+  if (!forecast) {
+   assert.equal(textFields[0].config, button);
+   assert.equal(textFields[0].metadata.field, "unit");
+   assert.match(textFields[0].metadata.placeholder, /mm or in/);
+  }
+  assert.match(card.renderPreview(button, {escHtml}).labelHtml, forecast ? /2.4 mm/ : /2.4 in/);
+ }
+});
+
+test("rainfall preview escapes a custom unit suffix", () => {
+ const options = createConfigWeatherOptionsFeature({});
+ let card;
+ registerWeatherCardTypes({register: (_, definition) => card = definition}, options, {}, {}, {});
+ const preview = card.renderPreview({precision: "rainfall", options: "", unit: "<mm>"}, {escHtml});
+ assert.match(preview.labelHtml, /2.4 &lt;mm&gt;/);
+ assert.doesNotMatch(preview.labelHtml, /<mm>/);
 });

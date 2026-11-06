@@ -32,8 +32,18 @@ export function registerWeatherCardTypes(
         normalizeWeatherCardMode,
         weatherWindUsesSensors,
         rainfallUsesForecast,
+        weatherMetricMode,
+        weatherMetricUsesForecast,
         weatherForecastCardsSupported,
     } = weatherOptions;
+    const readings: Record<string, { label: string; icon: string; sample: string; sensor: string }> = {
+        rainfall: { label: "Rainfall", icon: "weather-rainy", sample: "2.4 mm", sensor: "sensor.rainfall_today" },
+        pressure: { label: "Air Pressure", icon: "gauge", sample: "1013 hPa", sensor: "sensor.air_pressure" },
+        humidity: { label: "Humidity", icon: "water-percent", sample: "65 %", sensor: "sensor.humidity" },
+        visibility: { label: "Visibility", icon: "weather-hazy", sample: "10 km", sensor: "" },
+    };
+    const readingUsesForecast = (button: any) => rainfallUsesForecast(button) || weatherMetricUsesForecast(button);
+    const readingUsesSensor = (button: any) => !!readings[button.precision] && !readingUsesForecast(button);
     // Current conditions or a shared forecast layout for one or several days.
     const WEATHER_CARD_METADATA: any = {
         mode: {
@@ -41,10 +51,13 @@ export function registerWeatherCardTypes(
             idSuffix: "weather-display",
             options: weatherModeOptions,
             value: function (this: any, b?: any) {
-                return normalizeWeatherCardMode(b.precision);
+                return weatherCardIsForecastMode(b) ? "forecast" : normalizeWeatherCardMode(b.precision);
             },
             onChange: function (this: any, b?: any, helpers?: any) {
-                if (weatherWindUsesSensors(b) && this.value !== "wind") {
+                // Forecast is an editor grouping; retain the saved period values.
+                const precision = this.value === "forecast"
+                    ? (weatherCardIsForecastMode(b) ? b.precision : "today") : this.value;
+                if (weatherWindUsesSensors(b) && precision !== "wind") {
                     b.entity = "";
                     b.sensor = "";
                     b.options = setConfigOptionValue(b.options, "wind_source", "");
@@ -52,14 +65,15 @@ export function registerWeatherCardTypes(
                     helpers.saveField("sensor", b.sensor);
                     helpers.saveField("options", b.options);
                 }
-                if ((b.precision === "rainfall" && !rainfallUsesForecast(b) && this.value !== "rainfall") ||
-                    (b.precision !== "rainfall" && this.value === "rainfall")) {
+                const next = { precision, options: "" };
+                if (readingUsesSensor(b) !== readingUsesSensor(next)) {
                     b.entity = "";
                     helpers.saveField("entity", b.entity);
                 }
-                b.options = setConfigOptionValue(b.options, "rainfall_source", "");
+                for (const mode of ["rainfall", "pressure", "humidity"])
+                    b.options = setConfigOptionValue(b.options, mode + "_source", "");
                 helpers.saveField("options", b.options);
-                b.precision = this.value;
+                b.precision = precision;
                 helpers.saveField("precision", b.precision);
                 renderButtonSettings();
             },
@@ -96,7 +110,23 @@ export function registerWeatherCardTypes(
             b.precision = normalizeWeatherCardMode(b.precision);
         },
         renderSettings: function (this: any, panel?: any, b?: any, slot?: any, helpers?: any) {
-            helpers.renderCardModeSelector(panel, b, helpers, WEATHER_CARD_METADATA);
+            const typeField = helpers.renderCardModeSelector(panel, b, helpers, WEATHER_CARD_METADATA);
+            if (weatherCardIsForecastMode(b)) {
+                // Keep Type and Period together above the collapsible settings.
+                const forecastFields = document.createElement("div");
+                forecastFields.className = "sp-field";
+                helpers.markCardPrimaryField(forecastFields, "type");
+                typeField.field.replaceWith(forecastFields);
+                forecastFields.appendChild(typeField.field);
+                const period = helpers.selectField("Period", helpers.idPrefix + "weather-period",
+                    [["today", "Today"], ["tomorrow", "Tomorrow"], ["daily", "Week"]],
+                    b.precision, function (this: any) {
+                        b.precision = this.value;
+                        helpers.saveField("precision", b.precision);
+                        renderButtonSettings();
+                    });
+                forecastFields.appendChild(period.field);
+            }
             if (b.precision === "wind") {
                 const sourceGroup = helpers.disclosureSection("Source", helpers.idPrefix + "wind-source-settings", true);
                 helpers.markCardPrimaryField(sourceGroup.panel, "entity");
@@ -141,35 +171,48 @@ export function registerWeatherCardTypes(
                 });
                 return;
             }
-            if (b.precision === "rainfall") {
-                const sourceGroup = helpers.disclosureSection("Source", helpers.idPrefix + "rainfall-source-settings", true);
+            const reading = readings[b.precision];
+            if (reading) {
+                const mode = b.precision;
+                const sourceGroup = helpers.disclosureSection("Source", helpers.idPrefix + mode + "-source-settings", true);
                 helpers.markCardPrimaryField(sourceGroup.panel, "entity");
                 panel.appendChild(sourceGroup.panel);
                 const group = sourceGroup.section;
                 group.className += " sp-weather-source-fields";
-                const sources = [];
-                if (weatherForecastCardsSupported()) sources.push(["forecast", "Forecast"]);
-                sources.push(["sensor", "Sensor"]);
-                const source = helpers.segmentControl(
-                    sources, rainfallUsesForecast(b) ? "forecast" : "sensor", function (value: string) {
-                        if (value === (rainfallUsesForecast(b) ? "forecast" : "sensor")) return;
-                        b.options = setConfigOptionValue(b.options, "rainfall_source", value === "forecast" ? "forecast" : "");
-                        b.entity = "";
-                        helpers.saveField("entity", b.entity);
-                        helpers.saveField("options", b.options);
-                        renderButtonSettings();
-                    });
-                source.segment.id = helpers.idPrefix + "rainfall-source";
-                group.appendChild(helpers.fieldWithControl("Rainfall Source", source.segment.id, source.segment));
-                const forecast = rainfallUsesForecast(b);
+                if (mode !== "visibility") {
+                    const sources = [];
+                    if (weatherForecastCardsSupported() || weatherMetricMode(mode)) sources.push(["forecast", "Forecast"]);
+                    sources.push(["sensor", "Sensor"]);
+                    const source = helpers.segmentControl(
+                        sources, readingUsesForecast(b) ? "forecast" : "sensor", function (value: string) {
+                            if (value === (readingUsesForecast(b) ? "forecast" : "sensor")) return;
+                            b.options = setConfigOptionValue(b.options, mode + "_source", value === "forecast" ? "forecast" : "");
+                            b.entity = "";
+                            helpers.saveField("entity", b.entity);
+                            helpers.saveField("options", b.options);
+                            renderButtonSettings();
+                        });
+                    source.segment.id = helpers.idPrefix + mode + "-source";
+                    group.appendChild(helpers.fieldWithControl(reading.label + " Source", source.segment.id, source.segment));
+                }
+                const forecast = readingUsesForecast(b);
                 helpers.renderCardEntityField(group, b, helpers, {
                     entity: {
                         ...WEATHER_CARD_METADATA.entity,
-                        label: forecast ? "Weather Entity" : "Rainfall Sensor",
-                        placeholder: forecast ? "e.g. weather.forecast_home" : "e.g. sensor.rainfall_today",
+                        label: forecast ? "Weather Entity" : reading.label + " Sensor",
+                        placeholder: forecast ? "e.g. weather.forecast_home" : "e.g. " + reading.sensor,
                         domains: forecast ? ["weather"] : ["sensor", "input_number"],
                     },
                 });
+                if (mode === "rainfall" && !forecast) {
+                    helpers.renderCardTextField(group, b, helpers, {
+                        label: "Units",
+                        idSuffix: "unit",
+                        field: "unit",
+                        placeholder: "e.g. mm or in (blank uses sensor units)",
+                        rerender: true,
+                    });
+                }
                 return;
             }
             helpers.renderCardEntityField(panel, b, helpers, {
@@ -185,11 +228,14 @@ export function registerWeatherCardTypes(
                     labelEditable: false,
                 };
             }
-            if (b.precision === "rainfall") {
+            const reading = readings[b.precision];
+            if (reading) {
+                const sample = b.precision === "rainfall" && !rainfallUsesForecast(b) && b.unit
+                    ? "2.4 " + helpers.escHtml(b.unit) : reading.sample;
                 return {
                     buttonClass: "sp-rainfall-card",
-                    iconHtml: '<span class="sp-btn-icon mdi mdi-weather-rainy"></span>',
-                    labelHtml: '<span class="sp-btn-label">Rainfall<span class="sp-rainfall-value">2.4 mm</span></span>',
+                    iconHtml: '<span class="sp-btn-icon mdi mdi-' + reading.icon + '"></span>',
+                    labelHtml: '<span class="sp-btn-label">' + reading.label + '<span class="sp-rainfall-value">' + sample + '</span></span>',
                     labelEditable: false,
                 };
             }

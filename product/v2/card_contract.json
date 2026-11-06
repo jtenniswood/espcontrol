@@ -4268,7 +4268,10 @@
             "tomorrow",
             "daily",
             "wind",
-            "rainfall"
+            "rainfall",
+            "pressure",
+            "humidity",
+            "visibility"
           ],
           "defaultValue": "",
           "storageField": "precision",
@@ -4321,6 +4324,54 @@
               "rainfall"
             ]
           }
+        },
+        {
+          "name": "pressure_source",
+          "label": "Air Pressure Source",
+          "kind": "choice",
+          "values": [
+            "sensor",
+            "forecast"
+          ],
+          "defaultValue": "sensor",
+          "omitDefault": true,
+          "applicability": [
+            {
+              "source": "field",
+              "name": "precision",
+              "operator": "equals",
+              "value": "pressure"
+            }
+          ],
+          "supportedWhen": {
+            "precision": [
+              "pressure"
+            ]
+          }
+        },
+        {
+          "name": "humidity_source",
+          "label": "Humidity Source",
+          "kind": "choice",
+          "values": [
+            "sensor",
+            "forecast"
+          ],
+          "defaultValue": "sensor",
+          "omitDefault": true,
+          "applicability": [
+            {
+              "source": "field",
+              "name": "precision",
+              "operator": "equals",
+              "value": "humidity"
+            }
+          ],
+          "supportedWhen": {
+            "precision": [
+              "humidity"
+            ]
+          }
         }
       ],
       "normalization": {
@@ -4361,7 +4412,9 @@
         "unknownOptions": "drop",
         "canonicalOptionOrder": [
           "wind_source",
-          "rainfall_source"
+          "rainfall_source",
+          "pressure_source",
+          "humidity_source"
         ],
         "migrationActions": [
           "legacy_weather_forecast"

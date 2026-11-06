@@ -997,7 +997,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
     card_background_move_content_foreground(s);
   }
   if (espcontrol::cards::weather_driver_matches(context) &&
-      (p.precision == "wind" || p.precision == "rainfall" || espcontrol::cards::weather_driver_shows_forecast(p))) {
+      (p.precision == "wind" || p.precision == "rainfall" || weather_metric_mode(p.precision) || espcontrol::cards::weather_driver_shows_forecast(p))) {
     espcontrol::cards::weather_driver_refresh_layout(s, p, context, display, row_span, col_span);
     return;
   }

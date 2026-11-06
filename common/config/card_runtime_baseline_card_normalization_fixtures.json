@@ -1320,6 +1320,81 @@
     }
   },
   {
+    "name": "weather: pressure_sensor",
+    "input": "~sensor.pressure,,Auto,Auto,,,weather,pressure,",
+    "expected": {
+      "entity": "sensor.pressure",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "pressure",
+      "options": ""
+    }
+  },
+  {
+    "name": "weather: pressure_forecast",
+    "input": "~weather.example,,Auto,Auto,,,weather,pressure,pressure_source%3Dforecast",
+    "expected": {
+      "entity": "weather.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "pressure",
+      "options": "pressure_source=forecast"
+    }
+  },
+  {
+    "name": "weather: humidity_sensor",
+    "input": "~sensor.humidity,,Auto,Auto,,,weather,humidity,",
+    "expected": {
+      "entity": "sensor.humidity",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "humidity",
+      "options": ""
+    }
+  },
+  {
+    "name": "weather: humidity_forecast",
+    "input": "~weather.example,,Auto,Auto,,,weather,humidity,humidity_source%3Dforecast",
+    "expected": {
+      "entity": "weather.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "humidity",
+      "options": "humidity_source=forecast"
+    }
+  },
+  {
+    "name": "weather: visibility_forecast",
+    "input": "~weather.example,,Auto,Auto,,,weather,visibility,",
+    "expected": {
+      "entity": "weather.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "visibility",
+      "options": ""
+    }
+  },
+  {
     "name": "weather: today",
     "input": "~weather.example,,Auto,Auto,,,weather,today,",
     "expected": {
