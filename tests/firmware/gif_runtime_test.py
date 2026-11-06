@@ -29,9 +29,6 @@ stub = r'''
 #include <vector>
 #include "gif_image.h"
 #include "esphome/core/log.h"
-#define ESP_LOGD(tag, ...) ((void)(tag))
-#define ESP_LOGW(tag, ...) ((void)(tag))
-#define ESP_LOGI(tag, ...) ((void)(tag))
 namespace esphome::artwork_image {
 enum P4PipelinePriority { P4_PIPELINE_TILE, P4_PIPELINE_MODAL };
 struct Downloader { void end() {} };

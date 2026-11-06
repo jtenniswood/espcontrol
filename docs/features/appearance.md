@@ -17,9 +17,9 @@ Open **Screen > Appearance > Active Colour** on your [device setup page](/featur
 
 Choose a preset under **Active Colour**, or use the eyedropper swatch for a custom colour. This is the highlight used when a card is active. The reset icon restores the default orange. Text and icons adjust their contrast automatically.
 
-To change a single card, right-click it in **Layout** and open **Change Colour**, or edit its **Custom Colours**. You can also select several cards together or recolour a subpage's **Back** card. **Reset Colour** restores its default background.
+To change a single card, right-click it in **Layout** and open **Change Colour**, or edit its **Background > Colour**. You can also select several cards together or recolour a subpage's **Back** card. **Reset Colour** restores its default background.
 
-In a card's **Custom Colours**, choose its **Active state colour**:
+In a card's **Background > Colour** tab, choose its **Active state colour**:
 
 | Choice | Result |
 |---|---|
@@ -28,6 +28,10 @@ In a card's **Custom Colours**, choose its **Active state colour**:
 | **Custom** | Lets you pick a separate active colour. |
 
 Sensor, Door/Window, and Presence cards also need **Active Colour** enabled in their card settings. Artwork, full QR images, and status colours keep their own appearance.
+
+Uploaded card backgrounds stay fully opaque, including when a card is pressed, active or unavailable. The web preview also shows these images at full opacity.
+
+Text, values and units stay solid over an image, with shadows that follow live content changes, wrapping and resizing. Removing the image restores the card's normal text appearance.
 
 ## Card Style
 
@@ -92,3 +96,11 @@ Tap the connectivity icon on the physical panel to open **Settings**. It shows t
 If a PIN is saved, Settings also offers **Screen Lock**, even with automatic wake protection off. Tap it to lock the current view, then touch the screen and enter the PIN to unlock. See [PIN protection](/settings/sleep#pin-protection-after-wake).
 
 When a subpage or card popup is open, its title temporarily replaces the temperature reading.
+
+## Image Library
+
+Open **Screen > Appearance > Image Library**, below **Clock Bar**, to manage uploaded card backgrounds. The panel shows thumbnails, image names, and how many cards use each image.
+
+Use **Upload** to add an image, **Rename** to change its name without changing card assignments, or **Delete** to remove it. Deleting a used image asks for confirmation and clears its card backgrounds first. Unavailable actions are hidden; older partition layouts show the [image-storage setup guide](/features/image-storage).
+
+To assign a stored image to a card, open **Layout**, edit the card, and choose **Background > Image**.

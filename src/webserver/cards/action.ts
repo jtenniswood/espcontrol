@@ -25,6 +25,7 @@ export function registerActionCardTypes(
         actionCardEntityMatchesAction,
         actionCardIsOptionSelect,
         actionCardIsLocal,
+        clearActionModeOptions,
         normalizeSavedConfigActionFields,
         normalizeActionCardConfig,
         actionCardStateEntity,
@@ -149,11 +150,11 @@ export function registerActionCardTypes(
                             helpers.saveField("unit", "");
                         }
                         if (actionCardIsOptionSelect(b)) {
-                            b.options = preserveCardColorOptions(b.options, "");
+                            clearActionModeOptions(b);
                             helpers.saveField("options", b.options);
                         }
                         else if (actionCardIsLocal(b)) {
-                            b.options = preserveCardColorOptions(b.options, "");
+                            clearActionModeOptions(b);
                             helpers.saveField("options", b.options);
                             if (!b.icon || b.icon === "Auto" || b.icon === "Flash") {
                                 b.icon = "Gesture Tap";

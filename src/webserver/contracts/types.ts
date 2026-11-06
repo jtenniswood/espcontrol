@@ -9,7 +9,20 @@ export type SavedConfigField =
   | "precision"
   | "options";
 
-export type CardConfig = Record<SavedConfigField, string>;
+export interface CardAppearance {
+  backgroundAssetId: string;
+}
+
+// Appearance is an internal typed view over the compact `options` field. It is
+// attached as a non-enumerable property by the model so saved configuration,
+// card-transfer, and backup JSON remain byte-compatible with older releases.
+export type CardConfig = Record<SavedConfigField, string> & {
+  appearance?: CardAppearance;
+};
+
+export type NormalizedCardConfig = CardConfig & {
+  appearance: CardAppearance;
+};
 
 export interface CardRuntimeCapabilities {
   informationOnly: boolean;

@@ -9,6 +9,7 @@
 
 #include "configuration_service.h"
 #include "panel_config_service_validator.h"
+#include "panel_config_asset_references.h"
 
 namespace {
 
@@ -417,10 +418,60 @@ bool panel_config_validator_rejects_invalid_legacy_imports() {
          ServiceStatus::IMPORTED_LEGACY;
 }
 
+bool image_reference_transform_preserves_native_configuration() {
+  for (auto mode : {LegacyConfigurationMode::DUAL_WRITE, LegacyConfigurationMode::READ_IMPORT_ONLY}) {
+    MemoryBackend backend(2048);
+    ConfigurationStore store(backend);
+    FakeLegacy legacy;
+    legacy.value = bytes("stale-legacy-document");
+    FakeRuntime runtime;
+    PanelConfigDocumentValidator validator;
+    ConfigurationService service(store, legacy, &validator, nullptr, 0, mode);
+    service.set_runtime_adapter(&runtime);
+    std::array<uint8_t, 1024> document{};
+    PanelConfigWriter writer(document.data(), document.size());
+    const auto profile = bytes("panel-native");
+    const auto button = bytes("light.kitchen;Latest name;;;;;light;;bg_image=asset-123,confirm_on");
+    const auto subpage = bytes("1,2|light.a;A;;;;;light;;bg_image=asset-123|switch.b;B;;;;;switch;;bg_image=other");
+    const auto key = bytes("button_on_color");
+    const auto value = bytes("FF0000");
+    size_t size = 0;
+    if (writer.begin() != PanelConfigStatus::OK ||
+        writer.append_device_profile(profile.data(), profile.size()) != PanelConfigStatus::OK ||
+        writer.append_button(1, button.data(), button.size()) != PanelConfigStatus::OK ||
+        writer.append_subpage(1, subpage.data(), subpage.size()) != PanelConfigStatus::OK ||
+        writer.append_setting(key.data(), key.size(), value.data(), value.size()) != PanelConfigStatus::OK ||
+        writer.finish(&size) != PanelConfigStatus::OK) return false;
+    const auto initial = service.save_current(document.data(), size);
+    if (!initial.ok()) return false;
+    auto transform = [](void *, uint8_t *data, size_t &length) {
+      return espcontrol::clear_panel_config_asset_references(data, length, "asset-123");
+    };
+    backend.fail_writes(true);
+    if (service.transform_current(document.data(), document.size(), transform, nullptr).durable()) return false;
+    auto loaded = service.load(document.data(), document.size());
+    bool referenced = false;
+    if (!loaded.ok() || !espcontrol::panel_config_references_asset(document.data(), loaded.document_size, "asset-123", referenced) || !referenced) return false;
+    backend.fail_writes(false);
+    const auto result = service.transform_current(document.data(), document.size(), transform, nullptr);
+    if (!result.ok() || result.generation != initial.generation + 1 || legacy.load_calls != 0) return false;
+    loaded = service.load(document.data(), document.size());
+    if (!loaded.ok() || !espcontrol::panel_config_references_asset(document.data(), loaded.document_size, "asset-123", referenced) || referenced) return false;
+    if (!espcontrol::panel_config_references_asset(document.data(), loaded.document_size, "other", referenced) || !referenced) return false;
+    const std::string saved(reinterpret_cast<const char *>(document.data()), loaded.document_size);
+    if (saved.find("Latest name") == std::string::npos || saved.find("confirm_on") == std::string::npos ||
+        saved.find("FF0000") == std::string::npos || runtime.applied.size() != loaded.document_size) return false;
+    if (service.save_if_generation(initial.generation, 1, document.data(), loaded.document_size).status != ServiceStatus::GENERATION_CONFLICT) return false;
+    if (mode == LegacyConfigurationMode::READ_IMPORT_ONLY && legacy.mirror_calls != 0) return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 int main() {
   const bool passed =
+      image_reference_transform_preserves_native_configuration() &&
       legacy_is_imported_once() &&
       partial_migration_refreshes_the_native_shadow() &&
       failed_legacy_mirror_keeps_the_native_save_durable() &&

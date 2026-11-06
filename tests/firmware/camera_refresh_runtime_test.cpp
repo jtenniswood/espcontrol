@@ -17,6 +17,7 @@ uint32_t millis() { return now; }
 namespace esphome::artwork_image { enum class ImageResizeMode { COVER, FIT }; }
 using lv_coord_t = int;
 using lv_obj_t = int;
+void card_background_refresh_due() {}
 int tile_requests = 0, modal_requests = 0;
 struct FakeImage {
   esphome::artwork_image::ImageResizeMode resize_mode = esphome::artwork_image::ImageResizeMode::COVER;

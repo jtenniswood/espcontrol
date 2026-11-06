@@ -4,15 +4,21 @@
 // Reuse the native label descriptor so wrapping, scrolling and fonts stay intact.
 #include "src/draw/lv_draw_private.h"
 #include "src/misc/lv_area_private.h"
+#include "card_background_text.h"
 
 inline void slider_text_contrast_event_cb(lv_event_t *event) {
   auto *fill = static_cast<lv_obj_t *>(lv_event_get_user_data(event));
   auto *task = static_cast<lv_draw_task_t *>(lv_event_get_param(event));
+  auto *original_task = task;
+  // Split the live foreground at the fill edge, leaving its image shadow behind
+  // both segments. This also covers a zero-sized (empty) slider fill.
+  task = card_background_prepare_text_task(task);
   if (!fill || !task || lv_draw_task_get_type(task) != LV_DRAW_TASK_TYPE_LABEL ||
       lv_obj_get_width(fill) <= 0 || lv_obj_get_height(fill) <= 0) return;
   auto *descriptor = static_cast<lv_draw_label_dsc_t *>(lv_draw_task_get_draw_dsc(task));
   lv_obj_t *button = lv_obj_get_parent(fill);
-  const lv_color_t base_color = lv_obj_get_style_text_color(button, LV_PART_MAIN);
+  const lv_color_t base_color = task != original_task
+    ? descriptor->color : lv_obj_get_style_text_color(button, LV_PART_MAIN);
   const lv_color_t fill_color = lv_color_hex(display_text_color_for_bg(
     lv_color_to_int(lv_obj_get_style_bg_color(fill, LV_PART_MAIN))));
   descriptor->color = base_color;
@@ -45,9 +51,12 @@ inline void slider_text_contrast_event_cb(lv_event_t *event) {
 inline void slider_bind_text_contrast(lv_obj_t *object, lv_obj_t *fill) {
   if (!object) return;
   lv_obj_remove_event_cb(object, slider_text_contrast_event_cb);
+  lv_obj_remove_event_cb(object, card_background_text_event_cb);
   if (fill) {
     lv_obj_add_flag(object, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
     lv_obj_add_event_cb(object, slider_text_contrast_event_cb, LV_EVENT_DRAW_TASK_ADDED, fill);
+  } else if (card_background_text_query() && card_background_text_query()(object)) {
+    card_background_bind_text_label(object);
   }
   for (uint32_t i = 0; i < lv_obj_get_child_cnt(object); ++i) {
     slider_bind_text_contrast(lv_obj_get_child(object, i), fill);

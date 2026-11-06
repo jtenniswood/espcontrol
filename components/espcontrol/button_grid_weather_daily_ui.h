@@ -186,7 +186,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     const auto high = card->view == WeatherForecastView::RAINFALL
       ? espcontrol::rainfall::amount(day.precipitation, forecast.precipitation_unit)
       : weather_daily_temperature_range(day, forecast.temperature_unit);
-    // Blend secondary text with the card surface instead of painting opaque grey.
+    // Image backgrounds override secondary opacity in the shared draw path.
     lv_obj_set_style_text_color(col.high, foreground, LV_PART_MAIN);
     lv_obj_set_style_text_opa(col.high, LV_OPA_70, LV_PART_MAIN);
     lv_label_set_display_text(col.high, high.c_str());

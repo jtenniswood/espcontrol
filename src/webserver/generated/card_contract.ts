@@ -4961,6 +4961,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "actions": "actions",
   "active_color": "active_color",
   "alarm_card_type": "alarm_card_type",
+  "bg_image": "bg_image",
   "center_clock": "center_clock",
   "climate_tabs": "climate_tabs",
   "confirm_message": "confirm_message",
@@ -5036,6 +5037,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "wifi_tabs": "wifi_tabs",
   "wind_source": "wind_source"
 };
+export const CARD_CONTRACT_BACKGROUND_IMAGE_TYPES = ["", "action", "vacuum", "lawn_mower", "alarm", "alarm_action", "calendar", "clock", "climate", "climate_control", "cover", "door_window", "presence", "fan_direction", "fan_oscillate", "fan_preset", "fan_speed", "fan_control", "fan_switch", "garage", "gate", "internal", "light_brightness", "light_switch", "light_temperature", "light_control", "lock", "media", "option_select", "push", "screen_lock", "webhook", "sensor", "local_sensor", "slider", "subpage", "timezone", "weather", "weather_forecast"] as const;
 
 function cardContractListContains(list: readonly string[] | undefined, value: string): boolean {
   return (list || []).indexOf(value) >= 0;
@@ -5047,6 +5049,10 @@ export function cardContractCard(type: string | null | undefined): CardTypeSpec 
 
 export function cardContractCardKeys(): string[] {
   return Object.keys(CARD_CONTRACT_CARDS);
+}
+
+export function cardContractSupportsBackground(type: string | null | undefined): boolean {
+  return cardContractListContains(CARD_CONTRACT_BACKGROUND_IMAGE_TYPES, type || "");
 }
 
 export function cardRuntimeSpec(type: string | null | undefined): CardRuntimeSpec | null {

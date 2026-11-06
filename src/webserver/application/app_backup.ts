@@ -2,6 +2,7 @@ import { clearScreensaverPinForRestore } from "./screensaver_pin";
 import { resetAwareFetch } from "../api/reset_session";
 import type { PanelIdentityBackup } from "../model/panel_identity";
 import type { PanelIdentityFeature } from "./panel_identity";
+import { exportBackupArchive } from "../features/backup_archive_export";
 import { state } from "../state/app_instance";
 import * as EspControlModel from "../model";
 import {
@@ -34,7 +35,7 @@ import { syncCardCurveUi } from "./card_curve_ui";
 import type { BackupImportController } from "../features/backup_import_controller";
 import type { BackupExportController } from "../features/backup_export_controller";
 import type { BackupFileController } from "../features/backup_file_controller";
-import type { BackupRestoreController } from "../features/backup_restore_controller";
+import type { BackupRestoreController, BackupRestoreProgress } from "../features/backup_restore_controller";
 import type { ApplicationLayoutState } from "./application_context";
 import type { NativePanelConfigController } from "../controllers/native_panel_config_controller";
 import type { PanelConfigDocument } from "../model";
@@ -62,6 +63,7 @@ import type { BackupContractFeature } from "./backup_contract";
 import type { SettingsPageHelpersFeature } from "./settings_page_helpers";
 import type { PreviewRenderFeature } from "./preview_render";
 import type { ButtonSettingsFeature } from "./button_settings";
+import type { CardImageService } from "./card_image_service";
 import { legacyRestoreFailureMessage, restoreLegacyLayoutDocument } from "../features/legacy_layout_restore";
 import { panelConfigDocumentContainsWifiSharing } from "../features/wifi_sharing_config";
 
@@ -72,6 +74,7 @@ export interface AppBackupControllers {
     readonly backupImport: BackupImportController<any, any, any>;
     readonly backupRestore: BackupRestoreController<any, any>;
     readonly backupFile: BackupFileController;
+    readonly cardImages: Pick<CardImageService, "backupAssetProvider">;
     readonly normalizeImportedPanelSettings: (settings: any) => any;
     readonly gridColsForImportedSettings: (settings: any) => number;
     readonly nativePanelConfig?: NativePanelConfigController;
@@ -85,7 +88,7 @@ export interface AppBackupControllers {
     readonly firmwareUpdate: FirmwareUpdateFeature;
     readonly clockBar: ClockBarFeature;
     readonly entityState: Pick<EntityStateFeature, "entityName" | "entityNameForSlot">;
-    readonly shell: Pick<ControlsShellFeature, "switchTab"> & Partial<Pick<ControlsShellFeature, "showBanner">>;
+    readonly shell: Pick<ControlsShellFeature, "showBanner" | "switchTab">;
     readonly requestApi: ApplicationApiFeature;
     readonly statusPreview: Pick<AppStatusPreviewFeature, "syncInput" | "updateTempPreview">;
     readonly grid: Pick<GridFeature, "applyImportedButtonOrder" | "cancelMainGridSave" | "serializeGrid">;
@@ -225,10 +228,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
     var backupImportController: BackupImportController<any, any, any> = controllers.backupImport;
     var backupRestoreController: BackupRestoreController<any, any> = controllers.backupRestore;
     var backupFileController: BackupFileController = controllers.backupFile;
-    function downloadBackupConfig(this: any, data: any, identity?: PanelIdentityBackup) {
-        if (identity) data.identity = identity;
-        backupFileController.download(data, backupExportController.fileName(controllers.layout.config.screenSize, undefined, identity));
-    }
+    var cardImageBackupAssetProvider = controllers.cardImages.backupAssetProvider;
     function addNativeConfigToBackup(this: any, data?: any) {
         return backupExportController.addNativeConfig(data, {
             "deviceProfile": controllers.layout.deviceId,
@@ -349,12 +349,27 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 schedule_clock_text_color: normalizeHexColor(state.scheduleClockTextColor, "FFFFFF"),
             },
         } as any);
-        downloadBackupConfig(addNativeConfigToBackup(data), identity);
-        if (identityUnavailable) controllers.shell.showBanner?.(
+        data = addNativeConfigToBackup(data);
+        if (identity) data.identity = identity;
+        var archiveName: any = backupExportController.fileName(controllers.layout.config.screenSize, undefined, identity).replace(/\.json$/i, ".zip");
+        const exported = await exportBackupArchive({
+            createImageEntries: () => cardImageBackupAssetProvider.createArchiveEntries(),
+            download: (entries) => backupFileController.downloadArchive(data, entries, archiveName),
+            showBanner: controllers.shell.showBanner,
+            async chooseAfterFailure(message) {
+                if (window.confirm(message + "\nRetry exporting the full backup?")) return "retry";
+                return window.confirm("Export a configuration-only backup without images instead?")
+                    ? "configuration-only" : "cancel";
+            },
+        }).catch((error: unknown) => {
+            controllers.shell.showBanner(error instanceof Error ? error.message : "Could not export backup.", "error");
+            return false;
+        });
+        if (exported && identityUnavailable) controllers.shell.showBanner(
             "Backup exported without the panel name because naming is unavailable.", "warning");
     }
     function importConfig(this: any) {
-        backupFileController.import(function (data: any) {
+        backupFileController.import(function (data: any, archiveEntries?: any) {
             void (async () => {
                 // Validate the complete backup before offering identity changes.
                 const validatedPlan = backupImportController.plan(data, { device: controllers.layout.deviceId, slots: controllers.layout.numSlots });
@@ -365,7 +380,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 }
                 const restoredName = await controllers.identity?.chooseRestoreName(data);
                 if (restoredName === null) return;
-                async function applyBackupRestorePlan(this: any, plannedImport: any) {
+                async function applyBackupRestorePlan(this: any, plannedImport: any, restoreProgress: BackupRestoreProgress) {
                 var importedSettings: any = plannedImport.importedSettings;
                 var importedGridCols: any = plannedImport.importedGridCols;
                 var backupPlan: any = plannedImport.backupPlan;
@@ -445,9 +460,11 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 }
                 var layoutRestoreResult: any;
                 if (nativeAvailability === "legacy-fallback") {
+                    restoreProgress.layoutWriteStarted();
                     layoutRestoreResult = await queueLegacyLayoutRestore();
                 }
                 else {
+                    restoreProgress.layoutWriteStarted();
                     var nativeRestore: any = nativeController.writeDocument(nativeDocument);
                     layoutRestoreResult = nativeRestore ? await nativeRestore : "failed";
                     if (layoutRestoreResult === "legacy-fallback") {
@@ -459,9 +476,10 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                         requestApi.postQueueError = true;
                     }
                     else if (layoutRestoreResult !== "saved") {
-                        rejectBackup("The layout could not be restored. No other backup settings were changed.");
+                        rejectBackup("The layout save could not be confirmed. Check the display before retrying. No other backup settings were changed.");
                     }
                 }
+                await restoreProgress.layoutPersisted();
 
                 // Do not change the editor or unrelated device settings until
                 // the complete layout has been accepted by the target firmware.
@@ -799,7 +817,24 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     await clearScreensaverPinForRestore(resetAwareFetch);
                     await els.syncScreensaverPinUi?.();
                 }
-                if (typeof restoredName === "string" && !requestApi.postQueueError) {
+                return layoutRestoreResult;
+                }
+                const restore = archiveEntries
+                    ? cardImageBackupAssetProvider.createRestore(archiveEntries) : undefined;
+                const restored = await backupRestoreController.restore(data, {
+                    device: controllers.layout.deviceId,
+                    slots: controllers.layout.numSlots,
+                }, applyBackupRestorePlan, restore ? {
+                    stage: () => restore.stage(),
+                    remap(plannedImport) {
+                        restore.remapImportedReferences(plannedImport.backupPlan);
+                        // Native documents in the archive still use the old asset IDs.
+                        plannedImport.backupPlan.config.native_config = null;
+                    },
+                    commit: () => restore.commit(),
+                    rollback: () => restore.rollback(),
+                } : undefined);
+                if (restored && typeof restoredName === "string") {
                     try { await controllers.identity?.saveAndRestart(restoredName); }
                     catch (error) {
                         throw Object.assign(new Error("Configuration restored, but panel naming or restart failed: " + (error as Error).message), {
@@ -807,12 +842,6 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                         });
                     }
                 }
-                return layoutRestoreResult;
-                }
-                backupRestoreController.restore(data, {
-                    device: controllers.layout.deviceId,
-                    slots: controllers.layout.numSlots,
-                }, applyBackupRestorePlan);
             })().catch((error) => {
                 controllers.shell.showBanner?.((error as Error).message || "Could not restore backup", "error");
             });

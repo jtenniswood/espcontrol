@@ -15,7 +15,7 @@ uint32_t millis() { return now_ms; }
 struct lv_obj_t { std::string text; bool checked = false; };
 struct lv_timer_t { void *data; };
 struct lv_font_t {};
-constexpr int LV_STATE_CHECKED = 1, LV_OBJ_FLAG_HIDDEN = 1, LV_PART_MAIN = 0;
+constexpr int LV_OBJ_FLAG_HIDDEN = 1, LV_PART_MAIN = 0;
 int timers = 0;
 lv_timer_t *lv_timer_create(void (*)(lv_timer_t *), uint32_t, void *p) { ++timers; return new lv_timer_t{p}; }
 void lv_timer_del(lv_timer_t *t) { --timers; delete t; }

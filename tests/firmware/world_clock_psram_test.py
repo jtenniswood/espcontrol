@@ -18,6 +18,7 @@ harness = r'''
 #include "button_grid_limits.h"
 struct lv_obj_t { bool valid = true; int renders = 0; };
 bool lv_obj_is_valid(lv_obj_t *obj) { return obj && obj->valid; }
+#undef ESP_LOGW
 #define ESP_LOGW(...) ((void) 0)
 '''
 for name in ("TimezoneCardRef", "TimezoneCardState"):

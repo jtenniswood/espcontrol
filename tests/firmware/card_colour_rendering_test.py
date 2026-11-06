@@ -68,6 +68,9 @@ uint32_t lv_obj_get_style_text_color(lv_obj_t *obj, int) {
   return obj->text[(obj->state & LV_STATE_PRESSED) ? LV_STATE_PRESSED
     : ((obj->state & LV_STATE_CHECKED) ? LV_STATE_CHECKED : LV_STATE_DEFAULT)];
 }
+constexpr int LV_OBJ_FLAG_USER_2 = 1<<28;
+constexpr int CARD_TEXT_COLOR_PROTECTED_FLAG = LV_OBJ_FLAG_USER_2;
+bool lv_obj_has_flag(lv_obj_t *obj, int flag) { return (obj->flags & flag) != 0; }
 bool lv_obj_has_state(lv_obj_t *obj, int state) { return (obj->state & state) != 0; }
 void lv_obj_add_state(lv_obj_t *obj, int state) { obj->state |= state; }
 void lv_obj_clear_state(lv_obj_t *obj, int state) { obj->state &= ~state; }
@@ -103,13 +106,12 @@ struct MediaNowPlayingCtx {
 };
 bool image_card_media_artwork_visible(const ImageCardCtx *ctx) { return ctx && ctx->artwork_visible; }
 void set_card_content_disabled(lv_obj_t *, bool) {}
-constexpr int LV_STATE_DISABLED = 4, LV_OBJ_FLAG_HIDDEN = 1, LV_OBJ_FLAG_CLICKABLE = 2, LV_OBJ_FLAG_USER_2 = 1<<28;
+constexpr int LV_STATE_DISABLED = 4, LV_OBJ_FLAG_HIDDEN = 1, LV_OBJ_FLAG_CLICKABLE = 2;
 void set_card_disabled_state(lv_obj_t *obj, bool disabled) {
   if (!obj) return;
   if (disabled) lv_obj_add_state(obj, LV_STATE_DISABLED);
   else lv_obj_clear_state(obj, LV_STATE_DISABLED);
 }
-bool lv_obj_has_flag(lv_obj_t *obj,int flag){return (obj->flags & flag)!=0;}
 constexpr int LV_OPA_50 = 128, MEDIA_CONTROL_SPEAKER_VOLUME_TEXT_OPA = 204;
 using lv_coord_t = int;
 void lv_obj_add_flag(lv_obj_t *obj, int flag) { obj->flags |= flag; }
@@ -160,6 +162,9 @@ constexpr int LV_DRAW_TASK_TYPE_LABEL = 1;
 struct lv_layer_t { lv_area_t _clip_area; };
 struct lv_draw_label_dsc_t { struct { lv_layer_t *layer; } base; uint32_t color; int text_local = 0; };
 struct lv_draw_task_t { int type; lv_area_t area, clip_area; lv_draw_label_dsc_t *descriptor; };
+// Solid-surface contrast coverage; image-backed task composition is exercised
+// with the production helper in card_background_text_test.py.
+lv_draw_task_t *card_background_prepare_text_task(lv_draw_task_t *task) { return task; }
 struct DrawnLabel { lv_area_t area, clip; uint32_t color; };
 std::vector<DrawnLabel> drawn_labels;
 int lv_draw_task_get_type(lv_draw_task_t *task) { return task->type; }
@@ -235,6 +240,24 @@ int main() {
         assert(matches == 1);
       }
     }
+  assert(display_text_color_for_bg(0xB2B2B2) == 0xFFFFFF);
+  assert(display_text_color_for_bg(0xB3B3B3) == 0x212121);
+  assert(display_text_color_for_bg(0x00D9D9) == 0xFFFFFF);
+  assert(display_text_color_for_bg(0x00DADA) == 0x212121);
+
+  auto background = parse_cfg("light.kitchen;Kitchen;Auto;Auto;;;;;bg_image=kitchen-scene,card_off_color=3F51B5");
+  assert(cfg_option_value(background.options, "bg_image") == "kitchen-scene");
+  assert(cfg_option_value(background.options, "card_off_color") == "3F51B5");
+  lv_obj_t background_button, background_text, background_shadow, nested_text;
+  background_button.children = {&background_text, &background_shadow};
+  background_shadow.flags = CARD_TEXT_COLOR_PROTECTED_FLAG;
+  background_shadow.children = {&nested_text};
+  background_shadow.text[0] = 0;
+  apply_card_descendant_text_color(&background_button, 0xFFFFFF);
+  assert(background_text.text[0] == 0xFFFFFF);
+  assert(background_shadow.text[0] == 0);
+  assert(nested_text.text[0] == 0xFFFFFF);
+
   for (const std::string token : {"B", "Bd", "Bw", "Bb", "Bt", "Bx"}) {
     for (const std::string prefix : {"", "~"}) {
       const auto order = get_subpage_order(prefix + "1," + token + "=Return%3AHome%2C50%25:#ffec16,2|ignored");
@@ -400,7 +423,7 @@ int main() {
   assert(card_progress_color(0xFF8C00) == 0xFFAF4D);
   assert(card_progress_color(0x9D9D9D) == 0xBABABA);
   assert(display_text_color_for_bg(0x00BCD4) == 0xFFFFFF);
-  assert(display_text_color_for_bg(lighter_card_color(0x00BCD4)) == 0x212121);
+  assert(display_text_color_for_bg(lighter_card_color(0x00BCD4)) == 0xFFFFFF);
   assert(display_text_color_for_bg(0xBFEAFF) == 0x212121);
   struct Colour { const char *hex; uint32_t base, active, text; };
   const Colour colours[] = {

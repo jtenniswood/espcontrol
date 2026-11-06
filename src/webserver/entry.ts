@@ -48,6 +48,7 @@ import { createConfigAccessClimateAlarmOptionsFeature } from "./application/conf
 import { createConfigCodecFeature } from "./application/config_codec";
 import { createNativePanelConfigMigrationController } from "./application/native_panel_config_migration";
 import { createConfigPersistenceFeature } from "./application/config_post_api";
+import { createCardImageService } from "./application/card_image_service";
 import { createStateLoaderFeature, type StateLoaderFeature } from "./application/state_loader_api";
 import { createGridMigrationFeature } from "./application/grid_migration";
 import { createArtworkPostApiFeature } from "./application/artwork_post_api";
@@ -58,6 +59,7 @@ import { createSettingsPageHelpersFeature, type SettingsPageHelpersFeature } fro
 import { createSettingsScheduleSectionFeature } from "./application/settings_schedule_section";
 import { createSettingsCoverArtSectionFeature } from "./application/settings_cover_art_section";
 import { createSettingsSystemSectionFeature } from "./application/settings_system_section";
+import { createSettingsImageLibraryFeature } from "./application/settings_image_library";
 import { createSettingsPageFeature, type SettingsPageFeature } from "./application/settings_page";
 import { createControlsFieldsFeature, type ControlsFieldsFeature } from "./application/controls_fields";
 import { createPreviewRenderFeature, type PreviewRenderFeature } from "./application/preview_render";
@@ -318,6 +320,7 @@ function composeApplicationContext(): ApplicationContext {
     state: AppInstance.state,
     schedule: dom.schedule,
     cancelSchedule: (handle) => { dom.window.clearTimeout(handle); },
+    settingsShown: () => { imageLibrary.refreshIfOpen(); },
     buildSettingsPage: (parent) => { settingsPage.buildSettingsPage(parent); },
     closeSettings: () => { selection.closeSettings(); },
     postButtonPress: (name) => requestApi.postButtonPress(name),
@@ -500,7 +503,18 @@ function composeApplicationContext(): ApplicationContext {
   configurationPersistence.connectRequestApi(requestApi);
   configurationCodec.connectRequestApi(requestApi);
   const grid = createGridFeature(configurationCodec, runtime, layout, entityState, requestApi, renderQueue);
-  fields = createControlsFieldsFeature(cards, configurationOptions, shell, requestApi);
+  const cardImages = createCardImageService({
+    layout,
+    requestApi,
+    persistence: configurationPersistence,
+    fetch: dom.fetch,
+    renderPreview: () => preview.render(),
+    renderButtonSettings: () => buttonSettings.render(),
+  });
+  fields = createControlsFieldsFeature(cards, configurationOptions, shell, requestApi, cardImages, {
+    renderPreview: () => preview.render(),
+    renderButtonSettings: () => buttonSettings.render(),
+  });
   const placement = createPreviewGridPlacementFeature({
     controller: previewPlacement,
     layout,
@@ -770,8 +784,8 @@ function composeApplicationContext(): ApplicationContext {
   });
   const backupFile = createBackupFileController({
     transport: {
-      download(content, filename) {
-        const blob = new Blob([content], { type: "application/json" });
+      download(content, filename, contentType) {
+        const blob = new Blob([content as BlobPart], { type: contentType });
         const url = URL.createObjectURL(blob);
         const link = dom.document.createElement("a");
         link.href = url;
@@ -781,10 +795,10 @@ function composeApplicationContext(): ApplicationContext {
         dom.document.body.removeChild(link);
         URL.revokeObjectURL(url);
       },
-      chooseJsonFile(onText, onError) {
+      chooseFile(onFile, onError) {
         const input = dom.document.createElement("input");
         input.type = "file";
-        input.accept = ".json";
+        input.accept = ".json,.zip";
         input.style.display = "none";
         const cleanupInput = () => {
           if (input.parentNode) input.parentNode.removeChild(input);
@@ -802,9 +816,14 @@ function composeApplicationContext(): ApplicationContext {
           };
           reader.onload = () => {
             cleanupInput();
-            onText(String(reader.result || ""));
+            const result = reader.result;
+            if (!(result instanceof ArrayBuffer)) {
+              onError();
+              return;
+            }
+            onFile(input.files?.[0]?.name || "backup.json", new Uint8Array(result));
           };
-          reader.readAsText(input.files[0]);
+          reader.readAsArrayBuffer(input.files[0]);
         });
         dom.document.body.appendChild(input);
         input.click();
@@ -819,6 +838,7 @@ function composeApplicationContext(): ApplicationContext {
     backupImport,
     backupRestore,
     backupFile,
+    cardImages,
     normalizeImportedPanelSettings,
     gridColsForImportedSettings,
     nativePanelConfig,
@@ -888,18 +908,20 @@ function composeApplicationContext(): ApplicationContext {
     fields, settingsHelpers, coverArtScreensaver, mediaPlayback,
   );
   const systemSection = createSettingsSystemSectionFeature({
+    cardImages,
     buildIdentityCard: identity.buildCard,
     exportBackup: backupApplication.exportConfig,
     importBackup: backupApplication.importConfig,
   }, runtime, firmwareVersion, firmwareUpdate, c6Firmware, shell, requestApi,
   stateLoader, firmwarePostApi, artworkPostApi, publicFirmwareInstall, fields,
   settingsHelpers);
+  const imageLibrary = createSettingsImageLibraryFeature(cardImages, shell, fields);
   settingsPage = createSettingsPageFeature(
     configurationCodec, runtime, core, layout, environment, screenScheduleState,
     screensaverTimeout, screenRotation, appearance, clockBarState, entityState,
     shell, requestApi, statusPreview, artworkPostApi, schedulePostApi,
     clockBarPostApi, fields, settingsHelpers, scheduleSection, coverArtSection,
-    systemSection, preview,
+    systemSection, preview, imageLibrary,
   );
   requestApi.connectReconnect(appEvents.connect);
   // Start after composition; the service retries on a later Settings visit if offline.

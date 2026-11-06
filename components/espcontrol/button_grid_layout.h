@@ -2,6 +2,8 @@
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
+constexpr auto CARD_TEXT_COLOR_PROTECTED_FLAG = LV_OBJ_FLAG_USER_2;
+
 // Parse a 6-char hex color string (no # prefix) into a uint32_t RGB value
 inline uint32_t parse_hex_color(const std::string &hex, bool &valid) {
   valid = hex.length() == 6;

@@ -64,9 +64,16 @@ constexpr uint32_t display_relative_luminance(uint32_t rgb) {
 }
 
 constexpr uint32_t display_text_color_for_bg(uint32_t bg_color) {
-  // Prefer white on mid-tone card colours; switch to dark grey on pale fills.
-  // Match cardPreviewTextColor (luminance scaled by 1,000,000).
-  return display_relative_luminance(bg_color) < 450000 ? 0xFFFFFF : 0x212121;
+  // Keep white content on mid-tone colours; switch only on light backgrounds.
+  // Match cardPreviewTextColor in the web preview (luminance scaled by 1,000,000).
+  const uint32_t red = (bg_color >> 16) & 0xFF;
+  const uint32_t green = (bg_color >> 8) & 0xFF;
+  const uint32_t blue = bg_color & 0xFF;
+  // Saturated blue/cyan active shades retain white content after lightening.
+  const bool blue_green_tone = green >= red + 32 && blue >= red + 32;
+  const uint32_t crossover = blue_green_tone ? 550000 : 450000;
+  return display_relative_luminance(bg_color) >= crossover
+    ? 0x212121 : 0xFFFFFF;
 }
 
 // Progress fill direction is independent of the foreground contrast choice.

@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "platform": "esp32-p4",
+    "platform": "esp32-p4-32mb",
     "modal": "large-square",
     "fonts": "compact-panel",
     "network": [
@@ -10,7 +10,8 @@
     ],
     "input": [
       "touchscreen"
-    ]
+    ],
+    "assets": "card-backgrounds-9"
   },
   "config": {
     "slots": 9,

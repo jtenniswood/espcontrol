@@ -25,6 +25,7 @@ harness = r'''
 #include "button_grid_weather_daily_data.h"
 struct lv_obj_t {};
 template<typename... Args> void log_warning(Args...) {}
+#undef ESP_LOGW
 #define ESP_LOGW(...) log_warning(__VA_ARGS__)
 uint32_t now_ms = 0;
 namespace esphome { uint32_t millis() { return now_ms; } }

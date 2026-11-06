@@ -3,7 +3,8 @@
     "platform": "esp32-p4",
     "modal": "compact-portrait",
     "fonts": "portrait-panel-p4",
-    "network": "c6-firmware-update"
+    "network": "c6-firmware-update",
+    "assets": "card-backgrounds-6"
   },
   "config": {
     "slots": 6,

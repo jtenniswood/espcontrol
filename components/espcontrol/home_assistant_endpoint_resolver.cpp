@@ -13,8 +13,8 @@
 namespace espcontrol {
 using namespace home_assistant_endpoint;
 static const char *const TAG = "ha_endpoint";
-constexpr uint32_t QUERY_TIMEOUT_MS = 2000;
-constexpr size_t QUERY_MAX_RESULTS = 8;
+[[maybe_unused]] constexpr uint32_t QUERY_TIMEOUT_MS = 2000;
+[[maybe_unused]] constexpr size_t QUERY_MAX_RESULTS = 8;
 constexpr uint32_t RETRY_DELAYS_MS[] = {5000, 30000, 300000};
 
 std::string HomeAssistantEndpointResolver::fallback() const {

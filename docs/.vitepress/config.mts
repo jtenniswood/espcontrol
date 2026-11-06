@@ -379,6 +379,7 @@ export default defineConfig({
           { text: 'Display', link: '/settings/display' },
           { text: 'Sleep & Schedule', link: '/settings/sleep' },
           { text: 'System settings', link: '/settings/system' },
+          { text: 'Enable Image Storage', link: '/features/image-storage' },
           { text: 'Built-in Relays', link: '/features/relays' },
           { text: 'Immich Photos', link: '/immich/' },
           { text: 'Practical Guides', link: '/guides/' },
