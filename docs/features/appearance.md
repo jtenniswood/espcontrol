@@ -94,3 +94,11 @@ Tap the connectivity icon on the physical panel to open **Settings**. It shows t
 If a PIN is saved, Settings also offers **Screen Lock**, even with automatic wake protection off. Tap it to lock the current view, then touch the screen and enter the PIN to unlock. See [PIN protection](/settings/sleep#pin-protection-after-wake).
 
 When a subpage or card popup is open, its title temporarily replaces the temperature reading.
+
+## Image Library
+
+Open **Screen > Appearance > Image Library**, below **Clock Bar**, to manage uploaded card backgrounds. The panel shows thumbnails, image names, and how many cards use each image.
+
+Use **Upload** to add an image, **Rename** to change its name without changing card assignments, or **Delete** to remove it. Deleting a used image asks for confirmation and clears its card backgrounds first. Unavailable actions are hidden; older partition layouts show the [image-storage setup guide](/features/image-storage).
+
+To assign a stored image to a card, open **Layout**, edit the card, and choose **Background > Image**.

@@ -1327,6 +1327,8 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
   );
   assert.strictEqual(settingsPlacement["Clock Bar"]?.section, "Appearance",
     `${label}: clock bar settings should be grouped with appearance controls`);
+  assert.strictEqual(settingsPlacement["Image Library"]?.section, "Appearance");
+  assert.strictEqual(settingsPlacement["Image Library"]?.index, settingsPlacement["Clock Bar"]?.index + 1);
   assert.deepStrictEqual(await page.locator(".sp-nav [role='tab']").allTextContents(),
     ["Layout", "Screen", "System"], `${label}: System follows Screen in primary navigation`);
   await page.getByRole("tab", { name: "System", exact: true }).click();
@@ -8174,6 +8176,118 @@ async function assertWeatherReadingEditors(browser) {
   }
 }
 
+async function assertImageLibrarySettings(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  const nativeState = nativeConfigState(testCase.slug);
+  nativeState.document.buttons[1] = "light.kitchen;Kitchen;Auto;Auto;;;;;bg_image=library-image";
+  let images = [{ id: "library-image", name: "Living room", size: 1024 }];
+  let mode = "ready";
+  const requests = [];
+  try {
+    await installRoutes(context, testCase.slug, { nativeState });
+    await context.route("**/api/card-images**", async route => {
+      const request = route.request();
+      const url = new URL(request.url());
+      const method = request.method();
+      requests.push(`${method} ${url.pathname}`);
+      if (method === "GET") {
+        if (mode === "error") { await route.fulfill({ status: 503, body: "offline" }); return; }
+        await route.fulfill({ contentType: "application/json", body: JSON.stringify({
+          available: mode !== "unavailable", requires_usb_flash: mode === "unavailable",
+          reference_transactions: true, max_active_backgrounds: 9,
+          images: mode === "unavailable" ? [] : images,
+        }) });
+      } else if (method === "POST" && url.pathname.endsWith("/rename")) {
+        const image = images.find(image => url.pathname.includes('/' + image.id + '/'));
+        image.name = new URLSearchParams(request.postData()).get("name");
+        await route.fulfill({ contentType: "application/json", body: JSON.stringify(image) });
+      } else if (method === "POST") {
+        assert.strictEqual(request.headers()['content-type'], 'image/jpeg');
+        assert(request.postDataBuffer().length > 0);
+        const image = { id: "uploaded-image", name: "uploaded-image", size: request.postDataBuffer().length };
+        images.push(image);
+        await route.fulfill({ contentType: "application/json", body: JSON.stringify(image) });
+      } else if (method === "DELETE") {
+        const id = url.pathname.split('/').pop();
+        images = images.filter(image => image.id !== id);
+        nativeState.document.buttons[1] = nativeState.document.buttons[1].replace(`bg_image=${id}`, '');
+        await route.fulfill({ contentType: "application/json", body: '{}' });
+      } else throw new Error(`Unexpected image request: ${method} ${url.pathname}`);
+    });
+    await context.route("**/card-images/*.jpg", route => route.fulfill({
+      contentType: "image/svg+xml", body: fs.readFileSync(path.join(ROOT, "common/assets/cover_art_placeholder.svg")),
+    }));
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await installFakeEventSource(page);
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`);
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await seedNativeDocument(page, nativeState);
+    await page.getByRole('tab', { name: 'Screen', exact: true }).click();
+    const library = page.locator('#sp-image-library');
+    const placement = await library.evaluate(card => {
+      let section = card.previousElementSibling;
+      while (section && !section.classList.contains('sp-settings-status-header')) section = section.previousElementSibling;
+      return { previous: card.previousElementSibling.querySelector('h3')?.textContent,
+        section: section?.querySelector('.sp-settings-status-title')?.textContent };
+    });
+    assert.deepStrictEqual(placement, { previous: 'Clock Bar', section: 'Appearance' });
+    assert.strictEqual(await page.locator('#sp-device #sp-image-library').count(), 0);
+    await library.locator('.card-header').click();
+    await library.getByRole('button', { name: 'Upload', exact: true }).waitFor({ state: 'visible' });
+    let row = library.getByRole('group', { name: 'Living room', exact: true });
+    assert(await row.getByText('Used by 1 card', { exact: true }).isVisible());
+    await row.scrollIntoViewIfNeeded();
+    await row.locator('img').evaluate(image => image.decode());
+    if (process.env.ESPCONTROL_IMAGE_LIBRARY_SCREENSHOT) {
+      await library.screenshot({ path: process.env.ESPCONTROL_IMAGE_LIBRARY_SCREENSHOT, animations: 'disabled', style: '.sp-support-btn{visibility:hidden!important}' });
+    }
+    page.once('dialog', dialog => dialog.accept('Kitchen picture'));
+    await row.getByRole('button', { name: 'Rename', exact: true }).click();
+    row = library.getByRole('group', { name: 'Kitchen picture', exact: true });
+    await row.waitFor({ state: 'visible' });
+    assert(nativeState.document.buttons[1].includes('bg_image=library-image'), 'renaming keeps the card reference stable');
+    await library.locator('input[type="file"]').setInputFiles({
+      name: 'test.png', mimeType: 'image/png', buffer: await page.screenshot(),
+    });
+    await library.getByRole('group', { name: 'uploaded-image', exact: true }).waitFor({ state: 'visible' });
+    assert(nativeState.document.buttons[1].includes('bg_image=library-image'), 'library uploads do not reassign existing cards');
+    await row.getByRole('button', { name: 'Delete image', exact: true }).waitFor({ state: 'visible' });
+    page.once('dialog', dialog => dialog.dismiss());
+    await row.getByRole('button', { name: 'Delete image', exact: true }).click();
+    assert.strictEqual(requests.filter(request => request.startsWith('DELETE')).length, 0, 'cancel preserves the image');
+    page.once('dialog', dialog => {
+      assert(dialog.message().includes('1 card'));
+      return dialog.accept();
+    });
+    await row.getByRole('button', { name: 'Delete image', exact: true }).click();
+    await row.waitFor({ state: 'detached' });
+    assert(!nativeState.document.buttons[1].includes('bg_image='), 'safe deletion clears saved card references');
+    const uploaded = library.getByRole('group', { name: 'uploaded-image', exact: true });
+    await uploaded.getByRole('button', { name: 'Delete image', exact: true }).waitFor({ state: 'visible' });
+    page.once('dialog', dialog => dialog.accept());
+    await uploaded.getByRole('button', { name: 'Delete image', exact: true }).click();
+    await library.getByText('No images uploaded yet.', { exact: true }).waitFor({ state: 'visible' });
+    await library.getByRole('button', { name: 'Upload', exact: true }).waitFor({ state: 'visible' });
+    mode = 'error';
+    await library.locator('.card-header').click();
+    await library.locator('.card-header').click();
+    await library.getByRole('button', { name: 'Retry', exact: true }).waitFor({ state: 'visible' });
+    assert.strictEqual(await library.getByRole('button', { name: 'Upload', exact: true }).count(), 0);
+    mode = 'ready';
+    await library.getByRole('button', { name: 'Retry', exact: true }).click();
+    await library.getByRole('button', { name: 'Upload', exact: true }).waitFor({ state: 'visible' });
+    mode = 'unavailable';
+    await library.locator('.card-header').click();
+    await library.locator('.card-header').click();
+    await library.getByRole('link', { name: 'Image setup guide', exact: true }).waitFor({ state: 'visible' });
+    assert.strictEqual(await library.getByRole('button').count(), 0, 'unavailable storage hides management actions');
+    assert.deepStrictEqual(errors, []);
+    console.log('Image Library passed: Screen/Appearance placement, upload, rename, safe delete/cancel, empty state, retry and unavailable storage.');
+  } finally { await context.close(); }
+}
+
 async function assertCardBackgroundTabs(browser, testCase) {
   for (const subpage of [false, true]) {
     const context = await browser.newContext({ viewport: testCase.viewport });
@@ -8295,6 +8409,8 @@ async function assertCardBackgroundTabs(browser, testCase) {
       await assertRainfallEditor(browser);
       return;
     }
+    await assertImageLibrarySettings(browser, ACTIVE_CASES[0]);
+    if (process.env.ESPCONTROL_IMAGE_LIBRARY_ONLY === "1") return;
     await assertCardBackgroundTabs(browser, ACTIVE_CASES[0]);
     if (process.env.ESPCONTROL_BACKGROUND_ONLY === "1") return;
     await assertWindSensorEditor(browser);

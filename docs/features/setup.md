@@ -41,6 +41,8 @@ Every supported card position can have its own background image. The maximum the
 
 Displays with an older partition layout need one full USB reinstall to enable image storage. The setup page disables the affected image controls and links to the [Enable Image Storage guide](/features/image-storage), which explains how to export a backup, reinstall and restore it. Other cards and settings continue working. OTA updates can be used again afterwards.
 
+Manage uploaded images in [Screen > Appearance > Image Library](/features/appearance#image-library), directly below Clock Bar. It provides thumbnails, usage counts, rename and safe deletion.
+
 The **Background** group shows **Colour** first and **Image** second. Only the selected controls are shown. Choosing **Colour** clears the card’s image assignment when you save, keeping the uploaded image in the library. Cards using an image hide **Change Colour** from their right-click menu.
 
 The setup page resizes uploads in the browser before sending them to the panel, and each card only stores a compact image reference. The preview shows the selected image before you apply the configuration.
