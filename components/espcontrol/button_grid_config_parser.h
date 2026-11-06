@@ -466,11 +466,21 @@ inline void normalize_saved_config_media_fields(ParsedCfg &p) {
 inline bool weather_wind_uses_sensors(const ParsedCfg &config) {
   return config.precision == "wind" && cfg_option_value(config.options, "wind_source") == "sensors";
 }
+inline bool weather_metric_mode(const std::string &mode) {
+  return mode == "pressure" || mode == "humidity" || mode == "visibility";
+}
+inline bool weather_metric_uses_forecast(const ParsedCfg &config) {
+  return weather_metric_mode(config.precision) && (config.precision == "visibility" ||
+    cfg_option_value(config.options, (config.precision + "_source").c_str()) == "forecast");
+}
 inline bool rainfall_uses_forecast(const ParsedCfg &config) {
   return config.precision == "rainfall" && card_runtime_weather_forecast_supported() &&
     cfg_option_value(config.options, "rainfall_source") == "forecast";
 }
 inline std::string weather_card_options_normalized(const std::string &options, const ParsedCfg &config) {
+  if ((config.precision == "pressure" || config.precision == "humidity") &&
+      cfg_option_value(options, (config.precision + "_source").c_str()) == "forecast")
+    return config.precision + "_source=forecast";
   if (config.precision == "wind" && cfg_option_value(options, "wind_source") == "sensors") return "wind_source=sensors";
   return config.precision == "rainfall" && card_runtime_weather_forecast_supported() &&
     cfg_option_value(options, "rainfall_source") == "forecast" ? "rainfall_source=forecast" : "";
@@ -1213,7 +1223,7 @@ inline std::string normalize_saved_config_security_options(
 
 inline void normalize_saved_config_weather_fields(ParsedCfg &p, bool was_legacy_forecast) {
   if (was_legacy_forecast && p.label == "Weather") p.label.clear();
-  if (p.precision != "wind" && p.precision != "rainfall" && !card_runtime_weather_forecast_precision(p.precision)) p.precision.clear();
+  if (p.precision != "wind" && p.precision != "rainfall" && !weather_metric_mode(p.precision) && !card_runtime_weather_forecast_precision(p.precision)) p.precision.clear();
   if (!weather_wind_uses_sensors(p)) p.sensor.clear();
 }
 
