@@ -56,7 +56,8 @@ class HomeAssistantEndpointResolver {
   uint32_t next_query_ms_{0}, next_probe_ms_{0}, next_recovery_ms_{0};
   uint32_t selection_generation_{1}, origin_generation_{1};
   uint8_t retry_stage_{0}, transport_failures_{0};
-  bool setup_complete_{false}, rediscover_after_query_{false};
+  bool setup_complete_{false};
+  [[maybe_unused]] bool rediscover_after_query_{false};
   bool selecting_{false}, probe_pending_{false}, healthy_{false};
   bool recovery_{false}, recovery_requested_{false};
   size_t candidate_index_{0};
