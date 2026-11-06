@@ -131,7 +131,7 @@ This protects the local web page, but it is not a replacement for normal network
 The icon picker includes a few hundred icons from [Material Design Icons](https://pictogrammers.com/library/mdi/). When you compile the firmware yourself, you can add any other icon from that set that is not part of the ones added by default.
 
 1. Find the icon ([Material Design Icons](https://pictogrammers.com/library/mdi/)) and open it. Note its codepoint, for example `F0EFA` for **home-flood**.
-2. Add the icon to your display's YAML. Put a `\U000` in front of the codepoint:
+2. Add the icon to your display's YAML. YAML expects `\U` followed by exactly eight characters, so add zeros in front of the codepoint to make it eight long. Material Design Icons codepoints have five characters, so that means putting `\U000` in front:
 
    ```yaml
    font:
