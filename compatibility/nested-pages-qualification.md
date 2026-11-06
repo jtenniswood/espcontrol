@@ -1,6 +1,6 @@
 # Nested-page qualification
 
-Recorded through 5 November 2026 for PR #2424, following runtime PR #2400.
+Recorded through 6 November 2026 for PR #2424, following runtime PR #2400.
 Production still writes native v1 at depth one. Private qualification images
 enable native v2/depth two without declaring a published reader floor.
 
@@ -1766,6 +1766,52 @@ final restoration audit spans over 82 seconds. All three failed observations
 and human receipts are retained separately. No physical cut is credited and no
 test remains armed. Identify the external power connections before another
 firmware replacement or cut request.
+
+## Encrypted 10-inch qualification transport (6 November)
+
+The fresh 15-minute before-publication attempt records no disconnect before its
+deadline and restores official firmware and the current settings. The later
+human confirmation arrives after cleanup. A fresh read then finds only 7.573
+seconds of uptime on the correct controller: it restarted after the held
+checkpoint had ended. This does not qualify that storage interruption. A new
+30-minute attempt is cooperatively cancelled after the user reports repeated
+Home Assistant encryption approvals.
+
+The earlier qualifiers use a plaintext API while official `v2.13.0` uses
+encryption. The replacement private qualifier retains `api: encryption: {}`
+and configures no replacement key. Stock ESPHome 2026.9.1 and 2026.10.2 use
+the same saved-key preference identifier. The test client uses a bounded HTTP
+mailbox instead of retrieving the native API key. Commands execute on the main
+loop, have monotonically reserved nonces and return their exact result once.
+Encrypted API state, full MAC, SDK and actual build time are checked separately;
+HTTP failures and changed boot identities remain subject to the existing
+power-on, ownership, payload-selection and full-partition checksum guards.
+
+Fifteen actual-client checks, nine encrypted-identity checks, 15 physical-evidence
+guards and the actual C++ mailbox under ASan/UBSan pass. Six production storage
+files and the raw storage core remain unchanged. Reversing only the private
+worker's result-reporting edits reproduces the original worker byte-for-byte.
+
+The first encrypted prototype boots with encryption active but its commands
+are rejected by the webserver's epoch fence. Read-only diagnosis also exposes
+an unsupported response-code mapping and a result-capture dependency on logging.
+No storage session or START command is armed. Its failed report is retained;
+a separate restore-only supervisor verifies official firmware, the exact
+dashboard and all current settings. That recovery does not claim a scratch
+cleanup checksum or power-interruption pass.
+
+Corrected private source `66f2315df` passes pinned SDK, source, partition and ELF
+checks. Its HTTP requests include the epoch fence, use explicit response codes
+and receive bounded results directly from the worker, independently of logging.
+Both real cancellation cases pass with API encryption active: before publication
+selects generation 2 from the old slot; after publication selects generation 3
+from the new slot. Each independently reproduces the complete original partition
+checksum after cleanup. Official `v2.13.0`, the exact generation-375 dashboard,
+all 77 current preferences, PIN/reset and both update settings are restored and
+stable for over 76 seconds. The refreshed snapshot preserves the user's newer
+screensaver settings. No API key is retrieved or exported, and no test is left
+armed. Home Assistant's absence of further approval prompts awaits user feedback;
+actual physical cuts still require fresh checkpoints and confirmations.
 
 ## Remaining qualification gates
 
