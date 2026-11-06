@@ -17,18 +17,21 @@ export function createConfigWeatherOptionsFeature(
             ["", "Current Conditions"],
             ["wind", "Wind"],
             ["rainfall", "Rainfall"],
+            ["pressure", "Air Pressure"],
+            ["humidity", "Humidity"],
+            ["visibility", "Visibility"],
             ["today", "Today's Forecast"],
             ["tomorrow", "Tomorrow's Forecast"],
             ["daily", "Daily Forecast"],
         ];
-        return weatherForecastCardsSupported() ? options : options.slice(0, 3);
+        return weatherForecastCardsSupported() ? options : options.slice(0, 6);
     }
 
     function weatherModeOptionValues(this: any) {
         const spec: any = cardContractOptionSpec("weather", "weather_mode");
-        const values: any = spec && spec.values ? spec.values.slice() : ["", "today", "tomorrow", "daily", "wind", "rainfall"];
+        const values: any = spec && spec.values ? spec.values.slice() : ["", "today", "tomorrow", "daily", "wind", "rainfall", "pressure", "humidity", "visibility"];
         return weatherForecastCardsSupported() ? values : values.filter(function (value: any) {
-            return value === "" || value === "wind" || value === "rainfall";
+            return value === "" || value === "wind" || value === "rainfall" || weatherMetricMode(value);
         });
     }
 
@@ -52,11 +55,22 @@ export function createConfigWeatherOptionsFeature(
     function rainfallUsesForecast(button?: any): boolean {
         return weatherForecastCardsSupported() && !!button && button.precision === "rainfall" && configOptionValue(button.options, "rainfall_source") === "forecast";
     }
+    function weatherMetricMode(mode?: string): boolean {
+        return ["pressure", "humidity", "visibility"].includes(mode || "");
+    }
+    function weatherMetricUsesForecast(button?: any): boolean {
+        return !!button && weatherMetricMode(button.precision) &&
+            (button.precision === "visibility" || configOptionValue(button.options, button.precision + "_source") === "forecast");
+    }
     function normalizeWeatherOptions(options?: any, button?: any): string {
+        if (weatherMetricUsesForecast({ ...button, options }) && button.precision !== "visibility")
+            return button.precision + "_source=forecast";
         if (weatherWindUsesSensors({ ...button, options })) return "wind_source=sensors";
         return rainfallUsesForecast({ ...button, options }) ? "rainfall_source=forecast" : "";
     }
     return {
+        weatherMetricMode,
+        weatherMetricUsesForecast,
         weatherWindUsesSensors,
         rainfallUsesForecast,
         normalizeWeatherOptions,

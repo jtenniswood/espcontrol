@@ -758,6 +758,8 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Rain") == 0) return "Regen";
   if (std::strcmp(text, "Rain chance") == 0) return "Regenwahrscheinlichkeit";
   if (std::strcmp(text, "Rainfall") == 0) return "Niederschlag";
+  if (std::strcmp(text, "Air Pressure") == 0) return "Luftdruck";
+  if (std::strcmp(text, "Visibility") == 0) return "Sichtweite";
   if (std::strcmp(text, "Humidity") == 0) return "Luftfeuchtigkeit";
   if (std::strcmp(text, "Last forecast") == 0) return "Letzte Vorhersage";
   if (std::strcmp(text, "Sun") == 0) return "So.";
@@ -1019,6 +1021,8 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Rain chance") == 0) return "Probabilidad de lluvia";
   if (std::strcmp(text, "Rainfall") == 0) return "Precipitación";
   if (std::strcmp(text, "Wind") == 0) return "Viento";
+  if (std::strcmp(text, "Air Pressure") == 0) return "Presión atmosférica";
+  if (std::strcmp(text, "Visibility") == 0) return "Visibilidad";
   if (std::strcmp(text, "Humidity") == 0) return "Humedad";
   if (std::strcmp(text, "Last forecast") == 0) return "Último pronóstico";
   if (std::strcmp(text, "Sun") == 0) return "dom.";
@@ -1537,6 +1541,8 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Rain chance") == 0) return "Risque de pluie";
   if (std::strcmp(text, "Rainfall") == 0) return "Précipitations";
   if (std::strcmp(text, "Wind") == 0) return "Vent";
+  if (std::strcmp(text, "Air Pressure") == 0) return "Pression atmosphérique";
+  if (std::strcmp(text, "Visibility") == 0) return "Visibilité";
   if (std::strcmp(text, "Humidity") == 0) return "Humidité";
   if (std::strcmp(text, "Last forecast") == 0) return "Dernières prévisions";
   if (std::strcmp(text, "Sun") == 0) return "dim.";
@@ -2335,6 +2341,8 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Rain chance") == 0) return "Probabilità di pioggia";
   if (std::strcmp(text, "Rainfall") == 0) return "Precipitazioni";
   if (std::strcmp(text, "Wind") == 0) return "Vento";
+  if (std::strcmp(text, "Air Pressure") == 0) return "Pressione atmosferica";
+  if (std::strcmp(text, "Visibility") == 0) return "Visibilità";
   if (std::strcmp(text, "Humidity") == 0) return "Umidità";
   if (std::strcmp(text, "Last forecast") == 0) return "Ultime previsioni";
   if (std::strcmp(text, "Sun") == 0) return "dom.";
@@ -2845,6 +2853,8 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Rain") == 0) return "Regen";
   if (std::strcmp(text, "Rain chance") == 0) return "Kans op regen";
   if (std::strcmp(text, "Rainfall") == 0) return "Neerslag";
+  if (std::strcmp(text, "Air Pressure") == 0) return "Luchtdruk";
+  if (std::strcmp(text, "Visibility") == 0) return "Zicht";
   if (std::strcmp(text, "Humidity") == 0) return "Luchtvochtigheid";
   if (std::strcmp(text, "Last forecast") == 0) return "Laatste verwachting";
   if (std::strcmp(text, "Sun") == 0) return "zo.";
@@ -3614,6 +3624,8 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Rain chance") == 0) return "Probabilidade de chuva";
   if (std::strcmp(text, "Rainfall") == 0) return "Precipitação";
   if (std::strcmp(text, "Wind") == 0) return "Vento";
+  if (std::strcmp(text, "Air Pressure") == 0) return "Pressão atmosférica";
+  if (std::strcmp(text, "Visibility") == 0) return "Visibilidade";
   if (std::strcmp(text, "Humidity") == 0) return "Humidade";
   if (std::strcmp(text, "Last forecast") == 0) return "Última previsão";
   if (std::strcmp(text, "Sun") == 0) return "dom.";
@@ -5728,6 +5740,8 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "rain_chance") == 0) return "Rain chance";
   if (std::strcmp(key, "rainfall") == 0) return "Rainfall";
   if (std::strcmp(key, "wind") == 0) return "Wind";
+  if (std::strcmp(key, "air_pressure") == 0) return "Air Pressure";
+  if (std::strcmp(key, "visibility") == 0) return "Visibility";
   if (std::strcmp(key, "humidity") == 0) return "Humidity";
   if (std::strcmp(key, "last_forecast") == 0) return "Last forecast";
   if (std::strcmp(key, "weekday_sun") == 0) return "Sun";
@@ -6516,6 +6530,8 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "rain") == 0) return "Regen";
   if (std::strcmp(key, "rain_chance") == 0) return "Regenwahrscheinlichkeit";
   if (std::strcmp(key, "rainfall") == 0) return "Niederschlag";
+  if (std::strcmp(key, "air_pressure") == 0) return "Luftdruck";
+  if (std::strcmp(key, "visibility") == 0) return "Sichtweite";
   if (std::strcmp(key, "humidity") == 0) return "Luftfeuchtigkeit";
   if (std::strcmp(key, "last_forecast") == 0) return "Letzte Vorhersage";
   if (std::strcmp(key, "weekday_sun") == 0) return "So.";
@@ -6783,6 +6799,8 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "rain_chance") == 0) return "Probabilidad de lluvia";
   if (std::strcmp(key, "rainfall") == 0) return "Precipitación";
   if (std::strcmp(key, "wind") == 0) return "Viento";
+  if (std::strcmp(key, "air_pressure") == 0) return "Presión atmosférica";
+  if (std::strcmp(key, "visibility") == 0) return "Visibilidad";
   if (std::strcmp(key, "humidity") == 0) return "Humedad";
   if (std::strcmp(key, "last_forecast") == 0) return "Último pronóstico";
   if (std::strcmp(key, "weekday_sun") == 0) return "dom.";
@@ -7316,6 +7334,8 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "rain_chance") == 0) return "Risque de pluie";
   if (std::strcmp(key, "rainfall") == 0) return "Précipitations";
   if (std::strcmp(key, "wind") == 0) return "Vent";
+  if (std::strcmp(key, "air_pressure") == 0) return "Pression atmosphérique";
+  if (std::strcmp(key, "visibility") == 0) return "Visibilité";
   if (std::strcmp(key, "humidity") == 0) return "Humidité";
   if (std::strcmp(key, "last_forecast") == 0) return "Dernières prévisions";
   if (std::strcmp(key, "weekday_sun") == 0) return "dim.";
@@ -8137,6 +8157,8 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "rain_chance") == 0) return "Probabilità di pioggia";
   if (std::strcmp(key, "rainfall") == 0) return "Precipitazioni";
   if (std::strcmp(key, "wind") == 0) return "Vento";
+  if (std::strcmp(key, "air_pressure") == 0) return "Pressione atmosferica";
+  if (std::strcmp(key, "visibility") == 0) return "Visibilità";
   if (std::strcmp(key, "humidity") == 0) return "Umidità";
   if (std::strcmp(key, "last_forecast") == 0) return "Ultime previsioni";
   if (std::strcmp(key, "weekday_sun") == 0) return "dom.";
@@ -8660,6 +8682,8 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "rain") == 0) return "Regen";
   if (std::strcmp(key, "rain_chance") == 0) return "Kans op regen";
   if (std::strcmp(key, "rainfall") == 0) return "Neerslag";
+  if (std::strcmp(key, "air_pressure") == 0) return "Luchtdruk";
+  if (std::strcmp(key, "visibility") == 0) return "Zicht";
   if (std::strcmp(key, "humidity") == 0) return "Luchtvochtigheid";
   if (std::strcmp(key, "last_forecast") == 0) return "Laatste verwachting";
   if (std::strcmp(key, "weekday_sun") == 0) return "zo.";
@@ -9449,6 +9473,8 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "rain_chance") == 0) return "Probabilidade de chuva";
   if (std::strcmp(key, "rainfall") == 0) return "Precipitação";
   if (std::strcmp(key, "wind") == 0) return "Vento";
+  if (std::strcmp(key, "air_pressure") == 0) return "Pressão atmosférica";
+  if (std::strcmp(key, "visibility") == 0) return "Visibilidade";
   if (std::strcmp(key, "humidity") == 0) return "Humidade";
   if (std::strcmp(key, "last_forecast") == 0) return "Última previsão";
   if (std::strcmp(key, "weekday_sun") == 0) return "dom.";
