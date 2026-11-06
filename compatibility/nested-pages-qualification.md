@@ -1935,10 +1935,34 @@ audited 2026.10.1/2 checks pass and unaudited 2026.10.3 fails compilation. The
 feature retains its additional native-dispatch guard checks. These are host
 and source checks, with no new device flash, factory matrix or memory result.
 
-The semantic carry-forward audit remains open for graph sizing/state replay,
-HA subscription refresh, media dependencies, label fallbacks and host-budget
-changes. Earlier device results retain their original source scopes; this
-audit must finish before treating the reader bridge as ready for release.
+Runtime `c8317a8e6` restores configured/friendly captions for sensorless toggle
+cards in text mode and translation-aware default local-action labels. Both
+regressions fail before the fix. The final definition keeps its existing
+264-byte host size; real-LVGL status/action coverage passes 1,000 cycles on
+nine profiles under ASan/UBSan.
+
+Runtime `c3aac55e4` sizes dependency storage from unique channels and card links,
+including repeated declarations. Counting scratch is freed before the final
+arena allocation. All 64 preparation allocation failures are exercised, four
+weakened implementations fail their negative controls, and three state/consumer
+checks pass. Matched synthetic host benchmarks retain the same requested arena
+peaks for unique graphs; shared workloads require less storage. These are
+allocator-request measurements, not physical heap results. Feature `712bcbb76`
+integrates this change and passes four state/consumer checks.
+
+Runtime `120155057` also preserves exhausted shared-channel state across a
+same-connection replacement, while allowing fresh data to recover it and
+reconnects to invalidate it. Its regression fails before the fix; three focused
+checks pass afterward. Feature integration additionally requires a fresh global
+change stamp: a regression fails with the runtime's local stamp and passes
+with the feature's monotonic stamp. All four focused feature state/consumer
+checks pass under ASan/UBSan.
+
+The semantic carry-forward audit remains open for HA subscription refresh,
+media dependencies and host-budget/portability changes. Earlier device results
+retain their original source scopes; no new device flash or factory matrix is
+claimed by these host checks. This audit must finish before treating the reader
+bridge as ready for release.
 
 ## Remaining qualification gates
 

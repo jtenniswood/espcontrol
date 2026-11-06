@@ -468,12 +468,17 @@ bool PageEntityStateRuntime::prepare(const PageStore &store) {
         }
         if (previous_channel != old->channel_count) {
           const auto &previous = old->channels[previous_channel];
-          if (previous.status == PageEntityStatus::AVAILABLE &&
-              !receive(
+          if (previous.status == PageEntityStatus::AVAILABLE) {
+            if (!receive(
                   slot, slot.revision, static_cast<uint32_t>(i),
                   {old->values + previous.value_offset, previous.value_size},
                   true))
-            return fail();
+              return fail();
+          } else if (previous.status == PageEntityStatus::EXHAUSTED) {
+            auto &entry = slot.channels[i];
+            entry.status = PageEntityStatus::EXHAUSTED;
+            entry.revision = advance_revision();
+          }
         }
       }
     }
