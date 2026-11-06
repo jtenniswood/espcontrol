@@ -8240,6 +8240,31 @@ async function assertImageLibrarySettings(browser, testCase) {
     assert(await row.getByText('Used by 1 card', { exact: true }).isVisible());
     await row.scrollIntoViewIfNeeded();
     await row.locator('img').evaluate(image => image.decode());
+    const originalName = await row.locator('.sp-image-library-name').textContent();
+    await row.locator('.sp-image-library-name').evaluate(el => { el.textContent = '00000000-1111-4222-8333-444444444444'; });
+    const bounds = () => row.evaluate(el => {
+      const rect = selector => {
+        const { left, right, top, bottom } = el.querySelector(selector).getBoundingClientRect();
+        return { left, right, top, bottom };
+      };
+      const { left, right } = el.getBoundingClientRect();
+      return { left, right, info: rect('.sp-image-library-info'), actions: rect('.sp-image-library-actions'),
+        overflow: document.documentElement.scrollWidth > window.innerWidth };
+    });
+    let layout = await bounds();
+    assert(layout.actions.left >= layout.info.right, 'wide image rows place controls to the right of the details');
+    assert(Math.abs((layout.info.top + layout.info.bottom) - (layout.actions.top + layout.actions.bottom)) < 2,
+      'wide image rows vertically centre the controls');
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 900 });
+      await row.scrollIntoViewIfNeeded();
+      layout = await bounds();
+      assert(layout.actions.top >= layout.info.bottom, 'narrow image rows wrap controls below the details');
+      assert(layout.actions.left >= layout.left && layout.actions.right <= layout.right, 'wrapped controls remain inside the row');
+      assert.strictEqual(layout.overflow, false, 'long image names do not cause horizontal page overflow');
+    }
+    await page.setViewportSize(testCase.viewport);
+    await row.locator('.sp-image-library-name').evaluate((el, name) => { el.textContent = name; }, originalName);
     if (process.env.ESPCONTROL_IMAGE_LIBRARY_SCREENSHOT) {
       await library.screenshot({ path: process.env.ESPCONTROL_IMAGE_LIBRARY_SCREENSHOT, animations: 'disabled', style: '.sp-support-btn{visibility:hidden!important}' });
     }

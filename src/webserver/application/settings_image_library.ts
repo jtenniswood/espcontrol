@@ -65,6 +65,8 @@ export function createSettingsImageLibraryFeature(
           row.className = "sp-image-library-item";
           row.setAttribute("role", "group");
           row.setAttribute("aria-label", image.name || image.id);
+          const info = document.createElement("div");
+          info.className = "sp-image-library-info";
           const thumbnail = document.createElement("img");
           thumbnail.src = cardImageUrl(image.id);
           thumbnail.alt = "";
@@ -101,7 +103,8 @@ export function createSettingsImageLibraryFeature(
           });
           imageActions.push(rename, remove);
           actions.append(rename, remove);
-          row.append(thumbnail, details, actions);
+          info.append(thumbnail, details);
+          row.append(info, actions);
           list.appendChild(row);
         }
       }
