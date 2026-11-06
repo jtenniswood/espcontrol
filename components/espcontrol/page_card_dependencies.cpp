@@ -47,7 +47,7 @@ class CardEmitter {
     return attributes(entity, {"media_content_type", "media_content_id"});
   }
   bool metadata(const std::string &entity) {
-    return attributes(entity, {"media_title", "media_artist"});
+    return attributes(entity, {"media_title", "media_artist", "source"});
   }
   bool artwork(const std::string &entity) {
     return attributes(entity, {"entity_picture", "entity_picture_local", "access_token"});
