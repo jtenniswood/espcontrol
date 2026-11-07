@@ -90,14 +90,20 @@ struct NativeBackend {
 using Registry = OwnedHaSubscriptions<NativeBackend, EspControlExternalAllocator<std::byte>>;
 void (*maintenance_callback)() = nullptr;
 bool refresh_pending = false;
+bool refresh_again = false;
 size_t refresh_cursor = 0;
+void finish_state_refresh() {
+  refresh_pending = refresh_again;
+  refresh_again = false;
+  refresh_cursor = 0;
+}
 void refresh_one_state() {
   if (!refresh_pending || !NativeBackend::available()) return;
   const auto &subscriptions = esphome::api::global_api_server->get_state_subs();
-  if (refresh_cursor >= subscriptions.size()) { refresh_pending = false; return; }
+  if (refresh_cursor >= subscriptions.size()) { finish_state_refresh(); return; }
   const auto &entry = subscriptions[refresh_cursor];
   if (entry.entity_id == nullptr || *entry.entity_id == '\0') {
-    if (++refresh_cursor == subscriptions.size()) refresh_pending = false;
+    if (++refresh_cursor == subscriptions.size()) finish_state_refresh();
     return; // Match native enumeration's handling of unconfigured wizard IDs.
   }
   esphome::api::SubscribeHomeAssistantStateResponse request;
@@ -113,7 +119,7 @@ void refresh_one_state() {
     accepted = client->send_message(request) && accepted;
   }
   // Backpressure retries the same one-shot pair; it never adds remote listeners.
-  if (sent && accepted && ++refresh_cursor == subscriptions.size()) refresh_pending = false;
+  if (sent && accepted && ++refresh_cursor == subscriptions.size()) finish_state_refresh();
 }
 }  // namespace
 
@@ -124,6 +130,10 @@ uint32_t subscribe_owned(const std::string &entity, const std::string &attribute
 void unsubscribe_owned(uint32_t token) { Registry::instance().unsubscribe(token); }
 void set_subscription_maintenance(void (*maintenance)()) { maintenance_callback = maintenance; }
 void request_state_refresh() {
+  // Coalesce requests before the sweep starts. Once it has visited a pair,
+  // new consumers may have missed that pair's response: retain one follow-up
+  // sweep without restarting the cursor or starving the remaining pairs.
+  if (refresh_pending && refresh_cursor > 0) refresh_again = true;
   if (!refresh_pending) refresh_cursor = 0;
   refresh_pending = true;
 }
@@ -132,6 +142,7 @@ void maintain_subscriptions() {
   auto &registry = Registry::instance();
   if (registry.flush()) {
     refresh_cursor = 0; // Compaction can move the pair at the current cursor.
+    refresh_again = false; // This complete sweep also covers queued requests.
     ESP_LOGD("ha_transport", "Native subscriptions: owned=%u pending=%u registry_bytes=%u upstream=%u capacity=%u heap_internal=%u heap_largest=%u psram_free=%u",
              static_cast<unsigned>(registry.size()), static_cast<unsigned>(registry.pending_count()),
              static_cast<unsigned>(registry.storage_bytes()),
