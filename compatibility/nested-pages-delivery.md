@@ -214,6 +214,10 @@ increase document admission or remove other preparation/image peak costs.
    payload selection and full-partition cleanup checksums. Original firmware,
    dashboard and settings are restored. See the
    [qualification scope](nested-pages-qualification.md#automated-abrupt-reset-recovery-6-november).
+   The later [seven-inch V2 storage diagnosis](nested-pages-qualification.md#fifteen-slot-v2-storage-failure-diagnosis-7-november)
+   leaves repeated maximum-size NVS saves unqualified: the real backend reports
+   insufficient shared persistent space. Preserve that failure and address
+   capacity handling before crediting the remaining physical grid gate.
    Electrical power loss, brownouts and supply collapse during flash operations
    remain separate, unqualified behaviours.
 7. **Nested-page feature:** only after the preceding memory and compatibility

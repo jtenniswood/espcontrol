@@ -2697,6 +2697,71 @@ identity checks against its ELF. Physical pressure and artwork qualification
 are still required before the remaining grid gate is complete. Actual
 compatibility releases remain required before production nested writes.
 
+## Fifteen-slot V2 storage failure diagnosis (7 November)
+
+The current-source fifteen-slot physical run is **not a pass**. On the
+7-inch V2 at `192.168.6.102`, source `656fc078c93f` accepts the first
+11,337-byte maximum flat dashboard, but rejects its second replacement with
+HTTP 500 and leaves the active generation unchanged. The frozen failed run
+and its independently verified original recovery are retained separately.
+The 225-card/four-replacement/artwork gate remains open; the workload has not
+been reduced to turn this failure into a pass.
+
+A separate diagnostic image, `storage-diag-656fc078`, compiles against the same
+437 production component sources and stock SDK API/MIPI code. Its bounded
+32-entry observer calls the real `nvs_set_blob` unchanged and records only
+configuration-slot lengths/error codes and aggregate NVS counts. It neither
+reads protected key/value contents nor changes the partition table. Actual
+header ASan/UBSan checks cover passthrough, errors, exclusion of other keys and
+ring bounds; source, linker-wrapper, ELF API identity, actual 15/6 template,
+16 MB/revision-zero and OTA artifact checks pass before installation.
+
+The deployed fallback uses a **53,248-byte shared NVS partition**. The first
+fixture publishes successfully, then shared native/compatibility/preferences
+storage reaches 1,265 used entries out of 1,638. Before the second payload,
+withdrawing the older target leaves 405 free entries. The real 11,365-byte
+store-envelope write returns `ESP_ERR_NVS_NOT_ENOUGH_SPACE` (`4357`); HTTP
+returns “Panel configuration could not be saved” and the first fixture stays
+at generation 14. The nominal 16,356-byte document ceiling does not reserve
+space for all shared data or NVS garbage collection. This is a persistent
+storage failure, not evidence of runtime heap exhaustion.
+
+The first fixture does fill all 4,166 state channels, the entire 524,288-byte
+state cache and 135 borrowed widgets. Its one held diagnostic snapshot is:
+
+| Reported memory region | Total bytes | Free bytes | Used bytes |
+| --- | ---: | ---: | ---: |
+| Internal heap | 519,455 | 336,107 | 183,348 |
+| PSRAM | 27,919,488 | 20,647,440 | 7,272,048 |
+| Combined reported regions | 28,438,943 | 20,983,547 | 7,455,396 |
+
+The managed scene holds 931,070 bytes in seven allocations, with zero scene
+allocation/accounting errors. This is one diagnostic snapshot, not a matched
+before/after comparison, steady-state median, completed replacement cohort or
+panel appearance result.
+
+The diagnostic restores both native slots to the exact original weather
+payload at generation 16, uploads the retained exact original application,
+checks all 78 protected settings plus PIN/reset/update policy and preserves
+plain API mode without reading or changing an API key. Restoration remains
+verified for 78.37 seconds and passes a separate read-only preflight. The
+independent diagnosis audit passes while leaving qualification failed. No test
+is left armed. The shared NVS capacity handling must be addressed before
+crediting repeated full-size saves on this deployed layout.
+
+## Follow-up refresh requests during an active sweep (7 November)
+
+Runtime PR #2400 commit `b713e1315` retains one coalesced follow-up Home
+Assistant refresh when another request arrives after the current sweep has
+visited channels. It finishes the current tail before restarting, preserving
+one-shot backpressure without adding persistent listeners or disconnecting
+clients. The actual transport regression fails with the old policy and passes
+under ASan/UBSan with SDK stubs. Audited 2026.10.1/2 and unaudited-version
+rejection checks pass. This fix is carried into the feature branch with its
+native-lookup dispatch/maintenance guards preserved and the SDK checks rerun.
+It has not yet been flashed; earlier physical evidence retains its original
+source scope.
+
 ## Remaining qualification gates
 
 The 480 × 480 S3 appearance gate has explicit user confirmation, with the host
