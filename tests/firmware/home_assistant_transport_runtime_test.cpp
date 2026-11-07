@@ -127,6 +127,29 @@ int main() {
   assert(server.clients[0]->enumerations==enumerations && server.clients[0]->disconnects==disconnects);
   assert(!server.clients[0]->removed && listeners.size()==4);
   assert(server.clients[3]->requests.empty() && server.clients[4]->requests.empty());
+  // A graph can reuse an already-visited channel without changing transport
+  // registrations. Its refresh request must survive the in-progress sweep.
+  const auto before_followup = server.clients[0]->requests.size();
+  espcontrol::ha::request_state_refresh();
+  espcontrol::ha::maintain_subscriptions();
+  espcontrol::ha::maintain_subscriptions();
+  assert(server.clients[0]->requests.size() == before_followup + 2);
+  // Reusing a coordinator channel changes no native registrations.
+  for (int i = 0; i < 10; ++i) espcontrol::ha::request_state_refresh();
+  // Finish the original sweep first: neither tail channel may be starved.
+  espcontrol::ha::maintain_subscriptions();
+  espcontrol::ha::maintain_subscriptions();
+  assert(server.clients[0]->requests.size() == before_followup + 4);
+  assert(server.clients[0]->requests.back().first == "sensor.fresh_2");
+  for (int i = 0; i < 10; ++i) espcontrol::ha::maintain_subscriptions();
+  assert(server.clients[0]->requests.size() == before_followup + 8);
+  assert(second_ha->requests.size() == before_followup + 8);
+  assert(server.clients[0]->requests[before_followup + 5].first == "sensor.fresh_0");
+  assert(server.clients[0]->enumerations == enumerations &&
+         server.clients[0]->disconnects == disconnects && listeners.size() == 4);
+  // Keep the following backpressure assertions local to their own sequence.
+  server.clients[0]->requests.resize(before_followup);
+  second_ha->requests.resize(before_followup);
   // A blocked peer keeps the cursor on the same pair until every eligible
   // peer accepts; repeated one-shot requests add no persistent listeners.
   second_ha->writable=false;
