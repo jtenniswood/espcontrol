@@ -1263,9 +1263,9 @@ def expect_subpage_modal_wiring_errors(
             else (
                 "LightControlCtx *ctx = create_light_control_context();\n"
                 "subscribe_light_control_state(ctx);\n"
-                "lv_obj_add_event_cb(slot.btn, [](lv_event_t *event) {\n"
+                "bind_navigation_button_action(slot.btn, [](lv_event_t *event) {\n"
                 "  if (ctx) light_control_open_modal(ctx);\n"
-                "}, LV_EVENT_CLICKED, ctx);\n"
+                "}, ctx);\n"
             )
         )
         (path.parent / "button_grid_light_control_driver.h").write_text(
@@ -1277,9 +1277,9 @@ def expect_subpage_modal_wiring_errors(
             else (
                 "FanCardCtx *ctx = create_fan_card_context();\n"
                 "subscribe_fan_card_state(ctx);\n"
-                "lv_obj_add_event_cb(slot.btn, [](lv_event_t *event) {\n"
+                "bind_navigation_button_action(slot.btn, [](lv_event_t *event) {\n"
                 "  if (ctx) fan_control_open_modal(ctx);\n"
-                "}, LV_EVENT_CLICKED, ctx);\n"
+                "}, ctx);\n"
             )
         )
         (path.parent / "button_grid_fan_control_driver.h").write_text(
