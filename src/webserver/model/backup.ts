@@ -2,11 +2,9 @@ import { readIdentityBackup, type PanelIdentityBackup } from "./panel_identity";
 import type { CardConfig } from "../contracts/types";
 import { cloneCardConfig, emptyCardConfig } from "./card";
 import {
-  PANEL_CONFIG_DOCUMENT_VERSION,
-  createPanelConfigBackupPayload,
-  decodePanelConfigBackupPayload,
   type PanelConfigBackupPayload,
 } from "./panel_config";
+import { createNativeConfigBackupPayload, decodeNativeConfigBackupPayload } from "./native_config_backup";
 import {
   markSpannedCells,
   serializeGridOrder,
@@ -17,6 +15,7 @@ import {
 import type { StructuredSubpageConfig } from "./subpage";
 
 export const BACKUP_CONFIG_VERSION = 2;
+export const BACKUP_GRAPH_VERSION = 3;
 export const BACKUP_FORMAT = "espcontrol.backup";
 
 export interface BackupSource {
@@ -93,15 +92,15 @@ function normalizeNativeBackup(value: unknown): PanelConfigBackupPayload | undef
   // Readable backup fields remain usable on panels that do not understand a
   // newer native document. The native section is optional by design.
   if (isRecord(value) && typeof value.document_version === "number" &&
-      value.document_version > PANEL_CONFIG_DOCUMENT_VERSION) {
+      value.document_version > 2) {
     return undefined;
   }
-  return createPanelConfigBackupPayload(decodePanelConfigBackupPayload(value));
+  return createNativeConfigBackupPayload(decodeNativeConfigBackupPayload(value));
 }
 
 function skippedNativeDeviceProfile(value: unknown): string | undefined {
   if (!isRecord(value) || typeof value.document_version !== "number" ||
-      value.document_version <= PANEL_CONFIG_DOCUMENT_VERSION ||
+      value.document_version <= 2 ||
       typeof value.device_profile !== "string" || value.device_profile.length === 0) {
     return undefined;
   }
@@ -117,12 +116,14 @@ export function validateBackupEnvelope(data: unknown): Record<string, unknown> {
   if (!version || version < 1) {
     throw backupConfigError("Invalid config file - missing required fields");
   }
-  if (version > BACKUP_CONFIG_VERSION) {
+  if (version > BACKUP_GRAPH_VERSION) {
     throw backupConfigError("Backup was created by a newer version of EspControl");
   }
   if (version >= 2 && data.format !== BACKUP_FORMAT) {
     throw backupConfigError("Invalid config file - unsupported backup format");
   }
+  if (version === BACKUP_GRAPH_VERSION && (!isRecord(data.native_config) || data.native_config.document_version !== 2))
+    throw backupConfigError("A graph backup requires its complete native version-two document");
   if (!Array.isArray(data.buttons)) {
     throw backupConfigError("Invalid config file - missing required fields");
   }
@@ -157,7 +158,7 @@ export function createBackupEnvelope(
   const identity = readIdentityBackup(snapshot.identity);
   return {
     ...(identity ? { identity } : {}),
-    version: BACKUP_CONFIG_VERSION,
+    version: nativeConfig?.document_version === 2 ? BACKUP_GRAPH_VERSION : BACKUP_CONFIG_VERSION,
     format: BACKUP_FORMAT,
     device,
     source: {
@@ -191,7 +192,7 @@ export function normalizeBackupEnvelope(
   const identity = readIdentityBackup(data.identity);
   return {
     ...(identity ? { identity } : {}),
-    version: BACKUP_CONFIG_VERSION,
+    version: nativeConfig?.document_version === 2 ? BACKUP_GRAPH_VERSION : BACKUP_CONFIG_VERSION,
     format: BACKUP_FORMAT,
     device: String(data.device || ""),
     source: backupSource(data, outputs.buttons.length),

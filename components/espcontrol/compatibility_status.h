@@ -10,6 +10,9 @@ enum class CompatibilityStatus : uint8_t {
   OK,
   RETRYABLE_FAILURE,
   NOT_REPRESENTABLE,
+  // Live native globals are current, but the graph has no complete legacy
+  // layout view. This never certifies a persistent downgrade mirror.
+  NATIVE_ONLY,
 };
 
 struct ConfigurationCompatibilityState {

@@ -36,7 +36,7 @@ function fail(message: string): never { throw new PanelConfigError(message); }
 
 const BASE64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-function encodeBase64(input: Uint8Array): string {
+export function encodeBase64(input: Uint8Array): string {
   let output = "";
   for (let offset = 0; offset < input.length; offset += 3) {
     const first = input[offset]!;
@@ -50,7 +50,7 @@ function encodeBase64(input: Uint8Array): string {
   return output;
 }
 
-function decodeBase64(value: unknown): Uint8Array {
+export function decodeBase64(value: unknown): Uint8Array {
   if (typeof value !== "string" || value.length === 0 || value.length % 4 !== 0 ||
       !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
     fail("PanelConfig backup payload is not valid base64");

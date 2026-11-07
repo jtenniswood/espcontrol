@@ -17,7 +17,7 @@ struct PageImageOptions {
   uint16_t max_source_dimension{0};
 };
 struct PageImageSnapshot {
-  bool ready{false}, pending{false}, failed{false}, cached{false};
+  bool ready{false}, pending{false}, failed{false}, cached{false}, resource_failure{false};
   uint64_t asset{0};
 };
 
@@ -43,6 +43,9 @@ class PageImageRequests {
   // may allocate transfer storage and may deliver/reenter synchronously.
   virtual bool start(size_t slot, uint64_t request, std::string_view url, PageImageOptions, void* owner,
                      Receive) = 0;
+  // Read only while delivering the current stamped completion. A local
+  // allocation refusal does not imply that the image source became invalid.
+  virtual bool resource_failure(size_t) const { return false; }
   // Retire the token before calling cancel: cancellation may deliver a result.
   virtual void cancel(size_t slot) = 0;
   // The caller has detached the old LVGL source. Defer surface cleanup until
@@ -175,7 +178,7 @@ class PageImageRuntime final : public PageImageFrames {
       s.release = true;
     }
     s.state = retain_completed && previous.ready
-                  ? PageImageSnapshot{true, false, false, previous.cached, previous.asset}
+                  ? PageImageSnapshot{true, false, false, previous.cached, false, previous.asset}
                   : PageImageSnapshot{};
     ++revision_;
     requests_.cancel(slot);
@@ -274,7 +277,7 @@ class PageImageRuntime final : public PageImageFrames {
     const uint64_t request = next_request_++;
     s.request = request;
     const bool retain = options.retain_completed && completed.ready;
-    s.state = {retain, true, false, retain && completed.cached, retain ? completed.asset : 0};
+    s.state = {retain, true, false, retain && completed.cached, false, retain ? completed.asset : 0};
     ++revision_;
     const bool accepted = requests_.start(slot, request, url, options, this, receive);
     if (s.request != request || !current(slot, binding)) return false;
@@ -374,7 +377,7 @@ class PageImageRuntime final : public PageImageFrames {
     auto& s = self.slots_[slot];
     if (request == 0 || request != s.request || !s.state.pending || !self.current(slot, s.binding)) return;
     s.state = {success || s.state.ready, false, !success, success ? cached : s.state.cached,
-               success ? request : s.state.asset};
+               !success && self.requests_.resource_failure(slot), success ? request : s.state.asset};
     ++self.revision_;
   }
   PageImageRequests& requests_;

@@ -30,6 +30,8 @@ class ArtworkImage {
   ImageRequestPriority priority{ImageRequestPriority::COVER_ART};
   size_t cancels{0}, releases{0};
   bool ready{false}, legacy_owned{false}, accept{true};
+  bool resource_failure{false};
+  bool last_failure_was_resource() const { return resource_failure; }
   bool claim_owner(ImageResultObserver& owner) {
     return !legacy_owned && !visible && !redraw && !screen_active && channel.claim(owner);
   }
@@ -44,6 +46,7 @@ class ArtworkImage {
     cancel_update();
     if (!accept) return false;
     request = token;
+    resource_failure = false;
     url = source;
     max_source_dimension = maximum;
     return channel.arm(owner, ++generation, token);

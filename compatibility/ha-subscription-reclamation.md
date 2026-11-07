@@ -69,6 +69,41 @@ coalesced refreshes, pacing, two HA clients, backpressure, changed-list cursors,
 null attributes, empty IDs and backend unavailability. Weakened persistent,
 unpaced and obsolete-cursor implementations fail the regression checks.
 
+The 2026.10.1 audit compared `api_server.h/.cpp` and `api_connection.h/.cpp`
+against the published 2026.10.0 wheel: all four files are byte-identical.
+The pinned 2026.10.1 Docker image contains the same source hashes. Subscription
+records, registration, state-response dispatch, client filtering and positional
+enumeration therefore retain the audited behaviour. The bridge's host fixture
+now generates its SDK version from `.github/esphome.env`, so changing the pin
+cannot leave that test silently compiling against an older hard-coded version.
+
+The 2026.10.2 audit compares the same four files against 2026.10.1: all are
+byte-identical, and the 2026.10.2 Docker image matches the installed wheel.
+The bridge explicitly accepts both audited patches. A host regression runs the
+real transport behaviour under each version and verifies that the next,
+unaudited patch fails compilation. The repository SDK pin is managed separately.
+
+Large native subscription sets also use a prepared lookup over the SDK's own
+registration positions. Each row uses eight bytes; names and callbacks retain
+their existing ownership. Preparation runs outside delivery, uses fallible
+external-first allocation, and releases a stale table before resizing. Small,
+unprepared or stale sets retain the original SDK handler. Exhaustion retries
+are bounded and do not reject configuration or allocate during delivery.
+
+The version/signature-pinned linker wrapper preserves the SDK's authentication
+and decoding path. It uses public active-client membership to establish the
+owning server, without protected-member offsets, and preserves state termination,
+exact entity/attribute matching and native callback order, including foreign and
+one-shot registrations. Hash collisions still require exact text matching.
+Native size/data changes invalidate the lookup; project compaction also advances
+an epoch to cover replacements with unchanged size and buffer address. Delivery
+guards defer maintenance for both indexed and original-handler callbacks.
+The maintenance log reports `lookup_bytes` separately from registry storage.
+The [qualification record](nested-pages-qualification.md) distinguishes the
+tested S3 candidate from production-source build and device checks.
+
+
+
 Host coverage exercises 1,000 disjoint configurations, deferred add/remove
 during dispatch, late callbacks, owner destruction, shared channels, retained
 reads after compaction, reconnect invalidation and foreign subscriptions. The

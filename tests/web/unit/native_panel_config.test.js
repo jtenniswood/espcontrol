@@ -29,3 +29,11 @@ test("editor negotiates document v2 and bounds v1 fallback", async () => {
 test("negotiated editing preserves compatible backups and future graphs", async () => {
   await loadTypescriptTest("tests/web/native_panel_config_versions.test.ts").runNativeNegotiatedBackupTests();
 });
+
+test("nested snapshots and saves require explicit reader and writer depth capabilities", async () => {
+  await loadTypescriptTest("tests/web/native_panel_config_versions.test.ts").runNativeNestedPageClientTests();
+});
+
+test("disconnect cancels an active snapshot and releases queued refreshes and saves", { timeout: 5000 }, async () => {
+  await loadTypescriptTest("tests/web/native_panel_config_versions.test.ts").runNativeSnapshotCancellationTests();
+});

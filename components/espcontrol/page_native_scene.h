@@ -90,6 +90,7 @@ struct PageNativeSceneMemory {
   PageModalMemory modal;
   PageEntityMemory state;
   size_t image_leases{0}, qr_lease_bytes{0}, qr_frame_bytes{0};
+  PageNativeStateMemory state_metadata{};
 };
 
 template <size_t Slots, size_t ImageSlots>
@@ -512,6 +513,7 @@ public:
         ++result.image_leases;
     result.qr_lease_bytes = qr_.reserved_bytes();
     result.qr_frame_bytes = qr_frames_.reserved_bytes();
+    result.state_metadata = state_.metadata_memory();
     return result;
   }
   PageId active_page() const { return renderer_.active_page(); }
@@ -804,66 +806,68 @@ private:
     return navigation_ready() && !espcontrol::screensaver_pin().locked() &&
            !critical_active();
   }
-  PageId folder_target(std::string_view label) const {
-    label = trim(label);
-    if (label.empty())
-      return NO_PAGE;
-    for (size_t shell = 0; shell < Slots; ++shell) {
-      const auto cell = renderer_.cell(0, shell);
-      const auto *card =
-          cell.visible && !cell.back ? active().card(cell.card) : nullptr;
-      const auto *page = card ? active().page(card->target) : nullptr;
-      if (page && page->navigable &&
-          equal(trim(active().field(*card, CardField::LABEL)), label))
-        return card->target;
-    }
-    return NO_PAGE;
+  PageId displayed_child(PageId parent,size_t shell) const {
+    const auto cell=renderer_.cell(parent,shell);
+    const auto *owner=cell.visible && !cell.back ? active().card(cell.card) : nullptr;
+    const auto *page=owner ? active().page(owner->target) : nullptr;
+    return page && page->navigable && page->parent==parent ? owner->target : NO_PAGE;
   }
-  ConfigurationHandle modal_target(std::string_view entity) const {
-    entity = trim(entity);
-    if (entity.empty())
-      return {};
-    const auto match = [this,
-                        entity](PageCellLayout cell) -> ConfigurationHandle {
-      const auto *card =
-          cell.visible && !cell.back ? active().card(cell.card) : nullptr;
-      if (!card)
-        return {};
-      const auto type = active().field(*card, CardField::TYPE);
-      const auto configured =
-          type == "alarm" || type == "alarm_action"
-              ? PageAlarmStateRuntime::effective_entity(active(), cell.card)
-              : active().field(*card, CardField::ENTITY);
-      const ConfigurationHandle handle{active().generation(), cell.card};
-      if (configured != entity)
-        return {};
-      const auto kind = modals_.runtime().card_kind(handle);
-      return kind != ControlModalKind::NONE &&
-                     kind != ControlModalKind::SWITCH_CONFIRMATION
-                 ? handle
-                 : ConfigurationHandle{};
-    };
-    // Root controls win, then visible parent order and child display order.
-    // Hidden/unreachable parent folders cannot contribute remote controls.
-    for (size_t shell = 0; shell < Slots; ++shell) {
-      const auto result = match(renderer_.cell(0, shell));
-      if (result.index != NO_CARD)
-        return result;
+  bool page_reachable(PageId page) const {
+    if(active().page_depth(page)>2)return false;
+    while(page) {
+      const auto *definition=active().page(page);
+      if(!definition || !definition->navigable)return false;
+      bool visible=false;
+      for(size_t shell=0;shell<Slots;++shell)visible|=displayed_child(definition->parent,shell)==page;
+      if(!visible)return false;
+      page=definition->parent;
     }
-    for (size_t parent = 0; parent < Slots; ++parent) {
-      const auto root = renderer_.cell(0, parent);
-      const auto *card =
-          root.visible && !root.back ? active().card(root.card) : nullptr;
-      const auto *page = card ? active().page(card->target) : nullptr;
-      if (!page || !page->navigable)
-        continue;
-      for (size_t shell = 0; shell < Slots; ++shell) {
-        const auto result = match(renderer_.cell(card->target, shell));
-        if (result.index != NO_CARD)
-          return result;
+    return true;
+  }
+  template<typename Match> CardId first_display_card(Match match) const {
+    const auto scan=[this,&match](PageId page) {
+      for(size_t shell=0;shell<Slots;++shell) {
+        const auto cell=renderer_.cell(page,shell);
+        const auto *card=cell.visible && !cell.back ? active().card(cell.card) : nullptr;
+        if(card && match(*card,cell.card))return cell.card;
+      }
+      return NO_CARD;
+    };
+    // Breadth first: Home, every first-level page, then nested pages. Within
+    // each level use actual display order, including hidden/oriented cells.
+    auto found=scan(0);if(found!=NO_CARD)return found;
+    for(size_t root=0;root<Slots;++root) {
+      const auto parent=displayed_child(0,root);if(parent==NO_PAGE)continue;
+      found=scan(parent);if(found!=NO_CARD)return found;
+    }
+    for(size_t root=0;root<Slots;++root) {
+      const auto parent=displayed_child(0,root);if(parent==NO_PAGE)continue;
+      for(size_t child=0;child<Slots;++child) {
+        const auto nested=displayed_child(parent,child);if(nested==NO_PAGE)continue;
+        found=scan(nested);if(found!=NO_CARD)return found;
       }
     }
-    return {};
+    return NO_CARD;
+  }
+  PageId folder_target(std::string_view label) const {
+    label=trim(label);if(label.empty())return NO_PAGE;
+    const auto id=first_display_card([this,label](const CardDefinition &card,CardId) {
+      const auto *page=active().page(card.target);
+      return page && page->navigable && equal(trim(active().field(card,CardField::LABEL)),label);
+    });
+    return id==NO_CARD ? NO_PAGE : active().card(id)->target;
+  }
+  ConfigurationHandle modal_target(std::string_view entity) const {
+    entity=trim(entity);if(entity.empty())return {};
+    const auto id=first_display_card([this,entity](const CardDefinition &card,CardId id) {
+      const auto type=active().field(card,CardField::TYPE);
+      const auto configured=type=="alarm" || type=="alarm_action"
+        ? PageAlarmStateRuntime::effective_entity(active(),id) : active().field(card,CardField::ENTITY);
+      if(configured!=entity)return false;
+      const auto kind=modals_.runtime().card_kind({active().generation(),id});
+      return kind!=ControlModalKind::NONE && kind!=ControlModalKind::SWITCH_CONFIRMATION;
+    });
+    return id==NO_CARD ? ConfigurationHandle{} : ConfigurationHandle{active().generation(),id};
   }
   void cover_for_request() {
     covered_ = true;
@@ -896,17 +900,8 @@ private:
          (request.connection != connection_generation() || !remote_allowed() ||
           !platform_.input_allowed())))
       return;
-    if (request.page != 0) {
-      bool reachable = false;
-      for (size_t shell = 0; shell < Slots; ++shell) {
-        const auto cell = renderer_.cell(0, shell);
-        const auto *owner =
-            cell.visible && !cell.back ? active().card(cell.card) : nullptr;
-        reachable |= owner && owner->target == request.page;
-      }
-      if (!reachable)
-        return;
-    }
+    if (!page_reachable(request.page))
+      return;
     if (!renderer_.open_page(request.page))
       return;
     advance_chrome();
@@ -1134,8 +1129,7 @@ private:
       return NO_PAGE;
     for (PageId p = 0; p < store.page_count(); ++p) {
       const auto *page = store.page(p);
-      if (page->navigable && token.card >= page->first_card &&
-          token.card - page->first_card < page->runtime_card_count)
+      if (page->includes_runtime_card(token.card))
         return p;
     }
     return NO_PAGE;

@@ -35,6 +35,18 @@
 #include "panel_backup_endpoint.h"
 #include "screensaver_pin_endpoint.h"
 
+// Optional bridge for the IDF event stream. Both callers run on the firmware
+// loop; no HTTP-task request or full configuration read is needed.
+extern "C" bool espcontrol_native_configuration_generation(uint32_t *generation) {
+  const auto &context = espcontrol::configuration::panel_config_http_context();
+  if (!generation || !context.ready.load(std::memory_order_acquire) || !context.service)
+    return false;
+  const auto state = context.service->compatibility_state();
+  if (!state.known) return false;
+  *generation = state.generation;
+  return true;
+}
+
 extern "C" void espcontrol_register_web_server_handlers(
     esphome::web_server_idf::AsyncWebServer *server) {
 #ifdef USE_WEBSERVER

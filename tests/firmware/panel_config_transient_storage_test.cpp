@@ -198,6 +198,51 @@ void failures_do_not_retain_memory_or_overwrite() {
   fixture::fail_read = false;
 }
 
+// Reject capacity at each durability boundary, including final publication.
+// Recovery sync may succeed: the original failure must survive that rollback.
+void nvs_capacity_rejection_keeps_the_previous_generation(bool transient) {
+  for (const auto error : {ESP_ERR_NVS_NOT_ENOUGH_SPACE,
+                           ESP_ERR_NVS_VALUE_TOO_LONG, ESP_FAIL}) {
+    for (const size_t mutation : {1u, 3u, 5u, 7u}) {
+      fixture::reset(); seed_legacy(false);
+      EspIdfPanelConfigBlobStorage port; begin(port, false);
+      Backend compact(port, allocate, release);
+      assert(compact.begin(CAPACITY));
+      BufferedBlobStorageBackend<CAPACITY> buffered(port);
+      std::array<uint8_t, 2 * CAPACITY> memory{};
+      assert(buffered.begin(memory.data(), memory.size()));
+      ConfigurationStore store(transient ? static_cast<StorageBackend &>(compact)
+                                         : static_cast<StorageBackend &>(buffered));
+      fixture::mutation = 0;
+      fixture::fail_save_at = mutation;
+      fixture::fail_save_error = error;
+      const auto rejected = store.commit_if_generation(2, NEW.data(), NEW.size());
+      assert(rejected.status == (error == ESP_FAIL ? StoreStatus::SYNC_FAILED
+                                                  : StoreStatus::STORAGE_FULL));
+      assert(live_bytes == 0);
+      fixture::fail_save_at = 0;
+      assert_load(false);
+      // A later retry can succeed after space is reclaimed. Capacity state
+      // must not leak into the next transaction or alter its CAS generation.
+      const auto retried = store.commit_if_generation(2, NEW.data(), NEW.size());
+      assert(retried.ok() && retried.generation == 3 && live_bytes == 0);
+    }
+  }
+}
+
+void commit_failure_is_not_a_definite_capacity_rejection() {
+  fixture::reset(); seed_legacy(false);
+  EspIdfPanelConfigBlobStorage port; begin(port, false);
+  Backend backend(port, allocate, release); assert(backend.begin(CAPACITY));
+  ConfigurationStore store(backend);
+  fixture::mutation = 0; fixture::fail_commit_at = 8;
+  fixture::fail_commit_error = ESP_ERR_NVS_NOT_ENOUGH_SPACE;
+  assert(store.commit_if_generation(2, NEW.data(), NEW.size()).status ==
+         StoreStatus::SYNC_FAILED);
+  fixture::fail_commit_at = 0;
+  assert_load(false); assert(live_bytes == 0);
+}
+
 // Observe the store interface even for NVS: the NVS API itself still requires
 // whole-blob I/O and exactly one transient slot buffer per operation.
 class WindowBackend final : public StorageBackend {
@@ -223,6 +268,7 @@ class WindowBackend final : public StorageBackend {
     return inner_.write(slot, offset, data, size);
   }
   bool sync() override { return inner_.sync(); }
+  StoreStatus sync_failure() const override { return inner_.sync_failure(); }
   size_t max_read{0}, max_write{0}, reads{0}, payload_writes{0};
   size_t cut_payload{0}, fail_read_at{0};
   unsigned cut_percent{0};
@@ -378,6 +424,9 @@ int main() {
   power_loss_at_every_mutation(false);
   power_loss_at_every_mutation(true);
   failures_do_not_retain_memory_or_overwrite();
+  commit_failure_is_not_a_definite_capacity_rejection();
+  nvs_capacity_rejection_keeps_the_previous_generation(false);
+  nvs_capacity_rejection_keeps_the_previous_generation(true);
   bounded_partition_read_transactions();
   assert(live_bytes == 0 && peak_bytes == CAPACITY);
   large_windows_and_power_cuts(false);

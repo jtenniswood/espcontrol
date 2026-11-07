@@ -1,4 +1,5 @@
 #include "native_scene_test_support.h"
+#include "nested_page_fixture.h"
 #include <cmath>
 #include <tuple>
 #include <optional>
@@ -319,6 +320,7 @@ struct ProfileHarness {
   static constexpr size_t slots=limits.slot_count, image_slots=limits.image_slot_count;
   static_assert(ProfileIndex==0||ProfileIndex==2||ProfileIndex==6||ProfileIndex==8,"All grid sizes with actual profile budgets");
   static constexpr bool constrained=ProfileIndex==8;
+  DeviceUiLimits scene_limits{limits};
   Arena arena; Styles styles; Platform platform; PageNetworkStatusSource network;
   PageCountedArena counted{arena};
   lv_obj_t* root;
@@ -332,8 +334,9 @@ struct ProfileHarness {
   using Scene=PageNativeScene<slots,image_slots>;
   alignas(Scene) std::array<uint8_t,sizeof(Scene)> memory{};
   Scene* scene{nullptr};
-  explicit ProfileHarness(bool elastic_state=false, bool production_budget=false, PageCardTranslate translate=nullptr) {
+  explicit ProfileHarness(bool elastic_state=false, bool production_budget=false, PageCardTranslate translate=nullptr, bool nested=false) {
     static_assert(image_slots<=6);
+    if(nested)scene_limits.max_navigation_depth=2;
     columns.fill(LV_GRID_FR(1));columns.back()=LV_GRID_TEMPLATE_LAST;
     rows.fill(LV_GRID_FR(1));rows.back()=LV_GRID_TEMPLATE_LAST;
     root=lv_obj_create(lv_screen_active());
@@ -352,13 +355,10 @@ struct ProfileHarness {
       theme.media_control_title_font=theme.media_control_artist_font=theme.cover_title_font=theme.cover_artist_font=
       theme.option_select_font=&lv_font_montserrat_14;
     theme.translate=translate;
-    const auto cards=limits.max_cards();
     const PageNativeSceneBudget budget = production_budget
-      ? PageNativeSceneBudget{{cards,cards*512,
-          {cards*40,cards*40,constrained?128u*1024:512u*1024,32*1024,4096},
-          {cards,cards,16*1024,HA_TEXT_SENSOR_STATE_MAX_LEN}},constrained?128u*1024:256u*1024}
+      ? PageNativeSceneBudget{page_native_state_budget(limits), limits.page_store_bytes}
       : PageNativeSceneBudget{{128,16384,{1024,512,65536,SIZE_MAX,elastic_state?size_t{1024}:SIZE_MAX},{128,128,8192}},65536};
-    scene=new(memory.data()) Scene(limits,counted,budget,
+    scene=new(memory.data()) Scene(scene_limits,counted,budget,
       widgets,{limits.slot_count,limits.grid_columns},theme,page_timezone_resolver(),{},nullptr,styles,platform,network);
     assert(!scene->ready() && !scene->initialize(images,image_slots,&modal,false));
     assert(scene->initialize(images,image_slots,&modal,true) && scene->initialize(images,image_slots,&modal,true));
@@ -384,6 +384,38 @@ struct ProfileHarness {
   }
 };
 using Harness=ProfileHarness<8>;
+template<size_t ProfileIndex> void hidden_state_does_not_redraw_home(bool indicator=false) {
+  constexpr auto limits=DEVICE_UI_PROFILES[ProfileIndex];
+  ProfileHarness<ProfileIndex> h;
+  Document document(limits);
+  PanelConfigWriter writer(document.bytes.data(),document.bytes.size());
+  assert(writer.begin()==PanelConfigStatus::OK);
+  assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),std::strlen(limits.device_profile))==PanelConfigStatus::OK);
+  const std::string folder=indicator?";Folder;Auto;Auto;indicator;;subpage;;":";Folder;Auto;Auto;;;subpage;;";
+  const std::string child="~B,1|,switch.hidden,Hidden,Auto,Auto,,,,";
+  assert(writer.append_button(1,reinterpret_cast<const uint8_t*>(folder.data()),folder.size())==PanelConfigStatus::OK);
+  assert(writer.append_subpage(1,reinterpret_cast<const uint8_t*>(child.data()),child.size())==PanelConfigStatus::OK);
+  const uint8_t order='1';
+  assert(writer.append_setting(reinterpret_cast<const uint8_t*>("button_order"),12,&order,1)==PanelConfigStatus::OK);
+  assert(writer.finish(&document.size)==PanelConfigStatus::OK);
+  h.apply(document);h.scene->loop();lv_refr_now(lv_display_get_default());
+  size_t invalidations=0;
+  const auto invalidated=[](lv_event_t* event){++*static_cast<size_t*>(lv_event_get_user_data(event));};
+  lv_display_add_event_cb(lv_display_get_default(),invalidated,LV_EVENT_INVALIDATE_AREA,&invalidations);
+  const auto allocations=h.counted.memory().allocation_calls;
+  for(unsigned i=0;i<64;++i) {
+    coordinator.report("switch.hidden","",i%2?"off":"on");
+    h.scene->loop();lv_refr_now(lv_display_get_default());
+  }
+  assert((indicator?invalidations>0:invalidations==0)&&h.counted.memory().allocation_calls==allocations);
+  coordinator.report("switch.hidden","","on");
+  assert(h.scene->navigate("slot:1"));h.scene->loop();lv_refr_now(lv_display_get_default());
+  assert(lv_obj_has_state(h.widgets[1].button,LV_STATE_CHECKED));
+  invalidations=0;coordinator.report("switch.hidden","","off");
+  h.scene->loop();lv_refr_now(lv_display_get_default());
+  assert(invalidations>0&&!lv_obj_has_state(h.widgets[1].button,LV_STATE_CHECKED));
+  lv_display_remove_event_cb_with_user_data(lv_display_get_default(),invalidated,&invalidations);
+}
 void navigation_and_state() {
   Document doc(DEVICE_UI_PROFILES[8]); Harness h; h.apply(doc);
   assert(h.scene->active_page()==0 && h.platform.page==0);
@@ -630,7 +662,7 @@ void maximum_profile_disjoint_replacements() {
   for(unsigned iteration=0;iteration<20;++iteration) {
     const bool second=iteration%2;
     h.apply(second?b:a,100+iteration);
-    assert(h.scene->active().card_count()==limits.max_cards()&&
+    assert(h.scene->active().card_count()==limits.max_first_level_cards()&&
       h.scene->active().page_count()==limits.max_first_level_subpages+1u);
     visible();
     assert(h.scene->memory().state.active_channels==channels&&coordinator.entries.size()==channels);
@@ -970,6 +1002,53 @@ void initial_appearance() {
   h.platform.shown=true;h.scene->loop();
   for(size_t i=0;i<9;++i) assert(h.scene->valid(h.scene->binding(i))==(i<6));
 }
+void nested_remote_navigation() {
+  for(unsigned scenario=0;scenario<3;++scenario) {
+    Harness h(false,false,nullptr,true);
+    auto records=test::authored_nested(h.scene_limits);
+    records[3].field_mask|=1<<1;records[3].fields[1]=79;
+    for(auto &row:records)if(row.kind==test::K::STRING) {
+      if(row.id==74)row.text="Nested";
+      if(row.id==75)row.text="climate_control";
+      if(row.id==76)row.text="climate.nested";
+      if(row.id==71)row.text=scenario==2?"3,2":"2,3";
+    }
+    test::Row rooms;rooms.kind=test::K::STRING;rooms.id=79;rooms.text="Rooms";records.push_back(rooms);
+    if(scenario) {
+      auto root=records[3];root.id=60020;root.second=3;root.fields[1]=scenario==1?74:80;
+      test::Row other;other.kind=test::K::STRING;other.id=80;other.text="Other";
+      test::Row page;page.kind=test::K::PAGE;page.id=62002;page.second=root.id;page.third=72;
+      test::Row nav;nav.kind=test::K::NAVIGATION;nav.id=root.id;nav.first=page.id;
+      records.insert(records.end(),{root,other,page,nav});
+      if(scenario==2) {
+        auto owner=records[4];owner.id=62001;owner.first=page.id;
+        test::Row nested;nested.kind=test::K::PAGE;nested.id=62003;nested.first=page.id;nested.second=owner.id;
+        test::Row nested_nav;nested_nav.kind=test::K::NAVIGATION;nested_nav.id=owner.id;nested_nav.first=nested.id;
+        records.insert(records.end(),{owner,nested,nested_nav});
+      }
+    }
+    const auto source=test::wire(std::move(records));
+    assert(h.scene->prepare(2,source.data(),source.size()));
+    assert(h.scene->activate_prepared(18,2,source.data(),source.size()));
+    h.scene->loop();h.scene->loop();h.scene->loop();
+    auto &navigation=static_cast<ApplicationSceneNavigation&>(*h.scene);
+    assert(navigation.can_open_modal("climate.nested") && navigation.open_modal("climate.nested"));
+    h.scene->loop();assert(h.styles.page==(scenario?3:2) && h.scene->active_page()==0);
+    navigation.close_modal();h.scene->loop();
+    assert(navigation.can_open_subpage(" nEsTeD ") && navigation.open_subpage("Nested"));
+    h.scene->loop();
+    const PageId expected=scenario==2?4:2;
+    if(h.scene->active_page()!=expected)std::fprintf(stderr,"nested remote scenario %u: expected page %u, got %u\n",scenario,expected,h.scene->active_page());
+    assert(h.scene->active_page()==expected);
+    assert(navigation.close_subpage());h.scene->loop();assert(h.scene->active_page()==0);
+    // navigate retains its home-only targeting; close_subpage returns Home,
+    // while tapping Back from a nested page returns its actual parent.
+    if(scenario!=1)assert(!navigation.navigate("Nested"));
+    assert(navigation.open_subpage("Nested"));h.scene->loop();
+    click(h.widgets[0].button);h.scene->loop();
+    assert(h.scene->active_page()==(scenario==1?0:scenario==2?2:1));
+  }
+}
 void remote_navigation() {
   Document doc(DEVICE_UI_PROFILES[8]);Harness h;
   auto& navigation=static_cast<ApplicationSceneNavigation&>(*h.scene);
@@ -1128,9 +1207,10 @@ void qr_images_and_transactions() {
   assert(!h.scene->preparation_allocation_failed());
 }
 
-void maximum_p4_climate_cache_replacements() {
-  constexpr const auto &limits=DEVICE_UI_PROFILES[6];
-  constexpr size_t channels=7600, quota=512*1024;
+template<size_t ProfileIndex>
+void maximum_climate_cache_replacements() {
+  constexpr const auto &limits=DEVICE_UI_PROFILES[ProfileIndex];
+  constexpr size_t channels=limits.max_child_cards()*20, quota=limits.ha_state_bytes;
   const auto a=maximum_profile_document('a',limits,true);
   const auto b=maximum_profile_document('b',limits,true);
   const std::map<std::string,std::string> common{
@@ -1154,13 +1234,14 @@ void maximum_p4_climate_cache_replacements() {
       {"swing_mode", "off"},
       {"swing_horizontal_mode", "off"},
       {"friendly_name", "Qualification 1-1 µµµµµµµ"}};
-  ProfileHarness<6> h(false,true);
+  ProfileHarness<ProfileIndex> h(false,true);
   size_t stable_bytes=0, stable_objects=0;
   std::function<void(Coordinator::State)> stale;
   for(unsigned iteration=0;iteration<4;++iteration) {
     // A,A,B,B exercises full shared-cache copies and fully disjoint sets.
     h.apply(iteration<2?a:b,100+iteration);
-    assert(h.scene->active().card_count()==400&&h.scene->active().page_count()==21);
+    assert(h.scene->active().card_count()==limits.max_first_level_cards()&&
+           h.scene->active().page_count()==1+limits.max_first_level_subpages);
     assert(h.scene->memory().state.active_channels==channels&&coordinator.entries.size()==channels);
     const size_t copied=iteration%2?quota:0;
     assert(h.scene->memory().state.active_state_bytes==copied);
@@ -1202,35 +1283,44 @@ void maximum_p4_climate_cache_replacements() {
 }
 
 int main(int argc,char** argv) {
+  const bool nested=argc==2&&std::string_view(argv[1])=="--nested";
   const bool maximum_p4=argc==2&&std::string_view(argv[1])=="--maximum-p4";
   const bool six=argc==2&&std::string_view(argv[1])=="--six-slot";
   const bool fifteen=argc==2&&std::string_view(argv[1])=="--fifteen-slot";
-  assert(argc==1||maximum_p4||six||fifteen);
+  assert(argc==1||maximum_p4||six||fifteen||nested);
   lv_init();auto* display=lv_display_create(six?480:fifteen?1024:maximum_p4?1280:480,six?800:fifteen?600:maximum_p4?800:480);assert(display);
   lv_timer_pause(lv_display_get_refr_timer(display));
   static std::array<uint16_t,1280*32> pixels{};
   lv_display_set_buffers(display,pixels.data(),nullptr,sizeof(pixels),LV_DISPLAY_RENDER_MODE_PARTIAL);
   lv_display_set_flush_cb(display,[](lv_display_t* d,const lv_area_t*,uint8_t*) { lv_display_flush_ready(d); });
   native_dispatch_safe=[] { return lv_is_initialized() && !page_lvgl_dispatching() && !modal_callback_dispatching(); };
-  if(six) {
+  if(nested) {
+    nested_remote_navigation();
+  } else if(six) {
+    hidden_state_does_not_redraw_home<2>();
     queued_image_refresh<2>();
     queued_producer_content_refresh<2>();queued_producer_forecast_refresh<2>();
     maximum_profile_disjoint_replacements<2>();
   } else if(fifteen) {
+    hidden_state_does_not_redraw_home<0>();
     queued_image_refresh<0>();
     queued_producer_content_refresh<0>();queued_producer_forecast_refresh<0>();
     maximum_profile_disjoint_replacements<0>();
   } else if(maximum_p4) {
+    hidden_state_does_not_redraw_home<6>();
     queued_image_refresh<6>();
     queued_producer_content_refresh<6>();queued_producer_forecast_refresh<6>();
     live_palette_policy<6>();
     maximum_profile_disjoint_replacements<6>();
-    maximum_p4_climate_cache_replacements();
+    maximum_climate_cache_replacements<6>();
   } else {
+    hidden_state_does_not_redraw_home<8>();
+    hidden_state_does_not_redraw_home<8>(true);
     selected_scene_write_admission();
     queued_image_pool_admission();
     queued_image_refresh<8>();
     queued_producer_content_refresh<8>();queued_producer_forecast_refresh<8>();
+    maximum_climate_cache_replacements<8>();
     navigation_and_state();live_temperature_policy();elastic_state_scene_transactions();maximum_profile_disjoint_replacements<8>();panels_and_retirement();mode_and_feedback();source_styles();slider_input();slider_background_hit_testing();appearance_transactions();live_palette_policy<8>();initial_appearance();appearance_wake_without_intermediate_maintenance();remote_navigation();
     assert(!application_scene_navigation());
     remote_selection_order();qr_images_and_transactions();

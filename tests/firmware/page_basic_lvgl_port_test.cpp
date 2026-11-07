@@ -11,6 +11,7 @@
 #include "forecast_reference.h"
 #include "now_playing_reference.h"
 #include "page_card_dependencies.h"
+#include "nested_page_fixture.h"
 #include "page_device_command_policy.h"
 #include "page_entity_observer_set.h"
 #include "page_grid_input.h"
@@ -885,9 +886,9 @@ template<size_t Slots>struct Actions {
            : name == "Lock"                     ? "LOCKED"
            : name == "Lock Open"                ? "UNLOCKED"
            : name == "Fan"                      ? "FAN"
+           : name == "Weather Sunny"            ? "SUN"
            : name == "Wind arrow-right"         ? "WIND_E"
            : name == "Wind arrow-bottom-left"   ? "WIND_SW"
-           : name == "Weather Sunny"            ? "SUN"
            : name == "Lightbulb"                ? "ON"
            : name == "Blinds Open"              ? "OPEN"
            : name == "Blinds"                   ? "CLOSED"
@@ -1101,6 +1102,57 @@ template<size_t Slots>void profile(const DeviceUiLimits &limits) {
     renderer.retire_active();state.retire_active();
   }
   assert(arena.live==0);lv_obj_delete(page);
+}
+template<size_t Slots>void nested_folder_profile(const DeviceUiLimits &profile) {
+  auto limits=profile;limits.max_navigation_depth=2;
+  for(bool explicit_nested:{false,true}) {
+    test::NativeGraphFixture fixture(limits,test::summary_nested(limits,explicit_nested));
+    Arena arena;Subscriptions subscriptions;PageCardDependencies dependencies;
+    PageEntityStateRuntime state(dependencies,arena,subscriptions,{2048,2048,8192});
+    auto *page=lv_obj_create(lv_screen_active());
+    std::array<lv_coord_t,Slots+1>columns{},rows{};
+    const auto row_count=(Slots+limits.grid_columns-1)/limits.grid_columns;
+    for(size_t i=0;i<limits.grid_columns;++i)columns[i]=LV_GRID_FR(1);
+    columns[limits.grid_columns]=LV_GRID_TEMPLATE_LAST;
+    for(size_t i=0;i<row_count;++i)rows[i]=LV_GRID_FR(1);
+    rows[row_count]=LV_GRID_TEMPLATE_LAST;
+    lv_obj_set_size(page,480,480);lv_obj_set_grid_dsc_array(page,columns.data(),rows.data());
+    std::array<PageBasicWidgets,Slots>widgets{};
+    for(auto &w:widgets) {
+      w.button=lv_button_create(page);w.icon=lv_label_create(w.button);w.label=lv_label_create(w.button);
+      w.sensor_container=lv_obj_create(w.button);w.value=lv_label_create(w.sensor_container);w.unit=lv_label_create(w.sensor_container);
+    }
+    PageBasicTheme theme;theme.sensor_font=&lv_font_montserrat_14;Actions<Slots> actions;
+    {
+      PageBasicLvglPort<Slots>port(arena,state,widgets,{limits.slot_count,limits.grid_columns},theme,actions.callbacks());
+      assert(port.initialize());PageRendererRuntime<Slots>renderer(limits,arena,port);actions.renderer=&renderer;
+      assert(renderer.prepare(fixture.store) && state.prepare(fixture.store));
+      renderer.activate_prepared(fixture.store);state.activate_prepared(fixture.store);
+      subscriptions.send("light.leaf","","off");subscriptions.send("light.last","","on");subscriptions.send("light.explicit","","off");
+      renderer.update_visible();assert(lv_obj_has_state(widgets[0].button,LV_STATE_CHECKED));
+      assert(renderer.open_page(1));renderer.update_visible();
+      assert(lv_obj_has_state(widgets[1].button,LV_STATE_CHECKED)==!explicit_nested);
+      // Only the final nested leaf is on. It lies beyond a shell-sized
+      // ancestor-summary array, and no direct child can mask a missing entry.
+      assert(renderer.open_page(2));renderer.update_visible();
+      assert(!lv_obj_has_state(widgets[1].button,LV_STATE_CHECKED));
+      assert(lv_obj_has_state(widgets[Slots-1].button,LV_STATE_CHECKED));
+      assert(renderer.back() && renderer.back());renderer.update_visible();lv_obj_update_layout(page);
+      const auto cpp=cpp_allocations,reserved=arena.allocations,live=lv_live_bytes,channels=subscriptions.bindings.size();
+      for(size_t cycle=0;cycle<1000;++cycle) {
+        assert(renderer.open_page(1));renderer.update_visible();
+        assert(renderer.open_page(2));renderer.update_visible();
+        assert(renderer.back());renderer.update_visible();assert(renderer.back());renderer.update_visible();
+        lv_obj_update_layout(page);
+        assert(cpp_allocations==cpp && arena.allocations==reserved && lv_live_bytes==live && subscriptions.bindings.size()==channels);
+      }
+      ++subscriptions.generation;renderer.update_visible();
+      assert(!lv_obj_has_state(widgets[0].button,LV_STATE_CHECKED));
+      renderer.retire_active();state.retire_active();
+    }
+    assert(arena.live==0);lv_obj_delete(page);
+  }
+  std::printf("%s: nested folders 1000 cycles, immediate Back, descendant/explicit indicators, reconnect and stable resources\n",limits.device_profile);
 }
 template<size_t Slots>void status_action_profile(const DeviceUiLimits &limits) {
   Fixture fixture(limits,false,false,true);Arena arena;Subscriptions subscriptions;PageCardDependencies dependencies;
@@ -8087,6 +8139,16 @@ int main() {
       }
       continue;
     }
+    if (family && std::strcmp(family, "nested_folders") == 0) {
+      switch(limits.slot_count) {
+        case 6:nested_folder_profile<6>(limits);break;
+        case 9:nested_folder_profile<9>(limits);break;
+        case 15:nested_folder_profile<15>(limits);break;
+        case 20:nested_folder_profile<20>(limits);break;
+        default:assert(false);
+      }
+      continue;
+    }
     if (family && std::strcmp(family, "folder_indicators") == 0) {
       switch (limits.slot_count) {
         case 6:
@@ -8344,6 +8406,16 @@ int main() {
         case 15: media_control_profile<15>(limits); break;
         case 20: media_control_profile<20>(limits); break;
         default: assert(false);
+      }
+      continue;
+    }
+    if(family && std::strcmp(family,"weather_metrics")==0) {
+      switch(limits.slot_count) {
+        case 6: weather_metrics_profile<6>(limits);break;
+        case 9: weather_metrics_profile<9>(limits);break;
+        case 15: weather_metrics_profile<15>(limits);break;
+        case 20: weather_metrics_profile<20>(limits);break;
+        default:assert(false);
       }
       continue;
     }

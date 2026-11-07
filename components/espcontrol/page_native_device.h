@@ -318,15 +318,8 @@ inline bool page_native_device_start(
   select_pooled_application();
   std::array<BtnSlot, ESPCONTROL_DEVICE_UI_SLOT_COUNT> slots;
   std::copy_n(source, slots.size(), slots.begin());
-  const auto cards = DEVICE_UI_LIMITS.max_cards();
-  const bool constrained = display_modal_is_constrained(config.modal_profile);
   const PageNativeSceneBudget budget{
-      {cards,
-       cards * 512,
-       {cards * 40, cards * 40, constrained ? 128u * 1024 : 512u * 1024,
-        32u * 1024, 4u * 1024},
-       {cards, cards, 16u * 1024, HA_TEXT_SENSOR_STATE_MAX_LEN}},
-      constrained ? 128u * 1024 : 256u * 1024};
+      page_native_state_budget(DEVICE_UI_LIMITS), DEVICE_UI_LIMITS.page_store_bytes};
   float (*wifi)() = nullptr;
 #ifdef USE_WIFI
   wifi = +[]() -> float {

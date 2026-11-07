@@ -3,14 +3,15 @@
 Implementation stage: matching C++/TypeScript structural codecs and bounded
 firmware conversion are implemented. HTTP handlers can explicitly import/export
 v2 while preserving durable v1, default v1 responses and generation checks.
-The bundled editor requests v2 when advertised and retains a lossless v1 editing
-model during the durable-v1 phase. Backups still use v1. PageStore and the
+The bundled editor requests v2 when advertised, retaining the flat v1 bridge
+where graph reading is unavailable. Existing writers keep exact v1 backups;
+stored graphs use explicitly negotiated v2 snapshots. PageStore and the
 service/compatibility boot path read both versions; durable writes remain v1.
 New saves enforce profile and compatibility limits before publication. A
 released downgrade floor and physical qualification remain unfinished. This
 does not enable nested pages.
 
-Backup JSON version 2 is separate from native document v2. Exports retain a
+Flat backup JSON version 2 is separate from native document v2. Those exports retain a
 native-v1 payload alongside the readable layout. File-format interoperability
 does not establish that every older runtime can apply retained records: the
 released v2.13.0 text adapter rejects even empty native records outside its
@@ -27,6 +28,16 @@ backups with native-only settings are also refused before legacy posts when
 the target has no native document support.
 
 ## Wire layout
+
+Capabilities distinguish the transfer ceiling `max_v2_document_bytes` from
+`max_durable_document_bytes`, the actual saved-document capacity of the selected
+backend and HTTP workspace. The latter excludes both storage headers: the
+existing 40 KiB partition slots and 16 KiB NVS fallback keep their current layout.
+Converted reads and backups may exceed the durable ceiling while remaining
+within the transfer ceiling. Writes check their converted durable size before
+publication and return HTTP 413 when it does not fit. The editor rejects an
+oversized write before PUT when its representation is the durable format;
+cross-format writes retain the server's lossless conversion and size check.
 
 Integers are little-endian. The 16-byte `EPCF` envelope retains the v1 header
 layout: version at byte 4, header size at 6, payload length at 8, record count
@@ -136,12 +147,16 @@ instead of silently replacing them during UTF-8 encoding.
 
 `PageStore` retains every saved root definition through the highest stored slot,
 including slots beyond the device profile. `card_count` describes that saved
-range; `runtime_card_count` describes the admitted prefix. Runtime sources,
-subscriptions, state reads, commands and card modals use the admitted range.
+range; `runtime_card_count` counts admitted members. Root ownership retains
+the base-profile prefix. When a child page has extra retained rows beyond its
+Back-limited capacity, its order selects runtime members, including a higher
+saved card number placed in a visible cell. Runtime sources, subscriptions,
+state reads, commands and card modals share that membership.
 Dormant roots cannot acquire state through an entity shared with an active card.
 The base profile capacity stays admitted across display rotations. Navigable
-child pages retain their existing full child range, including state needed by
-parent summaries; inactive pages and unknown definitions remain saved.
+ordinary child pages retain their existing state ownership, including state
+needed by parent summaries. Unplaced extra rows, inactive pages and unknown
+definitions remain saved without becoming active sources or navigation targets.
 This changes neither the v1 document bytes nor the live document version.
 
 ## Direct runtime reading
@@ -149,14 +164,19 @@ This changes neither the v1 document bytes nor the live document version.
 `PageStore::stage_v2` reads the validated graph into the same immutable runtime
 records as v1, without serializing a temporary v1 document. Wire identities and
 record order remain independent of runtime indices. Root slots determine the
-runtime page order; retained roots through slot 32 and inactive child pages use
-the same admission as v1. Existing root/child normalization, order/spans/Back
-text, unknown fields and exact source bytes are preserved. Inconsistent raw
-import hints, sparse children, profile mismatches and nested pages fail before
-publication. This reader retains the existing first-level page model.
+runtime page order, with first-level pages before nested pages and owners in
+slot order. Retained roots through slot 32 keep complete inactive subtrees.
+Existing normalization, order/spans/Back text, unknown fields and exact source
+bytes are preserved. Inconsistent raw import hints, sparse children, profile
+mismatches and graphs beyond the supplied navigation-depth limit fail before
+publication. The reader and prepared renderer support depth two when supplied
+capable limits. Generated profiles now provide depth-two reader limits;
+production writes and editor placement remain at depth one. Capabilities expose
+`max_navigation_depth: 2` separately from `writable_navigation_depth: 1`, with the
+latter still fenced by durable-v1 release policy.
 
 The caller supplies aligned, disjoint scratch for a bounded record index,
-card grouping and one 4,095-byte decode window. PageStore retains no scratch or
+card/page grouping and one 4,095-byte decode window. PageStore retains no scratch or
 input pointers. `PageStoreRuntime` accepts either version, uses its injected
 arena allocator for scratch, limits scratch to its configured admission ceiling,
 and releases it before resource preparation. Peak accounting includes the active
@@ -164,7 +184,7 @@ arena, private staged arena, compact arena and scratch while they overlap.
 Activation verifies the prepared version and exact source bytes and makes no
 arena allocation. Preparation failures preserve the active generation.
 
-Host tests cover 3,365 cases across all nine profiles, including imported
+Host tests cover all nine profiles, including imported
 maximum folders, every supported root/child card family and authored
 normalization goldens. Independently authored graphs use forward references and
 large, reordered IDs. Failure tests cover scratch/staging/compaction/resource
@@ -193,10 +213,19 @@ in this release. HTTP v2 saves still project to v1. The release contract declare
 stored readers `[1,2]`, writer/default 1 and no minimum dual-reader release yet.
 Enabling durable v2 requires an explicit stable downgrade floor proven against
 published immutable release manifests; missing manifests or readers fail that
-gate. Compatibility retirement additionally requires two distinct consecutive
-stable dual-write releases after the durable-v2 rollout, followed by the retained
-import-only phase. The release-contract checks run in ordinary CI as well as
-release validation, with negative controls isolated from source files.
+gate. Release contracts also declare reader and writer navigation depths.
+Enabling nested writes requires explicit depth-two reader proof for the floor
+and every supported downgrade, plus legacy-mirror retirement. A flat durable-v2
+writer can retain writable depth one. Missing historical depth metadata cannot
+qualify a nested reader. Compatibility retirement additionally requires two
+distinct consecutive stable dual-write releases after the durable-v2 rollout,
+followed by the retained
+import-only phase. These releases must be consecutive in the complete stable
+history: an intervening older document version or missing manifest cannot be
+skipped. Later import-only patches may retain that phase while preserving proof
+of the original dual-write window. The release-contract checks run in ordinary
+CI as well as release validation, with negative controls isolated from source
+files.
 
 Real service/store tests seed the actual ECDO v2 envelope and restore ordinary
 and maximum fixtures for all nine profiles, including UTF-8 text, inactive
@@ -285,7 +314,7 @@ explicit v2 selection cannot accidentally submit v2 bytes as v1.
 
 V2 PUT conversion finishes before runtime preparation or storage writes. The
 projector checks graph/RAW/import-hint agreement and lossless v1 representation;
-currently unsupported nested graphs fail without flattening them. The existing
+nested graphs fail without flattening them while durable storage remains v1. The existing
 runtime still performs profile and fallible resource preparation before commit.
 Invalid/unrepresentable documents fail with 400, conversion-budget exhaustion
 with 413 and allocation failure with 503. The old configuration stays active.
@@ -316,15 +345,42 @@ respect the advertised byte ceiling, capped at 512 KiB. A missing/mismatched
 response-version header or an unprojectable graph rejects the edit without a
 write or silent downgrade. Old v1-only firmware retains its default requests.
 
-The current editor still edits through the lossless v1 model, preserving opaque
-settings and inactive records during both conversions. Its existing backup
-format explicitly retains the exact default-v1 response; v2-only firmware cannot
-produce a falsely compatible backup. The controller still serializes snapshot
+The editor preserves opaque settings and inactive records during both flat
+conversions. Graph-aware firmware uses the direct editable graph instead. Flat
+backup export retains the exact v1 response; graph export requires explicit
+depth-two reading and a separately versioned backup envelope. V2-only firmware
+without that reading capability cannot produce a falsely compatible backup.
+The controller serializes snapshot
 reads with preceding and subsequent edits. Browser checks exercise negotiated
 edit/reconnect/reload/restore and exact v1 backup export on 6/9/15/20-slot layouts;
 protocol tests separately exercise old firmware, refusal and fallback paths.
-Physical dual-reader qualification and versioned backup rollout remain separate
-work; negotiation does not establish a released durable-v2 downgrade floor.
+Physical dual-reader and backup qualification remain due; negotiation does not
+establish a released durable-v2 downgrade floor.
+
+The service rejects a v1 replacement of stored nested v2 data before runtime
+preparation or compatibility writes, including before boot activation. This
+also covers negotiated v2 requests converted to v1 during the current writer
+phase. The API returns 422 without changing the durable generation or old-format
+preferences. Ordinary flat-v2 to v1 compatibility saves remain supported.
+
+The check selects the durable generation using a checksum-verified eight-byte
+envelope prefix. Only cross-format checks reserve the exact old payload and a
+bounded v2 index, both released before runtime preparation. The later commit
+compares the inspected generation, including for non-HTTP saves, so a concurrent
+nested configuration cannot be overwritten after an earlier flat check.
+
+The native browser client can read a graph snapshot with its version and ETag.
+Nested saves require all of depth-two reading, depth-two writing and durable v2
+to be explicitly advertised. Reader-only releases cannot invoke an edit callback
+on nested data; graph rejection cannot fall back to a v1 PUT. These client
+operations now drive the editor's initial load and reconnect flow. Initial
+loading locks edits; later responses cannot replace dirty drafts, pending grid
+moves or newer local changes. Disconnect cancels an obsolete snapshot request
+so it cannot hold up the next refresh or save. While a nested graph is active, stale legacy
+button/subpage/order/colour events cannot overwrite its editor state. Back and
+the clock-bar title resolve the immediate parent/owner path. The picker requires
+explicit writable depth and excludes a third level; rejected saves retain the
+draft and restore the previous layout.
 
 ## Staged compatibility conversion
 
@@ -334,6 +390,34 @@ retains order/spans/Back labels and colours as exact order text, all panel
 settings, inactive definitions, missing versus empty records, malformed escape
 spellings and unknown extra imported fields. It uses the generated compact type
 tables with own-key lookups, so prototype-like unknown names remain data.
+
+The separate `encodePanelPageDocument` / `decodePanelPageDocument` entry points
+retain two levels as an editable graph. Their numeric editor paths are separate
+from wire IDs: 1–32 identify first-level owners; 33–1056 identify a root owner
+and child owner slot. They preserve inactive page data and reject orphaned or
+third-level pages. The flat-v1 projector remains strict. These graph entry
+points support editor creation with negotiated writable depth. Clipboard
+copy/move/delete and duplicate use one native transaction before applying editor
+state; inactive saved cards are not reused as empty paste slots. Changed cut
+sources reject the transfer. Explicit save rejection retains the clipboard for
+retry; an uncertain acknowledgement requires reloading saved state first.
+Version-two card codes preserve raw subtree values and are rejected by older
+editors; flat card codes retain version one. `page_subtree.ts` can capture and stage complete folder trees, remap
+paths during copy/move and validate the whole candidate before returning it;
+failed transfers leave their input unchanged.
+
+Graph backups preserve the exact version-two native bytes in an outer backup
+format version three. These are different version numbers: existing flat
+exports retain outer version two and native version one. The new outer version
+makes older editors reject a graph backup before skipping its native section.
+Current editors require nested-write capability before restoring nested data;
+reader-only firmware can export it after an explicit v1 projection rejection.
+Restore publishes the complete graph before updating the editor or other backup
+settings. It preserves inactive paths, raw Back values and unknown settings;
+it does not inject display defaults into the stored graph. Pending grid moves
+finish before replacement. Cross-profile nested backups reject instead of
+falling back to a partial portable layout. Browser fixtures check these paths,
+including the frozen older editor; physical backup qualification remains due.
 
 Projection rejects stale raw hints, inconsistent root-order/settings, sparse
 child positions, invalid absence provenance and nested pages. New fields use a

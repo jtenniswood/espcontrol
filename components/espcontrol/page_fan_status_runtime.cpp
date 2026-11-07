@@ -20,16 +20,15 @@ bool keys(const PageStore& store, Emit emit) {
   for (PageId p = 0; p < store.page_count(); ++p) {
     const auto* page = store.page(p);
     if (!page->navigable) continue;
-    for (CardId id = page->first_card; id < page->first_card + page->runtime_card_count; ++id) {
+    for (CardId id : page->runtime_cards()) {
       if (!is_status_card(store, id)) continue;
       const auto key = store.field(*store.card(id), CardField::ENTITY);
       bool duplicate = false;
       for (PageId before = 0; before <= p && !duplicate; ++before) {
         const auto* earlier = store.page(before);
         if (!earlier->navigable) continue;
-        for (CardId previous = earlier->first_card;
-             previous < earlier->first_card + earlier->runtime_card_count && previous < id; ++previous)
-          if (is_status_card(store, previous) &&
+        for (CardId previous : earlier->runtime_cards())
+          if (previous < id && is_status_card(store, previous) &&
               store.field(*store.card(previous), CardField::ENTITY) == key) {
             duplicate = true;
             break;

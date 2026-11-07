@@ -43,13 +43,17 @@ class MemoryBackend final : public StorageBackend {
     if (size > 0) std::memcpy(slots_[slot].data() + offset, data, size);
     return true;
   }
-  bool sync() override { return true; }
+  bool sync() override { return !fail_sync_; }
+  StoreStatus sync_failure() const override { return sync_failure_; }
+  void fail_sync(StoreStatus value) { fail_sync_ = true; sync_failure_ = value; }
+  void allow_sync() { fail_sync_ = false; }
   void fail_writes(bool value) { fail_writes_ = value; }
   size_t write_calls{0};
 
 private:
   std::array<std::vector<uint8_t>, CONFIGURATION_SLOT_COUNT> slots_;
-  bool fail_writes_{false};
+  bool fail_writes_{false}, fail_sync_{false};
+  StoreStatus sync_failure_{StoreStatus::SYNC_FAILED};
 };
 
 class FakeLegacy final : public LegacyConfigurationAdapter {
@@ -246,6 +250,38 @@ bool failed_durable_save_never_updates_legacy() {
       service.save_current(expected.data(), expected.size());
   return saved.status == ServiceStatus::STORE_FAILED && !saved.durable() &&
          legacy.mirror_calls == 0;
+}
+
+bool storage_capacity_rejection_discards_prepared_runtime_without_publishing() {
+  for (const bool conditional : {false, true}) {
+    for (const auto failure : {StoreStatus::STORAGE_FULL, StoreStatus::SYNC_FAILED}) {
+      MemoryBackend backend(256); ConfigurationStore store(backend);
+      FakeLegacy legacy; FakeRuntime runtime;
+      ConfigurationService service(store, legacy); service.set_runtime_adapter(&runtime);
+      const auto old = bytes("accepted"), next = bytes("larger-candidate");
+      if (!service.save_current(old.data(), old.size()).ok()) return false;
+      backend.fail_sync(failure);
+      const auto rejected = conditional
+          ? service.save_if_generation(1, CURRENT_CONFIGURATION_DOCUMENT_VERSION, next.data(), next.size())
+          : service.save_current(next.data(), next.size());
+      if (rejected.status != (failure == StoreStatus::STORAGE_FULL
+                                 ? ServiceStatus::CAPACITY_EXCEEDED : ServiceStatus::STORE_FAILED) ||
+          rejected.store_status != failure || rejected.durable() ||
+          runtime.apply_calls != 1 || runtime.applied != old || runtime.has_prepared ||
+          legacy.mirror_calls != 1 || legacy.publish_calls != 1 || legacy.mirrored != old)
+        return false;
+      std::array<uint8_t, 64> loaded{};
+      const auto current = service.load(loaded.data(), loaded.size());
+      if (!current.ok() || current.generation != 1 ||
+          !std::equal(old.begin(), old.end(), loaded.begin())) return false;
+      backend.allow_sync();
+      const auto retried = service.save_if_generation(1, CURRENT_CONFIGURATION_DOCUMENT_VERSION,
+                                                      next.data(), next.size());
+      if (!retried.ok() || retried.generation != 2 || runtime.applied != next ||
+          legacy.mirrored != next) return false;
+    }
+  }
+  return true;
 }
 
 bool successful_save_dual_writes() {
@@ -882,6 +918,7 @@ int main() {
       partial_migration_refreshes_the_native_shadow() &&
       failed_legacy_mirror_keeps_the_native_save_durable() &&
       failed_durable_save_never_updates_legacy() &&
+      storage_capacity_rejection_discards_prepared_runtime_without_publishing() &&
       successful_save_dual_writes() &&
       successful_save_updates_the_native_runtime() &&
       stored_document_can_be_applied_to_the_runtime_atomically() &&

@@ -33,6 +33,10 @@ class ConfigurationMainLoop {
   ConfigurationSaveTransaction save_if_generation(uint32_t expected_generation,
       uint16_t version, const uint8_t *document, size_t size,
       std::chrono::milliseconds queue_timeout = std::chrono::seconds(5));
+  ConfigurationSaveTransaction save_if_generation(uint32_t expected_generation,
+      uint16_t version, const uint8_t *document, size_t size,
+      ConfigurationWriteSource source,
+      std::chrono::milliseconds queue_timeout = std::chrono::seconds(5));
 
   // At most one transaction per iteration. Service preparation, durable commit,
   // runtime activation and compatibility mirroring all execute on this caller.
@@ -50,6 +54,7 @@ class ConfigurationMainLoop {
     size_t size{0};
     uint32_t generation{0};
     uint16_t version{0};
+    ConfigurationWriteSource source{};
     ConfigurationDispatchStatus dispatch{ConfigurationDispatchStatus::COMPLETED};
     ServiceLoadResult loaded{};
     ServiceSaveResult saved{};

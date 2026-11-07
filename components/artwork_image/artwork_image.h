@@ -102,6 +102,7 @@ class ArtworkImage : public PollingComponent,
   void cancel_update();
   const std::string &get_url() const { return this->url_; }
   int get_last_http_status() const { return this->last_http_status_; }
+  bool last_failure_was_resource() const { return this->transfer_failure_ == TransferFailure::RESOURCE; }
   bool last_error_was_ha_media_proxy_not_found() const {
     return this->last_http_status_ == HTTP_CODE_NOT_FOUND && this->last_error_was_ha_media_proxy_;
   }
@@ -263,11 +264,14 @@ class ArtworkImage : public PollingComponent,
   void log_timing_(const char *result, size_t bytes_read) const;
   void finish_download_();
   void fail_download_();
+  int prepare_animation_slot_(bool replacing = false);
   void retain_animation_();
   void pause_animation_for_refresh_();
   void replace_animation_();
   void stop_animation_();
   void loop_animation_();
+  void suspend_animation_workspace_();
+  void suspend_hidden_animations_();
 
   /**
    * @brief Draw a pixel into the buffer.

@@ -14,7 +14,7 @@
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #include "configuration_service.h"
 #include "configuration_main_loop.h"
-#include "panel_backup.h"
+#include "panel_backup_document.h"
 #include "panel_config_http_context.h"
 #include "panel_identity.h"
 
@@ -112,11 +112,17 @@ class PanelBackupHandler final : public esphome::web_server_idf::AsyncWebHandler
       send_backup_error(request, "503 Service Unavailable", "Saved configuration is unavailable");
       return;
     }
-    if (loaded.document_version != 1) {
-      send_backup_error(request, "422 Unprocessable Content", "Use the web editor to export this configuration without losing saved pages");
+    PanelBackupDocumentView saved_document(document, loaded.document_size, config.allocate, config.release);
+    const auto prepared = saved_document.prepare(loaded.document_version, backup.slots, backup.profile);
+    if (prepared == PanelBackupDocumentStatus::UNSUPPORTED_VERSION) {
+      send_backup_error(request, "422 Unprocessable Content", "Saved configuration needs newer backup support");
       return;
     }
-    if (!valid_backup_document(document, loaded.document_size, backup.slots)) {
+    if (prepared == PanelBackupDocumentStatus::ALLOCATION_FAILED) {
+      send_backup_error(request, "503 Service Unavailable", "Backup validation memory is unavailable; retry shortly");
+      return;
+    }
+    if (prepared != PanelBackupDocumentStatus::OK) {
       send_backup_error(request, "500 Internal Server Error", "Saved configuration is invalid");
       return;
     }
@@ -170,8 +176,7 @@ class PanelBackupHandler final : public esphome::web_server_idf::AsyncWebHandler
       }
       return true;
     };
-    if (!write_backup(document, loaded.document_size, backup.slots,
-                      settings, screen, identity, exported_at, sink)) return;
+    if (!saved_document.write(settings, screen, identity, exported_at, sink)) return;
     if (!buffer.empty() && httpd_resp_send_chunk(raw, buffer.data(), buffer.size()) != ESP_OK) return;
     httpd_resp_send_chunk(raw, nullptr, 0);
   }

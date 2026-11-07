@@ -16,9 +16,10 @@
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #include "panel_config_document.h"
 #include "panel_config_http_context.h"
+#include "panel_config_http_limits.h"
 #include "panel_config_http_etag.h"
 #include "panel_config_upload.h"
-#include "panel_config_representation.h"
+#include "panel_config_durable_representation.h"
 #include "panel_config_write_status.h"
 
 namespace espcontrol::configuration {
@@ -151,22 +152,28 @@ class PanelConfigWriteHandler final
       return;
     }
 
-    PanelConfigRepresentation converted(context.allocate, context.release);
+    PanelConfigDurableRepresentation converted(context.allocate, context.release);
     const uint8_t *document = upload->body.data();
     size_t document_size = upload->body.size();
-    if (representation == 2) {
-      const auto status = converted.convert(2, 1, document, document_size, context.document_capacity);
+    {
+      const auto status = converted.select(representation, context.service->write_version(),
+          document, document_size, panel_config_writable_document_bytes());
       if (status != PanelConfigRepresentationStatus::OK) {
         send_status(raw_request, status == PanelConfigRepresentationStatus::UNAVAILABLE
             ? "503 Service Unavailable" : status == PanelConfigRepresentationStatus::TOO_LARGE
             ? "413 Content Too Large" : "400 Bad Request",
-            "Configuration cannot be converted losslessly to the stored v1 format");
+            "Configuration cannot be converted losslessly to the stored format");
         return;
       }
       document = converted.data(); document_size = converted.size();
     }
+    const auto durable_version = converted.version();
+    if (document_size > panel_config_writable_document_bytes()) {
+      send_status(raw_request, "413 Content Too Large", "Configuration exceeds the stored document byte limit");
+      return;
+    }
     const auto transaction = context.transactions->save_if_generation(
-        expected_generation, PANEL_CONFIG_DOCUMENT_VERSION, document, document_size);
+        expected_generation, durable_version, document, document_size, ConfigurationWriteSource{representation});
     if (transaction.dispatch != ConfigurationDispatchStatus::COMPLETED) {
       send_status(raw_request, "503 Service Unavailable",
                   "Panel configuration is busy; retry the request");
@@ -186,9 +193,16 @@ class PanelConfigWriteHandler final
                   "Panel configuration changed on the device");
       return;
     }
+    if (response == PanelConfigWriteResponse::INCOMPATIBLE_REPLACEMENT) {
+      send_status(raw_request, "422 Unprocessable Content",
+                  "This configuration contains nested pages; use a compatible editor and graph writer. No settings were changed");
+      return;
+    }
     if (response == PanelConfigWriteResponse::CAPACITY_EXCEEDED) {
       send_status(raw_request, "413 Content Too Large",
-                  "Configuration exceeds this display's page, image or text limits; previous configuration remains active");
+                  saved.store_status == StoreStatus::STORAGE_FULL
+                      ? "Not enough free settings storage to save this dashboard; previous configuration remains active"
+                      : "Configuration exceeds this display's page, image or text limits; previous configuration remains active");
       return;
     }
     if (response == PanelConfigWriteResponse::BAD_REQUEST) {

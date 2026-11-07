@@ -1,8 +1,10 @@
 # Configuration-owned entity state
 
-This describes the configuration-owned entity-state model used by prepared
-page runtimes. Device and release policies determine its budgets and navigation
-limits.
+The selected native scene on this branch uses this configuration-owned state
+runtime. It replaces widget-owned HA state for stored pages; physical parity
+and release qualification remain open. Current resource budgets and the
+separate nested-write gate are recorded in the
+[delivery plan](nested-pages-delivery.md).
 
 `PageEntityStateRuntime` prepares a card-to-entity/attribute graph from an
 explicit driver dependency source. Equal pairs share one channel; multiple
@@ -75,10 +77,14 @@ It compares unique entities with a shared source, checks values and graph
 counts, and verifies peak accounting against the test allocator. It has no
 timing pass threshold and does not represent measured device heap use.
 
-The [card dependency declarations](page-card-dependencies.md) now cover the
-registered drivers and have host corpus/max-layout coverage. Physical cutover
-also requires mode parity, hidden-page behaviour, parent summaries and panel
-consumers. Whole-device preparation peaks include coordinator/native storage
-and allocator overhead beyond these counters. The selected renderer's device
-qualification and release policy govern cutover; this graph replaces
-widget-owned state rather than adding a second cache beside eager page widgets.
+The [card dependency declarations](page-card-dependencies.md) cover the
+registered drivers and have host corpus/max-layout coverage. Physical S3 and
+10-inch P4 checks also fill their complete HA caches through same/disjoint
+replacements and reconnects; see the
+[qualification record](nested-pages-qualification.md) for exact source and
+workload scopes. Finish physical parity for every mode, hidden-page behaviour,
+parent summaries and panel-level consumers. Complete preparation peaks,
+including coordinator/native allocations and image buffers, remain a release
+gate. The selected scene uses reusable visible widgets rather than retaining
+eager widgets for every stored page. Allocator overhead remains outside the
+requested arena-byte counters.

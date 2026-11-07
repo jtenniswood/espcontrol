@@ -25,7 +25,7 @@ bool PageTimezoneRuntime::prepare(const PageStore& store) {
   for (PageId p = 0; p < store.page_count(); ++p) {
     const auto* page = store.page(p);
     if (!page->navigable) continue;
-    for (CardId id = page->first_card; id < page->first_card + page->runtime_card_count; ++id)
+    for (CardId id : page->runtime_cards())
       if (supported(store, id)) ++staged_.cards;
   }
   return true;

@@ -25,6 +25,7 @@ enum class StoreStatus : uint8_t {
   SYNC_FAILED,
   VERIFY_FAILED,
   ALLOCATION_FAILED,
+  STORAGE_FULL,
 };
 
 struct LoadResult {
@@ -66,6 +67,9 @@ class StorageBackend {
   virtual bool write(uint8_t slot, size_t offset, const uint8_t *data,
                      size_t size) = 0;
   virtual bool sync() = 0;
+  // A full shared backend is a definite capacity rejection, not an unknown
+  // I/O failure. Query immediately after a failed sync, before rollback.
+  virtual StoreStatus sync_failure() const { return StoreStatus::SYNC_FAILED; }
 };
 
 // Durable opaque-payload store for the future versioned configuration
@@ -76,6 +80,10 @@ class ConfigurationStore {
   explicit ConfigurationStore(StorageBackend &backend) : backend_(backend) {}
 
   LoadResult load(uint8_t *output, size_t output_capacity);
+  // Verify/select the whole durable payload, then copy only its prefix. The
+  // result still reports the complete size and generation; no full copy is
+  // reserved merely to inspect a document envelope.
+  LoadResult load_prefix(uint8_t *output, size_t prefix_capacity);
   CommitResult commit(const uint8_t *payload, size_t payload_size);
   CommitResult commit_if_generation(uint32_t expected_generation,
                                     const uint8_t *payload,
@@ -94,6 +102,7 @@ class ConfigurationStore {
     uint8_t slot{UINT8_MAX};
   };
 
+  LoadResult load_internal(uint8_t *output, size_t capacity, bool prefix);
   SlotMetadata inspect_slot(uint8_t slot);
   bool checksum_slot_payload(uint8_t slot, const uint8_t *header,
                              size_t payload_size, uint32_t *checksum);

@@ -4,6 +4,8 @@ import { decodeNativeV2, encodeNativeV2, NativeV2Kind as K, type NativeV2Record,
 import { decodeConfigField, encodeConfigField } from "./config_primitives";
 import { CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE, CARD_CONTRACT_SUBPAGE_TYPE_CODES } from "../generated/card_contract";
 
+import { childPageKey, pageDepth } from "./page_keys";
+
 const RAW = 1, ABSENT = 2, NO_ID = 65535;
 function check(value: unknown, reason: string): asserts value {
   if (!value) throw new PanelConfigError(`Native configuration conversion: ${reason}`);
@@ -25,6 +27,15 @@ function fieldsFromRaw(raw: string, child: boolean, compact: boolean): string[] 
   if (child) { fields[2] ||= "Auto"; fields[3] ||= "Auto"; }
   return fields;
 }
+/** Includes explicit paths and folders whose empty target is synthesized. */
+export function panelPageDocumentDepth(document: PanelConfigDocument): number {
+  if (Object.keys(document.subpages).some((key) => Number(key) > 32)) return 2;
+  for (const raw of Object.values(document.subpages)) {
+    const compact = raw.startsWith("~"), parts = (compact ? raw.slice(1) : raw).split("|");
+    if (parts.slice(1).some((value) => fieldsFromRaw(value, true, compact)[6] === "subpage")) return 2;
+  }
+  return 1;
+}
 function childDefaults(fields: readonly string[]): string[] {
   const copy = [...fields]; copy[2] ||= "Auto"; copy[3] ||= "Auto"; return copy;
 }
@@ -40,7 +51,21 @@ function fits(value: string): boolean { return new TextEncoder().encode(value).l
 
 /** Import exact v1 saved values into independent graph identities. */
 export function convertNativeV1ToV2(input: Uint8Array): Uint8Array {
-  const source = decodePanelConfig(input);
+  return buildNativeGraph(decodePanelConfig(input), false);
+}
+
+/** Encode editable page paths directly; nested data never passes through v1. */
+export function encodePanelPageDocument(source: PanelConfigDocument): Uint8Array {
+  for (const key of Object.keys(source.subpages)) {
+    check(/^[1-9][0-9]*$/.test(key) && pageDepth(Number(key)) > 0, "invalid page path");
+  }
+  // Retain deployed root/settings validation without applying v1's flat page
+  // count or slot namespace to a nested graph.
+  encodePanelConfig({ ...source, subpages: Object.fromEntries(Object.entries(source.subpages).filter(([key]) => Number(key) <= 32)) });
+  return buildNativeGraph(source, true);
+}
+
+function buildNativeGraph(source: PanelConfigDocument, nested: boolean): Uint8Array {
   const records: NativeV2Record[] = [{ kind: K.Profile, text: source.deviceProfile }];
   const strings = new Map<string, number>(), entities = new Map<string, number>();
   function intern(text: string): number {
@@ -69,25 +94,40 @@ export function convertNativeV1ToV2(input: Uint8Array): Uint8Array {
   }
   records.push({ kind: K.Page, id: 0, first: NO_ID, second: NO_ID,
     third: intern(Object.hasOwn(source.settings, "button_order") ? source.settings.button_order! : "") });
-  const slots = [...new Set([...Object.keys(source.buttons), ...Object.keys(source.subpages)].map(Number))].sort((a, b) => a - b);
+  const slots = [...new Set([...Object.keys(source.buttons), ...Object.keys(source.subpages).filter((key) => Number(key) <= 32)].map(Number))].sort((a, b) => a - b);
   let nextPage = 1, nextCard = 33;
+  const visited = new Set<number>();
+  function page(owner: number, parent: number, key: number, ownerFields: string[], depth: number): void {
+    const hasPage = Object.hasOwn(source.subpages, key), folder = ownerFields[6] === "subpage";
+    if (!hasPage && !folder) return;
+    visited.add(key);
+    const rawPage = hasPage ? source.subpages[key]! : "";
+    check(typeof rawPage === "string" && fits(rawPage), "page exceeds the saved value byte limit");
+    const compact = rawPage.startsWith("~"), parts = (compact ? rawPage.slice(1) : rawPage).split("|");
+    const id = nextPage++;
+    records.push({ kind: K.Page, id, first: parent, second: owner, third: intern(parts[0]!),
+      flags: hasPage ? Number(compact) : depth === 1 ? ABSENT : 0 });
+    if (folder) records.push({ kind: K.Navigation, id: owner, first: id });
+    for (let i = 1; i < parts.length; ++i) {
+      check(nextCard < NO_ID, "too many stored cards");
+      const child = nextCard++, fields = fieldsFromRaw(parts[i]!, true, compact);
+      card(child, id, i, fields, parts[i]!);
+      if (!nested) continue;
+      if (depth === 2) {
+        check(fields[6] !== "subpage", "subpages can be at most two levels deep");
+        continue;
+      }
+      if (fields[6] === "subpage" || (i <= 32 && Object.hasOwn(source.subpages, childPageKey(key, i))))
+        page(child, id, childPageKey(key, i), fields, depth + 1);
+    }
+  }
   for (const slot of slots) {
     const present = Object.hasOwn(source.buttons, slot), raw = present ? source.buttons[slot]! : undefined;
     const fields = fieldsFromRaw(raw ?? "", false, false);
     card(slot, 0, slot, fields, raw);
-    const hasPage = Object.hasOwn(source.subpages, slot), folder = fields[6] === "subpage";
-    if (!hasPage && !folder) continue;
-    const rawPage = hasPage ? source.subpages[slot]! : "";
-    const compact = rawPage.startsWith("~"), parts = (compact ? rawPage.slice(1) : rawPage).split("|");
-    const page = nextPage++;
-    records.push({ kind: K.Page, id: page, first: 0, second: slot, third: intern(parts[0]!),
-      flags: hasPage ? Number(compact) : ABSENT });
-    if (folder) records.push({ kind: K.Navigation, id: slot, first: page });
-    for (let i = 1; i < parts.length; ++i) {
-      check(nextCard < NO_ID, "too many stored cards");
-      card(nextCard++, page, i, fieldsFromRaw(parts[i]!, true, compact), parts[i]!);
-    }
+    page(slot, 0, slot, fields, 1);
   }
+  check(Object.keys(source.subpages).every((key) => visited.has(Number(key))), "orphaned page data");
   for (const key of Object.keys(source.settings).sort()) {
     records.push({ kind: K.Setting, id: intern(key), first: intern(source.settings[key]!) });
   }
@@ -96,6 +136,15 @@ export function convertNativeV1ToV2(input: Uint8Array): Uint8Array {
 
 /** Project only configurations that v1 can preserve; never drop unsupported data. */
 export function convertNativeV2ToV1(input: Uint8Array): Uint8Array {
+  return encodePanelConfig(projectNativeGraph(input, false));
+}
+
+/** Keep the familiar per-page editing values with explicit two-level paths. */
+export function decodePanelPageDocument(input: Uint8Array): PanelConfigDocument {
+  return projectNativeGraph(input, true);
+}
+
+function projectNativeGraph(input: Uint8Array, nested: boolean): PanelConfigDocument {
   const records = decodeNativeV2(input), byKind = new Map<number, Map<number, NativeV2DecodedRecord>>();
   for (const record of records) {
     if (!byKind.has(record.kind)) byKind.set(record.kind, new Map());
@@ -117,7 +166,7 @@ export function convertNativeV2ToV1(input: Uint8Array): Uint8Array {
       if (!pageCards.has(r.first)) pageCards.set(r.first, []);
       pageCards.get(r.first)!.push(r);
     } else if (r.kind === K.Page && r.id) {
-      check(r.first === 0, "nested pages cannot be represented by v1"); ownerPage.set(r.second, r);
+      check(nested || r.first === 0, "nested pages cannot be represented by v1"); ownerPage.set(r.second, r);
     } else if (r.kind === K.Setting) source.settings[text(r.id)] = text(r.first);
   }
   for (const list of pageCards.values()) list.sort((a, b) => a.second - b.second);
@@ -143,6 +192,12 @@ export function convertNativeV2ToV1(input: Uint8Array): Uint8Array {
       source.buttons[card.second] = fits(compact) ? compact : plain;
     }
   }
+  function key(page: NativeV2DecodedRecord): number {
+    if (page.first === 0) return get(K.Card, page.second)!.second;
+    const parent = get(K.Page, page.first)!;
+    check(parent.first === 0, "subpages can be at most two levels deep");
+    return childPageKey(key(parent), get(K.Card, page.second)!.second);
+  }
   for (const page of ownerPage.values()) {
     const owner = get(K.Card, page.second)!, savedOwner = fields(owner), children = pageCards.get(page.id) ?? [];
     check(owner.second <= 32, "subpage owner slot exceeds the v1 capacity");
@@ -157,6 +212,8 @@ export function convertNativeV2ToV1(input: Uint8Array): Uint8Array {
     check(!order.includes("|"), "subpage order contains a legacy record separator");
     children.forEach((card, i) => {
       check(card.second === i + 1, "sparse child slots cannot be represented losslessly by v1");
+      if (nested) check((fields(card)[6] === "subpage") === !!get(K.Navigation, card.id),
+        "folder is missing its explicit page target");
       check(card.flags !== ABSENT, "absent-card provenance is only valid for root owners");
       if (card.flags === RAW) {
         const raw = text(card.rawSource);
@@ -190,8 +247,9 @@ export function convertNativeV2ToV1(input: Uint8Array): Uint8Array {
     }
     const raw = serialize(originalCompact) ?? serialize(!originalCompact);
     check(raw !== undefined, "page cannot preserve raw imports in a v1 spelling");
-    source.subpages[owner.second] = raw;
+    source.subpages[key(page)] = raw;
   }
   // Reuse deployed v1 record, UTF-8 and byte limits before returning any result.
-  return encodePanelConfig(source);
+  encodePanelConfig({ ...source, subpages: Object.fromEntries(Object.entries(source.subpages).filter(([key]) => Number(key) <= 32)) });
+  return source;
 }

@@ -1,3 +1,4 @@
+import type { NativePageEditorLoader } from "../features/page_editor";
 import { state } from "../state/app_instance";
 import { applySseHandlerAliases } from "../state/event_aliases";
 import {
@@ -48,6 +49,7 @@ export function createAppEventsFeature(
     shell: Pick<ControlsShellFeature, "setConfigLocked" | "showBanner">,
     stateLoader: Pick<StateLoaderFeature, "refreshFirmwareVersion" | "refreshScreensaverTimeout" | "eventStreamEnabled" | "loadInitialState">,
     gridMigration: Pick<GridMigrationFeature, "schedule">,
+    nativePages?: Pick<NativePageEditorLoader, "refresh" | "invalidate" | "refreshAfterChange">,
 ): AppEventsFeature {
     const { rememberEntityPostPath } = entityState;
     const { setConfigLocked, showBanner } = shell;
@@ -62,24 +64,24 @@ export function createAppEventsFeature(
     } = c6Firmware;
     // ── SSE ────────────────────────────────────────────────────────────────
     function connectEvents(this: any) {
+        nativePages?.invalidate();
+        void nativePages?.refresh();
         function markConnected(this: any) {
             resetStateForConnection(state);
             runtime.orderReceived = false;
             setConfigLocked(false);
             if (els.banner)
                 els.banner.className = "sp-banner";
-            els.root.querySelectorAll(".sp-apply-btn").forEach(function (this: any, btn?: any) {
-                btn.disabled = false;
-                btn.textContent = "Apply Configuration";
-            });
             clearTimeout(runtime.migrationTimer as any);
             runtime.migrationTimer = setTimeout(gridMigration.schedule, 5000);
             clearTimeout(runtime.sliderMigrationTimer as any);
             runtime.pendingSliderSubpageMigrations = {};
             stateLoader.refreshFirmwareVersion();
             stateLoader.refreshScreensaverTimeout();
+            void nativePages?.refresh();
         }
         function handleDisconnected(this: any) {
+            nativePages?.invalidate();
             setConfigLocked(true, "Reconnecting to device\u2026");
             showBanner("Reconnecting to device\u2026", "offline");
         }
@@ -93,7 +95,11 @@ export function createAppEventsFeature(
             var val: any = d.state != null ? String(d.state) : "";
             for (var ki: any = 0; ki < keys.length; ki++) {
                 if (sseHandlers[keys[ki]]) {
-                    sseHandlers[keys[ki]](val, d, keys[ki]);
+                    const handler = sseHandlers[keys[ki]];
+                    handler.call(sseHandlers, val, d, keys[ki]);
+                    if (state.nativePageSnapshotLoaded &&
+                        (handler === sseHandlers["text-button_order"] || handler === sseHandlers["text-button_on_color"]))
+                        nativePages?.refreshAfterChange();
                     return;
                 }
             }
@@ -153,6 +159,9 @@ export function createAppEventsFeature(
                     var m: any = keys[pk].match(ssePatterns[i].re);
                     if (m) {
                         ssePatterns[i].fn(m, val, d);
+                        // Entity events still announce external legacy edits,
+                        // but native-loaded pages refresh as a whole document.
+                        if (state.nativePageSnapshotLoaded) nativePages?.refreshAfterChange();
                         return;
                     }
                 }
@@ -166,6 +175,7 @@ export function createAppEventsFeature(
             "onConnected": markConnected,
             "onDisconnected": handleDisconnected,
             "onPing": pageTitle.handleWebServerPingEvent,
+            "onConfigurationChange": () => nativePages?.refreshAfterChange(),
             "parseState": function (e: any) { return parseEntityEventData(e.data); },
             "onState": handleState,
         });

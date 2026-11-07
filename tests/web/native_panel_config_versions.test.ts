@@ -2,6 +2,7 @@ import { createNativePanelConfigClient, type NativePanelConfigRequest, type Nati
 import { decodePanelConfig, encodePanelConfig, type PanelConfigDocument } from "../../src/webserver/model/panel_config";
 import { convertNativeV1ToV2, convertNativeV2ToV1 } from "../../src/webserver/model/panel_config_conversion";
 import { decodeNativeV2, encodeNativeV2, NativeV2Kind, type NativeV2Record } from "../../src/webserver/model/panel_config_v2";
+import { NativePanelConfigController } from "../../src/webserver/controllers/native_panel_config_controller";
 
 function check(value: unknown, message: string): asserts value { if (!value) throw new Error(message); }
 function same(actual: unknown, expected: unknown, message: string): void {
@@ -24,6 +25,53 @@ function capabilities(versions = [1, 2], max = 524288): NativePanelConfigRespons
   } }) };
 }
 const selected = (request?: NativePanelConfigRequest) => Number(request?.headers?.["X-Panel-Config-Version"] ?? 1);
+
+export async function runNativeSnapshotCancellationTests(): Promise<void> {
+  for (const priorOutcome of ["saved", "failed"] as const) {
+    let started!: () => void;
+    const firstStarted = new Promise<void>(resolve => { started = resolve; });
+    const events: string[] = [];
+    let reads = 0, persisted: PanelConfigDocument | undefined;
+    const controller = new NativePanelConfigController({
+      fetch: async (path, request) => {
+        if (path.endsWith("capabilities")) return capabilities();
+        if (request?.method === "PUT") {
+          events.push("write");
+          same(request.headers?.["If-Match"], '"v2-3"', "queued save uses its fresh generation");
+          persisted = model(request.body!, 2);
+          return response(204);
+        }
+        events.push(`read:${++reads}`);
+        if (reads === 1) {
+          check(request?.signal, "snapshot forwards its cancellation signal to fetch");
+          const signal = request.signal;
+          return new Promise<NativePanelConfigResponse>((_resolve, reject) => {
+            signal.addEventListener("abort", () => reject(new Error("Disconnected")), { once: true });
+            started();
+          });
+        }
+        return response(200, bytes(initial, 2), 2, `"v2-${reads}"`);
+      },
+      deviceProfile: () => "panel-a", slotCount: () => 9,
+      entityName: name => name, entityNameForSlot: (name, slot) => `${name}_${slot}`,
+      normalizeHexColor: value => value, showBanner: () => {}, delay: callback => callback(),
+    });
+    controller.saveQueue = Promise.resolve(priorOutcome);
+    const abort = new AbortController();
+    const obsolete = controller.readSnapshot(abort.signal).then(() => false, () => true);
+    await firstStarted;
+    const replacement = controller.readSnapshot();
+    same(reads, 1, "replacement snapshot waits for the active read");
+    abort.abort();
+    check(await obsolete, "cancelled snapshot rejects rather than applying a partial document");
+    const current = await replacement;
+    same([current?.document, current?.etag], [initial, '"v2-2"'], "reconnect receives a complete fresh snapshot");
+    same(await controller.saveQueue, priorOutcome, "cancelled and successful reads preserve the previous save outcome");
+    same(await controller.schedule(update), "saved", "cancellation releases the serialized queue for later edits");
+    same(persisted, update(initial), "later edit retains dormant records and opaque settings");
+    same(events, ["read:1", "read:2", "read:3", "write"], "no legacy fallback, extra writes or stale read reuse");
+  }
+}
 function bytes(document: PanelConfigDocument, version: number): Uint8Array {
   const v1 = encodePanelConfig(document); return version === 2 ? convertNativeV1ToV2(v1) : v1;
 }
@@ -170,6 +218,23 @@ export async function runNativeNegotiatedBackupTests(): Promise<void> {
   same(backupVersions, [2, 1], "backup explicitly requests its compatible v1 representation");
   same(edits, 1, "backup does not write or trigger migration");
 
+  for (const [preferred, stored] of [[2, 1], [1, 2]] as const) {
+    const requested: number[] = [], storedBytes = stored === 1 ? exact : bytes(initial, 2);
+    const selectedStorage = createNativePanelConfigClient(async (path, request) => {
+      if (path.endsWith("capabilities")) return { ...response(200), json: async () => ({ configuration: {
+        read: true, write: true, document_versions: [1, 2], max_navigation_depth: 2,
+        writable_navigation_depth: 1, durable_document_version: preferred,
+      } }) };
+      check(request?.method !== "PUT", "choosing a backup format never writes");
+      const version = selected(request); requested.push(version);
+      const base = response(200, version === 1 ? exact : bytes(initial, 2), version);
+      return { ...base, headers: { get: name => name === "X-Panel-Config-Durable-Version" ? String(stored) : base.headers.get(name) } };
+    });
+    same(Array.from((await selectedStorage.readForBackup("panel-a"))!), Array.from(storedBytes),
+      "backup follows actual durable format and retains exact bytes");
+    same(requested, [preferred, stored], "backup does not assume preferred format equals stored format");
+  }
+
   // A structurally valid future graph which this editor cannot project must
   // never be flattened by reading a v1 view and replacing the stored graph.
   const records: NativeV2Record[] = decodeNativeV2(bytes(initial, 2));
@@ -191,4 +256,94 @@ export async function runNativeNegotiatedBackupTests(): Promise<void> {
   });
   same(await future.save(update), "failed", "unprojectable future graph rejects the edit");
   same(writes, 0, "unsupported future graph remains intact");
+}
+
+export async function runNativeNestedPageClientTests(): Promise<void> {
+  const { childPageKey } = await import("../../src/webserver/model/page_keys");
+  const { encodePanelPageDocument, decodePanelPageDocument } = await import("../../src/webserver/model/panel_config_conversion");
+  const child = childPageKey(2, 1);
+  const nested: PanelConfigDocument = { deviceProfile: "panel-a", buttons: { 2: ";Rooms;;;;;subpage" },
+    subpages: { 2: "~B,1|subpage,,Child", [child]: "~B,1|,light.leaf,Leaf" }, settings: { button_order: "2", opaque: "kept" } };
+  const wire = encodePanelPageDocument(nested);
+  const announced = (extra: Record<string, unknown>): NativePanelConfigResponse => ({ ...response(200), json: async () => ({ configuration: {
+    read: true, write: true, document_versions: [1, 2], max_record_body_bytes: 4096,
+    max_navigation_depth: 2, writable_navigation_depth: 1, durable_document_version: 1, ...extra,
+  } }) });
+  for (const extra of [{}, { writable_navigation_depth: 2 }, { durable_document_version: 2 },
+      { writable_navigation_depth: 2, durable_document_version: "2" },
+      { writable_navigation_depth: 2, durable_document_version: 2, max_navigation_depth: 1 }]) {
+    let writes = 0, edits = 0;
+    const client = createNativePanelConfigClient(async (path, request) => {
+      if (path.endsWith("capabilities")) return announced(extra);
+      if (request?.method === "PUT") { ++writes; return response(204); }
+      return response(200, wire, 2, '"v2-5"');
+    });
+    await client.discover();
+    same(client.writableNavigationDepth(), 1, "partial or malformed capability combinations cannot enable nested writes");
+    same(await client.save((current) => { ++edits; return update(current); }),
+      extra.max_navigation_depth === 1 ? "failed" : "nested-pages-unavailable", "reader-only release never edits or writes a nested document");
+    same([writes, edits], [0, 0], "unsupported nested editing has no callback or PUT side effects");
+  }
+  let saved: PanelConfigDocument | undefined;
+  const capable = createNativePanelConfigClient(async (path, request) => {
+    if (path.endsWith("capabilities")) return announced({ writable_navigation_depth: 2, durable_document_version: 2 });
+    if (request?.method === "PUT") {
+      check(selected(request) === 2 && request.headers?.["If-Match"] === '"v2-5"', "nested saves keep graph negotiation and CAS");
+      saved = decodePanelPageDocument(request.body!); return response(204);
+    }
+    return response(200, wire, 2, '"v2-5"');
+  });
+  const snapshot = await capable.readSnapshot("panel-a");
+  same(snapshot?.document, nested, "snapshot preserves both page levels and opaque settings");
+  same([snapshot?.etag, snapshot?.version, capable.readNavigationDepth(), capable.writableNavigationDepth()],
+    ['"v2-5"', 2, 2, 2], "capable snapshot and both limits are explicit");
+  same(await capable.save(update), "saved", "capable writer saves graph without a v1 projection");
+  same(saved, update(nested), "ordinary edits retain nested descendants");
+  const flat = update(initial), flatBytes = encodePanelConfig(flat).length;
+  check(encodePanelPageDocument(flat).length > flatBytes, "fixture expands in graph format");
+  for (const [limit, serverStatus, expected, expectedWrites] of [
+    [flatBytes, 204, "saved", 1], [flatBytes - 1, 204, "too-large", 0],
+    [flatBytes, 413, "too-large", 1],
+  ] as const) {
+    let writes = 0;
+    const client = createNativePanelConfigClient(async (path, request) => {
+      if (path.endsWith("capabilities")) return announced({ writable_navigation_depth: 2,
+        durable_document_version: 2, max_durable_document_bytes: limit });
+      check(selected(request) === 2, "storage fallback retains graph transport and identity");
+      if (request?.method === "PUT") {
+        ++writes;
+        same(request.headers?.["If-Match"], '"v2-7"', "storage selection retains the graph CAS token");
+        same(decodePanelPageDocument(request.body!), flat, "complete flat data reaches firmware selection");
+        return response(serverStatus);
+      }
+      return response(200, bytes(initial, 2), 2, '"v2-7"');
+    });
+    same(await client.save(update), expected, "firmware can choose a lossless flat durable fallback");
+    same(writes, expectedWrites, "fallback does not change representations or bypass a byte rejection");
+  }
+  const oversizedNested = createNativePanelConfigClient(async (path, request) => {
+    if (path.endsWith("capabilities")) return announced({ writable_navigation_depth: 2,
+      durable_document_version: 2, max_durable_document_bytes: 1 });
+    check(request?.method !== "PUT", "oversize nested data cannot use the flat fallback");
+    return response(200, wire, 2, '"v2-7"');
+  });
+  same(await oversizedNested.save(current => current), "too-large", "capacity checks never flatten nesting");
+  for (const status of [415, 422]) {
+    const events: number[] = [];
+    const client = createNativePanelConfigClient(async (path, request) => {
+      if (path.endsWith("capabilities")) return announced({ writable_navigation_depth: 2, durable_document_version: 2 });
+      events.push(selected(request));
+      return request?.method === "PUT" ? response(status) : response(200, wire, 2, '"v2-5"');
+    });
+    same(await client.save(() => ({ ...initial, buttons: { 1: "light.one;Flat restore" } })), "nested-pages-unavailable",
+      "rejected graph restore cannot retry through a legacy representation");
+    same(events, [2, 2], "no legacy fallback after reading nested data");
+  }
+  const limited = createNativePanelConfigClient(async (path, request) => {
+    if (path.endsWith("capabilities")) return announced({});
+    check(request?.method !== "PUT", "implicit empty nested targets are rejected before PUT");
+    return response(200, bytes(initial, 2), 2, '"v2-1"');
+  });
+  same(await limited.save(() => ({ ...initial, buttons: { 2: ";Rooms;;;;;subpage" }, subpages: { 2: "~B,1|subpage,,Empty" } })),
+    "nested-pages-unavailable", "an empty child folder still requires nested write support");
 }

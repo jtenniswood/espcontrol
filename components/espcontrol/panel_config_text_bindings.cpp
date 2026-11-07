@@ -266,6 +266,19 @@ CompatibilityStatus PanelConfigTextBindings::publish_document_status(const uint8
                                                           : CompatibilityStatus::RETRYABLE_FAILURE;
 }
 
+CompatibilityStatus PanelConfigTextBindings::publish_global_values(
+    std::string_view profile, std::string_view order, std::string_view on_color) {
+  if (!configured() || profile != device_profile_)
+    return CompatibilityStatus::NOT_REPRESENTABLE;
+  if (!write_value(button_order_, order.empty() ? "" : order.data(),
+                   order.size(), ApplyMode::PUBLISH) ||
+      (button_on_color_ &&
+       !write_value(button_on_color_, on_color.empty() ? "" : on_color.data(),
+                    on_color.size(), ApplyMode::PUBLISH)))
+    return CompatibilityStatus::RETRYABLE_FAILURE;
+  return CompatibilityStatus::OK;
+}
+
 bool PanelConfigTextBindings::write_value(PanelConfigTextValue *target,
                                           const char *value, size_t value_size,
                                           ApplyMode mode) {

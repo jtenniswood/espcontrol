@@ -223,7 +223,7 @@ void publication() {
   assert(arena.live.empty());
 }
 void retained_root_capacity() {
-  static_assert(sizeof(PageDefinition) == 16, "runtime admission reuses page-record padding");
+  static_assert(sizeof(PageDefinition) == 20, "sparse runtime membership adds one mask per page");
   for (const auto& limits : DEVICE_UI_PROFILES) {
     std::array<uint8_t, 65536> document{};
     PanelConfigWriter writer(document.data(), document.size());

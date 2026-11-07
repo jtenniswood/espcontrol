@@ -4,6 +4,8 @@
   "panelConfigDocumentVersion": 1,
   "panelConfigReadVersions": [1, 2],
   "panelConfigWriteVersion": 1,
+  "panelConfigReadNavigationDepth": 2,
+  "panelConfigWriteNavigationDepth": 1,
   "panelConfigMinimumReaderRelease": null,
   "webAssetVersion": 2,
   "panelConfigCompatibility": {

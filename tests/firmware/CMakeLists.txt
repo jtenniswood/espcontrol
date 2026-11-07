@@ -366,6 +366,7 @@ target_include_directories(page_entity_modal_replay_test PRIVATE stubs ../../com
 add_test(NAME page_entity_modal_replay_test COMMAND page_entity_modal_replay_test)
 
 add_executable(page_card_dependencies_test page_card_dependencies_test.cpp
+  ../../components/espcontrol/page_renderer_layout.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/page_store_goldens.h
   ../../components/espcontrol/page_card_dependencies.cpp
   ../../components/espcontrol/page_entity_state_runtime.cpp
@@ -782,6 +783,11 @@ add_test(NAME p4_pipeline_runtime_test COMMAND
 add_test(NAME mipi_dsi_draw_failure_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/mipi_dsi_draw_failure_test.py)
+add_test(NAME mipi_rgb_rotation_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/mipi_rgb_rotation_test.py)
+add_test(NAME mipi_rgb_bounce_buffer_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/mipi_rgb_bounce_buffer_test.py)
 
 add_test(NAME device_ui_limits_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
@@ -1179,6 +1185,8 @@ target_compile_features(panel_config_capabilities_test PRIVATE cxx_std_17)
 target_compile_options(panel_config_capabilities_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(panel_config_capabilities_test PRIVATE ../../components/espcontrol)
 add_test(NAME panel_config_capabilities_test COMMAND panel_config_capabilities_test)
+add_test(NAME panel_config_navigation_policy_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/panel_config_navigation_policy_test.py)
 
 add_executable(panel_config_http_etag_test panel_config_http_etag_test.cpp)
 target_compile_features(panel_config_http_etag_test PRIVATE cxx_std_17)
@@ -1237,6 +1245,29 @@ target_compile_options(panel_config_legacy_adapter_test PRIVATE -Wall -Wextra -W
 target_include_directories(panel_config_legacy_adapter_test PRIVATE ../../components/espcontrol)
 add_test(NAME panel_config_legacy_adapter_test COMMAND panel_config_legacy_adapter_test)
 
+add_executable(panel_config_legacy_writer_test
+  panel_config_legacy_writer_test.cpp
+  ../../components/espcontrol/configuration_store.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/panel_config_legacy_adapter.cpp
+  ../../components/espcontrol/panel_config_text_bindings.cpp
+)
+target_compile_features(panel_config_legacy_writer_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_legacy_writer_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_legacy_writer_test PRIVATE ../../components/espcontrol)
+target_link_libraries(panel_config_legacy_writer_test PRIVATE Threads::Threads)
+add_test(NAME panel_config_legacy_writer_test COMMAND panel_config_legacy_writer_test)
+
+add_executable(panel_config_durable_representation_test panel_config_durable_representation_test.cpp)
+target_compile_features(panel_config_durable_representation_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_durable_representation_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_durable_representation_test PRIVATE ../../components/espcontrol)
+if(ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+  target_compile_options(panel_config_durable_representation_test PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+  target_link_options(panel_config_durable_representation_test PRIVATE -fsanitize=address,undefined)
+endif()
+add_test(NAME panel_config_durable_representation_test COMMAND panel_config_durable_representation_test)
+
 add_executable(espcontrol_app_core_test
   espcontrol_app_core_test.cpp
   ../../components/espcontrol/espcontrol_app_core.cpp
@@ -1270,6 +1301,29 @@ target_compile_features(owned_ha_subscriptions_test PRIVATE cxx_std_17)
 target_compile_options(owned_ha_subscriptions_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
 target_include_directories(owned_ha_subscriptions_test PRIVATE stubs ../../components/espcontrol)
 add_test(NAME owned_ha_subscriptions_test COMMAND owned_ha_subscriptions_test)
+
+add_executable(native_ha_subscription_index_test native_ha_subscription_index_test.cpp)
+target_compile_features(native_ha_subscription_index_test PRIVATE cxx_std_17)
+target_compile_options(native_ha_subscription_index_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(native_ha_subscription_index_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME native_ha_subscription_index_test COMMAND native_ha_subscription_index_test)
+
+add_executable(prepared_native_ha_subscription_index_test prepared_native_ha_subscription_index_test.cpp)
+target_compile_features(prepared_native_ha_subscription_index_test PRIVATE cxx_std_17)
+target_compile_options(prepared_native_ha_subscription_index_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(prepared_native_ha_subscription_index_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME prepared_native_ha_subscription_index_test COMMAND prepared_native_ha_subscription_index_test)
+
+add_executable(native_ha_index_transport_test native_ha_index_transport_test.cpp
+  ../../components/espcontrol/home_assistant_transport_runtime.cpp
+  ../../components/espcontrol/native_ha_state_dispatch.cpp)
+target_compile_features(native_ha_index_transport_test PRIVATE cxx_std_17)
+target_compile_definitions(native_ha_index_transport_test PRIVATE USE_API_HOMEASSISTANT_STATES
+  ESPCONTROL_UI_PROFILE_GUITION_ESP32_S3_4848S040)
+target_compile_options(native_ha_index_transport_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(native_ha_index_transport_test PRIVATE
+  ${CMAKE_CURRENT_BINARY_DIR}/owned_ha_version owned_ha_stubs stubs ../../components/espcontrol)
+add_test(NAME native_ha_index_transport_test COMMAND native_ha_index_transport_test)
 
 add_executable(home_assistant_transport_runtime_test home_assistant_transport_runtime_test.cpp
   ../../components/espcontrol/home_assistant_transport_runtime.cpp)
@@ -1351,6 +1405,10 @@ target_include_directories(page_image_runtime_test PRIVATE stubs ../../component
 add_test(NAME page_image_runtime_test COMMAND page_image_runtime_test)
 add_test(NAME artwork_owned_result_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/artwork_owned_result_test.py ${CMAKE_CXX_COMPILER})
+add_test(NAME artwork_decoder_failure_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/artwork_decoder_failure_test.py ${CMAKE_CXX_COMPILER})
+add_test(NAME artwork_gif_admission_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/artwork_gif_admission_test.py ${CMAKE_CXX_COMPILER})
 
 add_executable(image_service_test image_service_test.cpp ${CMAKE_CURRENT_BINARY_DIR}/image_service.cpp)
 target_compile_features(image_service_test PRIVATE cxx_std_17)
@@ -1769,6 +1827,7 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   endif()
   # All optional LVGL executables share this library, including the modal test,
   # because the pinned label translation unit is routed through its wrappers.
+  get_directory_property(ESPCONTROL_LINK_LIBRARIES_BEFORE_LVGL LINK_LIBRARIES)
   link_libraries(page_label_refresh_test_support)
 
   set(NATIVE_SCENE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_native_scene_test.cpp)
@@ -1817,6 +1876,7 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
     stubs/owned_artwork stubs ../../components/espcontrol ../../components/artwork_image)
   target_link_libraries(page_native_scene_test PRIVATE lvgl::lvgl)
   add_test(NAME page_native_scene_test COMMAND page_native_scene_test)
+  add_test(NAME page_native_nested_navigation_test COMMAND page_native_scene_test --nested)
   add_test(NAME page_native_scene_p4_capacity_test COMMAND page_native_scene_test --maximum-p4)
   set_tests_properties(page_native_scene_test page_native_scene_p4_capacity_test PROPERTIES TIMEOUT 180)
 
@@ -1883,6 +1943,8 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
   target_include_directories(page_basic_lvgl_port_test PRIVATE stubs ../../components/espcontrol ${CMAKE_CURRENT_BINARY_DIR})
   target_link_libraries(page_basic_lvgl_port_test PRIVATE lvgl::lvgl)
   add_test(NAME page_basic_lvgl_port_test COMMAND page_basic_lvgl_port_test)
+  add_test(NAME page_nested_folder_lvgl_test COMMAND ${CMAKE_COMMAND} -E env
+    ESPCONTROL_TEST_FAMILY=nested_folders $<TARGET_FILE:page_basic_lvgl_port_test>)
   add_executable(page_cover_art_frame_test page_cover_art_frame_test.cpp)
   target_compile_features(page_cover_art_frame_test PRIVATE cxx_std_17)
   target_compile_options(page_cover_art_frame_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
@@ -2202,4 +2264,13 @@ if(ESPCONTROL_LVGL_SOURCE_DIR)
     set_tests_properties(${target} PROPERTIES TIMEOUT 60)
     math(EXPR CLIMATE_PROFILE_INDEX "${CLIMATE_PROFILE_INDEX}+1")
   endforeach()
+  # Pure protocol tests below do not provide the LVGL custom allocator hooks.
+  set_property(DIRECTORY PROPERTY LINK_LIBRARIES "${ESPCONTROL_LINK_LIBRARIES_BEFORE_LVGL}")
 endif()
+foreach(backup_target panel_graph_backup_test panel_backup_document_test)
+  add_executable(${backup_target} ${backup_target}.cpp)
+  target_compile_features(${backup_target} PRIVATE cxx_std_17)
+  target_compile_options(${backup_target} PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+  target_include_directories(${backup_target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ../../components/espcontrol)
+  add_test(NAME ${backup_target} COMMAND ${backup_target})
+endforeach()

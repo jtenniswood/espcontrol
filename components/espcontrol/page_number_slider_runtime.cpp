@@ -27,7 +27,7 @@ bool cards(const PageStore& store, Emit emit) {
   for (PageId page = 0; page < store.page_count(); ++page) {
     const auto* definition = store.page(page);
     if (!definition->navigable) continue;
-    for (CardId id = definition->first_card; id < definition->first_card + definition->runtime_card_count; ++id)
+    for (CardId id : definition->runtime_cards())
       if (PageNumberSliderRuntime::supported(store, id) &&
           !emit(id, store.field(*store.card(id), CardField::ENTITY)))
         return false;

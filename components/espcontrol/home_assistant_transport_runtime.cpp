@@ -10,6 +10,8 @@
 #include "esphome/core/log.h"
 #include "external_memory_allocator.h"
 #include "owned_ha_subscriptions.h"
+#include "native_ha_state_dispatch.h"
+#include "esphome/core/hal.h"
 #ifdef USE_ESP32
 #include "esp_heap_caps.h"
 #endif
@@ -138,14 +140,21 @@ void request_state_refresh() {
   refresh_pending = true;
 }
 void maintain_subscriptions() {
+  if (native_lookup::owner().delivering()) return;
   if (maintenance_callback != nullptr) maintenance_callback();
   auto &registry = Registry::instance();
-  if (registry.flush()) {
+  const bool changed = registry.flush();
+  if (changed) {
     refresh_cursor = 0; // Compaction can move the pair at the current cursor.
     refresh_again = false; // This complete sweep also covers queued requests.
-    ESP_LOGD("ha_transport", "Native subscriptions: owned=%u pending=%u registry_bytes=%u upstream=%u capacity=%u heap_internal=%u heap_largest=%u psram_free=%u",
+    native_lookup::owner().changed();
+  }
+  native_lookup::maintain(esphome::millis());
+  if (changed) {
+    ESP_LOGD("ha_transport", "Native subscriptions: owned=%u pending=%u registry_bytes=%u lookup_bytes=%u upstream=%u capacity=%u heap_internal=%u heap_largest=%u psram_free=%u",
              static_cast<unsigned>(registry.size()), static_cast<unsigned>(registry.pending_count()),
              static_cast<unsigned>(registry.storage_bytes()),
+             static_cast<unsigned>(native_lookup::owner().bytes()),
              static_cast<unsigned>(esphome::api::global_api_server->get_state_subs().size()),
              static_cast<unsigned>(esphome::api::global_api_server->get_state_subs().capacity()),
              static_cast<unsigned>(NativeBackend::internal_free()),

@@ -28,6 +28,18 @@ frames[0].save(
     optimize=False,
 )
 
+# Keep the compressed rectangles, but replace restore-previous with keep.
+# Pillow independently composites the resulting single-canvas animation below.
+without_restore = bytearray((ROOT / "disposal.gif").read_bytes())
+changed = 0
+for offset in range(len(without_restore) - 3):
+    if (without_restore[offset:offset + 3] == b"\x21\xf9\x04"
+            and (without_restore[offset + 3] >> 2) & 7 == 3):
+        without_restore[offset + 3] = (without_restore[offset + 3] & ~0x1C) | (1 << 2)
+        changed += 1
+assert changed == 1
+(ROOT / "disposal-no-restore.gif").write_bytes(without_restore)
+
 # A full palette and random pixels exercise all LZW code widths and clears.
 image = Image.new("P", (96, 64))
 image.putpalette([value for index in range(256)

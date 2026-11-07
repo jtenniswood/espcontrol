@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 #include "panel_config_document.h"
 #include "compatibility_status.h"
@@ -58,6 +59,11 @@ class PanelConfigTextBindings {
   CompatibilityStatus persistence_admission(const uint8_t *document, size_t size);
   CompatibilityStatus persist_document_status(const uint8_t *document, size_t size);
   CompatibilityStatus publish_document_status(const uint8_t *document, size_t size);
+  // Native graph publication needs the root order and shared accent colour.
+  // Update those live values without clearing per-card/subpage compatibility
+  // fields or claiming that a complete legacy layout has been published.
+  CompatibilityStatus publish_global_values(std::string_view profile,
+      std::string_view order, std::string_view on_color);
 
  private:
    enum class ApplyMode { PUBLISH, CHECK_PERSIST, PREPARE_EMPTY, PERSIST };

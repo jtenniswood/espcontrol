@@ -171,6 +171,14 @@ ConfigurationStore::SlotMetadata ConfigurationStore::inspect_slot(
 
 LoadResult ConfigurationStore::load(uint8_t *output,
                                     size_t output_capacity) {
+  return load_internal(output, output_capacity, false);
+}
+
+LoadResult ConfigurationStore::load_prefix(uint8_t *output, size_t capacity) {
+  return load_internal(output, capacity, true);
+}
+
+LoadResult ConfigurationStore::load_internal(uint8_t *output, size_t output_capacity, bool prefix) {
   CommitLockGuard lock(commit_lock_);
   StorageOperation operation(backend_);
   if (!operation.ready())
@@ -195,17 +203,18 @@ LoadResult ConfigurationStore::load(uint8_t *output,
     return {read_failed ? StoreStatus::READ_FAILED : StoreStatus::EMPTY};
   }
 
-  if (selected->payload_size > output_capacity) {
+  if (!prefix && selected->payload_size > output_capacity) {
     return {StoreStatus::BUFFER_TOO_SMALL, selected->generation,
             selected->payload_size, selected->slot};
   }
-  if (selected->payload_size > 0 && output == nullptr) {
+  const size_t copied = prefix ? std::min(selected->payload_size, output_capacity) : selected->payload_size;
+  if (copied > 0 && output == nullptr) {
     return {StoreStatus::INVALID_ARGUMENT, selected->generation,
             selected->payload_size, selected->slot};
   }
-  for (size_t offset = 0; offset < selected->payload_size;) {
+  for (size_t offset = 0; offset < copied;) {
     const size_t size = std::min(CONFIGURATION_IO_WINDOW_BYTES,
-                                 selected->payload_size - offset);
+                                 copied - offset);
     if (!backend_.read(selected->slot, CONFIGURATION_ENVELOPE_HEADER_SIZE + offset,
                        output + offset, size)) {
       return {StoreStatus::READ_FAILED, selected->generation,
@@ -294,7 +303,7 @@ CommitResult ConfigurationStore::commit_internal(bool enforce_generation,
             target_slot};
   }
   if (!backend_.sync()) {
-    return {StoreStatus::SYNC_FAILED, next_generation, payload_size,
+    return {backend_.sync_failure(), next_generation, payload_size,
             target_slot};
   }
 
@@ -310,7 +319,7 @@ CommitResult ConfigurationStore::commit_internal(bool enforce_generation,
     offset += size;
   }
   if (!backend_.sync()) {
-    return {StoreStatus::SYNC_FAILED, next_generation, payload_size,
+    return {backend_.sync_failure(), next_generation, payload_size,
             target_slot};
   }
 
@@ -333,7 +342,7 @@ CommitResult ConfigurationStore::commit_internal(bool enforce_generation,
             target_slot};
   }
   if (!backend_.sync()) {
-    return {StoreStatus::SYNC_FAILED, next_generation, payload_size,
+    return {backend_.sync_failure(), next_generation, payload_size,
             target_slot};
   }
 
@@ -343,6 +352,7 @@ CommitResult ConfigurationStore::commit_internal(bool enforce_generation,
             target_slot};
   }
   if (!backend_.sync()) {
+    const auto failure = backend_.sync_failure();
     // Some backends expose written bytes before sync confirms durability. If
     // publication cannot be confirmed, withdraw the marker and best-effort
     // persist that rollback so load() continues to select the previous slot.
@@ -350,8 +360,7 @@ CommitResult ConfigurationStore::commit_internal(bool enforce_generation,
                        invalid_magic.size())) {
       backend_.sync();
     }
-    return {StoreStatus::SYNC_FAILED, next_generation, payload_size,
-            target_slot};
+    return {failure, next_generation, payload_size, target_slot};
   }
 
   const SlotMetadata verified = inspect_slot(target_slot);

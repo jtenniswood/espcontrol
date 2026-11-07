@@ -276,7 +276,9 @@ void rejected_legacy_edit_repairs_the_previous_copy() {
   assert(f.service.load_and_apply_runtime(output.data(),output.size()).ok());
   assert(f.service.retry_compatibility(output.data(),output.size()).ok());
   std::string old;for(size_t c=0;c<limits.legacy_subpage_chunks;++c)old+=f.chunks[0][c].state;
-  std::string invalid="~B";for(size_t i=0;i<=limits.cards_per_subpage;++i)invalid+="|,switch.bad_"+std::to_string(i)+",Bad,Auto,Auto,,,,";
+  std::string invalid="~B";
+  for(size_t i=1;i<=limits.cards_per_subpage+size_t{1};++i)invalid+=","+std::to_string(i);
+  for(size_t i=0;i<=limits.cards_per_subpage;++i)invalid+="|,switch.bad_"+std::to_string(i)+",Bad,Auto,Auto,,,,";
   assert(invalid.size()<limits.legacy_subpage_byte_ceiling());
   for(size_t c=0;c<limits.legacy_subpage_chunks;++c) {
     const auto offset=std::min(c*255,invalid.size());f.chunks[0][c].state=invalid.substr(offset,std::min(size_t(255),invalid.size()-offset));

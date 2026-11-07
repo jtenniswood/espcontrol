@@ -27,12 +27,28 @@ struct DeviceUiLimits {
   uint16_t legacy_text_bytes;
   const DeviceCardTypeSupport *card_types;
   size_t card_type_count;
+  // Independent admission ceilings, never startup reserves. State metadata
+  // excludes HA/local value caches, prepared layouts and visible widgets.
+  size_t page_store_bytes;
+  size_t state_metadata_bytes;
+  size_t ha_state_bytes;
 
   constexpr size_t max_child_cards() const {
     return max_first_level_subpages * cards_per_subpage;
   }
 
-  constexpr size_t max_cards() const { return slot_count + max_child_cards(); }
+  constexpr size_t max_first_level_cards() const { return slot_count + max_child_cards(); }
+
+  // Logical shape bounds for the supported two-level hierarchy. Actual
+  // admission also requires document, metadata, key and state budgets to fit.
+  constexpr size_t max_pages() const {
+    return 1 + (max_navigation_depth ? max_first_level_subpages : 0) +
+        (max_navigation_depth > 1 ? max_child_cards() : 0);
+  }
+  constexpr size_t max_cards() const {
+    return slot_count + (max_navigation_depth ? max_child_cards() : 0) +
+        (max_navigation_depth > 1 ? max_child_cards() * cards_per_subpage : 0);
+  }
 
   // This is a byte ceiling, not a guarantee that every UTF-8 string fits:
   // a character cannot be split across legacy text chunks.

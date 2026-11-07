@@ -1,6 +1,6 @@
 {
   "label": "Subpage",
-  "allowInSubpage": false,
+  "allowInSubpage": true,
   "domains": [],
   "options": [
     {

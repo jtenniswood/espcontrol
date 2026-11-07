@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <limits>
 
@@ -35,6 +36,7 @@ struct PageLocalSensorMemory {
   size_t producer_fixed_bytes{0}, producer_callbacks{0};
   PageEntityMemory state;
   size_t feed_fixed_bytes{sizeof(PageLocalSensorFeed)};
+  size_t staged_binding_bytes{0};
 };
 class PageLocalSensorDependencies final : public PageDependencySource {
  public:
@@ -72,6 +74,7 @@ class PageLocalSensorRuntime final : public PageRuntimeResources {
     Subscriptions(PageArenaAllocator&, PageLocalSensorProvider&, size_t channels);
     ~Subscriptions() override;
     bool subscribe(const char*, const char*, void*, uint32_t, uint32_t, Deliver) override;
+    bool prepare_batch(PageEntitySubscriptionBatch&, void*, uint32_t, size_t, Deliver) override;
     void release(void*) override;
     uint32_t connection_generation() const override {
       return 1;
@@ -81,6 +84,8 @@ class PageLocalSensorRuntime final : public PageRuntimeResources {
     }
     void loop();
     void cleanup();
+    void activate() { staged_owner = nullptr; }
+    size_t staged_bytes() const;
     bool feed(std::string_view, bool, float, std::string_view);
     struct Binding {
       void* owner{nullptr};
@@ -90,12 +95,19 @@ class PageLocalSensorRuntime final : public PageRuntimeResources {
       uint32_t revision{0}, channel{0}, source{NO_LOCAL_SENSOR};
       bool text{false};
     };
-    bool initialize();
+    // The graph owns one table per active/prepared generation. Releasing a
+    // failed replacement never changes the active table or needs allocation.
+    struct Batch {
+      void* owner{nullptr};
+      Binding* bindings{nullptr};
+      size_t capacity{0};
+    };
     void deliver(Binding&, const PageLocalSensorSample&, bool initial);
     PageArenaAllocator& allocator;
     PageLocalSensorProvider& provider;
-    Binding* bindings{nullptr};
-    size_t capacity{0}, bytes{0}, peak{0}, live{0};
+    std::array<Batch, 2> batches{};
+    void* staged_owner{nullptr};
+    size_t max_channels{0}, bytes{0}, peak{0}, live{0};
   };
   PageLocalSensorProvider& provider_;
   PageLocalSensorDependencies source_;

@@ -44,6 +44,12 @@ class LegacyConfigurationAdapter {
   virtual ~LegacyConfigurationAdapter() = default;
 
   virtual LegacyLoadResult load(uint8_t *output, size_t output_capacity) = 0;
+  // Import into the release's selected durable format. Existing adapters keep
+  // their own representation unless they explicitly support conversion.
+  virtual LegacyLoadResult load_for_write(uint16_t, uint8_t *output,
+                                          size_t output_capacity) {
+    return load(output, output_capacity);
+  }
   // Optional compatibility edit projection. A false changed result means that
   // an appearance refresh need not rebuild the native scene or write storage.
   virtual LegacyLoadResult merge(uint16_t, const uint8_t *, size_t, uint8_t *,
@@ -51,6 +57,11 @@ class LegacyConfigurationAdapter {
     if (changed)
       *changed = false;
     return {LegacyStatus::READ_FAILED};
+  }
+  virtual LegacyLoadResult merge_for_write(uint16_t, uint16_t version,
+      const uint8_t *native, size_t native_size, uint8_t *output,
+      size_t output_capacity, bool *changed) {
+    return merge(version, native, native_size, output, output_capacity, changed);
   }
   // Refresh compatibility views after activation, independently of persistent
   // downgrade mirroring. This may allocate text storage and must not be part
@@ -116,6 +127,7 @@ enum class ServiceStatus : uint8_t {
   RUNTIME_PREPARE_FAILED,
   ALLOCATION_FAILED,
   CAPACITY_EXCEEDED,
+  INCOMPATIBLE_REPLACEMENT,
 };
 
 struct ServiceLoadResult {
@@ -149,6 +161,12 @@ struct ServiceSaveResult {
   }
 };
 
+// Keep the caller's format across conversion. Zero means it supplied the same
+// complete format as the document being saved.
+struct ConfigurationWriteSource {
+  uint16_t document_version{0};
+};
+
 // A service integration can select the native document it understands without
 // changing the durable two-slot store. Leaving this unset preserves the
 // compatibility service's existing v1 envelope behaviour during migration.
@@ -157,17 +175,30 @@ class ConfigurationDocumentValidator {
   virtual ~ConfigurationDocumentValidator() = default;
 
   virtual bool supports_version(uint16_t document_version) const = 0;
+  virtual uint16_t write_version() const { return CURRENT_CONFIGURATION_DOCUMENT_VERSION; }
   // Reading an existing format does not grant permission to publish it. A
   // release can ship dual readers before raising its supported downgrade floor.
   virtual bool supports_write_version(uint16_t document_version) const {
     return supports_version(document_version);
   }
+  // Format-specific downgrade protection runs against durable data, including
+  // before boot has activated a runtime. Unrelated validators keep their path.
+  virtual bool checks_replacements(uint16_t) const { return false; }
+  virtual bool replacement_needs_document(uint16_t, uint16_t) const { return false; }
+  virtual ServiceStatus replacement_status(uint16_t, const uint8_t *, size_t,
+                                          uint16_t) const { return ServiceStatus::OK; }
   virtual bool validate(uint16_t document_version, const uint8_t *document,
                         size_t document_size) const = 0;
   virtual ServiceStatus validation_status(uint16_t document_version,
       const uint8_t *document, size_t document_size) const {
     return validate(document_version, document, document_size)
         ? ServiceStatus::OK : ServiceStatus::INVALID_DOCUMENT;
+  }
+  // Readers can precede writers for both formats and navigation depth.
+  // Every durable publication must use the stricter write policy.
+  virtual ServiceStatus write_validation_status(uint16_t version,
+      const uint8_t *document, size_t size) const {
+    return validation_status(version, document, size);
   }
 };
 
@@ -207,11 +238,14 @@ class ConfigurationService {
   ServiceLoadResult synchronize_legacy_runtime(uint8_t *output,
                                                size_t output_capacity);
   ServiceSaveResult save(uint16_t document_version, const uint8_t *document,
-                         size_t document_size);
+                         size_t document_size, ConfigurationWriteSource source = {});
   ServiceSaveResult save_if_generation(uint32_t expected_generation,
                                        uint16_t document_version,
                                        const uint8_t *document,
-                                       size_t document_size);
+                                       size_t document_size, ConfigurationWriteSource source = {});
+  uint16_t write_version() const {
+    return validator_ ? validator_->write_version() : CURRENT_CONFIGURATION_DOCUMENT_VERSION;
+  }
   ServiceSaveResult save_current(const uint8_t *document,
                                  size_t document_size) {
     return save(CURRENT_CONFIGURATION_DOCUMENT_VERSION, document,
@@ -244,10 +278,17 @@ class ConfigurationService {
                                                    size_t output_capacity);
   ServiceSaveResult save_unlocked(uint16_t document_version,
                                   const uint8_t *document,
-                                  size_t document_size);
+                                  size_t document_size, ConfigurationWriteSource source = {});
   ServiceSaveResult save_if_generation_unlocked(
       uint32_t expected_generation, uint16_t document_version,
-      const uint8_t *document, size_t document_size);
+      const uint8_t *document, size_t document_size, ConfigurationWriteSource source = {});
+  struct ReplacementAdmission {
+    ServiceStatus status{ServiceStatus::OK};
+    StoreStatus store_status{StoreStatus::OK};
+    uint32_t generation{0};
+    bool checked{false};
+  };
+  ReplacementAdmission admit_replacement(uint16_t version, const uint32_t *expected_generation);
   CommitResult commit_document(uint16_t document_version,
                                const uint8_t *document,
                                size_t document_size);
@@ -257,7 +298,10 @@ class ConfigurationService {
                                              size_t document_size);
   bool supports_version(uint16_t document_version) const;
   bool supports_write_version(uint16_t document_version) const;
+  bool native_publication_ready() const;
   ServiceStatus document_validation_status(uint16_t document_version,
+      const uint8_t *document, size_t document_size) const;
+  ServiceStatus document_write_validation_status(uint16_t document_version,
       const uint8_t *document, size_t document_size) const;
   uint8_t *encoded_buffer(size_t required_size,
                           ConfigurationBuffer *fallback) const;

@@ -91,6 +91,8 @@ Replace `PANEL_ADDRESS` with your panel's hostname or IP address. If web authent
 
 The file contains the saved cards, subpages, panel name and supported device settings, and can be restored using **Import** below. It has the same credential exclusions as a browser backup. Unsaved browser edits are excluded. The panel returns an error while configuration is starting or unavailable; the command above keeps the previous backup when a download fails. The export date is included once the panel's clock has synchronized.
 
+Nested-page backups require firmware that supports those pages and must be restored to the same device profile. They use a newer backup format so older editors reject the file rather than discard nested pages. Saved inactive cards and pages remain in the native backup data.
+
 ### Restore a Backup
 
 1. Choose **Import** and select your saved file.
@@ -107,6 +109,8 @@ Older backup files are recognized automatically; keep the file as exported, with
 A backup can contain cards or subpages outside the destination's visible grid, or settings that need newer firmware. If **Import** asks you to update the destination, these compatibility checks stop the restore before writing cards or settings. Update that panel, then retry with the original backup.
 
 Before installing older firmware, export a backup and check that the version supports your saved cards, settings and layout. Being able to read a backup file does not guarantee that older firmware can apply everything in it.
+
+A backup must also fit the destination panel's saved-configuration storage. If Import reports a capacity limit, keep the original backup and export a smaller layout from the source panel.
 
 ## Firmware
 

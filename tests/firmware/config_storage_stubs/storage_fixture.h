@@ -16,13 +16,15 @@ inline bool has_partition = true;
 inline size_t mutation = 0, cut_at = 0;
 inline unsigned cut_percent = 0;
 inline bool fail_read = false;
-inline size_t fail_commit_at = 0;
+inline size_t fail_commit_at = 0, fail_save_at = 0;
+inline int fail_save_error = -1, fail_commit_error = -1;
 inline size_t read_calls = 0;
 inline void reset() {
   std::fill(flash.begin(), flash.end(), 0xFF);
   blobs.clear();
   has_partition = true;
-  mutation = cut_at = read_calls = fail_commit_at = 0;
+  mutation = cut_at = read_calls = fail_commit_at = fail_save_at = 0;
+  fail_save_error = fail_commit_error = -1;
   cut_percent = 0;
   fail_read = false;
 }

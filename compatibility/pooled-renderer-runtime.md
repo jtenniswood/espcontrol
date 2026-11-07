@@ -4,8 +4,11 @@
 used by the concrete [pooled application](pooled-application-owner.md).
 Generated device profiles select that application at compile time, including
 startup or allocation failure. Standalone consumers without a generated
-profile retain their explicit boot selection. No nesting or capacity change
-is enabled here. Physical qualification remains a cutover requirement.
+profile retain their explicit boot selection. Generated card support includes
+linked child folders, while writable depth and total resource budgets retain
+their release gates. Depth-two host fixtures exercise
+immediate-parent Back, restoration by owner path and allocation-free navigation;
+writable depth remains one until the nested-page delivery gates pass.
 
 The real widget port is described in [pooled-basic-cards.md](pooled-basic-cards.md).
 
@@ -28,7 +31,8 @@ input/timer callbacks must carry their origin token, not read a replacement
 context's token when they execute. Retirement cannot release the layout from
 inside an ongoing binding change. Suspend/resume invalidates gestures without
 creating new subscriptions. Exhausted binding revisions fail closed instead of
-reusing a token. Back is limited to the existing root/first-level hierarchy.
+reusing a token. Back follows the stored parent within the negotiated reader
+depth; writable nesting retains the separate release gate above.
 
 Replacement restores the currently open folder by its owning root slot when
 that folder survives, even if its PageId changes. Otherwise it returns Home.
@@ -60,6 +64,17 @@ image owners and preserve metadata refresh, downloader priority and display
 suspension policy. The obsolete eager weather/timezone/calendar/image context
 registries are excluded from generated-profile binaries; shared modal UI
 storage remains in use.
+
+An expanded image refused by local memory limits uses its own retry delay.
+It preserves a completed tile after close; source/network failures retain
+their unavailable state and backoff. Failure classification follows the
+request-generation fences so late results cannot alter a replacement opening.
+
+On S3, an animated download must also reserve its next-frame surface and
+preserve PSRAM headroom before the first frame is accepted. Visible playback
+reuses its resize workspace; hiding the animation releases that workspace and
+staging while preserving the completed picture and compressed source. Static
+GIFs and occupied animation slots retain their existing still-image behavior.
 
 Before shared production cutover, physically qualify S3, then a 20-slot P4 and
 the remaining grid sizes. Record whole-device and owner-level steady/peak

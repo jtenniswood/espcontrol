@@ -20,7 +20,7 @@ static_assert(ESPCONTROL_MAX_GRID_SLOTS == ESPCONTROL_DEVICE_UI_SLOT_COUNT,
 constexpr int MAX_GRID_SLOTS = ESPCONTROL_MAX_GRID_SLOTS;
 static_assert(MAX_GRID_SLOTS > 0, "ESPCONTROL_MAX_GRID_SLOTS must be positive");
 // Keep the existing conservative per-page scratch capacity during migration.
-// DeviceUiLimits::max_child_cards() describes the actual configuration bound.
+// This serves legacy first-level encoding, never a retained nested tree.
 constexpr int MAX_SUBPAGE_ITEMS = MAX_GRID_SLOTS * MAX_GRID_SLOTS;
 
 inline int bounded_grid_slots(int num_slots) {

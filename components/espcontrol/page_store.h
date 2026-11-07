@@ -32,12 +32,31 @@ struct PageDefinition {
   CardId first_card{0};
   uint16_t card_count{0};
   StringId order{EMPTY_STRING};
+  // Retained definitions may extend beyond this device's visible capacity.
+  // Membership can be sparse when an order places a higher-numbered card.
+  uint32_t runtime_card_mask{0};
+  uint16_t runtime_card_count{0};
   // Legacy documents can retain a subpage behind a non-folder card. Keep its
   // data without making it a navigable target.
   bool navigable{false};
-  // Retained root definitions may extend beyond this device's capacity.
-  // Runtime owners use this prefix; serialization keeps card_count unchanged.
-  uint16_t runtime_card_count{0};
+  bool includes_runtime_card(CardId id) const {
+    return navigable && id >= first_card && id - first_card < 32 &&
+           (runtime_card_mask & (uint32_t{1} << (id - first_card)));
+  }
+  struct RuntimeCards {
+    CardId first;
+    uint32_t mask;
+    struct Iterator {
+      CardId first;
+      uint32_t remaining;
+      CardId operator*() const { return first + __builtin_ctz(remaining); }
+      Iterator &operator++() { remaining &= remaining - 1; return *this; }
+      bool operator!=(const Iterator &other) const { return remaining != other.remaining; }
+    };
+    Iterator begin() const { return {first, mask}; }
+    Iterator end() const { return {first, 0}; }
+  };
+  RuntimeCards runtime_cards() const { return {first_card, navigable ? runtime_card_mask : 0}; }
 };
 
 struct ConfigurationHandle {
@@ -67,8 +86,8 @@ class PageStore {
       const DeviceUiLimits &limits, uint32_t generation,
       void *arena, size_t arena_capacity, PageStore *output);
   // V2 is read directly, without building an intermediate v1 document. The
-  // caller owns disjoint, aligned scratch, released after staging. The current
-  // runtime still admits only root -> child navigation, including inactive data.
+  // caller owns disjoint, aligned scratch, released after staging. Graph depth
+  // is bounded by the supplied limits; inactive subtrees remain owned data.
   static PageStoreStatus v2_workspace_bytes(const uint8_t *document,
       size_t document_size, size_t *bytes);
   static PageStoreStatus stage_v2(const uint8_t *document, size_t document_size,
@@ -92,8 +111,7 @@ class PageStore {
     if (id >= card_count_) return nullptr;
     for (PageId page = 0; page < page_count_; ++page) {
       const auto &definition = pages_[page];
-      if (definition.navigable && id >= definition.first_card &&
-          id - definition.first_card < definition.runtime_card_count) return cards_ + id;
+      if (definition.includes_runtime_card(id)) return cards_ + id;
     }
     return nullptr;
   }
@@ -102,6 +120,16 @@ class PageStore {
   }
   const PageDefinition *page(ConfigurationHandle handle) const {
     return handle.generation == generation_ ? page(handle.index) : nullptr;
+  }
+  // Root is depth zero. Invalid ancestry never becomes a navigation target.
+  uint16_t page_depth(PageId id) const {
+    uint16_t depth = 0;
+    while (id != 0) {
+      const auto *definition = page(id);
+      if (!definition || ++depth >= page_count_) return NO_PAGE;
+      id = definition->parent;
+    }
+    return page_count_ ? depth : NO_PAGE;
   }
   std::string_view string(StringId id) const;
   std::string_view field(const CardDefinition &card, CardField field) const {

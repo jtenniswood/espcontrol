@@ -59,7 +59,7 @@ bool cards(const PageStore& store, Emit emit) {
   for (PageId p = 0; p < store.page_count(); ++p) {
     const auto* page = store.page(p);
     if (!page->navigable) continue;
-    for (CardId id = page->first_card; id < page->first_card + page->runtime_card_count; ++id)
+    for (CardId id : page->runtime_cards())
       if (PageLightTemperatureRuntime::supported(store, id) &&
           !emit(id, store.field(*store.card(id), CardField::ENTITY)))
         return false;

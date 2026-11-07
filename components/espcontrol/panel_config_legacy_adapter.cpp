@@ -1,5 +1,6 @@
 #include "panel_config_legacy_adapter.h"
 #include "panel_config_compatibility_view.h"
+#include "panel_config_durable_representation.h"
 
 namespace espcontrol::configuration {
 
@@ -13,6 +14,43 @@ LegacyLoadResult PanelConfigLegacyAdapter::load(uint8_t *output,
             document_size};
   }
   return {LegacyStatus::OK, PANEL_CONFIG_DOCUMENT_VERSION, document_size};
+}
+
+LegacyLoadResult PanelConfigLegacyAdapter::convert_for_write(
+    uint16_t target, LegacyLoadResult source, uint8_t *output,
+    size_t output_capacity) {
+  if (source.status != LegacyStatus::OK || source.document_version == target)
+    return source;
+  PanelConfigDurableRepresentation converted(allocate_, release_);
+  const auto status = converted.select(source.document_version, target,
+      output, source.document_size, output_capacity);
+  if (status != PanelConfigRepresentationStatus::OK) {
+    const auto failure = status == PanelConfigRepresentationStatus::UNAVAILABLE
+        ? LegacyStatus::ALLOCATION_FAILED
+        : (status == PanelConfigRepresentationStatus::TOO_LARGE
+               ? LegacyStatus::BUFFER_TOO_SMALL : LegacyStatus::READ_FAILED);
+    return {failure, target, 0};
+  }
+  if (output != converted.data()) std::memcpy(output, converted.data(), converted.size());
+  return {LegacyStatus::OK, converted.version(), converted.size()};
+}
+
+LegacyLoadResult PanelConfigLegacyAdapter::load_for_write(
+    uint16_t target, uint8_t *output, size_t output_capacity) {
+  return convert_for_write(target, load(output, output_capacity), output,
+                           output_capacity);
+}
+
+LegacyLoadResult PanelConfigLegacyAdapter::merge_for_write(
+    uint16_t target, uint16_t version, const uint8_t *native, size_t native_size,
+    uint8_t *output, size_t output_capacity, bool *changed) {
+  if (changed) *changed = false;
+  bool edited = false;
+  auto result = merge(version, native, native_size, output, output_capacity, &edited);
+  if (edited && result.status == LegacyStatus::OK)
+    result = convert_for_write(target, result, output, output_capacity);
+  if (changed && result.status == LegacyStatus::OK) *changed = edited;
+  return result;
 }
 
 LegacyLoadResult
@@ -60,8 +98,8 @@ PanelConfigLegacyAdapter::merge(uint16_t version, const uint8_t *native,
     ++replacements;
   if (changed)
     *changed = matches != originals || matches != replacements;
-  // Actual compatibility edits remain durable v1 during the dual-reader
-  // release. An unchanged v2 view returns changed=false and is never rewritten.
+  // The legacy projection is v1; merge_for_write selects its durable format.
+  // An unchanged v2 view returns changed=false and is never rewritten.
   return {LegacyStatus::OK, PANEL_CONFIG_DOCUMENT_VERSION, size};
 }
 
@@ -92,7 +130,42 @@ CompatibilityStatus PanelConfigLegacyAdapter::publish_status(uint16_t version, c
   if (!bindings_.configured()) return CompatibilityStatus::NOT_REPRESENTABLE;
   PanelConfigCompatibilityView view(allocate_, release_);
   const auto status = projection_status(view.load(version, document, size));
+  if (version == PANEL_CONFIG_DOCUMENT_VERSION_2 &&
+      status == CompatibilityStatus::NOT_REPRESENTABLE)
+    return publish_v2_globals(document, size);
   return status == CompatibilityStatus::OK ? bindings_.publish_document_status(view.data(), view.size()) : status;
+}
+
+CompatibilityStatus PanelConfigLegacyAdapter::publish_v2_globals(
+    const uint8_t *document, size_t size) {
+  if (size > PANEL_CONFIG_V2_HTTP_MAX_BYTES)
+    return CompatibilityStatus::NOT_REPRESENTABLE;
+  PanelConfigV2Reader reader(document, size);
+  size_t needed = 0;
+  if (reader.workspace_bytes(&needed) != PanelConfigStatus::OK ||
+      !needed || needed > PANEL_CONFIG_CONVERSION_MAX_WORKSPACE)
+    return CompatibilityStatus::NOT_REPRESENTABLE;
+  ConfigurationBuffer index(allocate_, release_);
+  auto *workspace = index.allocate(needed);
+  if (!workspace) return CompatibilityStatus::RETRYABLE_FAILURE;
+  if (reader.validate(workspace, needed) != PanelConfigStatus::OK)
+    return CompatibilityStatus::NOT_REPRESENTABLE;
+  PanelConfigV2Record profile, root, row;
+  if (!reader.record(PanelConfigV2Kind::DEVICE_PROFILE, 0, &profile) ||
+      !reader.record(PanelConfigV2Kind::PAGE, 0, &root))
+    return CompatibilityStatus::NOT_REPRESENTABLE;
+  const auto order = reader.string(root.third);
+  std::string_view color;
+  for (size_t i = 0; i < reader.record_count(); ++i) {
+    reader.record(i, &row);
+    if (row.kind != PanelConfigV2Kind::SETTING) continue;
+    const auto key = reader.string(row.id);
+    if (key == "button_on_color") color = reader.string(row.first);
+    if (key == "button_order" && reader.string(row.first) != order)
+      return CompatibilityStatus::NOT_REPRESENTABLE;
+  }
+  const auto status = bindings_.publish_global_values(profile.text, order, color);
+  return status == CompatibilityStatus::OK ? CompatibilityStatus::NATIVE_ONLY : status;
 }
 
 CompatibilityStatus PanelConfigLegacyAdapter::mirror_status(uint16_t version, const uint8_t *document, size_t size) {

@@ -252,12 +252,20 @@ bool PageCardDependencies::enumerate(const PageStore &store, PageDependencySink 
       if (owner==nullptr) return false;
       parent=configuration(store,*owner);
     }
-    const bool aggregate=parent.sensor=="indicator" && parent.entity.empty();
-    for (size_t i=0;i<page->runtime_card_count;++i) {
-      const auto card_id=static_cast<CardId>(page->first_card+i);
+    bool aggregate=false;
+    for(PageId ancestor=page_id;ancestor!=0;) {
+      const auto *definition=store.page(ancestor);
+      const auto *owner=definition?store.card(definition->owner):nullptr;
+      if(!owner)return false;
+      aggregate|=store.field(*owner,CardField::SENSOR)=="indicator" &&
+                 store.field(*owner,CardField::ENTITY).empty();
+      ancestor=definition->parent;
+    }
+    for (const auto card_id : page->runtime_cards()) {
       const auto *card=store.card(card_id);
       if (card==nullptr) return false;
       auto config=configuration(store,*card);
+      if (page_id != 0 && config.type == "subpage" && card->target == NO_PAGE) return false;
       // Alarm children can inherit their target/options from the parent.
       if (page_id!=0 && (config.type=="alarm" || config.type=="alarm_action")) {
         if (config.entity.empty()) config.entity=parent.entity;

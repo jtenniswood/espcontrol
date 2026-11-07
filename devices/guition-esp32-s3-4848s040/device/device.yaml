@@ -46,8 +46,8 @@ esp32:
       # default 32-byte lines can desynchronise PSRAM reads from panel DMA and
       # leave the whole display vertically shifted until the next restart.
       CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
-      # The RGB driver already restarts after a genuine DMA underflow. Restarting
-      # on every VSYNC can instead shift the framebuffer by one bounce-buffer block.
+      # Recover detected missed bounce-buffer refills at VSYNC. Restarting
+      # unconditionally every refresh can itself shift the pixel stream.
       CONFIG_LCD_RGB_RESTART_IN_VSYNC: "n"
       CONFIG_LCD_RGB_ISR_IRAM_SAFE: "y"
       CONFIG_SPIRAM_FETCH_INSTRUCTIONS: "y"
@@ -425,12 +425,10 @@ display:
     # Start WiFi before the RGB panel allocates its frame buffers; otherwise the
     # WiFi driver can fail to claim enough internal RX buffers on fresh boots.
     setup_priority: 240
-    # Keep the S3 RGB clock conservative while lifting the panel scan rate above
-    # the visibly shimmery 8MHz setting. Higher clocks have caused screen shifts
-    # and pixel breakup when WiFi, flash, and web traffic compete for PSRAM.
-    pclk_frequency: 10MHz
-    # Allow longer PSRAM stalls during pooled-grid redraws. The two internal
-    # DMA buffers use 18.75 KiB more than the default 20-row pair.
+    # Leave PSRAM bandwidth for expanded artwork and the full state cache.
+    # A lower refresh rate prevents scanout shifts during large image changes.
+    pclk_frequency: 6MHz
+    # Internal bounce buffers isolate display DMA from direct PSRAM bus stalls.
     bounce_buffer_rows: 30
     update_interval: never
     auto_clear_enabled: False

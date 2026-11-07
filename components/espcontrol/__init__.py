@@ -189,6 +189,12 @@ async def to_code(config):
         prepend=True,
     )
     cg.add_build_flag(f"-I{comp_dir}")
+    # The audited nonvirtual state handler is called across SDK object files.
+    # Preserve its decoder/authentication gate; the version-pinned wrapper uses
+    # the original handler whenever a prepared native lookup is unavailable.
+    cg.add_build_flag(
+        "-Wl,--wrap=_ZN7esphome3api13APIConnection32on_home_assistant_state_responseERKNS0_26HomeAssistantStateResponseE"
+    )
     cg.add_global(cg.RawStatement(f'#include "{comp_include_dir}/clock_bar.h"'), prepend=True)
     cg.add_global(cg.RawStatement(f'#include "{comp_include_dir}/backlight.h"'), prepend=True)
     cg.add_global(

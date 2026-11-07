@@ -17,9 +17,14 @@ class PanelConfigLegacyAdapter final : public LegacyConfigurationAdapter {
 
   bool configured() const { return bindings_.configured(); }
   LegacyLoadResult load(uint8_t *output, size_t output_capacity) override;
+  LegacyLoadResult load_for_write(uint16_t target, uint8_t *output,
+                                  size_t output_capacity) override;
   LegacyLoadResult merge(uint16_t version, const uint8_t *native,
                          size_t native_size, uint8_t *output,
                          size_t output_capacity, bool *changed) override;
+  LegacyLoadResult merge_for_write(uint16_t target, uint16_t version,
+      const uint8_t *native, size_t native_size, uint8_t *output,
+      size_t output_capacity, bool *changed) override;
   bool publish(uint16_t document_version, const uint8_t *document,
                size_t document_size) override;
   bool mirror(uint16_t document_version, const uint8_t *document,
@@ -30,6 +35,9 @@ class PanelConfigLegacyAdapter final : public LegacyConfigurationAdapter {
   CompatibilityStatus mirror_status(uint16_t version, const uint8_t *document, size_t size) override;
 
  private:
+  LegacyLoadResult convert_for_write(uint16_t target, LegacyLoadResult source,
+                                     uint8_t *output, size_t output_capacity);
+  CompatibilityStatus publish_v2_globals(const uint8_t *document, size_t size);
   PanelConfigTextBindings &bindings_;
   ConfigurationBuffer::Allocate allocate_;
   ConfigurationBuffer::Release release_;

@@ -15,7 +15,7 @@ std::string_view inherited_field(const PageStore& store, CardId id, CardField fi
   if (!value.empty()) return value;
   for (PageId p = 1; p < store.page_count(); ++p) {
     const auto* page = store.page(p);
-    if (id >= page->first_card && id < page->first_card + page->runtime_card_count) {
+    if (page->includes_runtime_card(id)) {
       const auto* parent = store.card(page->owner);
       return parent ? store.field(*parent, field) : std::string_view{};
     }
@@ -25,7 +25,7 @@ std::string_view inherited_field(const PageStore& store, CardId id, CardField fi
 bool navigable(const PageStore& store, CardId id) {
   for (PageId p = 0; p < store.page_count(); ++p) {
     const auto* page = store.page(p);
-    if (id >= page->first_card && id < page->first_card + page->runtime_card_count) return page->navigable;
+    if (page->includes_runtime_card(id)) return page->navigable;
   }
   return false;
 }

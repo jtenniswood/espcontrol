@@ -18,8 +18,11 @@ const {
   activeCardColor,
   decodeConfigField,
 } = loadTypeScriptModule(path.join(ROOT, "src", "webserver", "model", "index.ts"));
-const { convertNativeV1ToV2, convertNativeV2ToV1 } = loadTypeScriptModule(
+const { convertNativeV1ToV2, convertNativeV2ToV1, encodePanelPageDocument, decodePanelPageDocument, panelPageDocumentDepth } = loadTypeScriptModule(
   path.join(ROOT, "src", "webserver", "model", "panel_config_conversion.ts"),
+);
+const { createNativeConfigBackupPayload, decodeNativeConfigBackupPayload } = loadTypeScriptModule(
+  path.join(ROOT,"src/webserver/model/native_config_backup.ts"),
 );
 const MANIFEST_PATH = path.join(ROOT, "devices", "manifest.json");
 const WEB_OUTPUT_DIR = freshWebOutputDir();
@@ -257,10 +260,15 @@ async function installRoutes(context, slug, options = {}) {
     `${slug}: generated web UI does not exist at ${scriptPath}`,
   );
   const webAssetManifest = JSON.parse(fs.readFileSync(webAssetManifestPath, "utf8"));
-  const immutableBundlePath = path.join(
+  const immutableBundlePath = options.bundlePath || path.join(
     WEB_OUTPUT_DIR,
     webAssetManifest.bundles[0].path,
   );
+  if (options.bundlePath) {
+    const hash=require("crypto").createHash("sha256").update(fs.readFileSync(options.bundlePath)).digest("hex");
+    for (const entry of webAssetManifest.bundles.filter(entry=>entry.firmwareVersions.includes("dev")))
+      Object.assign(entry,{id:hash,sha256:hash,path:`bundles/${hash}/www.js`});
+  }
 
   await context.route("**/*", async (route) => {
     const requestUrl = new URL(route.request().url());
@@ -379,7 +387,11 @@ async function installRoutes(context, slug, options = {}) {
           screensaver_pin: options.screensaverPinState ? { version: 1 } : undefined,
           configuration: { read: true, write: true, document_versions: nativeState.documentVersions || [1],
             preserves_inactive_records: nativeState.preservesInactiveRecords,
-            max_record_body_bytes: nativeState.maxRecordBodyBytes, max_v2_document_bytes: 524288 },
+            max_record_body_bytes: nativeState.maxRecordBodyBytes, max_v2_document_bytes: 524288,
+            max_durable_document_bytes: nativeState.maxDurableDocumentBytes,
+            max_navigation_depth: nativeState.readDepth,
+            writable_navigation_depth: nativeState.writeDepth,
+            durable_document_version: nativeState.durableVersion },
           web_assets: { versions: [1] },
         }),
       });
@@ -415,7 +427,14 @@ async function installRoutes(context, slug, options = {}) {
         return;
       }
       const etag = () => `"${version === 2 ? "v2-" : ""}${nativeState.generation}"`;
+      if (version === 1 && nativeState.readDepth === 2 && panelPageDocumentDepth(nativeState.document) > 1) {
+        await route.fulfill({status:422,body:"nested document requires version two"});return;
+      }
       if (route.request().method() === "PUT") {
+        if (nativeState.rejectNextStatus) {
+          const status = nativeState.rejectNextStatus; delete nativeState.rejectNextStatus;
+          await route.fulfill({status,body:"configuration rejected"});return;
+        }
         const expected = etag();
         const supplied = route.request().headers()["if-match"];
         if (supplied !== expected) {
@@ -425,7 +444,10 @@ async function installRoutes(context, slug, options = {}) {
         const body = route.request().postDataBuffer();
         assert(body, `${slug}: native configuration PUT has a binary body`);
         const input = new Uint8Array(body);
-        nativeState.document = decodePanelConfig(version === 2 ? convertNativeV2ToV1(input) : input);
+        const candidate = version === 2 && nativeState.readDepth === 2
+          ? decodePanelPageDocument(input) : decodePanelConfig(version === 2 ? convertNativeV2ToV1(input) : input);
+        if (nativeState.beforeCommit) await nativeState.beforeCommit(candidate);
+        nativeState.document = candidate;
         nativeState.generation += 1;
         nativeState.puts.push({
           generation: nativeState.generation,
@@ -438,11 +460,13 @@ async function installRoutes(context, slug, options = {}) {
         });
         return;
       }
+      if (nativeState.beforeRead) await nativeState.beforeRead();
       await route.fulfill({
         status: 200,
         contentType: "application/vnd.espcontrol.panel-config",
         headers: { ETag: etag(), "X-Panel-Config-Version": String(version) },
-        body: Buffer.from(version === 2 ? convertNativeV1ToV2(encodePanelConfig(nativeState.document)) : encodePanelConfig(nativeState.document)),
+        body: Buffer.from(version === 2 && nativeState.readDepth === 2 ? encodePanelPageDocument(nativeState.document)
+          : version === 2 ? convertNativeV1ToV2(encodePanelConfig(nativeState.document)) : encodePanelConfig(nativeState.document)),
       });
       return;
     }
@@ -509,6 +533,7 @@ async function installRoutes(context, slug, options = {}) {
         /^\/(?:number|select|switch|sensor|text_sensor|light|button|update)\/[^/]+$/.test(requestUrl.pathname)) {
       // This SSE fixture does not expose these optional REST entities.
       // A missing entity is 404, not a successful empty JSON response.
+      options.expectedMissingEntityUrls?.add(requestUrl.href);
       await route.fulfill({ status: 404, body: "Not found" });
       return;
     }
@@ -6789,7 +6814,8 @@ async function assertTimerEntityValidation(page) {
 
 async function runCase(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
-  await installRoutes(context, testCase.slug);
+  const expectedMissingEntityUrls = new Set();
+  await installRoutes(context, testCase.slug, { expectedMissingEntityUrls });
   const page = await context.newPage();
   const errors = [];
   const posts = [];
@@ -6797,6 +6823,9 @@ async function runCase(browser, testCase) {
 
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
+    if (message.type() === "error" &&
+        message.text() === "Failed to load resource: the server responded with a status of 404 (Not Found)" &&
+        expectedMissingEntityUrls.has(message.location().url)) return;
     if (message.type() === "error" || message.type() === "warning")
       errors.push(`[${message.type()}] ${message.text()}`);
   });
@@ -8283,6 +8312,427 @@ async function assertWeatherReadingEditors(browser) {
   }
 }
 
+async function assertNestedPageEditor(browser, testCase) {
+  const { slug } = testCase;
+  const nativeState = { ...nativeConfigState(slug), documentVersions: [1,2], readDepth: 2, writeDepth: 2, durableVersion: 2,
+    document: { deviceProfile: slug, buttons: {1:";Root;;;;;subpage"},
+      subpages: {1:"~B,1|G,,Child",33:"~B=Parent%20Page:ABCDEF,1|,light.leaf,Leaf"}, settings:{button_order:"1",future:"opaque 🌡️"} } };
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(context, slug, { nativeState });
+  const page = await context.newPage(); await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${slug}?events=1`, { waitUntil:"domcontentloaded" });
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Root"));
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    assert((await page.locator('.sp-main [data-slot="1"]').textContent()).includes("Root"), "legacy SSE cannot overwrite the authoritative nested root");
+    await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+    await page.waitForFunction(() => document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Root");
+    await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+    await page.waitForFunction(() => document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Child");
+    assert((await page.locator('.sp-main').textContent()).includes("Leaf"));
+    // A second browser changes only a nested page. No compatibility text
+    // entity changes, so the generation event must refresh the whole graph.
+    nativeState.document.subpages[33] = "~B=Parent%20Page:ABCDEF,1|,light.leaf,Remote leaf";
+    nativeState.generation += 1;
+    const notifyConfiguration = () => page.evaluate(() => window.__eventSources.at(-1).dispatch("panel-config", {data:'{"generation":1}'}));
+    await notifyConfiguration();
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Remote leaf"));
+    const name = page.getByRole("textbox", {name:"Card name",exact:true});
+    await page.locator('.sp-main [data-slot="1"] .sp-editable-title').click();
+    await name.fill("Local draft");
+    nativeState.document.subpages[33] = "~B=Parent%20Page:ABCDEF,1|,light.leaf,Latest remote leaf";
+    nativeState.generation += 1;
+    const readWhileFocused = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/config" && response.request().method() === "GET" && response.status() === 200);
+    await notifyConfiguration(); await readWhileFocused;
+    assert.strictEqual(await name.inputValue(),"Local draft","external notification preserves the focused title draft");
+    await name.press("Escape");
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Latest remote leaf"));
+    assert.strictEqual(nativeState.puts.length,0,"cancelled draft refreshes without a write");
+    nativeState.document.subpages[33] = "~B=Parent%20Page:ABCDEF,1|,light.leaf,Leaf";
+    nativeState.generation += 1; await notifyConfiguration();
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="1"] .sp-editable-title')?.textContent === "Leaf");
+    await page.locator('.sp-back-btn .sp-back-hit').click();
+    await page.waitForFunction(() => document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Root");
+    await page.locator('.sp-main .sp-empty-cell').first().click();
+    await page.getByRole("button", {name:"Subpage card type",exact:true}).click();
+    if (!await page.getByLabel("Label", {exact:true}).isVisible())
+      await page.getByRole("button", {name:"Card Settings",exact:true}).click();
+    await page.getByLabel("Label", {exact:true}).fill("Created");
+    await page.getByRole("button", {name:"Save",exact:true}).click();
+    await page.waitForSelector('.sp-settings-overlay.sp-visible', {state:"detached"});
+    assert(nativeState.puts.length === 1 && Object.hasOwn(nativeState.document.subpages,34), "creating a child folder persists its explicit empty nested target");
+    await page.locator('.sp-main [data-slot="2"] .sp-subpage-badge').click();
+    await page.waitForFunction(() => document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Created");
+    await page.locator('.sp-main .sp-empty-cell').first().click();
+    assert.strictEqual(await page.getByRole("button", {name:"Subpage card type",exact:true}).count(),0,"third-level creation is not offered");
+    await page.getByRole("button",{name:"Switch card type",exact:true}).click();
+    if (!await page.getByLabel("Entity", {exact:true}).isVisible())
+      await page.getByRole("button", {name:"Card Settings",exact:true}).click();
+    await page.getByLabel("Entity",{exact:true}).fill("light.deep");
+    if (!await page.getByLabel("Label", {exact:true}).isVisible())
+      await page.getByRole("button", {name:"Card Settings",exact:true}).click();
+    await page.getByLabel("Label",{exact:true}).fill("Deep");
+    const beforeRejectedSave = JSON.stringify(nativeState.document);
+    nativeState.rejectNextStatus = 422;
+    await page.getByRole("button", {name:"Save",exact:true}).click();
+    await page.waitForFunction(() => document.querySelector('.sp-banner.sp-error')?.textContent.includes("Nested pages cannot be saved"));
+    assert(await page.locator('.sp-settings-overlay.sp-visible').isVisible(),"a rejected nested save keeps the draft open");
+    assert.strictEqual(JSON.stringify(nativeState.document),beforeRejectedSave,"a rejected nested save preserves every page and setting");
+    await page.getByRole("button", {name:"Save",exact:true}).click();
+    await page.waitForSelector('.sp-settings-overlay.sp-visible',{state:"detached"});
+    assert(nativeState.document.subpages[34].includes("light.deep"),"nested cards save through the graph path");
+    assert.strictEqual(nativeState.document.subpages[33],"~B=Parent%20Page:ABCDEF,1|,light.leaf,Leaf","sibling raw fields and custom Back appearance are retained exactly");
+    assert.strictEqual(nativeState.document.settings.future,"opaque 🌡️","unknown settings survive nested editing");
+    await page.reload({waitUntil:"domcontentloaded"});
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Root"));
+    await page.evaluate(events => window.__seedEspState(events),seededEvents());
+    await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+    await page.locator('.sp-main [data-slot="2"] .sp-subpage-badge').click();
+    await page.waitForFunction(() => document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Created");
+    assert((await page.locator('.sp-main').textContent()).includes("Deep"),"nested cards survive reload");
+    fs.mkdirSync(FAILURE_DIR,{recursive:true});await page.screenshot({path:path.join(FAILURE_DIR,`nested-${slug}.png`)});
+    await page.locator('.sp-back-btn .sp-back-hit').click();
+    await page.waitForFunction(() => document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Root");
+    const contextAction = async (slot, action) => {
+      await page.locator(`.sp-main [data-slot="${slot}"]`).click({button:"right"});
+      await page.locator(".sp-ctx-menu").getByText(action,{exact:true}).click();
+    };
+    const beforeTransfer = JSON.stringify(nativeState.document), putsBeforeTransfer = nativeState.puts.length;
+    nativeState.rejectNextStatus = 422;
+    await contextAction(1,"Duplicate");
+    await page.waitForFunction(() => document.querySelector('.sp-banner.sp-error')?.textContent.includes("No transfer was applied"));
+    assert.strictEqual(JSON.stringify(nativeState.document),beforeTransfer,"rejected folder transfer changes neither server data nor the editor");
+    assert.strictEqual(await page.locator('.sp-main [data-slot="3"]').count(),0);
+    await contextAction(1,"Duplicate");
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="3"]')?.textContent.includes("Child"));
+    assert.strictEqual(nativeState.puts.length,putsBeforeTransfer+1,"retry duplicates the entire folder with one successful native PUT");
+    assert.strictEqual(nativeState.document.subpages[35],nativeState.document.subpages[33],"duplicate remaps the complete saved child page");
+    await contextAction(3,"Delete");
+    await waitForNativeState(nativeState,()=>!Object.hasOwn(nativeState.document.subpages,35),"whole duplicate subtree deleted");
+    await page.waitForSelector('.sp-main [data-slot="3"]',{state:"detached"});
+    const beforeCut = nativeState.puts.length, movedRaw = nativeState.document.subpages[33];
+    await contextAction(1,"Cut");
+    await page.waitForFunction(() => document.querySelector('.sp-main')?.getAttribute('aria-disabled') === "false");
+    await page.locator('.sp-back-btn .sp-back-hit').click();
+    await page.waitForFunction(() => !document.querySelector('.sp-clockbar-subpage-title'));
+    await page.locator('.sp-main .sp-empty-cell').first().click({button:"right"});
+    await page.locator(".sp-ctx-menu").getByText("Paste",{exact:true}).click();
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="2"]')?.textContent.includes("Child"));
+    assert.strictEqual(nativeState.puts.length,beforeCut+1,"cut defers source deletion until one atomic move PUT");
+    assert.strictEqual(nativeState.document.subpages[2],movedRaw,"move preserves exact raw page fields");
+    assert(!Object.hasOwn(nativeState.document.subpages,33),"move removes the previous owner path");
+    assert(nativeState.document.subpages[34].includes("light.deep"),"move leaves unrelated descendants intact");
+    await contextAction(1,"Copy Code");
+    const codeDialog=page.getByRole("dialog",{name:"Copy Code",exact:true});
+    const code=JSON.parse(await codeDialog.getByRole("textbox").inputValue());
+    assert.strictEqual(code.version,2,"nested folder codes require a newer reader");
+    assert.strictEqual(code.cards[0].page_tree.children[2],nativeState.document.subpages[34],"transfer code preserves all descendant page data");
+    await codeDialog.getByRole("button",{name:"Close",exact:true}).click();
+    const beforeCodePaste=nativeState.puts.length;
+    await page.locator('.sp-main .sp-empty-cell').first().click({button:"right"});
+    await page.locator(".sp-ctx-menu").getByText("Paste Code",{exact:true}).click();
+    const pasteDialog=page.getByRole("dialog",{name:"Paste Code",exact:true});
+    await pasteDialog.getByRole("textbox").fill(JSON.stringify({...code,version:3}));
+    await pasteDialog.getByRole("button",{name:"Paste",exact:true}).click();
+    await pasteDialog.locator(".sp-transfer-error").filter({hasText:"newer version"}).waitFor();
+    assert.strictEqual(nativeState.puts.length,beforeCodePaste,"unsupported transfer versions do not write");
+    await pasteDialog.getByRole("textbox").fill(JSON.stringify(code));
+    await pasteDialog.getByRole("button",{name:"Paste",exact:true}).click();
+    await pasteDialog.waitFor({state:"detached"});
+    assert.strictEqual(nativeState.puts.length,beforeCodePaste+1,"code import commits the whole tree once");
+    assert.strictEqual(nativeState.document.subpages[98],code.cards[0].page_tree.children[2],"code import remaps retained descendant slots without flattening");
+    nativeState.document.buttons[1]=";Reconnected Root;;;;;subpage";
+    await page.evaluate(() => {const source=window.__eventSources.at(-1);source.dispatch("error",{});source.dispatch("open",{});});
+    await page.waitForFunction(() => document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Reconnected Root"));
+    console.log(`${slug}: nested graph load, creation/reload, parent Back, atomic copy/move/delete with rejected-save retry, versioned code round-trip and reconnect passed`);
+  } catch(error) {
+    fs.mkdirSync(FAILURE_DIR,{recursive:true});await page.screenshot({path:path.join(FAILURE_DIR,`nested-failure-${slug}.png`)});throw error;
+  } finally { await context.close(); }
+}
+
+async function assertRetainedNativeCardTransfers(browser,testCase) {
+  const slot=testCase.slots+1, child=32+slot;
+  const tokens=Array(slot).fill("");tokens[0]=",light.hidden,Inactive";tokens[slot-1]="G,,Retained";
+  const leaf="~B=Parent:123456,1|,light.retained_leaf,Leaf";
+  const initial={deviceProfile:testCase.slug,buttons:{1:";Root;;;;;subpage"},
+    subpages:{1:[`~B=Return:ABCDEF,${slot}`,...tokens].join("|"),[child]:leaf},
+    settings:{button_order:"1",future:"opaque 🌡️"}};
+  const nativeState={...nativeConfigState(testCase.slug),documentVersions:[1,2],readDepth:2,writeDepth:2,durableVersion:2,document:structuredClone(initial)};
+  const context=await browser.newContext({viewport:testCase.viewport});await installRoutes(context,testCase.slug,{nativeState});
+  const page=await context.newPage();await installFakeEventSource(page);
+  const enter=async()=>{
+    await page.waitForFunction(()=>document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Root"));
+    await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+    await page.waitForFunction(()=>document.querySelector('.sp-clockbar-subpage-title')?.textContent==="Root");
+    await page.locator(`.sp-main [data-slot="${slot}"]`).waitFor();
+  };
+  const action=async(id,name)=>{
+    await page.locator(`.sp-main [data-slot="${id}"]`).click({button:"right"});
+    await page.locator('.sp-ctx-menu').getByText(name,{exact:true}).click();
+  };
+  const paste=async()=>{
+    await page.waitForFunction(()=>document.querySelector('.sp-main')?.getAttribute('aria-disabled')==="false");
+    await page.locator('.sp-main .sp-empty-cell').first().click({button:"right"});
+    await page.locator('.sp-ctx-menu').getByText("Paste",{exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('.sp-main [data-slot="2"]')?.textContent.includes("Retained"));
+  };
+  const deleteCopy=async()=>{
+    await action(2,"Delete");await page.locator('.sp-main [data-slot="2"]').waitFor({state:"detached"});
+    assert(!Object.hasOwn(nativeState.document.subpages,34));
+  };
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`,{waitUntil:"domcontentloaded"});await enter();
+    await action(slot,"Copy");await paste();
+    assert.strictEqual(nativeState.document.subpages[34],leaf,"copy preserves the retained folder subtree");
+    assert.strictEqual(nativeState.document.subpages[child],leaf);
+    await deleteCopy();
+    await action(slot,"Duplicate");
+    await page.waitForFunction(()=>document.querySelector('.sp-main [data-slot="2"]')?.textContent.includes("Retained"));
+    assert.strictEqual(nativeState.document.subpages[34],leaf,"duplicate uses the displayed card identity");
+    await deleteCopy();
+    await action(slot,"Cut");await paste();
+    assert(!Object.hasOwn(nativeState.document.subpages,child),"move removes the old retained owner only when committed");
+    assert.strictEqual(nativeState.document.subpages[34],leaf);
+    await page.locator(`.sp-main [data-slot="${slot}"]`).waitFor({state:"detached"});
+    assert.strictEqual(nativeState.puts.length,5,"copy/duplicate cleanup and the move each commit atomically");
+    nativeState.document=structuredClone(initial);nativeState.generation+=1;
+    await page.reload({waitUntil:"domcontentloaded"});await enter();
+    await action(slot,"Delete");await page.locator(`.sp-main [data-slot="${slot}"]`).waitFor({state:"detached"});
+    assert(!Object.hasOwn(nativeState.document.subpages,child),"delete removes the retained folder subtree");
+    assert.strictEqual(nativeState.document.subpages[1].split("|")[1],tokens[0],"inactive raw sibling survives transfers");
+    assert.strictEqual(nativeState.document.settings.future,initial.settings.future);
+    assert.strictEqual(nativeState.puts.length,6);
+    console.log(`${testCase.slug}: displayed retained card${slot} copy/duplicate/cut/delete and subtree preservation passed`);
+  } catch(error) {
+    fs.mkdirSync(FAILURE_DIR,{recursive:true});
+    await page.screenshot({path:path.join(FAILURE_DIR,`retained-transfers-${testCase.slug}.png`)}).catch(()=>{});
+    const cards=await page.locator('.sp-main [data-slot]').evaluateAll(elements=>elements.map(element=>({slot:element.getAttribute('data-slot'),text:element.textContent}))).catch(()=>[]);
+    fs.writeFileSync(path.join(FAILURE_DIR,`retained-transfers-${testCase.slug}.json`),JSON.stringify({cards,puts:nativeState.puts.length},null,2));
+    throw error;
+  } finally {await context.close();}
+}
+
+async function assertNestedWriterLimits(browser,testCase) {
+  for(const nested of [false,true]) {
+    const nativeState={...nativeConfigState(testCase.slug),documentVersions:[1,2],readDepth:2,writeDepth:1,durableVersion:1,
+      document:{deviceProfile:testCase.slug,buttons:{1:";Reader Root;;;;;subpage",2:";Other Root;;;;;subpage"},subpages:nested?{1:"~B,1|G,,Child",33:"~B,1|,light.leaf,Leaf",2:"~B,1|,light.hidden,Hidden"}:{1:"~B,1|,light.flat,Flat leaf",2:"~B"},settings:{button_order:"1",button_on_color:"112233"}}};
+    const context=await browser.newContext({viewport:testCase.viewport});await installRoutes(context,testCase.slug,{nativeState});
+    const page=await context.newPage();await installFakeEventSource(page);
+    try {
+      await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`,{waitUntil:"domcontentloaded"});
+      await page.waitForFunction(()=>document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Reader Root"));
+      if(nested) {
+        assert.strictEqual(await page.locator('.sp-main').getAttribute('aria-disabled'),'false','reader-only nested configurations remain browsable');
+        assert(await page.locator('.sp-apply-btn').evaluateAll(buttons=>buttons.every(button=>button.disabled)), 'read-only configuration writes remain disabled');
+        await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+        await page.waitForFunction(()=>document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Reader Root");
+        await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+        await page.waitForFunction(()=>document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Child");
+        assert((await page.locator('.sp-main').textContent()).includes('Leaf'));
+        await page.locator('.sp-main [data-slot="1"]').click();
+        await page.locator('.sp-main .sp-empty-cell').first().click();
+        assert.strictEqual(await page.locator('.sp-settings-overlay.sp-visible').count(),0,'read-only leaf and empty cells cannot open an editor');
+        await page.locator('.sp-back-btn .sp-back-hit').click();
+        await page.waitForFunction(()=>document.querySelector('.sp-clockbar-subpage-title')?.textContent === "Reader Root");
+        await page.locator('.sp-back-btn .sp-back-hit').click();
+        await page.waitForFunction(()=>!document.querySelector('.sp-clockbar-subpage-title'));
+        assert.strictEqual(nativeState.puts.length,0);
+        await page.evaluate(events=>window.__seedEspState(events),seededEvents());
+        await openBackupControls(page);
+        const downloadPromise=page.waitForEvent("download");
+        await page.getByRole("button",{name:"Export",exact:true}).click();
+        const exported=JSON.parse(fs.readFileSync(await(await downloadPromise).path(),"utf8"));
+        assert.strictEqual(exported.version,3,"reader-only nested backups use the complete graph format");
+        assert.deepStrictEqual(Array.from(decodeNativeConfigBackupPayload(exported.native_config)),Array.from(encodePanelPageDocument(nativeState.document)),"reader-only export retains exact graph bytes and inactive pages after the firmware's v1 HTTP422");
+        assert.strictEqual(nativeState.puts.length,0,"reader-only backup performs no writes");
+      } else {
+        let heldReads=0,releaseRead;
+        const held=new Promise(resolve=>{releaseRead=resolve;});
+        nativeState.beforeRead=async()=>{++heldReads;await held;};
+        await page.evaluate(()=>window.__seedEspState([
+          {id:'text-button_order',state:'2'},
+          {id:'text/Button On Color',state:'AA0000'},
+        ]));
+        await waitForNativeState(nativeState,()=>heldReads>0,"named root events request native refresh");
+        assert.strictEqual(await page.locator('.sp-main [data-pos="0"][data-slot="1"]').count(),1,"late legacy order cannot replace the flat native snapshot while refresh is pending");
+        assert.strictEqual(await page.locator('#sp-set-on-color input[type="color"]').inputValue(),"#112233","late legacy colour cannot replace the native accent");
+        delete nativeState.beforeRead;releaseRead();
+        nativeState.document.settings.button_order="2,1";
+        nativeState.document.settings.button_on_color="445566";nativeState.generation+=1;
+        await page.evaluate(()=>window.__seedEspState([{id:'text-button_order',state:'2,1'}]));
+        await page.waitForFunction(()=>document.querySelector('.sp-main [data-pos="0"]')?.getAttribute('data-slot')==='2'&&document.querySelector('#sp-set-on-color input[type="color"]')?.value==='#445566');
+        nativeState.document.settings.button_order="1";
+        nativeState.document.settings.button_on_color="778899";nativeState.generation+=1;
+        await page.evaluate(()=>window.__seedEspState([{id:'text/Button On Color',state:'AA0000'}]));
+        await page.waitForFunction(()=>document.querySelector('.sp-main [data-pos="0"]')?.getAttribute('data-slot')==='1'&&document.querySelector('#sp-set-on-color input[type="color"]')?.value==='#778899');
+        assert.strictEqual(nativeState.puts.length,0,"external root settings refresh without a write");
+        await page.evaluate(()=>window.__seedEspState([
+          {id:'text-subpage_1_config_ext',state:''},
+          {id:'text-subpage_1_config_ext_2',state:'stale fragment'},
+        ]));
+        await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+        await page.waitForFunction(()=>document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes('Flat leaf'));
+        await page.locator('.sp-main .sp-empty-cell').first().click();
+        assert.strictEqual(await page.getByRole("button",{name:"Subpage card type",exact:true}).count(),0,'reader support alone cannot enable nested creation');
+      }
+    } finally {await context.close();}
+  }
+}
+
+async function assertNestedDurableByteLimit(browser,testCase) {
+  const document={deviceProfile:testCase.slug,buttons:{1:";Budget Root;;;;;subpage"},
+    subpages:{1:"~B,1|G,,Child",33:"~B"},settings:{button_order:"1"}};
+  const nativeState={...nativeConfigState(testCase.slug),documentVersions:[1,2],readDepth:2,writeDepth:2,durableVersion:2,
+    document,maxDurableDocumentBytes:encodePanelPageDocument(document).length};
+  const before=JSON.stringify(document);
+  const context=await browser.newContext({viewport:testCase.viewport});await installRoutes(context,testCase.slug,{nativeState});
+  const page=await context.newPage();await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`,{waitUntil:"domcontentloaded"});
+    await page.waitForSelector('.sp-main [data-slot="1"] .sp-subpage-badge');
+    await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+    await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+    await page.locator('.sp-main .sp-empty-cell').first().click();
+    await page.getByRole("button",{name:"Switch card type",exact:true}).click();
+    if(!await page.getByLabel("Entity",{exact:true}).isVisible())await page.getByRole("button",{name:"Card Settings",exact:true}).click();
+    await page.getByLabel("Entity",{exact:true}).fill("light.over_limit");
+    await page.getByRole("button",{name:"Save",exact:true}).click();
+    await page.locator('.sp-banner.sp-error').filter({hasText:"storage capacity"}).waitFor();
+    assert(await page.locator('.sp-settings-overlay.sp-visible').isVisible(),"durable-byte rejection retains the card draft");
+    assert.strictEqual(nativeState.puts.length,0,"oversized durable document is rejected before PUT");
+    assert.strictEqual(JSON.stringify(nativeState.document),before,"durable-byte rejection leaves the entire graph unchanged");
+    console.log(`${testCase.slug}: durable-byte limit rejects nested saves before PUT and retains the draft`);
+  } finally {await context.close();}
+}
+
+function nestedEditorCases() {
+  return [...new Map(ACTIVE_CASES.map(testCase => [testCase.slots,testCase])).values()];
+}
+
+async function assertNestedBackup(browser,testCase) {
+  const slug=testCase.slug;
+  const original={deviceProfile:slug,buttons:{1:";Backup Root;;;;;subpage",32:";Hidden Root;;;;;subpage"},
+    subpages:{1:"~B=Home:ABCDEF,1|G,,Child",33:"~B=Root:123456,1|,light.leaf,Leaf",
+      32:"~B,1|G,,Dormant",1025:"~B=Hidden:0088FF,1|,light.hidden,Hidden"},
+    settings:{button_order:"1",future:"opaque\0🌡️"}};
+  const nativeState={...nativeConfigState(slug),documentVersions:[1,2],readDepth:2,writeDepth:2,durableVersion:2,
+    document:JSON.parse(JSON.stringify(original))};
+  let exported;
+  const context=await browser.newContext({viewport:testCase.viewport});await installRoutes(context,slug,{nativeState});
+  const page=await context.newPage();await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${slug}?events=1`,{waitUntil:"domcontentloaded"});
+    await page.waitForFunction(()=>document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Backup Root"));
+    await page.evaluate(events=>window.__seedEspState(events),seededEvents());
+    await openBackupControls(page);
+    const downloadPromise=page.waitForEvent("download");await page.getByRole("button",{name:"Export",exact:true}).click();
+    exported=JSON.parse(fs.readFileSync(await (await downloadPromise).path(),"utf8"));
+    assert.strictEqual(exported.version,3,"graph exports use an outer version older editors reject");
+    assert.strictEqual(exported.native_config.document_version,2);
+    assert.deepStrictEqual(Array.from(decodeNativeConfigBackupPayload(exported.native_config)),Array.from(encodePanelPageDocument(original)),"backup retains exact graph bytes and inactive descendants");
+    const pendingMove=testCase.slug==="guition-esp32-s3-4848s040";
+    if(pendingMove) {
+      await page.getByRole("tab",{name:"Layout",exact:true}).click();
+      await page.evaluate(async()=>{
+        const realSet=window.setTimeout,realClear=window.clearTimeout,held=new Map();
+        window.setTimeout=function(callback,delay,...args){
+          if(delay!==500)return realSet(callback,delay,...args);
+          const id=realSet(()=>{},60000);held.set(id,()=>callback(...args));return id;
+        };
+        window.clearTimeout=function(id){held.delete(id);return realClear(id);};
+        window.__releaseBackupGridTimers=()=>{
+          window.setTimeout=realSet;window.clearTimeout=realClear;const callbacks=[...held.entries()];held.clear();
+          for(const [id,callback]of callbacks){realClear(id);callback();}return callbacks.length;
+        };
+        const root=document.querySelector('.sp-main'),card=root.querySelector('[data-slot="1"]'),destination=root.querySelector('[data-pos="2"]');
+        const rect=destination.getBoundingClientRect(),dataTransfer=new DataTransfer();
+        const event=name=>new DragEvent(name,{bubbles:true,cancelable:true,dataTransfer,clientX:rect.x+rect.width/2,clientY:rect.y+rect.height/2});
+        card.dispatchEvent(event("dragstart"));destination.dispatchEvent(event("dragover"));
+        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+        destination.dispatchEvent(event("drop"));root.dispatchEvent(event("dragend"));
+        if(held.size!==1)throw new Error("Expected one pending grid-save debounce after the real drag/drop");
+      });
+      await page.waitForFunction(()=>document.querySelector('.sp-main [data-slot="1"]')?.getAttribute("data-pos")==="2");
+      nativeState.beforeCommit=async candidate=>{
+        if(candidate.buttons[1]===original.buttons[1] && nativeState.releasedGridTimers===undefined)
+          nativeState.releasedGridTimers=await page.evaluate(()=>window.__releaseBackupGridTimers());
+      };
+    }
+    nativeState.document.buttons[1]=";Changed Root;;;;;subpage";
+    nativeState.document.subpages[33]="~B,1|,light.changed,Changed";
+    nativeState.document.settings.future="changed";
+    await importBackup(page,exported,`graph-restore-${slug}`);
+    await page.waitForSelector(".sp-banner.sp-success",{timeout:15000});
+    assert.strictEqual(nativeState.puts.length,pendingMove?2:1,"pending edits finish first, then restore commits the full graph once");
+    if(pendingMove)assert.strictEqual(nativeState.releasedGridTimers,0,"a delayed old grid save cannot run while restore publishes");
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(nativeState.document)),original,"restore preserves every saved page, raw Back value and unknown setting without adding defaults");
+    await page.getByRole("tab",{name:"Layout",exact:true}).click();
+    await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+    await page.locator('.sp-main [data-slot="1"] .sp-subpage-badge').click();
+    await page.waitForFunction(()=>document.querySelector('.sp-clockbar-subpage-title')?.textContent==="Child");
+    assert((await page.locator('.sp-main').textContent()).includes("Leaf"),"restore refreshes graph navigation and child labels");
+    await page.reload({waitUntil:"domcontentloaded"});
+    await page.waitForFunction(()=>document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Backup Root"));
+  } finally {await context.close();}
+
+  for(const target of ["reader-only","flat-native","legacy","older-editor"]) {
+    const nested=target==="reader-only";
+    const olderBundle=path.join(ROOT,"docs/public/webserver/bundles/42f3fd87eb8cbfab59943a7643a19416ded29eddb8608498ada20e95b416fd49/www.js");
+    const frozenSource=target==="older-editor"?fs.readFileSync(olderBundle,"utf8"):"";
+    // New hardware revisions may postdate this frozen editor. Its format
+    // guard is exercised with a supported profile of the same grid size.
+    const olderProfile=target==="older-editor"?CASES.find(row=>row.slots===testCase.slots&&frozenSource.includes(row.slug)):null;
+    if(target==="older-editor")assert(olderProfile,"frozen editor has a supported profile for this grid");
+    const targetSlug=olderProfile?.slug??slug;
+    const stateForTarget=target==="legacy"?null:{...nativeConfigState(slug),documentVersions:[1,2],
+      readDepth:nested?2:1,writeDepth:1,durableVersion:1,
+      document:nested?JSON.parse(JSON.stringify(original)):{deviceProfile:targetSlug,buttons:{1:"light.original;Original"},subpages:{},settings:{button_order:"1"}}};
+    const before=JSON.stringify(stateForTarget?.document),posts=[];
+    const options={...(stateForTarget?{nativeState:stateForTarget}:{}),
+      ...(target==="older-editor"?{bundlePath:olderBundle}: {})};
+    const restricted=await browser.newContext({viewport:testCase.viewport});await installRoutes(restricted,targetSlug,options);
+    const restrictedPage=await restricted.newPage();await installFakeEventSource(restrictedPage);
+    restrictedPage.on("request",request=>{if(request.method()==="POST"||request.method()==="PUT")posts.push(request.url());});
+    try {
+      await restrictedPage.goto(`http://espcontrol.test/${targetSlug}?events=1`,{waitUntil:"domcontentloaded"});
+      await restrictedPage.waitForFunction(()=>window.__eventSources?.length>0);
+      const initialEvents=target==="older-editor"?nativeDocumentEvents(stateForTarget.document).filter(event=>
+        !/^text-subpage_\d+_/.test(event.id) && !["text-button_off_color","text-sensor_card_color"].includes(event.id)):
+        seededEvents().map(event=>event.id==="text-button_order"?{...event,state:"1"}:event);
+      await restrictedPage.evaluate(events=>window.__seedEspState(events),initialEvents);
+      if(nested) {
+        await restrictedPage.waitForFunction(()=>document.querySelector('.sp-main [data-slot="1"]')?.textContent.includes("Backup Root"));
+        await openBackupControls(restrictedPage);
+        const download=restrictedPage.waitForEvent("download");await restrictedPage.getByRole("button",{name:"Export",exact:true}).click();
+        const readonlyBackup=JSON.parse(fs.readFileSync(await (await download).path(),"utf8"));
+        assert.deepStrictEqual(readonlyBackup.native_config,exported.native_config,"reader-only firmware exports the complete graph after explicit v1 projection rejection");
+      }
+      if (target === "older-editor") {
+        await restrictedPage.getByRole("tab",{name:"Settings",exact:true}).click();
+        if (!await restrictedPage.getByText("Backup",{exact:true}).isVisible())
+          await restrictedPage.getByText("System",{exact:true}).click();
+        if (!await restrictedPage.getByRole("button",{name:"Import",exact:true}).isVisible())
+          await restrictedPage.getByText("Backup",{exact:true}).click();
+        const chooser=restrictedPage.waitForEvent("filechooser");
+        await restrictedPage.getByRole("button",{name:"Import",exact:true}).click();
+        await (await chooser).setFiles(writeJsonFixture(`graph-reject-${target}-${slug}`,exported));
+      } else await importBackup(restrictedPage,exported,`graph-reject-${target}-${slug}`);
+      const message=target==="older-editor"?"Backup was created by a newer version of EspControl":"This backup needs newer panel firmware";
+      await restrictedPage.locator(".sp-banner.sp-error").filter({hasText:message}).waitFor({timeout:10000});
+      assert.strictEqual(posts.length,0,`${target}: rejection precedes layout, PIN and other setting writes (${posts.join(", ")})`);
+      assert.strictEqual(JSON.stringify(stateForTarget?.document),before,`${target}: existing layout remains intact`);
+    } catch(error) {
+      fs.mkdirSync(FAILURE_DIR,{recursive:true});
+      fs.writeFileSync(path.join(FAILURE_DIR,`backup-${target}-${slug}.json`),JSON.stringify({posts,puts:stateForTarget?.puts,ui:await restrictedPage.evaluate(()=>({
+        text:document.body.innerText.slice(0,5000),tabs:[...document.querySelectorAll('.sp-tab,[role="tab"]')].map(el=>({text:el.textContent,rect:el.getBoundingClientRect().toJSON(),hidden:el.getAttribute("hidden")}))
+      }))},null,2));
+      await restrictedPage.screenshot({path:path.join(FAILURE_DIR,`backup-${target}-${slug}.png`)});
+      error.message=`${target}: ${error.message}`;throw error;
+    } finally {await restricted.close();}
+  }
+  console.log(`${slug}: exact graph backup/restore/reload and reader-only, flat-native, legacy and older-editor protection passed`);
+}
+
 (async function main() {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
@@ -8305,6 +8755,37 @@ async function assertWeatherReadingEditors(browser) {
     await assertWindSensorEditor(browser);
     if (process.env.ESPCONTROL_WIND_ONLY === "1") return;
     if (process.env.ESPCONTROL_RAINFALL_ONLY === "1") { await assertRainfallEditor(browser); return; }
+    if (process.env.ESPCONTROL_NESTED_BACKUPS_ONLY === "1") {
+      for(const testCase of nestedEditorCases()) await assertNestedBackup(browser,testCase);
+      return;
+    }
+    if (process.env.ESPCONTROL_CARD_TRANSFER_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) {
+        const context=await browser.newContext({viewport:testCase.viewport}); await installRoutes(context,testCase.slug);
+        const page=await context.newPage(), posts=[], errors=[];
+        page.on("pageerror",error=>errors.push(error.message));
+        page.on("request",request=>{if(request.method()==="POST" && new URL(request.url()).hostname==="espcontrol.test") posts.push(postRecord(request.url()));});
+        await installFakeEventSource(page);
+        try {
+          await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`,{waitUntil:"domcontentloaded"});
+          await page.waitForFunction(()=>window.__eventSources?.length>0);
+          await page.evaluate(events=>window.__seedEspState(events),seededEvents().map(event=>event.id==="text-button_order"?{...event,state:"1"}:event));
+          await assertCardTransferSmoke(page,posts,testCase.name);
+          assert.deepStrictEqual(errors,[],"legacy transfers have no script errors");
+          console.log(`${testCase.slug}: existing legacy card-transfer journey passed`);
+        } finally {await context.close();}
+      }
+      return;
+    }
+    if (process.env.ESPCONTROL_RETAINED_TRANSFER_ONLY === "1") {
+      for(const testCase of nestedEditorCases().filter(candidate=>ACTIVE_CASES.some(active=>active.slug===candidate.slug))) await assertRetainedNativeCardTransfers(browser,testCase);
+      return;
+    }
+    if (process.env.ESPCONTROL_NESTED_PAGES_ONLY === "1") {
+      for(const testCase of nestedEditorCases())
+        { await assertNestedPageEditor(browser,testCase); await assertRetainedNativeCardTransfers(browser,testCase); await assertNestedWriterLimits(browser,testCase); await assertNestedDurableByteLimit(browser,testCase); }
+      return;
+    }
     if (process.env.ESPCONTROL_BACKUP_ADMISSION_ONLY === "1") {
       await assertRetainedBackupAdmission(browser, ACTIVE_CASES.find(testCase => testCase.slug === "guition-esp32-s3-4848s040") || ACTIVE_CASES[0]);
       console.log("Retained backup browser admission checks passed for missing/false/malformed/current-v1/current-v2/legacy capabilities.");
@@ -8415,6 +8896,13 @@ async function assertWeatherReadingEditors(browser) {
     if (!acceptanceOnly) {
       await assertPageTitleEvents(browser);
       await assertRotationStartupOrdering(browser);
+    }
+    for (const testCase of nestedEditorCases()) {
+      await assertNestedPageEditor(browser,testCase);
+      await assertRetainedNativeCardTransfers(browser,testCase);
+      await assertNestedBackup(browser,testCase);
+      await assertNestedWriterLimits(browser,testCase);
+      await assertNestedDurableByteLimit(browser,testCase);
     }
     await assertHostedCompatibility(browser);
     await assertFirmwareRetryFeedback(browser);

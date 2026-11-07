@@ -11,6 +11,7 @@
 #include "panel_config_document.h"
 #include "ha_read_coordinator.h"
 #include "page_card_dependencies.h"
+#include "nested_page_fixture.h"
 #include "page_entity_coordinator_adapter.h"
 
 using namespace espcontrol;using namespace espcontrol::pages;using namespace espcontrol::configuration;
@@ -88,6 +89,48 @@ struct Port final:PageRendererPort {
   std::function<void()>on_unbind,on_update;
   std::function<void(PageBindingToken)> on_bind;
 };
+template<size_t Slots>
+void nested_navigation(const DeviceUiLimits &profile) {
+  auto limits = profile; limits.max_navigation_depth = 2;
+  const auto source = test::wire(test::authored_nested(limits));
+  Arena arena; Port<Slots> port(limits);
+  {
+    PageRendererRuntime<Slots> renderer(limits, arena, port);
+    PageStoreRuntime runtime(limits, arena, 128 * 1024, &renderer);
+    assert(runtime.prepare(2, source.data(), source.size()));
+    assert(runtime.activate_prepared(19, 2, source.data(), source.size()));
+    const auto root = renderer.binding(1);
+    const auto before = allocations, live = arena.live.size(), prepares = port.preparations;
+    for (size_t cycle = 0; cycle < 1000; ++cycle) {
+      assert(renderer.open_page(1));
+      const auto parent = renderer.binding(1);
+      assert(renderer.open_page(2) && !renderer.valid(parent) && !renderer.valid(root));
+      assert(port.styles[0].custom_label == "Back Up" && port.styles[0].background_color == 0x112233);
+      const auto leaf = renderer.binding(1);
+      assert(leaf.card == Slots + 1 && renderer.valid(leaf));
+      assert(renderer.back() && renderer.active_page() == 1 && !renderer.valid(leaf));
+      assert(renderer.back() && renderer.active_page() == 0);
+      assert(!renderer.back());
+      assert(renderer.open_page(2) && renderer.return_home() && renderer.active_page() == 0);
+    }
+    assert(allocations == before && arena.live.size() == live && port.preparations == prepares);
+    assert(renderer.open_page(2));
+    const auto old = renderer.binding(1);
+    assert(renderer.suspend() && !renderer.valid(old));
+    assert(renderer.resume() && renderer.active_page() == 2 && !renderer.valid(old));
+    arena.fail = true;
+    assert(!runtime.prepare(2, source.data(), source.size()));
+    arena.fail = false;
+    assert(renderer.active_page() == 2 && renderer.valid(renderer.binding(1)));
+    const auto retired = renderer.binding(1);
+    assert(runtime.prepare(2, source.data(), source.size()));
+    assert(runtime.activate_prepared(20, 2, source.data(), source.size()));
+    assert(renderer.active_page() == 2 && !renderer.valid(retired));
+    assert(renderer.back() && renderer.active_page() == 1);
+  }
+  assert(arena.live.empty());
+}
+
 template<size_t Slots>
 void profile_navigation(const DeviceUiLimits &limits) {
   Fixture fixture(limits);Arena arena;Port<Slots>port(limits);
@@ -285,10 +328,10 @@ void renderer_and_real_state_owner_share_one_transaction() {
 int main() {
   for(const auto &limits:DEVICE_UI_PROFILES) {
     switch(limits.slot_count) {
-      case 6:profile_navigation<6>(limits);break;
-      case 9:profile_navigation<9>(limits);break;
-      case 15:profile_navigation<15>(limits);break;
-      case 20:profile_navigation<20>(limits);break;
+      case 6:nested_navigation<6>(limits);profile_navigation<6>(limits);break;
+      case 9:nested_navigation<9>(limits);profile_navigation<9>(limits);break;
+      case 15:nested_navigation<15>(limits);profile_navigation<15>(limits);break;
+      case 20:nested_navigation<20>(limits);profile_navigation<20>(limits);break;
       default:assert(false);
     }
   }

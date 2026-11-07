@@ -78,8 +78,15 @@ struct PageEntityValue {
   std::string_view entity;
   std::string_view attribute;
   std::string_view value;
+  // Shared change stamp; consumers compare equality, not per-channel counts.
   uint32_t revision{0};
 };
+// A channel stores the low 32 bits of the shared monotonic revision. A
+// viewport retains the full revision, so an entire missed range is detectable.
+inline bool page_entity_channel_changed_since(uint32_t stamp, uint64_t current, uint64_t previous) {
+  if (previous > current || current - previous >= UINT32_MAX) return true;
+  return static_cast<uint32_t>(static_cast<uint32_t>(current) - stamp) < current - previous;
+}
 struct PageEntityMemory {
   size_t active_arena_bytes{0};
   size_t staged_arena_bytes{0};
@@ -155,6 +162,9 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
   // Lets the visible renderer skip unchanged frames. Polling also observes a
   // disconnect before a new HA value arrives, so stale values do not linger.
   uint64_t revision() { synchronize_connection(); return revision_; }
+  // Query only this card's declared channels. Hidden-page updates must not
+  // invalidate an unchanged visible grid. No per-card revision storage.
+  bool changed_since(ConfigurationHandle card, uint64_t revision);
   uint32_t connection_generation() const {
     return subscriptions_.connection_generation();
   }
@@ -198,6 +208,7 @@ class PageEntityStateRuntime final : public PageRuntimeResources {
   bool index_dependencies(Slot &slot);
   void record_preparation_peak(size_t extra = 0);
   void synchronize_connection();
+  uint32_t advance_revision();
 
   const PageDependencySource &source_;
   PageArenaAllocator &allocator_;
