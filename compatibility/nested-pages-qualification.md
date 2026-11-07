@@ -2554,6 +2554,76 @@ identity/dashboard/77 settings are now captured without reading its key or
 changing that device. Its current candidate test and the 7-inch V2 qualification
 remain unfinished; the latter still requires a current recovery image.
 
+## Current P4-86 pressure and artwork completed (7 November)
+
+The 32 MB P4-86 passes a combined `656fc078c` cohort on ESPHome 2026.10.2.
+The compiled image verifies the actual nine-slot/six-image templates, revision-zero
+support, stock SDK API/MIPI bytes and the published profile's partition layout.
+Dynamic API encryption retains the saved key without a YAML PSK, key export or
+controller key read. Only application OTA images are uploaded. The candidate
+reports a 40,932-byte durable document limit; its existing partition table is
+preserved.
+
+The exact maximum flat workload has 81 cards, ten pages, 70 climates, two images,
+1,406 channels, a full 512 KiB value cache and 81 borrowed widgets. Its Linux/GCC
+real-LVGL check recompiles the C++ objects for the actual P4-86 profile and passes
+four A/A/B/B replacements, retired callbacks, temperature/unit rendering and
+36 folder round trips with arena allocation disabled. Local controller coverage
+passes 33 checks, with four additional bounded PIN-status policy checks, 13
+artwork-gate checks and four confined-server checks.
+
+On hardware, four distinct pressure replacements produce 72 real page changes.
+All 42 full-state snapshots retain the exact channel/cache/widget quotas with
+zero allocation/accounting errors and retired modal contexts. The closed scene
+is 667,484 bytes in seven allocations; an expanded view uses 668,028 bytes in
+nine allocations and returns to baseline after every close.
+
+Both independent 2:1 PNG owners pass expected RGB565 sample checks. The four
+640-pixel GIF cases have these outcomes for both keep and restore-previous
+disposal:
+
+| Source | Card | Expanded | Card after close |
+| --- | --- | --- | --- |
+| 2 MiB | Playback | Playback | Playback, no download |
+| 8 MiB | Playback | Explicit RESOURCE refusal | Playback, no download |
+
+Covered card descriptors remain unchanged during every expanded attempt, and
+resumption is observed for at least five seconds. A real response held after
+2,048 bytes is cancelled across disjoint configuration replacement; both new
+PNG owners retain their expected pixels. Twenty-six responses include 24 MiB
+of completely served GIF data. Exact-URI responses and bounded descriptor
+fingerprints establish fresh component output. Private state feeding bypasses
+native wire/authentication; panel pixels and a precise completed-callback hold
+retain separate scopes.
+
+Held-Home three-sample medians across the four pressure passes record
+382,827–383,083 internal free bytes, 21,688,644–21,781,516 PSRAM free bytes and
+22,071,483–22,164,255 combined free bytes from 26,907,743 bytes of managed
+allocator capacity. Memory outside those pools is excluded. Ten local minimum
+windows include surrounding controller operations; the lowest internal result
+is 355,303 bytes and the lowest PSRAM result is 10,884,964 bytes. Independent
+regional minima must not be added. These measurements do not isolate a
+whole-overhaul before/after effect or prove global no-growth.
+
+The first attempt remains failed/restored. Its strict PIN check stops before
+fixture publication when the candidate recognises a disabled version-three
+record that official `v2.13.0` ignores. A bounded, separately checked recovery
+preserves that record and restores the original observable status. The final
+controller freezes exact candidate-reader status after validating the unchanged
+disabled policy, rejects subsequent changes, and requires exact original-reader
+status after rollback. The controller neither retrieves nor writes PIN material,
+and no PIN record byte comparison is claimed.
+
+After two acknowledged original native/legacy publications, exact published
+`v2.13.0` firmware and the original native dashboard are restored at generation
+219. All 77 observable protected settings, original-reader PIN status, reset
+state and both update flags pass a 78.99-second stability window plus another
+independent read-only preflight. Encryption remains enabled. The original
+Camera Dimming setting is unavailable and remains outside the observable
+settings scope; no test command sets it. No test, asset server or build remains
+running. Current 7-inch V2 qualification and the actual compatibility release
+windows are still unfinished.
+
 ## Remaining qualification gates
 
 The 480 × 480 S3 appearance gate has explicit user confirmation, with the host
