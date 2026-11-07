@@ -2075,6 +2075,79 @@ preserves all 14 original dashboard records, including opaque image options,
 after either maximum fixture is mirrored and the original is restored.
 These are host checks; no device has been flashed for this comparison yet.
 
+## S3 maximum-state run and separate cleanup (7 November)
+
+The before observer on `a51486f7f` completes all four A/A/B/B passes, 36 folder
+round trips and 28 held-page samples at 1,406 channels and the full 128 KiB
+value cache, with no allocation/accounting failures or diagnostic disconnects.
+Its historical refresh path sends 5,624 persistent requests, with two requests
+per pair after same-channel replacement and no one-shot refreshes.
+
+The original Card Images firmware and dashboard are uploaded/restored, but the
+controller then fails an immediate preference readback during settings cleanup.
+This full controller run remains `recovery_failed`; completed measurements are
+not relabelled as an uninterrupted pass. A separate settings-only recovery
+waits for publication without repeating the accepted write, verifies all 78
+protected settings, PIN/reset and five JPEGs, and holds a diagnostic connection
+for 65.2 seconds. A fresh independent read-only preflight passes afterward.
+The exact original dashboard bytes remain unchanged at generation 1336.
+
+A regression reproduces the old controller's premature readback failure and
+checks the corrected bounded polling for number and switch preferences,
+including no-op writes and failure-path recovery. The next after observer uses
+the same firmware probes, SDK, fixture and pressure case. Only the host
+controller's preference acknowledgement handling changes. A matched physical
+comparison and current-source artwork pressure remain pending.
+
+## Matched physical S3 maximum-state comparison (7 November)
+
+Earlier runtime `a51486f7f` and current firmware source `656fc078c` use the same
+ESPHome 2026.10.2 configuration, partition table, 6 MHz display clock, YAML
+memory probe and pressure case. Each completes A/A/B/B replacement, 36 folder
+round trips and 28 held-page samples with 81 cards, 1,406 unique channels and
+exactly 131,072 cached UTF-8 value bytes. The table gives median bytes from
+three Home samples, three seconds apart, after each feed and a five-second
+pause. These are matched operation phases, not long-term idle measurements.
+
+| Phase | Internal free before | Internal free after | PSRAM free before | PSRAM free after | Combined free change |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| First A | 80,899 | 80,867 | 1,642,832 | 1,642,576 | −288 |
+| Same A again | 80,999 | 81,075 | 1,655,068 | 1,655,048 | +56 |
+| Disjoint B | 80,351 | 80,323 | 1,732,980 | 1,732,636 | −372 |
+| Same B again | 80,239 | 80,419 | 1,732,076 | 1,732,352 | +456 |
+
+Combined free means byte-addressable internal RAM plus byte-addressable
+PSRAM. All four changes are below 0.5 KiB; the device arena remains 275,724
+requested bytes in seven allocations in both builds. Both report zero arena
+allocation/accounting failures. The largest internal block stays 31,744 bytes;
+the largest PSRAM block changes by +64, 0, −32 and +16 KiB respectively, so
+this does not establish a uniform contiguous-block improvement.
+
+Managed internal heap capacity is 290,163 → 290,155 bytes and managed PSRAM
+capacity is 3,201,392 → 3,201,376 bytes. These heap-pool capacities exclude
+memory reserved before heap registration, including code/read-only data copied
+to PSRAM; they are not the panel's physical RAM specification. ELF accounting
+separately shows +8 bytes of static DRAM, +1,908 bytes of flash text and +16
+bytes of flash read-only data. It must not be added to live free memory.
+
+The all-unique graph and full cache have no duplicate channels for the unique
+counting fix to remove, explaining the unchanged requested arena. Both arms
+already contain the earlier pooled runtime. This pair measures the later audit
+fixes, not the full overhaul against official v2.13.0. The after firmware has
+one persistent listener per pair, zero duplicate persistent requests, two
+intended HA reconnects for changed lists and zero diagnostic disconnects.
+Same-channel replacement uses one-shot refresh. Empty image URLs deliberately
+exclude decoder/download pressure; no physical-pixel or touch result is claimed.
+
+The before controller's cleanup/readback failure and separately verified
+recovery remain recorded above. The after controller completes normally,
+including the corrected accepted-write polling. Its final Auto Update restore
+requires two readbacks, exercising that fix on hardware. Original Card Images
+firmware, exact dashboard bytes, all 78 protected settings, PIN/reset and five
+JPEGs are restored, with 65.2 seconds of connection stability and a fresh
+independent read-only preflight. Only native generation advances to 1341.
+No test firmware or background device process remains active.
+
 ## Remaining qualification gates
 
 The 480 × 480 S3 appearance gate has explicit user confirmation, with the host
