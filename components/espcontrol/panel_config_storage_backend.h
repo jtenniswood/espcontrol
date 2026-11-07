@@ -30,6 +30,7 @@ class BlobStorage {
                                    size_t capacity) = 0;
   virtual bool save_blob(uint8_t slot, const uint8_t *data, size_t size) = 0;
   virtual bool sync() = 0;
+  virtual StoreStatus sync_failure() const { return StoreStatus::SYNC_FAILED; }
   // Raw-flash bindings can serve the store's byte ranges directly. Blob-only
   // NVS keeps its existing keys/layout and uses a transient slot image.
   virtual bool supports_range_io() const { return false; }
@@ -118,6 +119,8 @@ class BufferedBlobStorageBackend final : public StorageBackend {
     dirty_.fill(false);
     return true;
   }
+
+  StoreStatus sync_failure() const override { return storage_.sync_failure(); }
 
  private:
   bool range_is_valid(uint8_t slot, size_t offset, size_t size) const {

@@ -303,7 +303,7 @@ CommitResult ConfigurationStore::commit_internal(bool enforce_generation,
             target_slot};
   }
   if (!backend_.sync()) {
-    return {StoreStatus::SYNC_FAILED, next_generation, payload_size,
+    return {backend_.sync_failure(), next_generation, payload_size,
             target_slot};
   }
 
@@ -319,7 +319,7 @@ CommitResult ConfigurationStore::commit_internal(bool enforce_generation,
     offset += size;
   }
   if (!backend_.sync()) {
-    return {StoreStatus::SYNC_FAILED, next_generation, payload_size,
+    return {backend_.sync_failure(), next_generation, payload_size,
             target_slot};
   }
 
@@ -342,7 +342,7 @@ CommitResult ConfigurationStore::commit_internal(bool enforce_generation,
             target_slot};
   }
   if (!backend_.sync()) {
-    return {StoreStatus::SYNC_FAILED, next_generation, payload_size,
+    return {backend_.sync_failure(), next_generation, payload_size,
             target_slot};
   }
 
@@ -352,6 +352,7 @@ CommitResult ConfigurationStore::commit_internal(bool enforce_generation,
             target_slot};
   }
   if (!backend_.sync()) {
+    const auto failure = backend_.sync_failure();
     // Some backends expose written bytes before sync confirms durability. If
     // publication cannot be confirmed, withdraw the marker and best-effort
     // persist that rollback so load() continues to select the previous slot.
@@ -359,8 +360,7 @@ CommitResult ConfigurationStore::commit_internal(bool enforce_generation,
                        invalid_magic.size())) {
       backend_.sync();
     }
-    return {StoreStatus::SYNC_FAILED, next_generation, payload_size,
-            target_slot};
+    return {failure, next_generation, payload_size, target_slot};
   }
 
   const SlotMetadata verified = inspect_slot(target_slot);

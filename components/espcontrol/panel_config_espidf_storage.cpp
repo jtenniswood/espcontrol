@@ -166,11 +166,17 @@ BlobLoadResult EspIdfPanelConfigBlobStorage::load_blob(uint8_t slot,
 bool EspIdfPanelConfigBlobStorage::save_blob(uint8_t slot, const uint8_t *data,
                                               size_t size) {
 #ifdef USE_ESP32
+  sync_failure_ = StoreStatus::SYNC_FAILED;
   const char *key = slot_key(slot);
   if (partition_backed_)
     return ready_ && save_partition_blob(slot, data, size);
-  return ready_ && key != nullptr && (size == 0 || data != nullptr) &&
-         nvs_set_blob(handle_, key, data, size) == ESP_OK;
+  if (!ready_ || key == nullptr || (size > 0 && data == nullptr))
+    return false;
+  const auto result = nvs_set_blob(handle_, key, data, size);
+  if (result == ESP_ERR_NVS_NOT_ENOUGH_SPACE ||
+      result == ESP_ERR_NVS_VALUE_TOO_LONG)
+    sync_failure_ = StoreStatus::STORAGE_FULL;
+  return result == ESP_OK;
 #else
   (void) slot;
   (void) data;
@@ -182,6 +188,10 @@ bool EspIdfPanelConfigBlobStorage::save_blob(uint8_t slot, const uint8_t *data,
 bool EspIdfPanelConfigBlobStorage::sync() {
 #ifdef USE_ESP32
   if (partition_backed_) return ready_;
+  // A rejected set_blob leaves its old value intact. A failed commit does
+  // not prove that publication was rejected, so retain the generic error even
+  // if a backend reports a capacity code here. The store still rolls back.
+  sync_failure_ = StoreStatus::SYNC_FAILED;
   return ready_ && nvs_commit(handle_) == ESP_OK;
 #else
   return false;

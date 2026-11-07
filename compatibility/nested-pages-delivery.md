@@ -113,8 +113,12 @@ remain preserved within the document budget rather than counting as runtime card
 `max_durable_document_bytes` reports the selected storage backend's actual
 saved-document limit, separately from the larger `max_v2_document_bytes`
 transfer/conversion ceiling. The existing 40 KiB slots (or 16 KiB NVS fallback)
-and storage headers are unchanged. A layout can fit the runtime arenas and still
-exceed its saved-document allowance; rejection preserves the active document.
+and storage headers are unchanged. This is a per-document ceiling, not a
+reservation of free shared NVS space: existing preferences, compatibility text,
+two native slots and garbage collection also consume that backend. A rejected
+NVS blob write reports HTTP 413 and preserves the active document; an
+unconfirmed commit remains an I/O error. A layout can fit the runtime arenas
+and still exceed its saved-document allowance.
 The same response advertises `max_page_store_bytes` (128 KiB S3, 256 KiB P4),
 `max_state_metadata_bytes` (512 KiB S3, 2 MiB P4) and `max_ha_state_bytes`
 (128 KiB S3, 512 KiB P4). State metadata covers the semantic models, graph

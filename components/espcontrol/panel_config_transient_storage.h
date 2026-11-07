@@ -109,6 +109,8 @@ public:
     return true;
   }
 
+  StoreStatus sync_failure() const override { return storage_.sync_failure(); }
+
 private:
   bool valid(uint8_t slot, size_t offset, size_t size) const {
     return active_ && slot < CONFIGURATION_SLOT_COUNT && offset <= capacity_ &&

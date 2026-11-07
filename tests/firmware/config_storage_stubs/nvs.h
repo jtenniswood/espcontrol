@@ -29,6 +29,7 @@ inline esp_err_t nvs_set_blob(nvs_handle_t, const char *key, const void *input,
   using namespace storage_fixture;
   const auto *data = static_cast<const uint8_t *>(input);
   const size_t count = prefix(size);
+  if (fail_save_at == mutation) return fail_save_error;
   blobs[key].assign(data, data + count);
   maybe_cut();
   return ESP_OK;
@@ -37,5 +38,5 @@ inline esp_err_t nvs_commit(nvs_handle_t) {
   using namespace storage_fixture;
   prefix(0);
   maybe_cut();
-  return fail_commit_at == mutation ? ESP_FAIL : ESP_OK;
+  return fail_commit_at == mutation ? fail_commit_error : ESP_OK;
 }

@@ -51,6 +51,7 @@ uint16_t replacement_version(uint16_t durable, ConfigurationWriteSource source,
 
 ServiceStatus store_failure(StoreStatus status) {
   if (status == StoreStatus::GENERATION_CONFLICT) return ServiceStatus::GENERATION_CONFLICT;
+  if (status == StoreStatus::STORAGE_FULL) return ServiceStatus::CAPACITY_EXCEEDED;
   return status == StoreStatus::ALLOCATION_FAILED
              ? ServiceStatus::ALLOCATION_FAILED
              : ServiceStatus::STORE_FAILED;

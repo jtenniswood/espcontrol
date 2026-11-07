@@ -25,6 +25,7 @@ enum class StoreStatus : uint8_t {
   SYNC_FAILED,
   VERIFY_FAILED,
   ALLOCATION_FAILED,
+  STORAGE_FULL,
 };
 
 struct LoadResult {
@@ -66,6 +67,9 @@ class StorageBackend {
   virtual bool write(uint8_t slot, size_t offset, const uint8_t *data,
                      size_t size) = 0;
   virtual bool sync() = 0;
+  // A full shared backend is a definite capacity rejection, not an unknown
+  // I/O failure. Query immediately after a failed sync, before rollback.
+  virtual StoreStatus sync_failure() const { return StoreStatus::SYNC_FAILED; }
 };
 
 // Durable opaque-payload store for the future versioned configuration

@@ -200,7 +200,9 @@ class PanelConfigWriteHandler final
     }
     if (response == PanelConfigWriteResponse::CAPACITY_EXCEEDED) {
       send_status(raw_request, "413 Content Too Large",
-                  "Configuration exceeds this display's page, image or text limits; previous configuration remains active");
+                  saved.store_status == StoreStatus::STORAGE_FULL
+                      ? "Not enough free settings storage to save this dashboard; previous configuration remains active"
+                      : "Configuration exceeds this display's page, image or text limits; previous configuration remains active");
       return;
     }
     if (response == PanelConfigWriteResponse::BAD_REQUEST) {
