@@ -2490,6 +2490,70 @@ the controller never reads or replaces its saved key. No device, asset-server
 or build process remains running. Remaining-grid qualification and published
 compatibility release windows are still unfinished.
 
+## Current six-slot P4 pressure and artwork completed (7 November)
+
+The 4.3-inch P4 passes a combined current-source `656fc078c` cohort using
+ESPHome 2026.10.2, the stock SDK API and MIPI driver, and the selected six-slot
+ELF. Its deployed 16 KiB NVS document fallback remains in use: only the
+application OTA image is uploaded, without repartitioning or raw flash writes.
+The exact maximum flat layout has 36 cards, seven pages, 28 climates, two images,
+566 channels, a full 512 KiB state cache and 54 borrowed widgets.
+
+The exact fixtures pass a focused Linux/GCC real-LVGL scene check, including
+retired callbacks, unchanged temperature/unit rendering and navigation with
+arena allocation disabled. The controller passes 27 mutation/recovery checks;
+the artwork gates and confined server pass 13 and four checks respectively.
+Synthetic cache pressure pads names and list/enum fields; numeric temperature
+values remain below the production parser's length limit. The private feed
+uses production prepared lookup/callbacks and bypasses native wire/authentication.
+
+Four distinct A/A/B/B publications and 24 folder round trips produce 48 real
+page transitions. All 28 pressure snapshots retain 586,400 scene bytes in seven
+allocations. Fourteen additional artwork snapshots return to that baseline
+after each expanded view closes; an open modal uses 586,944 bytes in nine
+allocations. All 42 full-state snapshots retain the exact channel/cache/widget
+quotas, with zero allocation/accounting errors and retired modal contexts.
+
+Both independent 2:1 PNG owners match expected RGB565 samples before animation.
+All four 640-pixel GIF cases—2 MiB and 8 MiB, each with keep and restore-previous
+disposal—play on cards and expanded views. Each expanded attempt preserves its
+covered card; after close, animation resumes for at least five seconds without
+another download. A real transfer held after 2,048 bytes is cancelled across a
+disjoint configuration replacement, and both new PNG owners retain their
+expected pixels. Twenty-six responses include 40 MiB of completely served GIF
+data. Bounded descriptor fingerprints and exact-URI responses establish fresh
+component output; panel pixels and a precise post-decode callback hold retain
+separate scopes. The optional current physical appearance response is pending.
+
+Across the four held-Home three-sample medians, internal free memory is
+375,395–377,367 bytes and PSRAM free memory is 24,552,792–24,624,700 bytes.
+Combined free memory is 24,929,963–25,001,559 bytes from 28,507,535 bytes of
+managed allocator capacity. That capacity excludes memory outside these pools;
+this is not a whole-overhaul before/after or global no-growth claim. Ten local
+minimum windows include the surrounding controller operations: the lowest
+internal result is 350,275 bytes, and the lowest PSRAM result is 2,532,372 bytes.
+They occur in different windows and must not be added.
+
+Two exact-original native/legacy publications finish at generation 155 before
+the verified original SDK2 development image is restored. Its compilation
+identity, exact native dashboard, all 78 protected settings, PIN/reset and
+update flags pass a 75.48-second stability window and another independent
+read-only preflight. The newly captured Brightness Mode is preserved; the API
+remains unencrypted as originally configured. No test or asset server remains
+running.
+
+Earlier attempts remain separately failed/restored: one stops before OTA for a
+missing per-device secrets symlink, and another stops before fixture publication
+because the harness reads the aggregate capability response at the wrong level.
+Both restore the original generation-147 dashboard and settings; neither is
+relabelled as a successful qualification. The corrected final cohort checks the
+candidate's configuration capability object and independently verifies recovery.
+
+The P4-86's published profile-specific recovery bytes and current encrypted
+identity/dashboard/77 settings are now captured without reading its key or
+changing that device. Its current candidate test and the 7-inch V2 qualification
+remain unfinished; the latter still requires a current recovery image.
+
 ## Remaining qualification gates
 
 The 480 × 480 S3 appearance gate has explicit user confirmation, with the host
