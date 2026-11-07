@@ -1989,7 +1989,7 @@ ELF handler/wrapper and production depth-one writer checks. The later
 subscription replay with a paced-refresh guard; scan and rejecting self-tests
 pass. Integration leaves all tested firmware sources unchanged. These build
 results do not extend earlier physical appearance or memory evidence to the
-new source. Physical HA/runtime qualification remains outstanding.
+new source. Physical scopes beyond the S3 wire test below remain outstanding.
 
 A fresh read-only S3 preflight finds the newer Card Images build from its
 separate task, compiled 6 November at 18:30:40. Its exact retained OTA/ELF and
@@ -1998,8 +1998,50 @@ settings, PIN/reset state and five uploaded JPEGs are preserved for recovery.
 The older S3 recovery is historical. The current dashboard also passes actual
 PageStore/dependency staging and fixture-to-original legacy mirroring/native
 merge under ASan/UBSan, preserving all 14 original records and opaque image
-options. No device is flashed during this carry-forward qualification. Stable
-reader/compatibility release gates remain unchanged.
+options. Those recovery-preparation checks are read-only; the subsequent S3
+wire test is recorded below. Stable reader/compatibility release gates remain
+unchanged.
+
+## Cumulative S3 HA wire regression (7 November)
+
+The YAML-only `runtime-ha-656fc078` image, compiled 6 November at 23:50:58,
+uses public `656fc078c` C++ with 412 compiled component files verified. SDK,
+stock API, ELF identity, unchanged partition table, unencrypted API and normal
+6 MHz display checks pass. It adds a project label and asset paths, with no
+private actions, state injection or raw-partition hooks.
+
+On the actual S3, a surrogate HA peer and a separate diagnostic client pass
+50 cycles and 100 public v1 configuration saves. Four disjoint fixtures each
+reserve 40 synthetic HA entity/attribute pairs. Changed registrations reconnect
+HA; saving the same channels requests current values once without reconnecting
+that session. Every cycle retains exactly one persistent listener per test pair,
+with zero duplicate persistent requests and zero diagnostic disconnects. The
+peer supplies 6,000 state replies across 51 sessions, including 50 intended
+reconnects. Public climate-modal open/close commands also complete. The peer
+never supplies invented values for the user's real entities.
+
+The final report, all 50 cycle records, frozen controller/fixture hashes,
+compiled artifacts and existing recovery files pass an independent audit.
+Earlier private-controller attempts remain failed: one omits a protected-write
+epoch and makes no accepted change; another misclassifies successful HTTP 204
+saves. Their independent recovery checks pass. Corrected epoch/no-op/readback,
+normal-204 handling, external-configuration fences and recovery fallbacks are
+host-tested before the passing cohort. No firmware fix is inferred from those
+controller failures.
+
+Afterward, the current Card Images firmware compiled at 18:30:40, exact original
+dashboard bytes, all 78 protected settings, PIN/reset state and five JPEGs are
+verified restored. The update switch is restored too. Public transactional
+writes advance the generation from 1230 to 1331; they do not change the restored
+payload. A final diagnostic connection stays up for 65 seconds without a
+reboot/disconnect. The older generation-1227 snapshot and failed-cohort records
+remain separate.
+
+This qualifies the recorded native API wire behaviour and configuration round
+trip on S3. It does not qualify a full Home Assistant server instance, physical
+appearance or touch actions, maximum-pressure memory, electrical interruption,
+or another device. The optional visual response is still pending; earlier
+appearance and memory evidence retains its original source scope.
 
 ## Remaining qualification gates
 
