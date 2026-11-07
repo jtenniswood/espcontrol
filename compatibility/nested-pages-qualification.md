@@ -2348,6 +2348,39 @@ baselines and target changed integration paths rather than repeat every
 historical case. Production nesting and the published compatibility-release
 sequence remain unfinished.
 
+## Current P4 test image prepared (7 November)
+
+The current-source 20-slot P4 qualification image is compiled and independently
+verified, but **not flashed**. All 440 copied component source files match
+`656fc078c`, including the selected repository MIPI driver. The API remains
+byte-identical to the pinned SDK, with dynamic encryption enabled and no YAML
+key. Its partition table matches the already qualified recovery image, and
+its minimum silicon revision is the same 3.1 used by the earlier successful
+encrypted P4 test. The actual RISC-V ELF contains the selected 20-slot scene
+and no other grid implementation. API version/build identity checks reject
+wrong labels and timestamps; the optimized API response's version stores are
+checked against its actual instructions, rodata and DWARF field layout.
+
+The private HTTP bridge schedules commands on the main loop, checks reset epoch
+and scene generation, and rejects replayed requests. It feeds only the known
+synthetic pairs through the production prepared lookup and subscriber callbacks;
+it bypasses wire decoding and authentication and cannot establish transport
+qualification. Separate page-position acknowledgements avoid heap scans and
+descriptor sampling during navigation. Held-page snapshots and IDF local minima
+provide the memory observations. Image liveness samples retain the tested
+64-byte bound.
+
+Sanitized host checks verify both 7,566-channel plans, exact 512 KiB value totals,
+pair uniqueness, canonical names and overflow/boundary rejection. Four distinct
+native-v1 fixtures retain the A/A/B/B dependency sequence while changing an
+opaque revision field, so same-list cases request actual replacements. Device
+admission, memory, latency and image results remain pending. The guarded
+controller and automatic original restoration must be ready before flashing;
+reuse the verified image rather than rebuild it without a source change.
+Earlier checker failures are retained separately: they assumed a stock MIPI
+driver, revision 3.0, or a named constant optimized away on RISC-V. They do not
+represent device failures or qualify those prototype images.
+
 ## Remaining qualification gates
 
 The 480 × 480 S3 appearance gate has explicit user confirmation, with the host
