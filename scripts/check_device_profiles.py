@@ -281,6 +281,11 @@ def test_native_panel_config_bindings(slug: str, profile: dict, device: str) -> 
         f"{slug}: device.yaml must enable native panel configuration so "
         "cards that contain device-owned settings remain available"
     )
+    if slug == "guition-esp32-p4-jc1060p470-v2":
+        assert panel_config.get("storage") == "card_images", (
+            f"{slug}: native configuration must use the reserved card_images "
+            "partition to avoid exhausting the small shared NVS partition"
+        )
 
     slots = int(profile["slots"])
     buttons = panel_config.get("buttons")
