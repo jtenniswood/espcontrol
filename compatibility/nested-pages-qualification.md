@@ -2550,9 +2550,9 @@ relabelled as a successful qualification. The corrected final cohort checks the
 candidate's configuration capability object and independently verifies recovery.
 
 The P4-86's published profile-specific recovery bytes and current encrypted
-identity/dashboard/77 settings are now captured without reading its key or
-changing that device. Its current candidate test and the 7-inch V2 qualification
-remain unfinished; the latter still requires a current recovery image.
+identity/dashboard/77 settings are captured without reading its key. The
+following cohort completes its current candidate check. The 7-inch V2 still
+requires recovery bytes for its newer weather firmware before qualification.
 
 ## Current P4-86 pressure and artwork completed (7 November)
 
@@ -2623,6 +2623,40 @@ Camera Dimming setting is unavailable and remains outside the observable
 settings scope; no test command sets it. No test, asset server or build remains
 running. Current 7-inch V2 qualification and the actual compatibility release
 windows are still unfinished.
+
+## Previous-application copy and return proof (7 November)
+
+A private recovery helper passes a known-image hardware proof on the 10-inch
+P4 V3. It reads only the identified previous application, requires the actual
+pending-helper/valid-original rollback witnesses, and exports two sequential
+copies into private local files. Both 5,784,832-byte copies match the retained
+published `v2.13.0` OTA image byte for byte. The helper then returns to the
+original application slot without another firmware upload or a power cut.
+
+The helper has no API service, OTA uploader or safe-mode image acceptance.
+Its compiled startup instructions and ELF verify that automatic acceptance is
+absent; runtime checks also require the expected MAC, application descriptors,
+image size and two application-slot boundaries. Local ASan/UBSan checks cover
+the actual helper against SDK stubs and its bounded copy policy. Six copy
+controller tests and four runner tests cover interrupted transfers, stale
+requests, corruption, deadlines and settings cleanup. These checks do not
+establish zero SDK-level NVS writes or electrical power-loss behaviour.
+
+The original dashboard remains at generation 385. All 77 observable protected
+settings, PIN status, reset state, update flags and encrypted API mode pass an
+86.31-second stability window and another independent read-only preflight.
+No API key is retrieved or set, and no dashboard or partition-table write is
+performed. The first attempt remains failed/restored: the local uploader could
+not find its executable and transferred no firmware; its held update flags
+were restored before the successful retry.
+
+Separately, the unchanged 7-inch V2 reports bootloader rollback support through
+its existing API. Only that diagnostic is retained; other configuration log
+payloads are discarded. Its specific helper compiles and passes the independent
+source/ELF/layout audit, but has not been uploaded. Recovering and verifying
+that panel's exact current weather image, then its current fifteen-slot
+runtime/artwork qualification, remain unfinished. This transport proof does
+not satisfy those gates or enable production nested-page writes.
 
 ## Remaining qualification gates
 
