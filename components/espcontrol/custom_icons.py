@@ -45,9 +45,14 @@ def custom_icon_codepoints(fonts, builtin=None):
     for font in fonts or []:
         if _font_id(font) != ICON_FONT_ID:
             continue
+        # ESPHome compiles glyphs from extra fonts into the same font, so
+        # icons added through `extras` count as well.
+        glyphs = list(font.get("glyphs", []) or [])
+        for extra in font.get("extras", []) or []:
+            glyphs.extend(extra.get("glyphs", []) or [])
         return sorted({
             ord(character)
-            for glyph in font.get("glyphs", []) or []
+            for glyph in glyphs
             for character in str(glyph)
             if ord(character) not in builtin
             and CUSTOM_ICON_MIN <= ord(character) <= CUSTOM_ICON_MAX

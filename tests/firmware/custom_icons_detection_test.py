@@ -36,6 +36,20 @@ class CustomIconDetectionTest(unittest.TestCase):
                   "glyphs": builtin_glyphs() + ["\U000F194B", "\U000F00E6", "\U000F00E6"]}]
         self.assertEqual(custom_icons.custom_icon_codepoints(fonts), [0xF00E6, 0xF194B])
 
+    def test_extra_font_glyphs_are_reported(self):
+        fonts = [{
+            "id": FontId("font_icon_main"),
+            "glyphs": builtin_glyphs() + ["\U000F194B"],
+            "extras": [{
+                "file": "mdi.ttf",  # Detector-only fixture; no font loading.
+                "glyphs": ["\U000F0EFA"],
+            }],
+        }]
+        self.assertEqual(
+            custom_icons.custom_icon_codepoints(fonts),
+            [0xF0EFA, 0xF194B],
+        )
+
     def test_multi_character_glyph_strings_are_checked(self):
         fonts = [{"id": "font_icon_main", "glyphs": ["\U000F0493\U000F0EFA"]}]
         self.assertEqual(custom_icons.custom_icon_codepoints(fonts), [0xF0EFA])
