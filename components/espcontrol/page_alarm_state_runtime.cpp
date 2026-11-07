@@ -9,13 +9,13 @@
 namespace espcontrol::pages {
 namespace {
 std::string_view inherited_field(const PageStore& store, CardId id, CardField field) {
-  const auto* card = store.card(id);
+  const auto* card = store.runtime_card(id);
   if (!card) return {};
   auto value = store.field(*card, field);
   if (!value.empty()) return value;
   for (PageId p = 1; p < store.page_count(); ++p) {
     const auto* page = store.page(p);
-    if (id >= page->first_card && id < page->first_card + page->card_count) {
+    if (id >= page->first_card && id < page->first_card + page->runtime_card_count) {
       const auto* parent = store.card(page->owner);
       return parent ? store.field(*parent, field) : std::string_view{};
     }
@@ -25,7 +25,7 @@ std::string_view inherited_field(const PageStore& store, CardId id, CardField fi
 bool navigable(const PageStore& store, CardId id) {
   for (PageId p = 0; p < store.page_count(); ++p) {
     const auto* page = store.page(p);
-    if (id >= page->first_card && id < page->first_card + page->card_count) return page->navigable;
+    if (id >= page->first_card && id < page->first_card + page->runtime_card_count) return page->navigable;
   }
   return false;
 }
@@ -49,7 +49,7 @@ bool keys(const PageStore& store, Emit emit) {
 }
 }  // namespace
 PageAlarmSourceKind PageAlarmStateRuntime::classify(const PageStore& store, CardId id) {
-  const auto* card = store.card(id);
+  const auto* card = store.runtime_card(id);
   if (!card || effective_entity(store, id).empty()) return PageAlarmSourceKind::NONE;
   const auto type = store.field(*card, CardField::TYPE);
   return type == "alarm"          ? PageAlarmSourceKind::CONTROL

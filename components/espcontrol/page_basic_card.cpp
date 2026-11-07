@@ -7,16 +7,21 @@
 #include <limits>
 
 #include "bounded_sensor_text.h"
+#include "bounded_display_text.h"
 #include "button_grid_contract_generated.h"
 #include "button_grid_subpage_parser.h"
 #include "calendar_card_text.h"
 #include "climate_state_logic.h"
+#include "i18n_generated.h"
 #include "media_playlist_match.h"
 #include "page_fan_mode.h"
 #include "page_media_group.h"
+#include "page_modal_admission.h"
 #include "page_toggle_state.h"
 #include "timer_state_policy.h"
 #include "weather_condition.h"
+#include "wind_direction.h"
+#include "rainfall_display.h"
 #include "wifi_qr_codec.h"
 
 namespace espcontrol::pages {
@@ -50,9 +55,8 @@ PageEntityValue find(PageEntityStateRuntime &state,ConfigurationHandle handle,
 }
 bool basic_card_is_forecast(const PageStore &store,CardId id) {
   const auto *card=store.card(id);if(!card)return false;
-  const auto type=store.field(*card,CardField::TYPE);
-  return card_runtime_weather_forecast_supported()&&(type=="weather_forecast"||
-    (type=="weather"&&card_runtime_weather_forecast_precision(std::string(store.field(*card,CardField::PRECISION)))));
+  return card_runtime_weather_forecast_supported() && admission::weather_forecast(store.field(*card,CardField::TYPE),
+    store.field(*card,CardField::PRECISION), store.field(*card,CardField::OPTIONS));
 }
 bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& out,
                         BasicCardTextSink* strings, PageLocalRelayRuntime* relay) {
@@ -165,7 +169,7 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     // The text value replaces the icon for both the dedicated and Action form.
     out.icon = out.icon_on = "";
   } else if (type.empty() || type == "light_switch") {
-    out.text_overlay=precision=="text";
+    out.text_overlay=!out.sensor.empty()&&precision=="text";
     out.kind=out.entity.empty()?BasicCardKind::EMPTY:BasicCardKind::TOGGLE;
   } else if (type == "sensor") {
     if (out.sensor == "local") {
@@ -205,7 +209,10 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
     if(type=="action"||local) {
       if(out.icon.empty()||out.icon=="Auto")out.icon=local?"Gesture Tap":"Flash";
       if(out.label.empty()) {
-        if(out.entity.empty())out.default_label=local?"Local Action":"Action";
+        if(out.entity.empty()) {
+          out.default_label=local?"label_local_action":"Action";
+          out.default_label_is_key=local;
+        }
         else if(local) {if(!copy(sentence_cap_text(std::string(out.entity)),out.label))return false;}
         else out.label=out.entity;
       }
@@ -292,9 +299,27 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
       else if(!copy(content_type,out.media.playlist_type))return false;
     }
   } else if (type == "weather" || type == "weather_forecast") {
-    out.kind=basic_card_is_forecast(store,id)?BasicCardKind::FORECAST:BasicCardKind::WEATHER;
-    out.forecast_view=precision=="today"?weather::View::TODAY:precision=="tomorrow"||type=="weather_forecast"?weather::View::TOMORROW:weather::View::DAILY;out.label={};out.sensor={};out.unit={};
-    out.icon=out.icon_on="Weather Cloudy";
+    out.label={};
+    if (precision!="rainfall") out.unit={};
+    if (type=="weather" && precision=="wind") {
+      out.kind=BasicCardKind::WEATHER_WIND;
+      out.wind_sensors=admission::option_equals(options,"wind_source","sensors");
+      out.icon=out.icon_on="Weather Windy";
+    } else if (type=="weather" && (precision=="pressure" || precision=="humidity" || precision=="visibility")) {
+      out.kind=precision=="pressure"?BasicCardKind::WEATHER_PRESSURE:
+               precision=="humidity"?BasicCardKind::WEATHER_HUMIDITY:BasicCardKind::WEATHER_VISIBILITY;
+      out.weather_metric_forecast=precision=="visibility" ||
+          admission::option_equals(options,precision=="pressure"?"pressure_source":"humidity_source","forecast");
+      out.sensor={};
+      out.icon=out.icon_on=precision=="pressure"?"Gauge":precision=="humidity"?"Water Percent":"Weather Hazy";
+    } else if (type=="weather" && precision=="rainfall" && !basic_card_is_forecast(store,id)) {
+      out.kind=BasicCardKind::WEATHER_RAINFALL;
+      out.sensor={};out.icon=out.icon_on="Weather Rainy";
+    } else {
+      out.kind=basic_card_is_forecast(store,id)?BasicCardKind::FORECAST:BasicCardKind::WEATHER;
+      out.forecast_view=precision=="rainfall"?weather::View::RAINFALL:precision=="today"?weather::View::TODAY:precision=="tomorrow"||type=="weather_forecast"?weather::View::TOMORROW:weather::View::DAILY;
+      out.sensor={};out.icon=out.icon_on="Weather Cloudy";
+    }
   } else if (type == "alarm" || type == "alarm_action") {
     out.kind = BasicCardKind::ALARM;
     const bool panel = type == "alarm";
@@ -513,6 +538,7 @@ bool prepare_basic_card(const PageStore& store, CardId id, BasicCardDefinition& 
   out.explicit_large =
       out.kind == BasicCardKind::CLIMATE && cfg_option_token_present(options, "large_numbers");
   const auto mode=cfg_option_value(options,"card_active_color");out.theme_active=mode=="theme";
+  out.on_pattern = normalize_card_on_pattern(cfg_option_value(options, "on_pattern")) == "stripes";
   auto color=cfg_option_value(options,"card_off_color");
   if(!color.empty()){color=normalize_card_color_value(color);if(color.empty())return false;out.off_color=static_cast<uint32_t>(std::strtoul(color.c_str(),nullptr,16));out.custom_off=true;}
   color=cfg_option_value(options,"card_on_color");
@@ -687,6 +713,11 @@ PageAlarmCardSnapshot read_basic_alarm(const BasicCardDefinition& card, Configur
   result.dynamic_icon = card.alarm.panel && card.alarm.status_icon && result.history.icon_reported;
   result.glyph = alarm_card_glyph(result.history.state, result.history.arm_mode);
   return result;
+}
+const char *basic_card_default_label(const BasicCardDefinition &card,PageCardTranslate translate) {
+  if(card.default_label&&card.default_label_is_key)return espcontrol_i18n_key(card.default_label);
+  const auto *translated=card.default_label&&translate?translate(card.default_label):nullptr;
+  return translated?translated:card.default_label;
 }
 BasicCardState read_basic_card(
     const BasicCardDefinition& card, ConfigurationHandle handle, PageEntityStateRuntime& state,
@@ -1090,8 +1121,7 @@ BasicCardState read_basic_card(
       card.kind == BasicCardKind::MEDIA_CONTROL) {
     result.label=card.label;
     if(result.label.empty()&&card.default_label) {
-      const auto *translated=translate?translate(card.default_label):nullptr;
-      result.label=translated?translated:card.default_label;
+      result.label=basic_card_default_label(card,translate);
     }
     const auto playback=find(state,handle,card.entity);
     // Playback state uses the same exact "playing" predicate as the existing
@@ -1161,6 +1191,54 @@ BasicCardState read_basic_card(
     }
     return result;
   }
+  if(basic_card_weather_reading(card.kind)) {
+    result.numeric=true;
+    PageEntityValue unit;
+    std::string_view unit_text;
+    const char *key="Rainfall";
+    if(card.kind==BasicCardKind::WEATHER_WIND) {
+      int direction=-1;
+      std::strcpy(result.number,"--");
+      if(card.wind_sensors || available(find(state,handle,card.entity))) {
+        const auto bearing=find(state,handle,card.entity,card.wind_sensors?"":"wind_bearing");
+        if(available(bearing))direction=wind::direction(bearing.value);
+        const auto speed=find(state,handle,card.wind_sensors?card.sensor:card.entity,
+                              card.wind_sensors?"":"wind_speed");
+        wind::speed(available(speed)?speed.value:std::string_view{},result.number,sizeof(result.number));
+        unit=find(state,handle,card.wind_sensors?card.sensor:card.entity,
+                  card.wind_sensors?"unit_of_measurement":"wind_speed_unit");
+      }
+      key=wind::label(direction);result.weather_condition=static_cast<uint8_t>(direction+1);
+    } else if(card.kind==BasicCardKind::WEATHER_RAINFALL) {
+      const auto primary=find(state,handle,card.entity);
+      rainfall::format(available(primary)?rainfall::value(primary.value):NAN,result.number,sizeof(result.number));
+      unit=find(state,handle,card.entity,"unit_of_measurement");
+      unit_text=card.unit;
+    }
+    if(card.kind!=BasicCardKind::WEATHER_WIND && card.kind!=BasicCardKind::WEATHER_RAINFALL) {
+      const bool humidity=card.kind==BasicCardKind::WEATHER_HUMIDITY;
+      const char *attribute=card.kind==BasicCardKind::WEATHER_PRESSURE?"pressure":humidity?"humidity":"visibility";
+      key=card.kind==BasicCardKind::WEATHER_PRESSURE?"Air Pressure":humidity?"Humidity":"Visibility";
+      const auto primary=find(state,handle,card.entity);
+      const auto reading=card.weather_metric_forecast?find(state,handle,card.entity,attribute):primary;
+      double number=available(reading)?weather_reading::value(reading.value):NAN;
+      if((humidity && number>100) || (card.weather_metric_forecast &&
+          (!available(primary) || primary.value.empty()))) number=NAN;
+      weather_reading::format(number,result.number,sizeof(result.number));
+      if(card.weather_metric_forecast && humidity) unit_text="%";
+      else unit=find(state,handle,card.entity,card.weather_metric_forecast?
+          (card.kind==BasicCardKind::WEATHER_PRESSURE?"pressure_unit":"visibility_unit"):"unit_of_measurement");
+    }
+    if(unit_text.empty() && available(unit)) unit_text=unit.value;
+    const auto *translated=translate?translate(key):nullptr;result.label=translated?translated:key;
+    const size_t size=copy_display_text(result.text,sizeof(result.text),result.number).bytes;
+    if(std::strcmp(result.number,"--")!=0 && !unit_text.empty() &&
+       unit_text!="unknown" && unit_text!="unavailable" && size+1<sizeof(result.text)) {
+      result.text[size]=' ';
+      copy_display_text(result.text+size+1,sizeof(result.text)-size-1,unit_text);
+    }
+    return result;
+  }
   if(card.kind==BasicCardKind::WEATHER) {
     const auto value=find(state,handle,card.entity);
     const auto text=card.entity.empty()?std::string_view("cloudy"):value.status==PageEntityStatus::AVAILABLE?value.value:std::string_view("unavailable");
@@ -1206,8 +1284,7 @@ BasicCardState read_basic_card(
     if(friendly.status==PageEntityStatus::AVAILABLE)result.label=friendly.value.substr(0,HA_FRIENDLY_NAME_MAX_LEN);
   }
   if(result.label.empty()&&card.default_label) {
-    const auto *translated=translate?translate(card.default_label):nullptr;
-    result.label=translated?translated:card.default_label;
+    result.label=basic_card_default_label(card,translate);
   }
   const auto text_value=[&](const PageEntityValue &value,bool mapping) {
     result.unit={};

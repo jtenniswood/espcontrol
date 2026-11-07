@@ -274,6 +274,14 @@ class PageImageTileRuntime final : public PageEntityObserver {
       }
     }
   }
+  void refresh() {
+    for (auto& r : records_) {
+      if (!r.token.binding || delegated(r) || !images_.owns(find(r.token), r.token) ||
+          !environment_.visible(r.token) || environment_.expanded(r.token))
+        continue;
+      r.dirty = r.forced = true;
+    }
+  }
   void loop() {
     if (!now_) return;
     abandon_expired();

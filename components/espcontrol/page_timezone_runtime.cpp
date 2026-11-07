@@ -10,7 +10,7 @@ PageTimezoneRuntime::~PageTimezoneRuntime() {
   retire_active();
 }
 bool PageTimezoneRuntime::supported(const PageStore& store, CardId id) {
-  const auto* card = store.card(id);
+  const auto* card = store.runtime_card(id);
   if (!card) return false;
   const auto type = store.field(*card, CardField::TYPE);
   return type == "clock" || type == "timezone";
@@ -25,7 +25,7 @@ bool PageTimezoneRuntime::prepare(const PageStore& store) {
   for (PageId p = 0; p < store.page_count(); ++p) {
     const auto* page = store.page(p);
     if (!page->navigable) continue;
-    for (CardId id = page->first_card; id < page->first_card + page->card_count; ++id)
+    for (CardId id = page->first_card; id < page->first_card + page->runtime_card_count; ++id)
       if (supported(store, id)) ++staged_.cards;
   }
   return true;

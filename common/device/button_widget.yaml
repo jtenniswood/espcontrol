@@ -74,7 +74,7 @@ button:
                   return id(espcontrol_app).display().target_mode_is(
                       espcontrol::DisplayMode::ACTIVE);
               then:
-                - lambda: 'handle_button_press(id(button_${num}_config).state, ${num}, id(button_${num}));'
+                - lambda: 'if (!espcontrol::pooled_application_selected()) handle_button_press(id(button_${num}_config).state, ${num}, id(button_${num}));'
   on_short_click:
     - if:
         condition:
@@ -94,7 +94,7 @@ button:
               then:
                 - script.execute: screensaver_wake
               else:
-                - lambda: 'handle_button_click(id(button_${num}_config).state, ${num}, id(button_${num}));'
+                - lambda: 'if (!espcontrol::pooled_application_selected()) handle_button_click(id(button_${num}_config).state, ${num}, id(button_${num}));'
   on_long_press:
     - if:
         condition:
@@ -116,4 +116,5 @@ button:
               else:
                 - lambda: |-
                     ESP_LOGD("button", "Treating grid card long press as normal tap for slot ${num}");
-                    handle_button_click(id(button_${num}_config).state, ${num}, id(button_${num}));
+                    if (!espcontrol::pooled_application_selected())
+                      handle_button_click(id(button_${num}_config).state, ${num}, id(button_${num}));

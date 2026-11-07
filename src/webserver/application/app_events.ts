@@ -46,7 +46,7 @@ export function createAppEventsFeature(
     c6Firmware: C6FirmwareFeature,
     entityState: Pick<EntityStateFeature, "rememberEntityPostPath">,
     shell: Pick<ControlsShellFeature, "setConfigLocked" | "showBanner">,
-    stateLoader: Pick<StateLoaderFeature, "refreshFirmwareVersion" | "refreshScreensaverTimeout">,
+    stateLoader: Pick<StateLoaderFeature, "refreshFirmwareVersion" | "refreshScreensaverTimeout" | "eventStreamEnabled" | "loadInitialState">,
     gridMigration: Pick<GridMigrationFeature, "schedule">,
 ): AppEventsFeature {
     const { rememberEntityPostPath } = entityState;
@@ -159,6 +159,9 @@ export function createAppEventsFeature(
             }
             console.log("[state] unhandled:", id, val);
         }
+        // SSE has no end-of-initial-state marker. Read a bounded initial
+        // snapshot too, so backup export can await all saved settings.
+        if (stateLoader.eventStreamEnabled()) stateLoader.loadInitialState(handleState);
         reconnectController.connect({
             "onConnected": markConnected,
             "onDisconnected": handleDisconnected,

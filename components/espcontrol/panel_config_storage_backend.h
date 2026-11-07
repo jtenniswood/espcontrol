@@ -30,6 +30,13 @@ class BlobStorage {
                                    size_t capacity) = 0;
   virtual bool save_blob(uint8_t slot, const uint8_t *data, size_t size) = 0;
   virtual bool sync() = 0;
+  // Raw-flash bindings can serve the store's byte ranges directly. Blob-only
+  // NVS keeps its existing keys/layout and uses a transient slot image.
+  virtual bool supports_range_io() const { return false; }
+  virtual bool read_range(uint8_t, size_t, uint8_t *, size_t) { return false; }
+  virtual bool write_range(uint8_t, size_t, const uint8_t *, size_t) {
+    return false;
+  }
 };
 
 // Adapts full-slot blobs to the small byte-range operations used by

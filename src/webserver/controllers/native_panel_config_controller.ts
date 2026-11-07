@@ -1,6 +1,9 @@
 import {
   createNativePanelConfigClient,
   updateNativePanelConfigDocument,
+  NativePanelConfigCompatibilityError,
+  NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE,
+  nativeBackupHasInactiveRecords,
   type NativePanelConfigClient,
   type NativePanelConfigFetch,
   type NativePanelConfigSaveResult,
@@ -72,6 +75,8 @@ export class NativePanelConfigController {
       this.dependencies.showBanner("This firmware requires web authentication for Wifi Sharing passwords. Sign in, enable web_server_auth, or update the panel firmware.", "error");
     } else if (result === "too-large") {
       this.dependencies.showBanner("Configuration exceeds this panel's storage capacity. Update the panel firmware for more space, or reduce the saved settings.", "error");
+    } else if (result === "firmware-update-required") {
+      this.dependencies.showBanner(NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE, "error");
     } else if (result === "failed") {
       this.dependencies.showBanner("Could not save the configuration. Check the connection and try again.", "error");
     }
@@ -97,8 +102,10 @@ export class NativePanelConfigController {
     }
     if (!this.client_?.retryable()) return "failed";
     if (attempts >= this.maxDiscoveryRetries_) {
-      // Older firmware never exposes the native endpoints. Preserve this
-      // capped decision so queued saves use their legacy paths immediately.
+      // Only a never-native, missing endpoint can identify older firmware.
+      // Busy startup/resource responses and a known-native panel restarting
+      // must not route edits into its compatibility mirror.
+      if (!this.client_?.canUseLegacyFallback()) return "failed";
       this.legacyFallback_ = true;
       return "legacy-fallback";
     }
@@ -120,9 +127,28 @@ export class NativePanelConfigController {
         if (supported === "legacy-fallback" || supported === "failed") return supported;
         return supported ? client.save(update) : result;
       })
-      .then((result) => this.report(result), () => this.report("failed"));
+      .then((result) => this.report(result === "unsupported" ? "failed" : result), () => this.report("failed"));
     this.saveQueue_ = save;
     return save;
+  }
+
+  readForBackup(): Promise<Uint8Array | null> {
+    const client = this.client_;
+    const precedingSave = this.saveQueue_;
+    const read = precedingSave.then(async (outcome) => {
+      if (outcome !== "saved" && outcome !== "mirror-failed" && outcome !== "legacy-fallback") {
+        throw new Error("The previous configuration change did not save.");
+      }
+      if (!client) return null;
+      const available = this.supported() || await this.waitForDiscovery();
+      if (available === "legacy-fallback") return null;
+      if (available !== true) throw new Error("Configuration discovery is unavailable.");
+      return client.readForBackup(this.dependencies.deviceProfile());
+    });
+    // Later edits wait for this snapshot too. A failed read must neither
+    // poison the save queue nor erase a preceding failed save outcome.
+    this.saveQueue_ = read.then(() => precedingSave, () => precedingSave);
+    return read;
   }
 
   writeText(name: string, value: string): Promise<NativePanelConfigSaveOutcome> | null | false {
@@ -165,6 +191,10 @@ export class NativePanelConfigController {
     return this.schedule((current) => {
       if (current.deviceProfile !== document.deviceProfile) {
         throw new Error("The backup targets a different device profile.");
+      }
+      if (!this.client_?.preservesInactiveRecords() &&
+          nativeBackupHasInactiveRecords(document, this.dependencies.slotCount())) {
+        throw new NativePanelConfigCompatibilityError(NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE);
       }
       return document;
     });

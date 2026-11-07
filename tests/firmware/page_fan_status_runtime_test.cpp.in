@@ -10,6 +10,7 @@
 struct lv_obj_t;
 void lv_label_set_text(lv_obj_t*, const char*) {}
 #include "button_grid_config_parser.h"
+#include "button_grid_order_parser.h"
 using namespace espcontrol;
 using namespace espcontrol::pages;
 using namespace espcontrol::configuration;
@@ -221,6 +222,86 @@ void publication() {
   }
   assert(arena.live.empty());
 }
+void retained_root_capacity() {
+  static_assert(sizeof(PageDefinition) == 16, "runtime admission reuses page-record padding");
+  for (const auto& limits : DEVICE_UI_PROFILES) {
+    std::array<uint8_t, 65536> document{};
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    std::string order;
+    for (size_t slot = 1; slot <= limits.slot_count; ++slot) {
+      if (!order.empty()) order += ",";
+      order += std::to_string(slot);
+      const std::string folder = ";Folder;Auto;Auto;;;subpage;;";
+      assert(writer.append_button(slot, reinterpret_cast<const uint8_t*>(folder.data()), folder.size()) == PanelConfigStatus::OK);
+      std::string children = "~B";
+      for (size_t child = 1; child <= limits.cards_per_subpage; ++child)
+        children += "|B,fan.active_" + std::to_string(slot) + "_" + std::to_string(child) + ",Active,Auto,Auto,,,,";
+      assert(writer.append_subpage(slot, reinterpret_cast<const uint8_t*>(children.data()), children.size()) == PanelConfigStatus::OK);
+    }
+    for (size_t slot = limits.slot_count + 1; slot <= 32; ++slot) {
+      const std::string key = slot == size_t(limits.slot_count) + 1 ? "fan.active_1_1" : "fan.dormant_" + std::to_string(slot);
+      const std::string card = key + ";Dormant;Auto;Auto;;;fan_switch;;";
+      assert(writer.append_button(slot, reinterpret_cast<const uint8_t*>(card.data()), card.size()) == PanelConfigStatus::OK);
+    }
+    assert(writer.append_setting(reinterpret_cast<const uint8_t*>("button_order"), 12,
+        reinterpret_cast<const uint8_t*>(order.data()), order.size()) == PanelConfigStatus::OK);
+    size_t size = 0; assert(writer.finish(&size) == PanelConfigStatus::OK);
+    alignas(std::max_align_t) std::array<uint8_t, 131072> storage{};
+    PageStore store;
+    assert(PageStore::stage_v1(document.data(), size, limits, 77, storage.data(), storage.size(), &store) == PageStoreStatus::OK);
+    assert(store.page(0)->card_count == 32 && store.source_size() == size);
+    assert(store.page(0)->runtime_card_count == limits.slot_count);
+    assert(store.field(*store.card(31), CardField::ENTITY) == "fan.dormant_32");
+    assert(store.runtime_card(31) == nullptr);
+    OrderResult clipped; parse_order_string("32", limits.slot_count, clipped);
+    assert(clipped.positions[0] == 0);
+    assert(std::memcmp(document.data(), store.source_document(), size) == 0);
+    Arena arena; Subscriptions subscriptions;
+    {
+      PageFanStatusRuntime runtime(arena, subscriptions, now, limits.max_cards(), limits.max_cards() * 64);
+      assert(runtime.prepare(store));
+      runtime.activate_prepared(store);
+      assert(runtime.memory().sources == limits.max_child_cards());
+      runtime.observed(77, "fan.active_1_1", "", "on", false);
+      const auto child = store.page(store.card(0)->target)->first_card;
+      assert(runtime.read({77, child}).on);
+      for (CardId id = limits.slot_count; id < 32; ++id)
+        assert(!runtime.read({77, id}).on);
+    }
+    assert(arena.live.empty());
+  }
+}
+void rotation_keeps_base_capacity() {
+  const auto& limits = DEVICE_UI_PROFILES[6];
+  assert(limits.slot_count == 20);
+  std::array<uint8_t, 8192> document{};
+  PanelConfigWriter writer(document.data(), document.size());
+  assert(writer.begin() == PanelConfigStatus::OK);
+  assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile), std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+  for (size_t slot = 1; slot <= 20; ++slot) {
+    const std::string card = "fan.root_" + std::to_string(slot) + ";Fan;Auto;Auto;;;fan_switch;;";
+    assert(writer.append_button(slot, reinterpret_cast<const uint8_t*>(card.data()), card.size()) == PanelConfigStatus::OK);
+  }
+  const std::string dormant = "fan.root_19;Dormant;Auto;Auto;;;fan_switch;;";
+  assert(writer.append_button(32, reinterpret_cast<const uint8_t*>(dormant.data()), dormant.size()) == PanelConfigStatus::OK);
+  size_t size = 0; assert(writer.finish(&size) == PanelConfigStatus::OK);
+  alignas(std::max_align_t) std::array<uint8_t, 32768> storage{}; PageStore store;
+  assert(PageStore::stage_v1(document.data(), size, limits, 78, storage.data(), storage.size(), &store) == PageStoreStatus::OK);
+  OrderResult portrait; parse_order_string("19", 18, portrait);
+  assert(portrait.positions[0] == 0 && store.runtime_card(18) && !store.runtime_card(31));
+  Arena arena; Subscriptions subscriptions;
+  {
+    PageFanStatusRuntime runtime(arena, subscriptions, now, 20, 4096);
+    assert(runtime.prepare(store)); runtime.activate_prepared(store);
+    assert(runtime.memory().sources == 20);
+    runtime.observed(78, "fan.root_19", "", "on", false);
+    assert(runtime.read({78, 18}).on && !runtime.read({78, 31}).on);
+  }
+  assert(arena.live.empty());
+}
 void failures() {
   Arena arena;
   Subscriptions subs;
@@ -245,6 +326,8 @@ void failures() {
 int main() {
   lifetime();
   failures();
+  retained_root_capacity();
+  rotation_keeps_base_capacity();
   reference_parity();
   publication();
 }

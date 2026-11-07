@@ -2,6 +2,7 @@
 """Exercise production camera cache/availability callbacks with host UI doubles."""
 from pathlib import Path
 import re
+import os,shlex
 import subprocess
 import sys
 import tempfile
@@ -29,6 +30,7 @@ source = r'''
 #include <cstdint>
 #include <functional>
 #include <string>
+#include "page_scene_selection.h"
 #include "camera_refresh_policy.h"
 #include "image_pipeline_policy.h"
 uint32_t now_ms = 0;
@@ -181,8 +183,9 @@ void image_card_begin_refresh_schedule(ImageCardCtx *ctx) {
  ctx->refresh_schedule.begin(now_ms, false);
 }
 void image_card_apply_downloaded(ImageCardCtx *) { ++recovered; }
-#define ESP_LOGI(...) do {} while(false)
-#define ESP_LOGW(...) do {} while(false)
+template<typename... T> void consume_log(T&&...) {}
+#define ESP_LOGI(...) consume_log(__VA_ARGS__)
+#define ESP_LOGW(...) consume_log(__VA_ARGS__)
 '''
 # Use unchanged production definitions, rather than reproducing their logic.
 for name in ('image_card_startup_retry_active', 'image_card_schedule_picture_retry',
@@ -202,8 +205,13 @@ for name in ('image_card_startup_retry_active', 'image_card_schedule_picture_ret
     source += definition(name) + '\n'
 # The polling callback checks get_url as well as availability.
 source = source.replace('bool has_image() {', 'std::string get_url() { return "snapshot"; }\n bool has_image() {')
+source = '#include "page_scene_selection.h"\n' + source
 source += definition('image_card_refresh_due')
 source += definition('refresh_visible_image_cards')
+source += 'inline void image_card_refresh_camera_attributes(ImageCardCtx*) { ++pictures; }\n'
+source += definition('refresh_visible_camera_cards')
+source += definition('refresh_image_cards')
+source += 'struct Navigation final : espcontrol::ApplicationSceneNavigation {\n int paints=0, forecasts=0, units=0, image_calls=0; bool all=false;\n void refresh_images(bool value) override {++image_calls;all=value;}\n void refresh_content() override {++paints;}\n void refresh_weather_forecasts() override {++forecasts;}\n void refresh_temperature_unit(bool fahrenheit) override {assert(fahrenheit);++units;}\n bool navigation_ready() const override { return true; }\n bool grid_configured() const override { return true; }\n int subpage_slot() const override { return 0; }\n std::string_view subpage_label() const override { return {}; }\n bool critical_active() const override { return false; }\n bool can_open_modal(std::string_view) const override { return true; }\n bool open_modal(std::string_view) override { return true; }\n bool can_open_subpage(std::string_view) const override { return true; }\n bool open_subpage(std::string_view) override { return true; }\n bool close_subpage() override { return true; }\n bool navigate(std::string_view) override { return true; }\n bool home() override { return true; }\n void close_modal() override {}\n bool open_settings() override { return true; }\n void close_settings() override {}\n void display_takeover() override {}\n void refresh_chrome() override {}\n};\n'
 source += definition('image_card_suspend_pipeline')
 source += definition('image_card_resume_pipeline')
 camera_yaml = (root / 'common/device/screen_camera_screensaver.yaml').read_text()
@@ -239,7 +247,7 @@ bool camera_screensaver_use_sized_request = false;
 void screensaver_download_error() {
 ''' + error_callback + '\n}\n'
 source += r'''
-int main() {
+void legacy_tests() {
  // Follow runtime palette changes on tiles, open expanded images, and a
  // retained modal cache. Crop and media artwork remain image-owned.
  for (bool fit : {false, true}) {
@@ -476,13 +484,71 @@ int main() {
  assert(!camera_screensaver_entity_unavailable && camera_screensaver_show_unavailable.calls == 2);
 }
 '''
+
+# Compile the complete actual platform bridge against a scheduling boundary.
+platform = (root / 'components/espcontrol/page_native_device_platform.h').read_text()
+start = platform.index('  void refresh_camera_metadata(std::string_view entity) override {')
+brace = platform.index('{', start); end = brace + 1; depth = 1
+while depth:
+    depth += (platform[end] == '{') - (platform[end] == '}'); end += 1
+method = platform[start:end].replace(' override', '')
+scope = re.search(r'static constexpr uint32_t SUBSCRIPTION_SCOPE = [^;]+;',
+                  (root / 'components/espcontrol/page_native_scene_state.h').read_text()).group()
+source += r"""
+#include <initializer_list>
+static std::string metadata_entity;
+static std::vector<std::string> metadata_attributes;
+static uint32_t metadata_scope=0;
+void ha_schedule_metadata_refresh(const std::string& entity,
+                                 std::initializer_list<const char*> attributes,uint32_t scope) {
+  metadata_entity=entity;metadata_scope=scope;metadata_attributes.clear();
+  for(auto* attribute:attributes) metadata_attributes.emplace_back(attribute);
+}
+"""
+source += 'struct PageNativeSceneState {' + scope + '};\nstruct MetadataBridge {' + method + '};\n'
+
+source += r"""
+void native_image_dispatch() {
+  MetadataBridge bridge;bridge.refresh_camera_metadata("camera.front");
+  assert(metadata_entity=="camera.front"&&metadata_scope==(1u<<4));
+  assert((metadata_attributes==std::vector<std::string>{"access_token","entity_picture"}));
+  Navigation scene;
+  espcontrol::select_pooled_application();
+  espcontrol::application_scene_navigation()=&scene;
+  const auto old_pictures=pictures;
+  int sampled_visibility=0;
+  image_card_refresh_due([&](){++sampled_visibility;return true;});
+  assert(!sampled_visibility&&pictures==old_pictures);
+  refresh_image_cards();assert(scene.image_calls==1&&scene.all);
+  refresh_visible_image_cards();assert(scene.image_calls==2&&scene.all);
+  refresh_visible_camera_cards();assert(scene.image_calls==3&&!scene.all);
+  image_card_refresh_theme(0xffffff);assert(scene.paints==1);
+  assert(pictures==old_pictures);
+  espcontrol::application_scene_navigation()=nullptr;
+  // Allocation-failed startup never falls back into the retired image bank.
+  refresh_image_cards();refresh_visible_image_cards();refresh_visible_camera_cards();
+  image_card_refresh_theme(0xffffff);image_card_refresh_due();
+  assert(pictures==old_pictures&&scene.image_calls==3&&scene.paints==1);
+}
+int main() {
+#ifndef ESPCONTROL_DEVICE_UI_SLOT_COUNT
+  legacy_tests();
+#endif
+  native_image_dispatch();
+}
+"""
+
 with tempfile.TemporaryDirectory(prefix='camera-feedback-') as temp:
     cpp = Path(temp) / 'test.cpp'
     binary = Path(temp) / 'test'
     cpp.write_text(source)
-    subprocess.run([sys.argv[1] if len(sys.argv) > 1 else 'c++', '-std=c++17',
-                    '-Wall', '-Wextra', '-Werror', '-I', str(root / 'components/artwork_image'),
-                    '-I', str(root / 'components/espcontrol'),
-                    str(cpp), '-o', str(binary)], check=True)
-    subprocess.run([str(binary)], check=True)
+    profiles = re.findall(r'^#(?:if|elif) defined\((ESPCONTROL_UI_PROFILE_[A-Z0-9_]+)\)',
+                          (root / 'components/espcontrol/device_ui_limits_generated.h').read_text(), re.M)
+    assert len(profiles) == 9
+    for profile in [None, *profiles]:
+        subprocess.run([*shlex.split(os.environ.get('CXX', sys.argv[1] if len(sys.argv) > 1 else 'c++')), '-std=c++17',
+                        '-Wall', '-Wextra', '-Werror', '-I', str(root / 'components/artwork_image'),
+                        '-I', str(root / 'components/espcontrol'),
+                        *(['-D' + profile] if profile else []), str(cpp), '-o', str(binary)], check=True)
+        subprocess.run([str(binary)], check=True)
 print('Camera cache lifecycle, availability, retry backoff and recovery passed.')

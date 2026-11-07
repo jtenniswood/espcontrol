@@ -27,6 +27,8 @@
     "check:generated": "python3 scripts/check_tasks.py run-task generated",
     "check:local-artifacts": "python3 scripts/check_tasks.py run-task local-artifacts",
     "check:local-esphome": "python3 scripts/check_tasks.py run-task local-esphome",
+    "check:device-runtime-tests": "python3 scripts/check_tasks.py run-task device-runtime-tests",
+    "test:device-runtime": "python3 scripts/test_device_runtime.py",
     "check:memory-monitor": "python3 scripts/check_tasks.py run-task memory-monitor",
     "check:model-contract": "python3 scripts/check_tasks.py run-task model-contract",
     "check:product": "python3 scripts/check_tasks.py run product",

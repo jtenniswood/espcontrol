@@ -259,4 +259,30 @@ void test_gesture_budget(){Fixture fixture;Arena arena;PageCardDependencies sour
  }
  coordinator.reclaim_unused_channels();assert(arena.live.empty()&&coordinator.transport().bindings.empty());
 }
-int main(){lv_init();auto *display=lv_display_create(480,480);assert(display);lv_timer_pause(lv_display_get_refr_timer(display));test_controls();test_gesture_budget();lv_display_delete(display);lv_deinit();assert(lv_live_bytes==0);}
+void test_deferred_titles(){
+ Fixture fixture,next(18);Arena arena;PageCardDependencies source;CoordinatorPageEntitySubscriptions subscriptions(coordinator,16);
+ {
+  PageEntityStateRuntime state(source,arena,subscriptions,{64,64,8192});
+  PageLightModalStyle style;style.resolve=[](void *,PageModalToken,const ParsedCfg &,PageControlModalEnvironment &){return true;};
+  PageCoverModalStyle cover_style;cover_style.resolve=style.resolve;
+  PageLightModalPort light(arena,state,style,nullptr,[](void *,PageBindingToken){return true;});
+  PageCoverModalPort cover(arena,state,cover_style,nullptr,[](void *,PageBindingToken){return true;});
+  PageModalRouter<2> port(
+      {{{ControlModalKind::LIGHT_CONTROL,&light},{ControlModalKind::COVER_CONTROL,&cover}}},nullptr,
+      [](void *,PageBindingToken){return true;});
+  PageModalRuntime runtime(port);
+  assert(light.install(runtime,true)&&cover.install(runtime,true));
+  for(uint16_t card=0;card<2;++card)for(bool replace:{false,true}){
+   assert(state.prepare(fixture.store));state.activate_prepared(fixture.store);values();
+   assert(runtime.prepare(fixture.store));runtime.activate_prepared(fixture.store);
+   assert(runtime.request_card({17,card}));runtime.loop();assert(clock_label==(card?"Blind":"Lamp"));
+   if(replace){assert(runtime.prepare(next.store));runtime.activate_prepared(next.store);}
+   else runtime.retire_active();
+   assert(clock_label==(card?"Blind":"Lamp"));
+   runtime.loop();assert(clock_label.empty()&&!light_ui.active&&!cover_ui.active);
+  }
+  runtime.retire_active();state.retire_active();
+ }
+ coordinator.reclaim_unused_channels();assert(arena.live.empty()&&coordinator.transport().bindings.empty());
+}
+int main(){lv_init();auto *display=lv_display_create(480,480);assert(display);lv_timer_pause(lv_display_get_refr_timer(display));test_controls();test_gesture_budget();test_deferred_titles();lv_display_delete(display);lv_deinit();assert(lv_live_bytes==0);}

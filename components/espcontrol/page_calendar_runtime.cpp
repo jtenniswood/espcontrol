@@ -39,7 +39,7 @@ PageCalendarRuntime::~PageCalendarRuntime() {
   retire_active();
 }
 bool PageCalendarRuntime::supported(const PageStore& store, CardId id) {
-  const auto* card = store.card(id);
+  const auto* card = store.runtime_card(id);
   return card && store.field(*card, CardField::TYPE) == "calendar";
 }
 bool PageCalendarRuntime::equal(const PageCalendarState& a, const PageCalendarState& b) {
@@ -50,7 +50,7 @@ bool PageCalendarRuntime::source(const PageStore& store, std::string_view entity
   for (PageId p = 0; p < store.page_count(); ++p) {
     const auto* page = store.page(p);
     if (!page->navigable) continue;
-    for (CardId id = page->first_card; id < page->first_card + page->card_count; ++id)
+    for (CardId id = page->first_card; id < page->first_card + page->runtime_card_count; ++id)
       if (supported(store, id) && key(store, id) == entity) return true;
   }
   return false;
@@ -60,14 +60,14 @@ size_t PageCalendarRuntime::sources(const PageStore& store) {
   for (PageId p = 0; p < store.page_count(); ++p) {
     const auto* page = store.page(p);
     if (!page->navigable) continue;
-    for (CardId id = page->first_card; id < page->first_card + page->card_count; ++id) {
+    for (CardId id = page->first_card; id < page->first_card + page->runtime_card_count; ++id) {
       if (!supported(store, id)) continue;
       bool duplicate = false;
       for (PageId before = 0; before <= p && !duplicate; ++before) {
         const auto* earlier = store.page(before);
         if (!earlier->navigable) continue;
         for (CardId previous = earlier->first_card;
-             previous < earlier->first_card + earlier->card_count && previous < id; ++previous)
+             previous < earlier->first_card + earlier->runtime_card_count && previous < id; ++previous)
           if (supported(store, previous) && key(store, previous) == key(store, id)) {
             duplicate = true;
             break;

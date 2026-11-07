@@ -7,6 +7,7 @@
 #include "display_text.h"
 #include "network_status_layout.h"
 #include "network_status_text.h"
+#include "page_scene_selection.h"
 #include "screen_lock_state.h"
 
 #include <cmath>
@@ -119,6 +120,11 @@ inline std::string network_status_ip_address() {
 }
 
 inline void network_status_hide_modal() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto *scene = espcontrol::application_scene_navigation())
+      scene->close_settings();
+    return;
+  }
   NetworkStatusModalUi &ui = network_status_modal_ui();
   if (ui.refresh_timer) lv_timer_del(ui.refresh_timer);
   lv_obj_t *overlay = ui.overlay;
@@ -189,6 +195,11 @@ inline void network_status_open_modal(const std::string &device_name,
                                       const lv_font_t *text_font,
                                       const lv_font_t *icon_font,
                                       float (*wifi_quality)() = nullptr) {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto *scene = espcontrol::application_scene_navigation())
+      scene->open_settings();
+    return;
+  }
   // Settings is explicit navigation: dismiss nested menus and the current
   // modal before saving the underlying page title.
   control_modal_close_nested_menu();

@@ -268,6 +268,16 @@ void lifecycle(const DeviceUiLimits& limits) {
   f.open(1);
   assert(!f.modal.token().opening);  // No guest dependency on this static QR card.
 }
+void temporary_guard_cancels_unsent() {
+  Fixture f(DEVICE_UI_PROFILES[8]);f.transport.send("off");const auto token=f.open();
+  assert(f.guest.queue(token,1));f.guest.cancel_queued();f.guest.cancel_queued();
+  assert(f.guest.loop()==PageGuestWifiDispatch::NONE && !f.guest_port.sends &&
+    f.guest.snapshot(token).bound && !f.guest.snapshot(token).pending);
+  assert(f.guest.queue(token,1) && f.guest.loop()==PageGuestWifiDispatch::SENT);
+  f.guest.cancel_queued();
+  assert(f.guest.snapshot(token).pending && f.guest_port.sends==1);
+  f.report("on");assert(!f.guest.snapshot(token).pending && f.guest.snapshot(token).on);
+}
 void timeout_connection_and_guards() {
   Fixture f(DEVICE_UI_PROFILES[8]);
   auto token = f.open();
@@ -435,6 +445,7 @@ void replacement() {
 }
 }  // namespace
 int main() {
+  temporary_guard_cancels_unsent();
   for (const auto& limits : DEVICE_UI_PROFILES) lifecycle(limits);
   timeout_connection_and_guards();
   deferred_and_exhausted();

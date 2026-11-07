@@ -24,7 +24,7 @@ class PageSliderCommandPolicy final : public PageCardControlPolicy {
   bool valid(const PageStore& store, PageBindingToken origin, PageCardCommandKind kind,
              const PageCardCommandValue& value) override {
     const ConfigurationHandle handle{origin.configuration, origin.card};
-    const auto* card = store.card(handle);
+    const auto* card = store.runtime_card(handle);
     if (!card) return false;
     const auto entity = store.field(*card, CardField::ENTITY);
     if (entity.empty()) return false;
@@ -40,15 +40,16 @@ class PageSliderCommandPolicy final : public PageCardControlPolicy {
                available(PagePercentSliderRuntime::attribute(type)) &&
                (kind == PageCardCommandKind::SLIDER_TOGGLE || (value.integer >= 0 && value.integer <= 100));
       }
-      if (kind != PageCardCommandKind::SLIDER_TOGGLE) return false;
+      return false;
     }
-    if (kind == PageCardCommandKind::TEMPERATURE || kind == PageCardCommandKind::SLIDER_TOGGLE) {
+    if (kind == PageCardCommandKind::TEMPERATURE) {
       if (!PageLightTemperatureRuntime::supported(store, origin.card)) return false;
       temperature_.loop();
       const auto snapshot = temperature_.read(handle);
-      return snapshot.available && available({}) && available("color_temp_kelvin") &&
-             (kind == PageCardCommandKind::SLIDER_TOGGLE ||
-              (value.integer >= snapshot.minimum && value.integer <= snapshot.maximum));
+      return snapshot.available && available({}) &&
+             available("color_temp_kelvin") &&
+             value.integer >= snapshot.minimum &&
+             value.integer <= snapshot.maximum;
     }
     if (kind != PageCardCommandKind::NUMBER || !PageNumberSliderRuntime::supported(store, origin.card))
       return false;

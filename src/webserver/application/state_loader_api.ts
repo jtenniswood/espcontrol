@@ -28,8 +28,9 @@ export interface StateLoaderFeature {
     cardStateEntities(): any[];
     settingsStateEntities(): any[];
     subpageStateEntities(): any[];
-    loadStateItems(items?: any[], handleState?: (state: any) => void, concurrency?: number): Promise<number>;
+    loadStateItems(items?: any[], handleState?: (state: any) => void, concurrency?: number, strict?: boolean): Promise<number>;
     loadInitialState(handleState?: (state: any) => void, onLoaded?: () => void): void;
+    waitForInitialState(): Promise<void>;
     refreshFirmwareVersion(): Promise<void>;
     refreshScreensaverTimeout(): void;
     waitForReboot(): void;
@@ -80,53 +81,70 @@ export function createStateLoaderFeature(runtime: UiRuntimeState, layout: Applic
     function subpageStateEntities(this: any) {
         return entityStateItemsForSlots(dependencies.subpageEntityKeys());
     }
-    function loadStateItems(this: any, items?: any, handleState?: any, concurrency?: any) {
+    let initialRead: Promise<void> | null = null;
+    function loadStateItems(this: any, items?: any, handleState?: any, concurrency?: any, strict = false) {
         var index: any = 0;
         var active: any = 0;
         var loadedCount: any = 0;
+        let failed = false;
         var limit: any = Math.max(1, concurrency || 1);
-        return new Promise<number>(function (this: any, resolve?: any) {
+        return new Promise<number>(function (this: any, resolve?: any, reject?: any) {
             function done(this: any) {
                 active--;
                 run();
             }
             function run(this: any) {
                 if (index >= items.length && active === 0) {
-                    resolve(loadedCount);
+                    if (strict && failed) reject(new Error("Could not read the saved configuration."));
+                    else resolve(loadedCount);
                     return;
                 }
                 while (active < limit && index < items.length) {
                     var item: any = items[index++];
                     active++;
-                    getJsonQuietly(entityDetailPath(item[0], item[1], entityInitialDetail(item[0]))).then(function (this: any, data?: any) {
+                    getJsonQuietly(entityDetailPath(item[0], item[1], entityInitialDetail(item[0])), undefined, { strict }).then(function (this: any, data?: any) {
                         if (data) {
                             loadedCount++;
                             handleState(data);
                         }
-                    }).then(done, done);
+                    }).then(done, () => { failed = true; done(); });
                 }
             }
             run();
         });
     }
     function loadInitialState(this: any, handleState?: any, onLoaded?: any) {
-        loadStateItems(cardStateEntities(), handleState, 4).then(function (this: any, loadedCount?: any) {
+        initialRead = loadStateItems(cardStateEntities(), handleState, 4, true).then(async (loadedCount) => {
             if (loadedCount === 0) {
-                setConfigLocked(true, "Reconnecting to device\u2026");
-                showBanner("Reconnecting to device\u2026", "offline");
-                setTimeout(dependencies.connectEvents, 5000);
-                return;
+                throw new Error("Could not read the saved configuration.");
             }
-            if (onLoaded)
-                onLoaded();
+            if (onLoaded) onLoaded();
             clearTimeout(runtime.migrationTimer as any);
             runtime.migrationTimer = setTimeout(gridMigration.schedule, 5000);
             clearTimeout(runtime.sliderMigrationTimer as any);
             runtime.pendingSliderSubpageMigrations = {};
-            loadStateItems(settingsStateEntities(), handleState, 2).then(function (this: any) {
-                loadStateItems(subpageStateEntities(), handleState, 2);
-            });
+            await loadStateItems(settingsStateEntities(), handleState, 2, true);
+            await loadStateItems(subpageStateEntities(), handleState, 2, true);
         });
+        // Keep partial reads out of backups and retry through the normal
+        // connection lifecycle. An older failed read cannot reset a newer one.
+        const pending = initialRead;
+        void pending.catch(() => {
+            if (initialRead !== pending) return;
+            setConfigLocked(true, "Reconnecting to device\u2026");
+            showBanner("Reconnecting to device\u2026", "offline");
+            clearTimeout(runtime.migrationTimer as any);
+            runtime.migrationTimer = setTimeout(dependencies.connectEvents, 5000);
+        });
+    }
+    async function waitForInitialState(): Promise<void> {
+        if (!initialRead) throw new Error("Configuration is still loading.");
+        let pending: Promise<void>;
+        do {
+            pending = initialRead;
+            try { await pending; }
+            catch (error) { if (pending === initialRead) throw error; }
+        } while (pending !== initialRead);
     }
     function refreshFirmwareVersion(this: any): Promise<void> {
         var pending: any = 13;
@@ -237,6 +255,7 @@ export function createStateLoaderFeature(runtime: UiRuntimeState, layout: Applic
         subpageStateEntities,
         loadStateItems,
         loadInitialState,
+        waitForInitialState,
         refreshFirmwareVersion,
         refreshScreensaverTimeout,
         waitForReboot,

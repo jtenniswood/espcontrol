@@ -27,7 +27,7 @@ bool cards(const PageStore& store, Emit emit) {
   for (PageId page = 0; page < store.page_count(); ++page) {
     const auto* definition = store.page(page);
     if (!definition->navigable) continue;
-    for (CardId id = definition->first_card; id < definition->first_card + definition->card_count; ++id)
+    for (CardId id = definition->first_card; id < definition->first_card + definition->runtime_card_count; ++id)
       if (PageNumberSliderRuntime::supported(store, id) &&
           !emit(id, store.field(*store.card(id), CardField::ENTITY)))
         return false;
@@ -36,7 +36,7 @@ bool cards(const PageStore& store, Emit emit) {
 }
 }  // namespace
 bool PageNumberSliderRuntime::supported(const PageStore& store, CardId id) {
-  const auto* card = store.card(id);
+  const auto* card = store.runtime_card(id);
   if (!card) return false;
   const auto entity = store.field(*card, CardField::ENTITY);
   if (!domain(entity, "number.") && !domain(entity, "input_number.")) return false;

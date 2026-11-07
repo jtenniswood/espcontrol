@@ -133,6 +133,13 @@ class PageGuestWifiRuntime {
   uint64_t revision() const {
     return revision_;
   }
+  void cancel_queued() {
+    if (!record_.queued) return;
+    record_.queued = false;
+    record_.state.pending = record_.state.failed = false;
+    record_.state.target_on = record_.state.on;
+    ++revision_;
+  }
 
  private:
   struct Record {

@@ -90,7 +90,18 @@ class PageClimateModalPort final:public PageModalPort {
     const auto &record=*static_cast<Record *>(pointer);
     return !record.retired&&climate_control_modal_ui().active==record.context&&climate_control_modal_ui().overlay;
   }
-  void update(void *pointer,PageModalToken)override {prime(*static_cast<Record *>(pointer));}
+  void update(void *pointer,PageModalToken)override {
+    auto &record=*static_cast<Record *>(pointer);
+    prime(record);
+    const auto &ui=climate_control_modal_ui();
+    if(record.retired||!runtime_->valid(record.token)||ui.active!=record.context||
+        !ui.unit_lbl||lv_obj_has_flag(ui.unit_lbl,LV_OBJ_FLAG_HIDDEN))return;
+    // Shared panel callbacks may already have painted a transient policy.
+    // Compare the actual rendered unit, so the final policy wins without a
+    // second retained policy stamp or replay/reset of a pending edit.
+    if(std::strcmp(lv_label_get_text(ui.unit_lbl),display_temperature_unit_symbol())!=0)
+      climate_control_set_modal_value(record.context);
+  }
   ControlModalDismissPolicy dismiss_policy(void *)const override{return ControlModalDismissPolicy::DISMISS;}
   void retire(void *pointer,PageModalClose reason)override {
     auto &record=*static_cast<Record *>(pointer);record.retired=true;record.gestures.invalidate();
@@ -132,6 +143,8 @@ class PageClimateModalPort final:public PageModalPort {
       }
     }
     climate_cancel_temperature_send(record->context);
+    if(climate_control_modal_ui().active==record->context&&control_modal_active().kind==ControlModalKind::NONE)
+      set_clock_bar_modal_label("");
     delete_climate_control_context(record->context);assert(record->gestures.live()==0);record_=nullptr;
     record->~Record();allocator_.release(record,sizeof(Record));
   }

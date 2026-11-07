@@ -504,6 +504,15 @@ void reentrant_and_publication(const DeviceUiLimits& profile) {
 }
 }  // namespace
 int main() {
+  {
+    Fixture f(DEVICE_UI_PROFILES[8]);const auto token=f.open();
+    assert(f.queue(token));const auto sends=f.sends;
+    f.confirm.cancel_queued();f.confirm.cancel_queued();
+    assert(f.modal.interactive(token) && !f.confirm.pending(token) &&
+      f.confirm.loop()==PageConfirmationResult::NONE && f.sends==sends);
+    assert(f.queue(token) && f.confirm.loop()==PageConfirmationResult::SENT && f.sends==sends+1);
+    f.modal.loop();
+  }
   policy_parity();
   for (const auto& profile : DEVICE_UI_PROFILES) basic(profile);
   stale_and_cancel(DEVICE_UI_PROFILES[8]);

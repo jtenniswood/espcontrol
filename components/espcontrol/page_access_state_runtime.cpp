@@ -15,7 +15,7 @@ bool keys(const PageStore& store, Emit emit) {
   for (PageId p = 0; p < store.page_count(); ++p) {
     const auto* page = store.page(p);
     if (!page->navigable) continue;
-    for (CardId id = page->first_card; id < page->first_card + page->card_count; ++id) {
+    for (CardId id = page->first_card; id < page->first_card + page->runtime_card_count; ++id) {
       const auto policy = PageAccessStateRuntime::classify(store, id);
       if (policy == PageAccessHistory::NONE) continue;
       const auto key = store.field(*store.card(id), CardField::ENTITY);
@@ -24,7 +24,7 @@ bool keys(const PageStore& store, Emit emit) {
         const auto* earlier = store.page(before);
         if (!earlier->navigable) continue;
         for (CardId previous = earlier->first_card;
-             previous < earlier->first_card + earlier->card_count && previous < id; ++previous)
+             previous < earlier->first_card + earlier->runtime_card_count && previous < id; ++previous)
           if (PageAccessStateRuntime::classify(store, previous) != PageAccessHistory::NONE &&
               store.field(*store.card(previous), CardField::ENTITY) == key &&
               PageAccessStateRuntime::classify(store, previous) ==
@@ -41,7 +41,7 @@ bool keys(const PageStore& store, Emit emit) {
 
 }  // namespace
 PageAccessHistory PageAccessStateRuntime::classify(const PageStore& store, CardId id) {
-  const auto* card = store.card(id);
+  const auto* card = store.runtime_card(id);
   if (!card || store.field(*card, CardField::ENTITY).empty()) return PageAccessHistory::NONE;
   const auto type = store.field(*card, CardField::TYPE);
   if (type != "lock" && type != "garage" && type != "gate") return PageAccessHistory::NONE;
@@ -125,7 +125,7 @@ bool PageAccessStateRuntime::prepare(const PageStore& store) {
     for (PageId p = 0; p < store.page_count(); ++p) {
       const auto* page = store.page(p);
       if (!page->navigable) continue;
-      for (CardId id = page->first_card; id < page->first_card + page->card_count; ++id) {
+      for (CardId id = page->first_card; id < page->first_card + page->runtime_card_count; ++id) {
         const auto policy = classify(store, id);
         if (policy == PageAccessHistory::NONE) continue;
         const auto entity = store.field(*store.card(id), CardField::ENTITY);

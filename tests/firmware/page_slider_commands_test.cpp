@@ -200,7 +200,7 @@ void cycles(const DeviceUiLimits& limits) {
     h.port.received.clear();
     assert(h.queue_percent(0, 57) && h.queue_percent(1, 58) && h.queue_percent(2, 59));
     assert(h.queue_number() && h.queue_temperature());
-    assert(h.commands.request_slider_toggle(h.token(4), h.transport.epoch));
+    assert(h.commands.request_slider_toggle(h.token(0), h.transport.epoch));
     h.port.busy = true;
     assert(h.commands.loop() == PageCardCommandResult::NONE);
     h.port.busy = false;
@@ -222,6 +222,7 @@ void cycles(const DeviceUiLimits& limits) {
   assert(!h.commands.request_temperature(h.token(4), h.transport.epoch, 999));
   assert(!h.commands.request_percent(h.token(3), h.transport.epoch, 50));
   assert(!h.commands.request_slider_toggle(h.token(3), h.transport.epoch));
+  assert(!h.commands.request_slider_toggle(h.token(4), h.transport.epoch));
   assert(!h.commands.request_percent({0, h.port.binding, 1, 0, 0, false}, h.transport.epoch, 50));
   assert(!h.commands.request(h.token(0), h.transport.epoch));
 }

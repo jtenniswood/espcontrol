@@ -10,6 +10,12 @@ int main() {
       parse_panel_config_etag("\"0\"", &generation) && generation == 0 &&
       parse_panel_config_etag("\"4294967295\"", &generation) &&
       generation == UINT32_MAX &&
+      parse_panel_config_etag("\"v2-4294967295\"", &generation, 2) && generation == UINT32_MAX &&
+      !parse_panel_config_etag("\"v2-4294967296\"", &generation, 2) &&
+      !parse_panel_config_etag("\"v2-\"", &generation, 2) &&
+      !parse_panel_config_etag("\"v2-1\"", &generation, 1) &&
+      !parse_panel_config_etag("\"1\"", &generation, 2) &&
+      !parse_panel_config_etag("\"v2-1\"", &generation, 3) &&
       !parse_panel_config_etag("7", &generation) &&
       !parse_panel_config_etag("\"7", &generation) &&
       !parse_panel_config_etag("\"7\"suffix", &generation) &&

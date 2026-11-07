@@ -12,5 +12,7 @@ uint32_t subscribe_owned(const std::string &entity, const std::string &attribute
                          StateCallback callback);
 void unsubscribe_owned(uint32_t token);
 void set_subscription_maintenance(void (*maintenance)());
+// Coalesced current-value refresh, paced by main-loop maintenance.
+void request_state_refresh();
 void maintain_subscriptions();
 }  // namespace espcontrol::ha

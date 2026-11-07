@@ -10,7 +10,7 @@
 namespace espcontrol::pages {
 namespace {
 bool is_status_card(const PageStore& store, CardId id) {
-  const auto* card = store.card(id);
+  const auto* card = store.runtime_card(id);
   if (!card) return false;
   const auto type = store.field(*card, CardField::TYPE);
   return type == "fan_switch" || type == "fan_oscillate";
@@ -20,7 +20,7 @@ bool keys(const PageStore& store, Emit emit) {
   for (PageId p = 0; p < store.page_count(); ++p) {
     const auto* page = store.page(p);
     if (!page->navigable) continue;
-    for (CardId id = page->first_card; id < page->first_card + page->card_count; ++id) {
+    for (CardId id = page->first_card; id < page->first_card + page->runtime_card_count; ++id) {
       if (!is_status_card(store, id)) continue;
       const auto key = store.field(*store.card(id), CardField::ENTITY);
       bool duplicate = false;
@@ -28,7 +28,7 @@ bool keys(const PageStore& store, Emit emit) {
         const auto* earlier = store.page(before);
         if (!earlier->navigable) continue;
         for (CardId previous = earlier->first_card;
-             previous < earlier->first_card + earlier->card_count && previous < id; ++previous)
+             previous < earlier->first_card + earlier->runtime_card_count && previous < id; ++previous)
           if (is_status_card(store, previous) &&
               store.field(*store.card(previous), CardField::ENTITY) == key) {
             duplicate = true;

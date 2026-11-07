@@ -1,3 +1,4 @@
+#include "page_scene_selection.h"
 #include <cassert>
 #include <cstdlib>
 #include <cstring>

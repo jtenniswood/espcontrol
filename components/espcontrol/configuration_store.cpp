@@ -15,7 +15,6 @@ constexpr size_t HEADER_SIZE_OFFSET = 6;
 constexpr size_t GENERATION_OFFSET = 8;
 constexpr size_t PAYLOAD_SIZE_OFFSET = 12;
 constexpr size_t CHECKSUM_OFFSET = 16;
-constexpr size_t CHECKSUM_CHUNK_SIZE = 64;
 
 class CommitLockGuard {
  public:
@@ -27,6 +26,22 @@ class CommitLockGuard {
 
  private:
   std::atomic_flag &lock_;
+};
+
+class StorageOperation {
+public:
+  explicit StorageOperation(StorageBackend &backend)
+      : backend_(backend), ready_(backend.begin_operation()) {}
+  ~StorageOperation() {
+    if (ready_)
+      backend_.end_operation();
+  }
+  bool ready() const { return ready_; }
+  StoreStatus failure() const { return backend_.operation_failure(); }
+
+private:
+  StorageBackend &backend_;
+  bool ready_;
 };
 
 uint16_t read_u16(const uint8_t *data) {
@@ -96,7 +111,7 @@ bool ConfigurationStore::checksum_slot_payload(uint8_t slot,
                                                const uint8_t *header,
                                                size_t payload_size,
                                                uint32_t *result) {
-  std::array<uint8_t, CHECKSUM_CHUNK_SIZE> buffer{};
+  std::array<uint8_t, CONFIGURATION_IO_WINDOW_BYTES> buffer{};
   uint32_t crc = checksum_update(
       0xFFFFFFFFU, header + VERSION_OFFSET,
       CHECKSUM_OFFSET - VERSION_OFFSET);
@@ -156,6 +171,10 @@ ConfigurationStore::SlotMetadata ConfigurationStore::inspect_slot(
 
 LoadResult ConfigurationStore::load(uint8_t *output,
                                     size_t output_capacity) {
+  CommitLockGuard lock(commit_lock_);
+  StorageOperation operation(backend_);
+  if (!operation.ready())
+    return {operation.failure()};
   const SlotMetadata first = inspect_slot(0);
   const SlotMetadata second = inspect_slot(1);
 
@@ -184,11 +203,15 @@ LoadResult ConfigurationStore::load(uint8_t *output,
     return {StoreStatus::INVALID_ARGUMENT, selected->generation,
             selected->payload_size, selected->slot};
   }
-  if (selected->payload_size > 0 &&
-      !backend_.read(selected->slot, CONFIGURATION_ENVELOPE_HEADER_SIZE,
-                     output, selected->payload_size)) {
-    return {StoreStatus::READ_FAILED, selected->generation,
-            selected->payload_size, selected->slot};
+  for (size_t offset = 0; offset < selected->payload_size;) {
+    const size_t size = std::min(CONFIGURATION_IO_WINDOW_BYTES,
+                                 selected->payload_size - offset);
+    if (!backend_.read(selected->slot, CONFIGURATION_ENVELOPE_HEADER_SIZE + offset,
+                       output + offset, size)) {
+      return {StoreStatus::READ_FAILED, selected->generation,
+              selected->payload_size, selected->slot};
+    }
+    offset += size;
   }
 
   return {StoreStatus::OK, selected->generation, selected->payload_size,
@@ -220,6 +243,10 @@ CommitResult ConfigurationStore::commit_internal(bool enforce_generation,
   if (payload_size > maximum_payload_size()) {
     return {StoreStatus::PAYLOAD_TOO_LARGE, 0, payload_size};
   }
+
+  StorageOperation operation(backend_);
+  if (!operation.ready())
+    return {operation.failure()};
 
   const SlotMetadata first = inspect_slot(0);
   const SlotMetadata second = inspect_slot(1);
@@ -271,11 +298,16 @@ CommitResult ConfigurationStore::commit_internal(bool enforce_generation,
             target_slot};
   }
 
-  if (payload_size > 0 &&
-      !backend_.write(target_slot, CONFIGURATION_ENVELOPE_HEADER_SIZE,
-                      payload, payload_size)) {
-    return {StoreStatus::WRITE_FAILED, next_generation, payload_size,
-            target_slot};
+  // Stream the caller's immutable bytes without another payload copy. Keep
+  // the existing durability boundary after all chunks, before metadata.
+  for (size_t offset = 0; offset < payload_size;) {
+    const size_t size = std::min(CONFIGURATION_IO_WINDOW_BYTES, payload_size - offset);
+    if (!backend_.write(target_slot, CONFIGURATION_ENVELOPE_HEADER_SIZE + offset,
+                        payload + offset, size)) {
+      return {StoreStatus::WRITE_FAILED, next_generation, payload_size,
+              target_slot};
+    }
+    offset += size;
   }
   if (!backend_.sync()) {
     return {StoreStatus::SYNC_FAILED, next_generation, payload_size,

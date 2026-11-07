@@ -39,6 +39,11 @@ enum class BasicCardKind : uint8_t {
   LIGHT,
   COVER,
   WEATHER,
+  WEATHER_WIND,
+  WEATHER_RAINFALL,
+  WEATHER_PRESSURE,
+  WEATHER_HUMIDITY,
+  WEATHER_VISIBILITY,
   FORECAST,
   MEDIA_ACTION,
   MEDIA_POSITION,
@@ -69,6 +74,9 @@ enum class BasicCardKind : uint8_t {
   WIFI_QR,
   SCREEN_LOCK
 };
+inline bool basic_card_weather_reading(BasicCardKind kind) {
+  return kind >= BasicCardKind::WEATHER_WIND && kind <= BasicCardKind::WEATHER_VISIBILITY;
+}
 enum class BasicActionDisplay:uint8_t { NONE, ICON, TEXT, NUMBER };
 enum class BasicFolderMode : uint8_t { NONE, ENTITY, CLIMATE, MOWER, TIMER, CHILDREN, NUMBER, TEXT };
 enum class BasicAccessKind : uint8_t { GARAGE, GATE, LOCK };
@@ -87,6 +95,8 @@ struct BasicCardDefinition {
     BasicAccessOptions access;
     cleaning::Options cleaning;
     bool calendar_time;
+    bool wind_sensors;
+    bool weather_metric_forecast;
     ClockCardOptions clock;
     AlarmCardOptions alarm;
     BasicImageOptions image;
@@ -95,7 +105,7 @@ struct BasicCardDefinition {
   };
   BasicActionDisplay action_display{BasicActionDisplay::NONE};
   std::string_view entity,sensor,label,unit,icon,icon_on;
-  const char *default_label{nullptr};
+  const char *default_label{nullptr}; // Phrase or key; avoid a second per-card pointer.
   std::string_view text_input, text_output, text_input_2, text_output_2;
   // Only one applies: duration unit, image activity entity or prepared QR payload.
   std::string_view time_unit;
@@ -106,13 +116,14 @@ struct BasicCardDefinition {
     return time_unit;
   }
   bool text_overlay{false};
+  bool default_label_is_key{false};
   uint32_t off_color{0},on_color{0};
   uint8_t precision{0}, confirmation{0};
   bool needs_confirmation(bool currently_on) const {
     return confirmation & (currently_on ? PAGE_CONFIRM_OFF : PAGE_CONFIRM_ON);
   }
   bool custom_off{false},custom_on{false},theme_active{false},active_color{false},large_numbers{false};
-  bool presence{false}, push_feedback{false}, explicit_large{false}, ha_input{false};
+  bool presence{false}, push_feedback{false}, explicit_large{false}, ha_input{false}, on_pattern{false};
 };
 // Decoded mapping labels/time units are copied once into preparation storage.
 class BasicCardTextSink {
@@ -169,6 +180,7 @@ struct BasicCardState {
 // Pull only from the configuration-owned cache. It neither registers a callback
 // nor owns a copy of HA state. The result's views last until the next delivery.
 std::string_view basic_folder_child_indicator(const PageStore &,CardId);
+const char *basic_card_default_label(const BasicCardDefinition &,PageCardTranslate translate=nullptr);
 bool read_basic_indicator(ConfigurationHandle,std::string_view,PageEntityStateRuntime &,BasicFolderMode=BasicFolderMode::ENTITY);
 PagePercentSliderSnapshot read_basic_percent_slider(const BasicCardDefinition&, ConfigurationHandle,
                                                     PageEntityStateRuntime&, PagePercentSliderRuntime*);

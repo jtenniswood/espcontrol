@@ -21,6 +21,10 @@ def generate(root: Path) -> str:
             raise ValueError(f'Missing production structure {name}')
         structures += match[0] + '\n'
     text = text.replace('// @production-context', structures)
+    temperature = (root / 'components/espcontrol/temperature_unit.h').read_text()
+    for name in re.findall(r'// @production-temperature-function (\w+)', text):
+        text = re.sub(r'^// @production-temperature-function ' + re.escape(name) + r'$',
+                      lambda _: definition(temperature, name), text, flags=re.M)
     for name in re.findall(r'// @production-function (\w+)', text):
         source = ui if re.search(r'^inline [^\n]*\b' + re.escape(name) + r'\(', ui, re.M) else modal
         one_line = re.findall(

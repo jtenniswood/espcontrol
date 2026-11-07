@@ -1,0 +1,76 @@
+// The production ESP32 allocator is extracted, rather than reimplemented here.
+#include <cassert>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <map>
+#include <vector>
+#include "panel_config_representation.h"
+constexpr uint32_t MALLOC_CAP_SPIRAM = 1 << 10;
+constexpr uint32_t MALLOC_CAP_8BIT = 1 << 2;
+static std::map<void *, void *> allocations;
+static bool refuse = false;
+static size_t calls = 0;
+static void *allocate_stub(size_t size, size_t alignment, bool four_aligned) {
+  ++calls;
+  if (refuse || !size) return nullptr;
+  auto *raw = static_cast<uint8_t *>(std::malloc(size + alignment + 8));
+  assert(raw);
+  uintptr_t address = (reinterpret_cast<uintptr_t>(raw) + alignment - 1) & ~(alignment - 1);
+  if (four_aligned) address += 4;
+  void *result = reinterpret_cast<void *>(address);
+  allocations.emplace(result, raw);
+  return result;
+}
+// IDF's ordinary ESP32 allocation only guarantees four-byte alignment. Force
+// the valid four-mod-eight case on hosts whose malloc is naturally aligned.
+[[maybe_unused]] static void *heap_caps_malloc(size_t size, uint32_t caps) {
+  assert(caps == (MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+  return allocate_stub(size, 8, true);
+}
+[[maybe_unused]] static void *heap_caps_aligned_alloc(size_t alignment, size_t size, uint32_t caps) {
+  assert(alignment >= 8 && (alignment & (alignment - 1)) == 0);
+  assert(caps == (MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+  return allocate_stub(size, alignment, false);
+}
+static void heap_caps_free(void *pointer) {
+  if (!pointer) return;
+  auto found = allocations.find(pointer);assert(found != allocations.end());
+  std::free(found->second);allocations.erase(found);
+}
+namespace espcontrol {
+@ALLOCATE@
+@RELEASE@
+}
+int main() {
+  using namespace espcontrol::configuration;
+  std::vector<uint8_t> source(4096);
+  PanelConfigWriter writer(source.data(), source.size());
+  const char profile[] = "guition-esp32-s3-4848s040";
+  const char root[] = ";Backup Root;;;;;subpage";
+  const char child[] = "~B,1|S,sensor.backup,Backup Child";
+  assert(writer.begin() == PanelConfigStatus::OK);
+  assert(writer.append_device_profile(reinterpret_cast<const uint8_t *>(profile), std::strlen(profile)) == PanelConfigStatus::OK);
+  assert(writer.append_button(1, reinterpret_cast<const uint8_t *>(root), std::strlen(root)) == PanelConfigStatus::OK);
+  assert(writer.append_subpage(1, reinterpret_cast<const uint8_t *>(child), std::strlen(child)) == PanelConfigStatus::OK);
+  size_t size = 0;assert(writer.finish(&size) == PanelConfigStatus::OK);source.resize(size);
+  for (int iteration = 0; iteration < 10; ++iteration) {
+    {
+      PanelConfigRepresentation converted(espcontrol::allocate_configuration_slot, espcontrol::release_configuration_slot);
+      auto status = converted.convert(1, 2, source.data(), source.size(), PANEL_CONFIG_V2_HTTP_MAX_BYTES);
+      if (status != PanelConfigRepresentationStatus::OK) {
+        std::cerr << "ESP32 configuration scratch cannot convert v1 to v2: " << unsigned(status) << '\n';
+        return 1;
+      }
+      PanelConfigRepresentation reverse(espcontrol::allocate_configuration_slot, espcontrol::release_configuration_slot);
+      assert(reverse.convert(2, 1, converted.data(), converted.size(), 4096) == PanelConfigRepresentationStatus::OK);
+      assert(reverse.size() == source.size() && std::memcmp(reverse.data(), source.data(), source.size()) == 0);
+    }
+    assert(allocations.empty());
+  }
+  refuse = true;const size_t before = calls;
+  assert(espcontrol::allocate_configuration_slot(1024) == nullptr);
+  assert(calls == before + 1 && allocations.empty());
+  std::cout << "ESP32 PSRAM-only configuration alignment and repeated v1/v2 conversions pass\n";
+}

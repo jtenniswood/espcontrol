@@ -203,6 +203,12 @@ class PageExpandedImageSource final : public PageEntityObserver {
             r.policy.connection,
             r.source.fit};
   }
+  void refresh() {
+    auto& r = record_;
+    if (!retiring_ && r.token.opening && origin_.valid(r.token) &&
+        environment_.visible(r.token) && images_.owns(0, r.token))
+      r.dirty = r.forced = true;
+  }
   uint64_t revision() const {
     return revision_ + images_.revision();
   }

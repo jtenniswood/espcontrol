@@ -26,8 +26,13 @@ class EspIdfPanelConfigBlobStorage final : public BlobStorage {
                            size_t capacity) override;
   bool save_blob(uint8_t slot, const uint8_t *data, size_t size) override;
   bool sync() override;
+  bool supports_range_io() const override;
+  bool read_range(uint8_t slot, size_t offset, uint8_t *output,
+                  size_t size) override;
+  bool write_range(uint8_t slot, size_t offset, const uint8_t *data,
+                   size_t size) override;
 
- private:
+private:
   static const char *slot_key(uint8_t slot);
 
 #ifdef USE_ESP32

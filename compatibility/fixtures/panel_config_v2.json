@@ -1,0 +1,206 @@
+{
+  "description": "Native document-v2 structural golden. Length-delimited wire identities are independent of runtime arena indices. Includes forward refs, an inactive page/card, Unicode, embedded NUL and opaque settings. Not advertised or activated yet.",
+  "document_version": 2,
+  "wire_hex": "4550434602001000b70100001a000000040900320000000a00070001051b005a0032000100ff0100140005000a000a0015000e0003000f0010000604000a0032000704000800090001190067756974696f6e2d65737033322d73332d34383438733034300409000000ffffffff060000040900330000000b00000000050d000a0000000100420000040002000515000b00000020004f0001140004000a000a0003000c0003040014000100021b00010073656e736f722e696e646f6f725f74656d7065726174757265020900020073756270616765020800030073656e736f72020a000400526f6f6d20e29880021100050054656d706572617475726520c2b0430206000600312c3332020f000700423d55703a4646384330302c3102100008006675747572655f73657474696e670211000900436166c3a97ce298800076616c75650206000a004175746f0239000c0073656e736f722e696e646f6f725f74656d70657261747572653b526f6f6d20e298803b4175746f3b4175746f3b3b3b73656e736f723b3b03040015000d000218000d0073656e736f722e696e646f6f725f68756d69646974790205000e00c2b0430203000f0031020c0010006c617267653d74727565",
+  "records": [
+    {
+      "kind": 4,
+      "body_hex": "320000000a00070001",
+      "id": 50,
+      "first": 0,
+      "second": 10,
+      "third": 7,
+      "flags": 1
+    },
+    {
+      "kind": 5,
+      "body_hex": "5a0032000100ff0100140005000a000a0015000e0003000f001000",
+      "id": 90,
+      "first": 50,
+      "second": 1,
+      "field_mask": 511,
+      "flags": 0,
+      "fields": {
+        "0": 20,
+        "1": 5,
+        "2": 10,
+        "3": 10,
+        "4": 21,
+        "5": 14,
+        "6": 3,
+        "7": 15,
+        "8": 16
+      },
+      "raw_source": 0
+    },
+    {
+      "kind": 6,
+      "body_hex": "0a003200",
+      "id": 10,
+      "first": 50
+    },
+    {
+      "kind": 7,
+      "body_hex": "08000900",
+      "id": 8,
+      "first": 9
+    },
+    {
+      "kind": 1,
+      "body_hex": "67756974696f6e2d65737033322d73332d3438343873303430",
+      "id": 0,
+      "text": "guition-esp32-s3-4848s040"
+    },
+    {
+      "kind": 4,
+      "body_hex": "0000ffffffff060000",
+      "id": 0,
+      "first": 65535,
+      "second": 65535,
+      "third": 6,
+      "flags": 0
+    },
+    {
+      "kind": 4,
+      "body_hex": "330000000b00000000",
+      "id": 51,
+      "first": 0,
+      "second": 11,
+      "third": 0,
+      "flags": 0
+    },
+    {
+      "kind": 5,
+      "body_hex": "0a000000010042000004000200",
+      "id": 10,
+      "first": 0,
+      "second": 1,
+      "field_mask": 66,
+      "flags": 0,
+      "fields": {
+        "1": 4,
+        "6": 2
+      },
+      "raw_source": 0
+    },
+    {
+      "kind": 5,
+      "body_hex": "0b00000020004f0001140004000a000a0003000c00",
+      "id": 11,
+      "first": 0,
+      "second": 32,
+      "field_mask": 79,
+      "flags": 1,
+      "fields": {
+        "0": 20,
+        "1": 4,
+        "2": 10,
+        "3": 10,
+        "6": 3
+      },
+      "raw_source": 12
+    },
+    {
+      "kind": 3,
+      "body_hex": "14000100",
+      "id": 20,
+      "first": 1
+    },
+    {
+      "kind": 2,
+      "body_hex": "010073656e736f722e696e646f6f725f74656d7065726174757265",
+      "id": 1,
+      "text": "sensor.indoor_temperature"
+    },
+    {
+      "kind": 2,
+      "body_hex": "020073756270616765",
+      "id": 2,
+      "text": "subpage"
+    },
+    {
+      "kind": 2,
+      "body_hex": "030073656e736f72",
+      "id": 3,
+      "text": "sensor"
+    },
+    {
+      "kind": 2,
+      "body_hex": "0400526f6f6d20e29880",
+      "id": 4,
+      "text": "Room ☀"
+    },
+    {
+      "kind": 2,
+      "body_hex": "050054656d706572617475726520c2b043",
+      "id": 5,
+      "text": "Temperature °C"
+    },
+    {
+      "kind": 2,
+      "body_hex": "0600312c3332",
+      "id": 6,
+      "text": "1,32"
+    },
+    {
+      "kind": 2,
+      "body_hex": "0700423d55703a4646384330302c31",
+      "id": 7,
+      "text": "B=Up:FF8C00,1"
+    },
+    {
+      "kind": 2,
+      "body_hex": "08006675747572655f73657474696e67",
+      "id": 8,
+      "text": "future_setting"
+    },
+    {
+      "kind": 2,
+      "body_hex": "0900436166c3a97ce298800076616c7565",
+      "id": 9,
+      "text": "Café|☀\u0000value"
+    },
+    {
+      "kind": 2,
+      "body_hex": "0a004175746f",
+      "id": 10,
+      "text": "Auto"
+    },
+    {
+      "kind": 2,
+      "body_hex": "0c0073656e736f722e696e646f6f725f74656d70657261747572653b526f6f6d20e298803b4175746f3b4175746f3b3b3b73656e736f723b3b",
+      "id": 12,
+      "text": "sensor.indoor_temperature;Room ☀;Auto;Auto;;;sensor;;"
+    },
+    {
+      "kind": 3,
+      "id": 21,
+      "first": 13,
+      "body_hex": "15000d00"
+    },
+    {
+      "kind": 2,
+      "id": 13,
+      "text": "sensor.indoor_humidity",
+      "body_hex": "0d0073656e736f722e696e646f6f725f68756d6964697479"
+    },
+    {
+      "kind": 2,
+      "id": 14,
+      "text": "°C",
+      "body_hex": "0e00c2b043"
+    },
+    {
+      "kind": 2,
+      "id": 15,
+      "text": "1",
+      "body_hex": "0f0031"
+    },
+    {
+      "kind": 2,
+      "id": 16,
+      "text": "large=true",
+      "body_hex": "10006c617267653d74727565"
+    }
+  ]
+}

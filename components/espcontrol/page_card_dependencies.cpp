@@ -47,7 +47,7 @@ class CardEmitter {
     return attributes(entity, {"media_content_type", "media_content_id"});
   }
   bool metadata(const std::string &entity) {
-    return attributes(entity, {"media_title", "media_artist"});
+    return attributes(entity, {"media_title", "media_artist", "source"});
   }
   bool artwork(const std::string &entity) {
     return attributes(entity, {"entity_picture", "entity_picture_local", "access_token"});
@@ -163,6 +163,20 @@ class CardEmitter {
       case Driver::LAWN_MOWER:
         return (!card_runtime_lawn_mower_state_mode(config.sensor) && !(in_subpage && aggregate_parent)) || pair(config.entity);
       case Driver::WEATHER:
+        if (weather_metric_mode(config.precision)) {
+          if (!weather_metric_uses_forecast(config))
+            return pair(config.entity) && pair(config.entity,"unit_of_measurement");
+          if (!pair(config.entity) || !pair(config.entity,config.precision.c_str())) return false;
+          return config.precision=="humidity" || pair(config.entity,(config.precision+"_unit").c_str());
+        }
+        if (config.precision == "wind") {
+          if (weather_wind_uses_sensors(config))
+            return pair(config.entity) && pair(config.sensor) && pair(config.sensor,"unit_of_measurement");
+          return pair(config.entity) && attributes(config.entity,{"wind_bearing","wind_speed","wind_speed_unit"});
+        }
+        if (config.precision == "rainfall")
+          return rainfall_uses_forecast(config) || (pair(config.entity) &&
+              (!config.unit.empty() || pair(config.entity,"unit_of_measurement")));
         return card_runtime_weather_forecast_precision(config.precision) || pair(config.entity);
       case Driver::IMAGE: {
         if (!starts(config.entity,"camera.") && !starts(config.entity,"image.")) return true;
@@ -239,7 +253,7 @@ bool PageCardDependencies::enumerate(const PageStore &store, PageDependencySink 
       parent=configuration(store,*owner);
     }
     const bool aggregate=parent.sensor=="indicator" && parent.entity.empty();
-    for (size_t i=0;i<page->card_count;++i) {
+    for (size_t i=0;i<page->runtime_card_count;++i) {
       const auto card_id=static_cast<CardId>(page->first_card+i);
       const auto *card=store.card(card_id);
       if (card==nullptr) return false;

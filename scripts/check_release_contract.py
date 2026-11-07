@@ -8,6 +8,7 @@ import os
 import re
 from urllib.request import Request, urlopen
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from firmware_release import current_web_bundle
 
 
@@ -17,6 +18,7 @@ PRODUCT_MODEL = ROOT / "product" / "model_v2.json"
 DEVICE_MANIFEST = ROOT / "devices" / "manifest.json"
 WEB_MANIFEST = ROOT / "docs" / "public" / "webserver" / "web-assets.json"
 DOCUMENT_HEADER = ROOT / "components" / "espcontrol" / "panel_config_document.h"
+SERVICE_HEADER = ROOT / "components" / "espcontrol" / "configuration_service.h"
 CAPABILITIES_HEADER = ROOT / "components" / "espcontrol" / "panel_config_capabilities.h"
 COMPATIBILITY_POLICY = ROOT / "components" / "espcontrol" / "configuration_release_policy.h"
 
@@ -50,8 +52,23 @@ def compatibility_policy(contract: dict) -> dict:
 def validate_release_history(contract: dict, releases: list[dict]) -> None:
     """Require published manifests before advancing past the dual-write window."""
     policy = compatibility_policy(contract)
+    if contract["panelConfigDocumentVersion"] > 1:
+        floor = contract.get("panelConfigMinimumReaderRelease")
+        assert isinstance(floor, str) and re.fullmatch(r"v\d+\.\d+\.\d+", floor), (
+            "durable v2 requires an explicit stable minimum reader release"
+        )
+        floor_index = next((i for i, release in enumerate(releases) if release.get("tagName") == floor), None)
+        assert floor_index is not None, "minimum reader release is not published with an immutable manifest"
+        for release in releases[:floor_index + 1]:
+            versions = release["manifest"].get("releaseContract", {}).get("panelConfigReadVersions", [])
+            assert contract["panelConfigDocumentVersion"] in versions, (
+                "supported downgrade floor includes a release without the required document reader"
+            )
     if policy["phase"] == "dual-write":
         return
+    assert contract["panelConfigDocumentVersion"] >= 2, (
+        "legacy mirror retirement requires the durable-v2 rollout first"
+    )
 
     matching = [
         release
@@ -60,6 +77,10 @@ def validate_release_history(contract: dict, releases: list[dict]) -> None:
         == contract["panelConfigDocumentVersion"]
     ]
     assert matching, "no published release manifests match this PanelConfig document version"
+    tags = [release.get("tagName") for release in matching]
+    assert all(tags) and len(set(tags)) == len(tags), (
+        "compatibility windows require distinct published stable releases"
+    )
     phases = [
         release["manifest"]["releaseContract"].get("panelConfigCompatibility", {}).get("phase")
         for release in matching
@@ -96,6 +117,8 @@ def github_release_history(repository: str) -> list[dict]:
             continue
         asset = next((item for item in release.get("assets", []) if item.get("name") == "release-manifest.json"), None)
         if asset is None:
+            # Missing proof cannot disappear from a supported downgrade range.
+            history.append({"tagName": release.get("tag_name"), "manifest": {}})
             continue
         url = asset.get("browser_download_url")
         assert isinstance(url, str) and url.startswith("https://"), "release manifest asset URL is invalid"
@@ -111,21 +134,45 @@ def github_release_history(repository: str) -> list[dict]:
     return history
 
 
-def verify() -> dict:
+def verify(*, product_model_path: Path = PRODUCT_MODEL,
+           compatibility_policy_path: Path = COMPATIBILITY_POLICY) -> dict:
     contract = read_json(CONTRACT)
     assert contract["schemaVersion"] == 1, "release contract schema version must be 1"
-    product_model = read_json(PRODUCT_MODEL)
+    product_model = read_json(product_model_path)
     assert product_model["modelVersion"] == contract["productModelVersion"], (
         "Product Model version disagrees with release contract"
     )
-    document_version = constant(DOCUMENT_HEADER, "PANEL_CONFIG_DOCUMENT_VERSION")
+    document_version = constant(SERVICE_HEADER, "CURRENT_CONFIGURATION_DOCUMENT_VERSION")
     capabilities = CAPABILITIES_HEADER.read_text(encoding="utf-8")
-    assert "PANEL_CONFIG_DOCUMENT_VERSION" in capabilities, (
+    assert "PANEL_CONFIG_DURABLE_WRITE_VERSION" in capabilities, (
         "firmware capabilities do not advertise the PanelConfig document version"
+    )
+    assert constant(DOCUMENT_HEADER, "PANEL_CONFIG_DOCUMENT_VERSION") == 1, (
+        "native-v1 codec identity must remain available independently of the durable default"
     )
     assert document_version == contract["panelConfigDocumentVersion"], (
         "PanelConfig document version disagrees with release contract"
     )
+    assert constant(compatibility_policy_path, "PANEL_CONFIG_DURABLE_WRITE_VERSION") == document_version == contract.get("panelConfigWriteVersion"), (
+        "durable write policy disagrees with release contract"
+    )
+    reads = contract.get("panelConfigReadVersions")
+    match = re.search(r"PANEL_CONFIG_STORAGE_READ_VERSIONS\s*=\s*\{([\d,\s]+)\}", compatibility_policy_path.read_text(encoding="utf-8"))
+    assert match and reads == [int(n) for n in match.group(1).split(",")], (
+        "stored document readers disagree with release contract"
+    )
+    assert isinstance(reads, list) and reads == sorted(set(reads)) and 1 in reads and document_version in reads, (
+        "stored document reader policy is invalid"
+    )
+    assert type(contract["panelConfigDocumentVersion"]) is int and type(contract["panelConfigWriteVersion"]) is int and all(
+        type(version) is int and 1 <= version <= 65534 for version in reads), (
+        "stored document versions must be integer identities"
+    )
+    if document_version > 1:
+        assert isinstance(contract.get("panelConfigMinimumReaderRelease"), str) and re.fullmatch(
+            r"v\d+\.\d+\.\d+", contract["panelConfigMinimumReaderRelease"]), (
+            "durable v2 requires an explicit stable minimum reader release"
+        )
     capability_web_version = constant(CAPABILITIES_HEADER, "PANEL_CONFIG_WEB_ASSET_VERSION")
     assert capability_web_version == contract["webAssetVersion"], (
         "firmware web-asset version disagrees with release contract"
@@ -139,11 +186,14 @@ def verify() -> dict:
         "web-asset device profiles disagree with generated device manifest"
     )
     compatibility = compatibility_policy(contract)
+    assert compatibility["phase"] == "dual-write" or document_version >= 2, (
+        "legacy mirror retirement requires the durable-v2 rollout first"
+    )
     expected_mode = {
         "dual-write": "LegacyConfigurationMode::DUAL_WRITE",
         "read-import-only": "LegacyConfigurationMode::READ_IMPORT_ONLY",
     }[compatibility["phase"]]
-    assert expected_mode in COMPATIBILITY_POLICY.read_text(encoding="utf-8"), (
+    assert expected_mode in compatibility_policy_path.read_text(encoding="utf-8"), (
         "firmware PanelConfig compatibility policy disagrees with release contract"
     )
     return contract
@@ -152,17 +202,41 @@ def verify() -> dict:
 def self_test() -> None:
     verify()
     contract = read_json(CONTRACT)
+    future = json.loads(json.dumps(contract))
+    future["panelConfigDocumentVersion"] = future["panelConfigWriteVersion"] = 2
+    for floor, history, expected in [
+        (None, [], False),
+        ("v2.10.0", [], False),
+        ("v2.10.0", [{"tagName": "v2.10.0", "manifest": {"releaseContract": {"panelConfigReadVersions": [1]}}}], False),
+        ("v2.10.0", [{"tagName": "v2.11.0", "manifest": {}}, {"tagName": "v2.10.0", "manifest": {"releaseContract": {"panelConfigReadVersions": [1, 2]}}}], False),
+        ("v2.10.0", [{"tagName": "v2.10.0", "manifest": {"releaseContract": {"panelConfigReadVersions": [1, 2]}}}], True),
+    ]:
+        future["panelConfigMinimumReaderRelease"] = floor
+        try:
+            validate_release_history(future, history)
+        except AssertionError:
+            assert not expected, "qualified dual-reader floor was rejected"
+        else:
+            assert expected, "durable v2 accepted a missing or unreadable downgrade floor"
     read_import_contract = json.loads(json.dumps(contract))
     read_import_contract["panelConfigCompatibility"]["phase"] = "read-import-only"
-
-    def published(phase: str) -> dict:
-        manifest_contract = json.loads(json.dumps(contract))
-        manifest_contract["panelConfigCompatibility"]["phase"] = phase
-        return {"manifest": {"releaseContract": manifest_contract}}
-
-    validate_release_history(read_import_contract, [published("dual-write"), published("dual-write")])
     try:
-        validate_release_history(read_import_contract, [published("dual-write")])
+        validate_release_history(read_import_contract, [])
+    except AssertionError as error:
+        assert "durable-v2 rollout first" in str(error)
+    else:
+        raise AssertionError("legacy mirror retirement accepted before durable v2")
+    read_import_contract.update(panelConfigDocumentVersion=2, panelConfigWriteVersion=2,
+                                panelConfigMinimumReaderRelease="v2.10.0")
+
+    def published(phase: str, tag: str) -> dict:
+        manifest_contract = json.loads(json.dumps(read_import_contract))
+        manifest_contract["panelConfigCompatibility"]["phase"] = phase
+        return {"tagName": tag, "manifest": {"releaseContract": manifest_contract}}
+
+    validate_release_history(read_import_contract, [published("dual-write", "v2.11.0"), published("dual-write", "v2.10.0")])
+    try:
+        validate_release_history(read_import_contract, [published("dual-write", "v2.10.0")])
     except AssertionError as error:
         assert "2 consecutive published dual-write" in str(error)
     else:
@@ -170,28 +244,38 @@ def self_test() -> None:
     try:
         validate_release_history(
             read_import_contract,
-            [published("dual-write"), published("read-import-only"), published("dual-write")],
+            [published("dual-write", "v2.12.0"), published("read-import-only", "v2.11.0"), published("dual-write", "v2.10.0")],
         )
     except AssertionError as error:
         assert "2 consecutive published dual-write" in str(error)
     else:
         raise AssertionError("read/import-only accepted non-consecutive dual-write releases")
-    original = PRODUCT_MODEL.read_text(encoding="utf-8")
-    original_policy = COMPATIBILITY_POLICY.read_text(encoding="utf-8")
     try:
+        validate_release_history(read_import_contract, [published("dual-write", "v2.10.0"), published("dual-write", "v2.10.0")])
+    except AssertionError as error:
+        assert "distinct published" in str(error)
+    else:
+        raise AssertionError("compatibility window counted one stable release twice")
+    # These negative controls may run alongside firmware compilation. Never
+    # mutate the actual model or C++ policy header, even briefly.
+    with TemporaryDirectory() as temporary:
+        model_path = Path(temporary) / "model.json"
+        policy_path = Path(temporary) / "policy.h"
+        original = PRODUCT_MODEL.read_text(encoding="utf-8")
+        original_policy = COMPATIBILITY_POLICY.read_text(encoding="utf-8")
+        model_path.write_text(original, encoding="utf-8")
+        policy_path.write_text(original_policy, encoding="utf-8")
         product_model = json.loads(original)
         product_model["modelVersion"] = int(product_model["modelVersion"]) + 1
-        PRODUCT_MODEL.write_text(json.dumps(product_model, indent=2) + "\n", encoding="utf-8")
+        model_path.write_text(json.dumps(product_model, indent=2) + "\n", encoding="utf-8")
         try:
-            verify()
+            verify(product_model_path=model_path, compatibility_policy_path=policy_path)
         except AssertionError as error:
             assert "Product Model version" in str(error)
         else:
             raise AssertionError("mismatched Product Model version was accepted")
-    finally:
-        PRODUCT_MODEL.write_text(original, encoding="utf-8")
-    try:
-        COMPATIBILITY_POLICY.write_text(
+        model_path.write_text(original, encoding="utf-8")
+        policy_path.write_text(
             original_policy.replace(
                 "LegacyConfigurationMode::DUAL_WRITE",
                 "LegacyConfigurationMode::READ_IMPORT_ONLY",
@@ -199,13 +283,11 @@ def self_test() -> None:
             encoding="utf-8",
         )
         try:
-            verify()
+            verify(product_model_path=model_path, compatibility_policy_path=policy_path)
         except AssertionError as error:
             assert "firmware PanelConfig compatibility policy" in str(error)
         else:
             raise AssertionError("mismatched PanelConfig compatibility policy was accepted")
-    finally:
-        COMPATIBILITY_POLICY.write_text(original_policy, encoding="utf-8")
 
 
 if __name__ == "__main__":

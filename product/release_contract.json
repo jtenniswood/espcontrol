@@ -2,6 +2,9 @@
   "schemaVersion": 1,
   "productModelVersion": 2,
   "panelConfigDocumentVersion": 1,
+  "panelConfigReadVersions": [1, 2],
+  "panelConfigWriteVersion": 1,
+  "panelConfigMinimumReaderRelease": null,
   "webAssetVersion": 2,
   "panelConfigCompatibility": {
     "phase": "dual-write",

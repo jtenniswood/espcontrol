@@ -83,7 +83,10 @@ class PageModalPort {
 };
 class PageModalRuntime final:public PageRuntimeResources {
  public:
-  explicit PageModalRuntime(PageModalPort &port,uint64_t first_opening=1):port_(port),next_opening_(first_opening){}
+  using InputAllowed = bool (*)(void*);
+  explicit PageModalRuntime(PageModalPort &port,uint64_t first_opening=1,
+                            void* input_owner=nullptr, InputAllowed input_allowed=nullptr)
+      :port_(port),next_opening_(first_opening),input_owner_(input_owner),input_allowed_(input_allowed){}
   ~PageModalRuntime()override;
   PageModalRuntime(const PageModalRuntime &)=delete;
   PageModalRuntime &operator=(const PageModalRuntime &)=delete;
@@ -98,6 +101,10 @@ class PageModalRuntime final:public PageRuntimeResources {
   // including a hidden page. They must resolve against this generation.
   bool request_card(ConfigurationHandle);
   bool request_card(ConfigurationHandle, ControlModalKind);
+  ControlModalKind card_kind(ConfigurationHandle card) const;
+  ControlModalKind pending_kind() const {
+    return pending_.pending ? pending_.kind : ControlModalKind::NONE;
+  }
   uint64_t pending_request() const {
     return pending_.pending ? pending_.opening : 0;
   }
@@ -117,7 +124,8 @@ class PageModalRuntime final:public PageRuntimeResources {
   // A final edit from a user close is allowed only during safe collection.
   // Later replacement/takeover/cancellation revokes it even if no UI remains.
   bool can_finish_retired(PageModalToken) const;
-  bool interactive(PageModalToken token)const{return valid(token)&&port_.visible(context_);}
+  bool input_allowed() const { return !stopped_ && (!input_allowed_ || input_allowed_(input_owner_)); }
+  bool interactive(PageModalToken token)const{return valid(token)&&input_allowed()&&port_.visible(context_);}
   PageModalToken token()const{return token_;}
   PageModalRetirement last_retirement() const {
     return last_retirement_;
@@ -144,6 +152,8 @@ class PageModalRuntime final:public PageRuntimeResources {
   PageModalRetirement last_retirement_;
   void *context_{nullptr},*retired_{nullptr};
   uint64_t next_opening_{1};uint32_t connection_{0},prepared_generation_{0};
+  void* input_owner_{nullptr};
+  InputAllowed input_allowed_{nullptr};
   bool creating_{false}, create_cancelled_{false};
   PageModalClose create_cancel_reason_{PageModalClose::SHUTDOWN};
   bool collecting_retired_{false}, retired_finish_allowed_{false};

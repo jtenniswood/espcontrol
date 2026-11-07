@@ -1,6 +1,7 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -102,9 +103,12 @@ const char* find_icon(const char*) {
 const char* weather_icon_for_state(const std::string&) {
   return "I";
 }
-float convert_temperature_value_for_display_float(float value, const char*) {
-  return value;
-}
+static bool fahrenheit = false;
+bool display_temperature_uses_fahrenheit() { return fahrenheit; }
+// @production-temperature-function temperature_unit_trim
+// @production-temperature-function temperature_unit_lower
+// @production-temperature-function normalize_temperature_unit_option
+// @production-temperature-function convert_temperature_value_for_display_float
 void lv_label_set_display_text(lv_obj_t* label, const char* text) {
   lv_label_set_text(label, text);
 }
@@ -316,6 +320,29 @@ void test_weather_modal() {
       assert(source && source->forecast.count == 8 && source->users == 1 &&
              weather_daily_modal().columns.size() == 6);
       assert(weather_daily_cards().empty() && weather_daily_sources().empty());
+      if (i == 0) {
+        const auto *column = weather_daily_modal().columns[0].button;
+        const auto revision = forecasts.revision();
+        const auto requests_before = requests.starts, retained = arena.live.size();
+        const auto widget_bytes = lv_live_bytes;
+        for (int change = 0; change < 100; ++change) {
+          assert(std::string(lv_label_get_text(weather_daily_modal().columns[0].temperature)) == "20°/10°");
+          coordinator.inside = true;
+          fahrenheit = true;
+          port.refresh_temperature_unit();
+          modal.loop();
+          assert(std::string(lv_label_get_text(weather_daily_modal().columns[0].temperature)) == "20°/10°");
+          coordinator.inside = false;
+          modal.loop();
+          assert(std::string(lv_label_get_text(weather_daily_modal().columns[0].temperature)) == "68°/50°");
+          fahrenheit = false;
+          port.refresh_temperature_unit();
+          modal.loop();
+          assert(std::string(lv_label_get_text(weather_daily_modal().columns[0].temperature)) == "20°/10°");
+          assert(weather_daily_modal().columns[0].button == column && forecasts.revision() == revision &&
+                 requests.starts == requests_before && arena.live.size() == retained && lv_live_bytes == widget_bytes);
+        }
+      }
       const auto token = modal.token();
       assert(settings.styled.configuration == 17 && settings.styled.card == 0 &&
              settings.styled.opening == token.opening &&

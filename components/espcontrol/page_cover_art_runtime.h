@@ -128,6 +128,13 @@ class PageCoverArtRuntime final : public PageEntityObserver {
       record.waiting = false;
     }
   }
+  void refresh() {
+    for (size_t slot = 0; slot < Slots; ++slot) {
+      auto& record = records_[slot];
+      if (record.token.binding && images_.owns(slot, record.token))
+        record.dirty = record.forced = true;
+    }
+  }
   void loop() {
     for (size_t slot = 0; slot < Slots; ++slot) maintain(slot);
   }

@@ -13,3 +13,19 @@ test("native PanelConfig migration client", async () => {
   const { runNativePanelConfigTests } = loadTypescriptTest("tests/web/native_panel_config.test.ts");
   await runNativePanelConfigTests(migrationFixture);
 });
+
+test("native backup snapshots preserve records and serialize with saves", async () => {
+  await loadTypescriptTest("tests/web/native_panel_config.test.ts").runNativePanelConfigBackupTests();
+});
+
+test("native readiness errors cannot select legacy saves", async () => {
+  await loadTypescriptTest("tests/web/native_panel_config.test.ts").runNativeReadinessTests();
+});
+
+test("editor negotiates document v2 and bounds v1 fallback", async () => {
+  await loadTypescriptTest("tests/web/native_panel_config_versions.test.ts").runNativePanelConfigVersionTests();
+});
+
+test("negotiated editing preserves compatible backups and future graphs", async () => {
+  await loadTypescriptTest("tests/web/native_panel_config_versions.test.ts").runNativeNegotiatedBackupTests();
+});

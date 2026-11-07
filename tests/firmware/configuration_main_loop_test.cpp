@@ -7,6 +7,7 @@
 #include <thread>
 
 #include "configuration_main_loop.h"
+#include "panel_config_upload.h"
 
 using namespace espcontrol::configuration;
 using namespace std::chrono_literals;
@@ -123,9 +124,14 @@ void running_request_retains_buffer() {
   };
   ConfigurationSaveTransaction result;
   std::thread worker([&] {
-    std::array<uint8_t, 4> borrowed = f.runtime.expected;
+    PanelConfigUpload borrowed(4, ConfigurationBuffer::allocate_host,
+                               ConfigurationBuffer::release_host);
+    assert(borrowed.append(f.runtime.expected.data(), 4, 0, 4) &&
+           borrowed.complete());
     result = f.queue.save_if_generation(0, 1, borrowed.data(), borrowed.size(), 50ms);
-    returned.store(true); borrowed.fill(0);
+    returned.store(true);
+    // The request-owned allocation is released when the actual dispatch
+    // completes.
   });
   wait_pending(f.queue);
   std::thread observer([&] {

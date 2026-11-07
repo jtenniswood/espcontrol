@@ -1955,7 +1955,31 @@ void startup_and_exhaustion() {
   }
 }
 }  // namespace
+
+void explicit_tile_refresh() {
+  F f(DEVICE_UI_PROFILES[8]);f.preload();f.tick();f.ready();
+  const auto starts=f.requests.starts;
+  const auto count=allocations;
+  for(int i=0;i<4;++i)f.tiles.refresh();
+  assert(f.requests.starts==starts&&allocations==count);
+  f.tick();assert(f.requests.starts==starts+1);f.ready();
+  f.environment.shown=false;f.tiles.refresh();f.tick();
+  f.environment.shown=true;f.tick();assert(f.requests.starts==starts+1);
+  // Delegated tile refresh never starts a competing tile transfer.
+  ExpandedPipeline<9,6> expanded(f);expanded.open();expanded.tick(1000);expanded.ready();
+  const auto tile_starts=f.requests.starts,modal_starts=expanded.requests.starts;
+  for(int i=0;i<4;++i) {f.tiles.refresh();expanded.source.refresh();}
+  assert(f.requests.starts==tile_starts&&expanded.requests.starts==modal_starts);
+  expanded.tick();assert(f.requests.starts==tile_starts&&expanded.requests.starts==modal_starts);
+  expanded.tick(100);assert(f.requests.starts==tile_starts&&expanded.requests.starts==modal_starts+1);
+  expanded.ready();
+  expanded.port.shown=false;expanded.source.refresh();expanded.tick();
+  expanded.port.shown=true;expanded.tick();assert(expanded.requests.starts==modal_starts+1);
+  expanded.close();
+}
+
 int main() {
+  explicit_tile_refresh();
   expanded_source_lifecycle();
   expanded_source_revisions_and_recovery();
   expanded_source_retry_and_geometry();

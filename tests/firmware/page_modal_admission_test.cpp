@@ -80,6 +80,16 @@ int main() {
     assert(allocations == before);
   }
   const std::string padding = "another_option_with_a_long_name=some_long_saved_value,";
+  for(const auto* value:{"forecast","%66orecast","fore%63ast","Forecast","forecast%00","forecas","","forecast_extra"}) {
+    const std::string options=padding+"rainfall_source="+value;
+    const bool expected=cfg_option_value(options,"rainfall_source")=="forecast";
+    const auto before=allocations;
+    assert(admission::option_equals(options,"rainfall_source","forecast")==expected);
+    assert(admission::weather_forecast("weather","rainfall",options)==expected);
+    assert(!admission::weather_forecast("weather","wind",options));
+    assert(!admission::weather_forecast("sensor","rainfall",options));
+    assert(allocations==before);
+  }
   for (const auto* value : {"0",   "%30", "%30%00", "00",     " 0",     "0 ",   "+", "%2B", "%", "%3",
                             "%GG", "%FF", "%C0%80", "%C2%A0", "%30%FF", "%300", "",  "%00", "1", "%31"}) {
     for (const auto* name : {"pin_arm", "pin_disarm"}) {

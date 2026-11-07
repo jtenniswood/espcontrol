@@ -497,7 +497,7 @@ script:
       - if:
           condition:
             lambda: |-
-              return espcontrol::screensaver_pin().locked() ||
+              return !espcontrol::screensaver_pin().cover_art_playback_allowed() ||
                      !id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) ||
                      lv_obj_has_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN) ||
                      id(screensaver_wake_touch_guard_active);
@@ -537,6 +537,14 @@ script:
           then:
             - script.execute: cover_art_return_home_after_playback
       - lambda: |-
+          // Keep the control hidden while protected unless playback is explicitly allowed.
+          const bool show_playback = espcontrol::screensaver_pin().cover_art_playback_allowed() &&
+              (!${cover_art_square_overlay} || id(cover_art_playback_control_enabled).state);
+          if (show_playback) {
+            lv_obj_clear_flag(id(cover_art_playback_button), LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_obj_add_flag(id(cover_art_playback_button), LV_OBJ_FLAG_HIDDEN);
+          }
           auto &control = id(cover_art_playback_control);
           control.expire(millis());
           const bool paused = id(cover_art_last_playback_state) == "paused";
@@ -551,7 +559,7 @@ script:
           if (${cover_art_square_overlay} && !id(cover_art_playback_control_enabled).state) return;
           if (!id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::COVER_ART) ||
               lv_obj_has_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN) ||
-              id(screensaver_wake_touch_guard_active) || espcontrol::screensaver_pin().locked() ||
+              id(screensaver_wake_touch_guard_active) || !espcontrol::screensaver_pin().cover_art_playback_allowed() ||
               !ha_api_state_connected()) return;
           auto &control = id(cover_art_playback_control);
           const std::string entity = id(cover_art_active_media_player_entity);
@@ -681,14 +689,11 @@ script:
           lv_obj_set_style_max_height(id(cover_art_title_label), playback.title_max_height, LV_PART_MAIN);
           lv_obj_clear_flag(id(cover_art_playback_button), LV_OBJ_FLAG_EVENT_BUBBLE);
           if (!${cover_art_square_overlay} || id(cover_art_playback_control_enabled).state) {
-            lv_obj_clear_flag(id(cover_art_playback_button), LV_OBJ_FLAG_HIDDEN);
             lv_obj_set_size(id(cover_art_playback_button), playback.size, playback.size);
             lv_obj_align(id(cover_art_playback_button), LV_ALIGN_BOTTOM_RIGHT,
                          -playback.margin, -playback.margin);
             lv_obj_set_width(id(cover_art_track_panel), playback.panel_width);
             lv_obj_set_height(id(cover_art_track_panel), playback.panel_height);
-          } else {
-            lv_obj_add_flag(id(cover_art_playback_button), LV_OBJ_FLAG_HIDDEN);
           }
           if (!layout.split) {
             lv_obj_set_style_bg_opa(id(cover_art_accent_overlay), LV_OPA_80, LV_PART_MAIN);
@@ -700,6 +705,7 @@ script:
             lv_obj_set_style_pad_left(id(cover_art_track_panel), layout.panel_padding, LV_PART_MAIN);
             lv_obj_set_style_pad_right(id(cover_art_track_panel), layout.panel_padding, LV_PART_MAIN);
           }
+      - script.execute: cover_art_update_playback_control
       - script.execute: cover_art_fit_artist_text
 
   - id: cover_art_fit_artist_text

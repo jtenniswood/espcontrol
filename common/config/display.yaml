@@ -611,7 +611,7 @@ select:
       then:
         - if:
             condition:
-              lambda: 'return grid_phase2_complete();'
+              lambda: 'return espcontrol_navigation_ready();'
             then:
               - script.execute: refresh_subpage_grid
 

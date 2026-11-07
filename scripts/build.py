@@ -3109,6 +3109,7 @@ def gen_card_contract_h(data):
         "\n",
         "#include <cstdint>\n",
         "#include <string>\n",
+        "#include <string_view>\n",
         "\n",
         "// =============================================================================\n",
         "// GENERATED CARD CONFIG CONTRACT - do not edit by hand\n",
@@ -3143,7 +3144,7 @@ def gen_card_contract_h(data):
         cpp_string_array("CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_MODES", contract_card_option_values(cards, "climate", "number_display")),
         cpp_string_array("CARD_CONTRACT_CLIMATE_TEMPERATURE_STEPS", contract_card_option_values(cards, "climate", "temperature_step")),
         cpp_string_array("CARD_CONTRACT_CLIMATE_PRECISION_VALUES", climate_behavior["precisionValues"]),
-        cpp_string_array("CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS", [value for value in contract_card_option_values(cards, "weather", "weather_mode") if value]),
+        cpp_string_array("CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS", [value for value in contract_card_option_values(cards, "weather", "weather_mode") if value and value not in ("wind", "rainfall", "pressure", "humidity", "visibility")]),
         "".join(
             f"constexpr const char *{option_constant_name(name)} = {json.dumps(value)};\n"
             for name, value in option_names.items()
@@ -3436,6 +3437,14 @@ def gen_card_contract_h(data):
         "  return code;\n",
         "}\n",
     ])
+    for function, argument, mappings in (
+        ("card_contract_subpage_code_view", "type", codes.items()),
+        ("card_contract_subpage_type_view", "code", ((code, kind) for kind, code in codes.items())),
+    ):
+        lines.append(f"\ninline std::string_view {function}(std::string_view {argument}) {{\n")
+        for source, target in mappings:
+            lines.append(f'  if ({argument} == "{source}") return "{target}";\n')
+        lines.extend([f"  return {argument};\n", "}\n"])
     return "".join(lines)
 
 

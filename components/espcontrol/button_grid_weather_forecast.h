@@ -1,5 +1,8 @@
 #pragma once
 
+#include "external_memory_allocator.h"
+#include "page_scene_selection.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 inline std::string normalize_weather_state(std::string state) {
@@ -163,7 +166,13 @@ inline std::string weather_label_for_state(const std::string &state) {
 
 inline void reset_weather_forecast_cards() {}
 
-inline void refresh_weather_forecast_card_visuals() { weather_daily_refresh_visuals(); }
+inline void refresh_weather_forecast_card_visuals() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto *scene = espcontrol::application_scene_navigation()) scene->refresh_content();
+    return;
+  }
+  weather_daily_refresh_visuals();
+}
 
 inline void register_weather_forecast_card(lv_obj_t *btn,
                                            lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
@@ -206,8 +215,11 @@ struct WeatherForecastCardRef {
 };
 
 inline WeatherForecastCardRef *weather_forecast_card_refs() {
-  static WeatherForecastCardRef refs[MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS];
-  return refs;
+  // Keep the full capacity and stable element addresses, but place metadata
+  // in PSRAM rather than permanently reserving the S3's internal RAM.
+  static std::vector<WeatherForecastCardRef, EspControlExternalAllocator<WeatherForecastCardRef>>
+      refs(MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS);
+  return refs.data();
 }
 
 inline int &weather_forecast_card_count() {
@@ -302,6 +314,10 @@ inline bool weather_forecast_card_ref_ready(const WeatherForecastCardRef &ref) {
 }
 
 inline void refresh_weather_forecast_card_visuals() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto *scene = espcontrol::application_scene_navigation()) scene->refresh_content();
+    return;
+  }
   WeatherForecastCardRef *refs = weather_forecast_card_refs();
   int count = weather_forecast_card_count();
   bool updated = false;
@@ -523,17 +539,18 @@ inline uint32_t next_weather_forecast_call_id() {
 }
 
 inline WeatherForecastPendingRequest *weather_forecast_pending_requests() {
-  static WeatherForecastPendingRequest requests[WEATHER_FORECAST_PENDING_MAX];
+  static std::vector<WeatherForecastPendingRequest, EspControlExternalAllocator<WeatherForecastPendingRequest>>
+      requests(WEATHER_FORECAST_PENDING_MAX);
+  return requests.data();
+}
+
+inline std::vector<WeatherForecastQueuedRequest, EspControlExternalAllocator<WeatherForecastQueuedRequest>> &weather_forecast_queued_requests() {
+  static std::vector<WeatherForecastQueuedRequest, EspControlExternalAllocator<WeatherForecastQueuedRequest>> requests;
   return requests;
 }
 
-inline std::vector<WeatherForecastQueuedRequest> &weather_forecast_queued_requests() {
-  static std::vector<WeatherForecastQueuedRequest> requests;
-  return requests;
-}
-
-inline std::vector<WeatherForecastRetryRequest> &weather_forecast_retry_requests() {
-  static std::vector<WeatherForecastRetryRequest> requests;
+inline std::vector<WeatherForecastRetryRequest, EspControlExternalAllocator<WeatherForecastRetryRequest>> &weather_forecast_retry_requests() {
+  static std::vector<WeatherForecastRetryRequest, EspControlExternalAllocator<WeatherForecastRetryRequest>> requests;
   return requests;
 }
 
@@ -735,6 +752,8 @@ inline bool weather_forecast_enqueue_due_retries() {
 inline void weather_forecast_send_next_queued();
 
 inline void weather_forecast_cancel_pending_requests(bool disconnected = true) {
+  // Native forecast ownership follows its connection generation and scene lifecycle.
+  if (espcontrol::pooled_application_selected()) return;
   // Grid rebuilds invalidate callbacks but have not failed the new sources.
   // Only a real disconnect changes loading/stale presentation here.
   if (disconnected) {
@@ -757,6 +776,7 @@ inline void weather_forecast_cancel_pending_requests(bool disconnected = true) {
 }
 
 inline bool weather_forecast_cancel_stale_requests() {
+  if (espcontrol::pooled_application_selected()) return false;
   WeatherForecastPendingRequest *requests = weather_forecast_pending_requests();
   uint32_t now = esphome::millis();
   for (int i = 0; i < WEATHER_FORECAST_PENDING_MAX; i++) {
@@ -908,6 +928,7 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
 }
 
 inline void weather_forecast_send_next_queued() {
+  if (espcontrol::pooled_application_selected()) return;
   if (!weather_forecast_actions_ready() || weather_forecast_any_pending()) return;
   weather_forecast_enqueue_due_retries();
   std::string entity_id;
@@ -917,6 +938,10 @@ inline void weather_forecast_send_next_queued() {
 }
 
 inline void refresh_weather_forecast_cards() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto *scene = espcontrol::application_scene_navigation()) scene->refresh_weather_forecasts();
+    return;
+  }
   WeatherForecastCardRef *refs = weather_forecast_card_refs();
   int count = weather_forecast_card_count();
   if (count <= 0 && weather_daily_sources().empty()) return;

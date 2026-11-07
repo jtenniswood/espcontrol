@@ -13,17 +13,17 @@ constexpr uint8_t REQUIRE_METADATA = 1, REQUIRE_PROGRESS = 2, REQUIRE_DETAILS = 
 constexpr uint16_t TITLE_BIT = 1u << 2, ARTIST_BIT = 1u << 3;
 constexpr uint16_t CONTENT_BITS = (1u << 0) | TITLE_BIT | ARTIST_BIT;
 std::string_view configured_entity(const PageStore& store, CardId card) {
-  const auto* definition = store.card(card);
+  const auto* definition = store.runtime_card(card);
   if (!definition || store.field(*definition, CardField::TYPE) != "media") return {};
   for (PageId id = 0; id < store.page_count(); ++id) {
     const auto* page = store.page(id);
-    if (card >= page->first_card && card < page->first_card + page->card_count)
+    if (card >= page->first_card && card < page->first_card + page->runtime_card_count)
       return page->navigable ? store.field(*definition, CardField::ENTITY) : std::string_view{};
   }
   return {};
 }
 uint8_t requirements(const PageStore& store, CardId card) {
-  const auto* definition = store.card(card);
+  const auto* definition = store.runtime_card(card);
   const auto mode = card_runtime_media_mode(std::string(store.field(*definition, CardField::SENSOR)));
   const bool cover = mode == "cover_art" ||
                      (mode == "now_playing" &&

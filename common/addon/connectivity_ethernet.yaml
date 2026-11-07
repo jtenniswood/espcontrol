@@ -56,7 +56,7 @@ script:
     then:
       - if:
           condition:
-            lambda: 'return ha_api_connected();'
+            lambda: 'return ha_api_connected() && !id(ha_connection_warning_active);'
           then:
             - if:
                 condition:
@@ -76,9 +76,12 @@ script:
     mode: restart
     then:
       - script.execute: setup_screen_dim_cancel
+      - wait_until:
+          condition:
+            lambda: 'return !espcontrol::pooled_application_selected() || espcontrol_navigation_ready();'
       - if:
           condition:
-            lambda: 'return !id(button_order).state.empty();'
+            lambda: 'return espcontrol::application_grid_configured(!id(button_order).state.empty());'
           then:
             - wait_until:
                 condition:

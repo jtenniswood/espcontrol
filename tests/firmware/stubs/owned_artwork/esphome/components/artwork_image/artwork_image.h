@@ -5,8 +5,11 @@
 #include <string>
 
 #include "image_result.h"
+#ifdef ESPCONTROL_REAL_LVGL_TEST
+#include "lvgl.h"
+#endif
 
-#ifdef USE_LVGL
+#if defined(USE_LVGL) && !defined(ESPCONTROL_REAL_LVGL_TEST)
 void lv_draw_wait_for_finish();
 extern size_t artwork_test_draw_fences;
 #endif
@@ -74,13 +77,34 @@ class ArtworkImage {
     channel.clear();
   }
   void release() {
-#ifdef USE_LVGL
+#if defined(USE_LVGL) && !defined(ESPCONTROL_REAL_LVGL_TEST)
     assert(artwork_test_draw_fences > releases);
 #endif
     cancel_update();
     ++releases;
     ready = false;
   }
+#ifdef ESPCONTROL_REAL_LVGL_TEST
+  const lv_image_dsc_t* get_lv_image_dsc() {
+    descriptor = {};
+    descriptor.header.magic = LV_IMAGE_HEADER_MAGIC;
+    descriptor.header.cf = LV_COLOR_FORMAT_RGB565;
+    descriptor.header.w = descriptor.header.h = 2;
+    descriptor.header.stride = 4;
+    descriptor.data_size = sizeof(pixels);
+    descriptor.data = reinterpret_cast<const uint8_t*>(pixels);
+    return &descriptor;
+  }
+  int get_width() const { return 2; }
+  int get_height() const { return 2; }
+  int get_content_offset_x() const { return 0; }
+  int get_content_offset_y() const { return 0; }
+  int get_content_width() const { return 2; }
+  int get_content_height() const { return 2; }
+  bool is_big_endian() const { return false; }
+  uint16_t pixels[4]{0xFFFF, 0xABCD, 0x1234, 0xFFFF};
+  lv_image_dsc_t descriptor{};
+#endif
   void reply(bool success = true, bool cached = false) {
     channel.deliver(generation, success, cached);
   }

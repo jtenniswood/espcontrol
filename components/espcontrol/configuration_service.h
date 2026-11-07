@@ -3,8 +3,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
-#include <vector>
 
+#include "configuration_buffer.h"
+#include "compatibility_status.h"
 #include "configuration_store.h"
 
 namespace espcontrol::configuration {
@@ -25,6 +26,7 @@ enum class LegacyStatus : uint8_t {
   EMPTY,
   BUFFER_TOO_SMALL,
   READ_FAILED,
+  ALLOCATION_FAILED,
 };
 
 struct LegacyLoadResult {
@@ -42,8 +44,30 @@ class LegacyConfigurationAdapter {
   virtual ~LegacyConfigurationAdapter() = default;
 
   virtual LegacyLoadResult load(uint8_t *output, size_t output_capacity) = 0;
+  // Optional compatibility edit projection. A false changed result means that
+  // an appearance refresh need not rebuild the native scene or write storage.
+  virtual LegacyLoadResult merge(uint16_t, const uint8_t *, size_t, uint8_t *,
+                                 size_t, bool *changed) {
+    if (changed)
+      *changed = false;
+    return {LegacyStatus::READ_FAILED};
+  }
+  // Refresh compatibility views after activation, independently of persistent
+  // downgrade mirroring. This may allocate text storage and must not be part
+  // of the prepared runtime's allocation-free generation swap.
+  virtual bool publish(uint16_t, const uint8_t *, size_t) { return true; }
+  // Pure fixed-limit admission, distinct from fallible persistence I/O.
+  virtual CompatibilityStatus admit_write(uint16_t, const uint8_t *, size_t) { return CompatibilityStatus::OK; }
   virtual bool mirror(uint16_t document_version, const uint8_t *document,
                       size_t document_size) = 0;
+  virtual CompatibilityStatus publish_status(uint16_t version, const uint8_t *document, size_t size) {
+    return publish(version, document, size) ? CompatibilityStatus::OK
+                                         : CompatibilityStatus::RETRYABLE_FAILURE;
+  }
+  virtual CompatibilityStatus mirror_status(uint16_t version, const uint8_t *document, size_t size) {
+    return mirror(version, document, size) ? CompatibilityStatus::OK
+                                        : CompatibilityStatus::RETRYABLE_FAILURE;
+  }
 };
 
 // Applies a validated native document to the currently running panel. This is
@@ -58,6 +82,13 @@ class ConfigurationRuntimeAdapter {
   // PageStore renderer takes over; prepared adapters must do all fallible
   // resource work here, leaving activation as a generation swap.
   virtual bool prepare(uint16_t, const uint8_t *, size_t) { return true; }
+  // Only observed temporary allocation failures are retryable. Structural or
+  // configured-capacity rejection must not be mistaken for memory pressure.
+  virtual bool preparation_allocation_failed() const { return false; }
+  virtual bool prepare_write(uint16_t version, const uint8_t *document, size_t size) {
+    return prepare(version, document, size);
+  }
+  virtual bool preparation_capacity_exceeded() const { return false; }
   virtual void discard_prepared() {}
   virtual bool activate_prepared(uint32_t, uint16_t document_version,
                                  const uint8_t *document, size_t document_size) {
@@ -83,6 +114,8 @@ enum class ServiceStatus : uint8_t {
   LEGACY_MIRROR_FAILED,
   RUNTIME_APPLY_FAILED,
   RUNTIME_PREPARE_FAILED,
+  ALLOCATION_FAILED,
+  CAPACITY_EXCEEDED,
 };
 
 struct ServiceLoadResult {
@@ -124,8 +157,18 @@ class ConfigurationDocumentValidator {
   virtual ~ConfigurationDocumentValidator() = default;
 
   virtual bool supports_version(uint16_t document_version) const = 0;
+  // Reading an existing format does not grant permission to publish it. A
+  // release can ship dual readers before raising its supported downgrade floor.
+  virtual bool supports_write_version(uint16_t document_version) const {
+    return supports_version(document_version);
+  }
   virtual bool validate(uint16_t document_version, const uint8_t *document,
                         size_t document_size) const = 0;
+  virtual ServiceStatus validation_status(uint16_t document_version,
+      const uint8_t *document, size_t document_size) const {
+    return validate(document_version, document, document_size)
+        ? ServiceStatus::OK : ServiceStatus::INVALID_DOCUMENT;
+  }
 };
 
 // Owns the transition between legacy preference fields and the versioned,
@@ -149,11 +192,20 @@ class ConfigurationService {
   // and its corresponding live apply.
   ServiceLoadResult load_and_apply_runtime(uint8_t *output,
                                            size_t output_capacity);
-  // During compatibility releases the text entities remain authoritative.
-  // Refresh the native shadow on boot so editor changes made through the
-  // legacy API survive a later native-only firmware upgrade.
+  // Legacy-only shadow utility. Selected native scenes restore the durable
+  // document at boot; live compatibility edits use the prepared path below.
   ServiceLoadResult refresh_legacy_shadow(uint8_t *output,
                                           size_t output_capacity);
+  // Repair only compatibility copies of the latest durable snapshot. Never
+  // imports legacy data, commits native storage or prepares/activates runtime.
+  ServiceLoadResult retry_compatibility(uint8_t *output, size_t output_capacity);
+  ConfigurationCompatibilityState compatibility_state() const;
+
+  // Merge debounced compatibility edits into the latest durable document.
+  // output must be separate from the service scratch buffer. Unchanged
+  // projections do not rebuild the scene or create a new storage generation.
+  ServiceLoadResult synchronize_legacy_runtime(uint8_t *output,
+                                               size_t output_capacity);
   ServiceSaveResult save(uint16_t document_version, const uint8_t *document,
                          size_t document_size);
   ServiceSaveResult save_if_generation(uint32_t expected_generation,
@@ -174,12 +226,20 @@ class ConfigurationService {
     scratch_buffer_ = scratch_buffer;
     scratch_capacity_ = scratch_capacity;
   }
+  // Configure before operations begin, just like the optional borrowed scratch.
+  void set_buffer_allocator(ConfigurationBuffer::Allocate allocate,
+                            ConfigurationBuffer::Release release) {
+    allocate_ = allocate;
+    release_ = release;
+  }
   void set_runtime_adapter(ConfigurationRuntimeAdapter *runtime) {
     runtime_ = runtime;
   }
 
  private:
-  ServiceLoadResult load_unlocked(uint8_t *output, size_t output_capacity);
+  ServiceLoadResult load_unlocked(uint8_t *output, size_t output_capacity,
+                                  bool import_legacy = true);
+  void select_compatibility_generation(uint32_t generation);
   ServiceLoadResult refresh_legacy_shadow_unlocked(uint8_t *output,
                                                    size_t output_capacity);
   ServiceSaveResult save_unlocked(uint16_t document_version,
@@ -196,21 +256,29 @@ class ConfigurationService {
                                              const uint8_t *document,
                                              size_t document_size);
   bool supports_version(uint16_t document_version) const;
-  bool document_is_valid(uint16_t document_version, const uint8_t *document,
-                         size_t document_size) const;
+  bool supports_write_version(uint16_t document_version) const;
+  ServiceStatus document_validation_status(uint16_t document_version,
+      const uint8_t *document, size_t document_size) const;
   uint8_t *encoded_buffer(size_t required_size,
-                          std::vector<uint8_t> *fallback) const;
+                          ConfigurationBuffer *fallback) const;
 
   ConfigurationStore &store_;
   LegacyConfigurationAdapter &legacy_;
   const ConfigurationDocumentValidator *validator_{nullptr};
   uint8_t *scratch_buffer_{nullptr};
   size_t scratch_capacity_{0};
+  ConfigurationBuffer::Allocate allocate_{ConfigurationBuffer::allocate_host};
+  ConfigurationBuffer::Release release_{ConfigurationBuffer::release_host};
   ConfigurationRuntimeAdapter *runtime_{nullptr};
   LegacyConfigurationMode legacy_mode_{LegacyConfigurationMode::DUAL_WRITE};
+  // A partially published compatibility view must not be re-imported as an
+  // edit of the authoritative native document. A later successful publication
+  // (boot restore, native save or separate repair) reopens compatibility editing.
+  bool compatibility_publication_current_{true};
+  ConfigurationCompatibilityState compatibility_state_{};
   // The service scratch buffer is shared by load and commit paths. Keep the
   // complete operations mutually exclusive across ESPHome and HTTP tasks.
-  std::mutex operation_mutex_{};
+  mutable std::mutex operation_mutex_{};
 };
 
 }  // namespace espcontrol::configuration

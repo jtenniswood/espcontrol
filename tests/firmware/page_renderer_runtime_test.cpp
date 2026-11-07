@@ -116,12 +116,27 @@ void profile_navigation(const DeviceUiLimits &limits) {
     const auto updates=port.updates;renderer.update_visible();assert(port.updates==updates);
     assert(!renderer.open_page(child_page));assert(renderer.resume());assert(!renderer.valid(token));
     assert(renderer.valid(renderer.binding(1)));
+    assert(renderer.suspend() && renderer.suspended());
+    const auto prior_binds=port.binds;
+    assert(renderer.prepare(fixture.store));renderer.activate_prepared(fixture.store);
+    assert(renderer.suspended() && port.binds==prior_binds && renderer.active_page()==0);
+    for(size_t shell=0;shell<Slots;++shell) assert(!renderer.binding(shell).binding);
+    assert(renderer.resume() && !renderer.suspended() && renderer.valid(renderer.binding(1)));
     token = renderer.binding(1);
     port.on_update = [&]() {
       assert(!renderer.open_page(child_page));
       assert(!renderer.valid(token) && renderer.bound(token));
     };
     renderer.refresh();renderer.update_visible();port.on_update=nullptr;assert(renderer.valid(token));
+    const auto layout_bytes=renderer.memory().active_layout_bytes;
+    port.on_unbind=[&](){
+      renderer.retire_active();
+      assert(renderer.memory().active_layout_bytes==layout_bytes);
+      assert(!renderer.open_page(child_page)&&!renderer.suspend());
+    };
+    assert(renderer.open_page(child_page));assert(renderer.return_home());port.on_unbind=nullptr;
+    assert(renderer.valid(renderer.binding(1))&&arena.live.size()==arena_count);
+    token=renderer.binding(1);
     port.on_unbind = [&]() { assert(!renderer.valid(token) && !renderer.bound(token)); };
     renderer.retire_active();port.on_unbind=nullptr;assert(!renderer.valid(token));assert(arena.live.empty());
   }

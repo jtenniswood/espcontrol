@@ -6,6 +6,8 @@
 #include <string>
 
 #include "panel_config_document.h"
+#include "compatibility_status.h"
+#include "panel_config_text_storage.h"
 
 namespace espcontrol::configuration {
 
@@ -20,6 +22,11 @@ class PanelConfigTextValue {
   virtual const std::string &value() const = 0;
   virtual bool set_value(const char *value, size_t value_size) = 0;
   virtual bool publish_value(const char *value, size_t value_size) = 0;
+  // Pure fixed-capacity check: preference availability is an I/O outcome.
+  virtual bool can_persist_value(size_t) const { return true; }
+  // Reclaim storage for a wanted empty value when absence restores exactly
+  // that value. Custom platforms/defaults retain the ordinary write path.
+  virtual bool prepare_empty_value() { return true; }
 };
 
 class PanelConfigTextBindings {
@@ -33,35 +40,52 @@ class PanelConfigTextBindings {
   void set_button_on_color(PanelConfigTextValue *button_on_color) {
     button_on_color_ = button_on_color;
   }
-  void set_button(
-      uint8_t slot, PanelConfigTextValue *button,
-      const std::array<PanelConfigTextValue *, MAX_SUBPAGE_CHUNKS>
-          &subpage_chunks);
+  bool set_button(uint8_t slot, PanelConfigTextValue *button,
+                  const std::array<PanelConfigTextValue *, MAX_SUBPAGE_CHUNKS>
+                      &subpage_chunks);
 
   bool configured() const;
   bool write_document(uint8_t *output, size_t output_capacity,
                       size_t *document_size) const;
+  // Replace only fields represented by these text entities. Preserve settings
+  // and records that this compatibility projection does not own.
+  bool merge_document(const uint8_t *native, size_t native_size,
+                      uint8_t *output, size_t output_capacity,
+                      size_t *document_size) const;
   bool persist_document(const uint8_t *document, size_t document_size);
   bool publish_document(const uint8_t *document, size_t document_size);
+  // Fixed profile/field/chunk admission without preference reads or writes.
+  CompatibilityStatus persistence_admission(const uint8_t *document, size_t size);
+  CompatibilityStatus persist_document_status(const uint8_t *document, size_t size);
+  CompatibilityStatus publish_document_status(const uint8_t *document, size_t size);
 
  private:
-  struct ButtonSources {
-    PanelConfigTextValue *button{nullptr};
-    std::array<PanelConfigTextValue *, MAX_SUBPAGE_CHUNKS> subpage_chunks{};
-  };
+   enum class ApplyMode { PUBLISH, CHECK_PERSIST, PREPARE_EMPTY, PERSIST };
+   struct ButtonSources {
+     PanelConfigTextValue *button{nullptr};
+     std::array<PanelConfigTextValue *, PANEL_CONFIG_TEXT_CHUNK_COUNT>
+         subpage_chunks{};
+   };
 
+  bool owns_record(const PanelConfigRecord &record) const;
+  bool compatible_document(const uint8_t *document, size_t size) const;
+  bool write_document(const uint8_t *native, size_t native_size,
+                      uint8_t *output, size_t output_capacity,
+                      size_t *document_size) const;
   bool apply_document(const uint8_t *document, size_t document_size,
-                      bool persist);
+                      ApplyMode mode);
   bool write_value(PanelConfigTextValue *target, const char *value,
-                   size_t value_size, bool persist);
+                   size_t value_size, ApplyMode mode);
 
   // Runtime-only overflow can leave the preference copy behind. The next
   // compatible mirror must rewrite even values that already match live state.
-  bool legacy_mirror_current_{true};
+  // Restored live fields are not proof of a complete persistent copy. The
+  // first repair after boot must verify/write every configured field.
+  bool legacy_mirror_current_{false};
   std::string device_profile_;
   PanelConfigTextValue *button_order_{nullptr};
   PanelConfigTextValue *button_on_color_{nullptr};
-  std::array<ButtonSources, PANEL_CONFIG_MAX_SLOT_COUNT> buttons_{};
+  std::array<ButtonSources, PANEL_CONFIG_TEXT_SLOT_COUNT> buttons_{};
 };
 
 }  // namespace espcontrol::configuration

@@ -126,7 +126,7 @@ class PageCardCommands final : public PageRuntimeResources {
   }
   bool request(PageBindingToken origin, uint32_t pressed_connection) {
     const ConfigurationHandle handle{origin.configuration, origin.card};
-    const auto* card = active_.card(handle);
+    const auto* card = active_.runtime_card(handle);
     auto kind = card ? classify(active_, *card) : PageCardCommandKind::NONE;
     if (kind == PageCardCommandKind::TOGGLE) {
       const auto policy = page_confirmation_policy(active_, handle);
@@ -244,7 +244,7 @@ class PageCardCommands final : public PageRuntimeResources {
       ++cancelled_;
       return PageCardCommandResult::CANCELLED;
     }
-    const auto* card = active_.card({pending.origin.configuration, pending.origin.card});
+    const auto* card = active_.runtime_card({pending.origin.configuration, pending.origin.card});
     PageCardCommandSnapshot snapshot;
     snapshot.origin = pending.origin;
     snapshot.kind = pending.kind;
@@ -347,10 +347,10 @@ class PageCardCommands final : public PageRuntimeResources {
     if (!pending.present || pending.kind == PageCardCommandKind::NONE || !origin.binding || origin.back ||
         pending.activation != activation_ || !active_.source_document() || !port_.valid(origin))
       return false;
-    const auto* card = active_.card({origin.configuration, origin.card});
+    const auto* card = active_.runtime_card({origin.configuration, origin.card});
     const auto* page = active_.page(origin.page);
     if (!card || !page || !page->navigable || origin.card < page->first_card ||
-        origin.card - page->first_card >= page->card_count)
+        origin.card - page->first_card >= page->runtime_card_count)
       return false;
     return true;
   }
@@ -363,7 +363,7 @@ class PageCardCommands final : public PageRuntimeResources {
     if (!common_current(pending)) return false;
     const auto& origin = pending.origin;
     if (control(pending.kind)) return port_.valid_control(active_, origin, pending.kind, pending.value);
-    const auto* card = active_.card({origin.configuration, origin.card});
+    const auto* card = active_.runtime_card({origin.configuration, origin.card});
     auto kind = classify(active_, *card);
     if (pending.kind == PageCardCommandKind::TURN_ON || pending.kind == PageCardCommandKind::TURN_OFF ||
         pending.kind == PageCardCommandKind::OPEN || pending.kind == PageCardCommandKind::CLOSE) {

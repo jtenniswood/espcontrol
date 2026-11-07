@@ -20,7 +20,7 @@ bool PageLocalSensorDependencies::has_values(const PageStore& store) {
   for (PageId id = 0; id < store.page_count(); ++id) {
     const auto* page = store.page(id);
     if (!page->navigable) continue;
-    for (CardId card = page->first_card; card < page->first_card + page->card_count; ++card)
+    for (CardId card = page->first_card; card < page->first_card + page->runtime_card_count; ++card)
       if (local(store, *store.card(card)) && !store.field(*store.card(card), CardField::ENTITY).empty())
         return true;
   }
@@ -30,7 +30,7 @@ bool PageLocalSensorDependencies::enumerate(const PageStore& store, PageDependen
   for (PageId id = 0; id < store.page_count(); ++id) {
     const auto* page = store.page(id);
     if (!page->navigable) continue;
-    for (CardId index = page->first_card; index < page->first_card + page->card_count; ++index) {
+    for (CardId index = page->first_card; index < page->first_card + page->runtime_card_count; ++index) {
       const auto& card = *store.card(index);
       if (!local(store, card)) continue;
       const auto key = store.field(card, CardField::ENTITY);

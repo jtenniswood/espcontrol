@@ -64,9 +64,11 @@ import type { PreviewRenderFeature } from "./preview_render";
 import type { ButtonSettingsFeature } from "./button_settings";
 import { legacyRestoreFailureMessage, restoreLegacyLayoutDocument } from "../features/legacy_layout_restore";
 import { panelConfigDocumentContainsWifiSharing } from "../features/wifi_sharing_config";
+import { NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE, nativeBackupHasInactiveRecords } from "../features/native_panel_config";
 
 export interface AppBackupControllers {
     readonly identity?: PanelIdentityFeature;
+    readonly waitForInitialState: () => Promise<void>;
     readonly layout: ApplicationLayoutState;
     readonly backupExport: BackupExportController;
     readonly backupImport: BackupImportController<any, any, any>;
@@ -101,7 +103,7 @@ export interface AppBackupFeature {
     backupExportFileName(value?: unknown): string;
     normalizeImportedPanelSettings(settings?: unknown): unknown;
     gridColsForImportedSettings(settings?: unknown): number;
-    exportConfig(): void;
+    exportConfig(): Promise<void>;
     importConfig(): void;
 }
 
@@ -229,13 +231,14 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
         if (identity) data.identity = identity;
         backupFileController.download(data, backupExportController.fileName(controllers.layout.config.screenSize, undefined, identity));
     }
-    function addNativeConfigToBackup(this: any, data?: any) {
+    function addNativeConfigToBackup(this: any, data: any, nativeDocumentBytes?: Uint8Array) {
         return backupExportController.addNativeConfig(data, {
             "deviceProfile": controllers.layout.deviceId,
             "buttons": state.buttons,
             "subpages": state.subpages,
             "buttonOrder": data.button_order,
             "buttonOnColor": data.button_on_color,
+            ...(nativeDocumentBytes ? { nativeDocumentBytes } : {}),
         });
     }
     async function exportConfig(this: any) {
@@ -245,16 +248,34 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
             await controllers.identity?.load();
             identity = controllers.identity?.backup();
         } catch { identityUnavailable = true; }
+        let nativeDocumentBytes: Uint8Array | undefined;
+        let nativeDocument: PanelConfigDocument | undefined;
+        try {
+            await controllers.waitForInitialState();
+            nativeDocumentBytes = await controllers.nativePanelConfig?.readForBackup() ?? undefined;
+            if (nativeDocumentBytes) nativeDocument = EspControlModel.decodePanelConfig(nativeDocumentBytes);
+        } catch {
+            controllers.shell.showBanner?.("Could not export the backup. Check that changes have saved and the panel is connected, then try again.", "error");
+            return;
+        }
+        // Project the same saved layout into the portable part of the backup.
+        // SSE state can still be arriving or can lag another browser's edits.
+        const nativeGrid = nativeDocument ? EspControlModel.parseGridOrder(
+            nativeDocument.settings.button_order, controllers.layout.numSlots, controllers.layout.gridCols,
+        ) : undefined;
         var data: any = createBackupConfig({
             device: controllers.layout.deviceId,
             slots: controllers.layout.numSlots,
             exported_at: new Date().toISOString(),
-            grid: state.grid,
-            sizes: state.sizes,
-            button_order: serializeGrid(state.grid),
-            button_on_color: state.onColor,
-            buttons: state.buttons,
-            subpages: state.subpages,
+            grid: nativeGrid?.grid ?? state.grid,
+            sizes: nativeGrid?.sizes ?? state.sizes,
+            button_order: nativeDocument ? nativeDocument.settings.button_order || "" : serializeGrid(state.grid),
+            button_on_color: nativeDocument ? nativeDocument.settings.button_on_color || "" : state.onColor,
+            buttons: nativeDocument ? Array.from({ length: controllers.layout.numSlots }, (_, index) =>
+                parseButtonConfig(nativeDocument.buttons[index + 1] || "")) : state.buttons,
+            subpages: nativeDocument ? Object.fromEntries(Object.entries(nativeDocument.subpages).map(
+                ([slot, value]) => [slot, parseSubpageConfig(value)],
+            )) : state.subpages,
             settings: {
                 indoor_temp_enable: state._indoorOn,
                 outdoor_temp_enable: state._outdoorOn,
@@ -349,7 +370,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 schedule_clock_text_color: normalizeHexColor(state.scheduleClockTextColor, "FFFFFF"),
             },
         } as any);
-        downloadBackupConfig(addNativeConfigToBackup(data), identity);
+        downloadBackupConfig(addNativeConfigToBackup(data, nativeDocumentBytes), identity);
         if (identityUnavailable) controllers.shell.showBanner?.(
             "Backup exported without the panel name because naming is unavailable.", "warning");
     }
@@ -443,6 +464,12 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 if (nativeAvailability === "failed") {
                     rejectBackup("Could not confirm that this device can safely restore the layout. Check the connection and try again.");
                 }
+                if ((nativeBackupHasInactiveRecords(nativeDocument, controllers.layout.numSlots) &&
+                     nativeController?.client?.preservesInactiveRecords() !== true) ||
+                    (nativeAvailability === "legacy-fallback" && Object.keys(nativeDocument.settings)
+                      .some(key => key !== "button_order" && key !== "button_on_color"))) {
+                    rejectBackup(NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE);
+                }
                 var layoutRestoreResult: any;
                 if (nativeAvailability === "legacy-fallback") {
                     layoutRestoreResult = await queueLegacyLayoutRestore();
@@ -452,6 +479,9 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     layoutRestoreResult = nativeRestore ? await nativeRestore : "failed";
                     if (layoutRestoreResult === "legacy-fallback") {
                         layoutRestoreResult = await queueLegacyLayoutRestore();
+                    }
+                    else if (layoutRestoreResult === "firmware-update-required") {
+                        rejectBackup(NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE);
                     }
                     else if (layoutRestoreResult === "mirror-failed") {
                         // The native document is durable, but the controller has
