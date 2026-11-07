@@ -12,7 +12,7 @@
     "deviceProfiles": 9,
     "cardTypes": 44,
     "entityNames": 112,
-    "icons": 370,
+    "icons": 374,
     "structuralIcons": 28,
     "compatibilityFixtureGroups": 2
   },
@@ -8931,6 +8931,11 @@
         "mdi": "gauge-low"
       },
       {
+        "name": "Gift",
+        "codepoint": "F0E44",
+        "mdi": "gift"
+      },
+      {
         "name": "Grid Export",
         "codepoint": "F192C",
         "mdi": "transmission-tower-export"
@@ -9311,6 +9316,11 @@
         "mdi": "nintendo-switch"
       },
       {
+        "name": "Ornament",
+        "codepoint": "F03CF",
+        "mdi": "ornament"
+      },
+      {
         "name": "Outdoor Lamp",
         "codepoint": "F1054",
         "mdi": "outdoor-lamp"
@@ -9344,6 +9354,11 @@
         "name": "Pill Multiple",
         "codepoint": "F1B4C",
         "mdi": "pill-multiple"
+      },
+      {
+        "name": "Pine Tree",
+        "codepoint": "F0405",
+        "mdi": "pine-tree"
       },
       {
         "name": "Plus",
@@ -9669,6 +9684,11 @@
         "name": "Stairs",
         "codepoint": "F04CD",
         "mdi": "stairs"
+      },
+      {
+        "name": "Stocking",
+        "codepoint": "F04DA",
+        "mdi": "stocking"
       },
       {
         "name": "Stop",
