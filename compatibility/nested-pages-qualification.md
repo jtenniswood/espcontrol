@@ -2381,6 +2381,55 @@ Earlier checker failures are retained separately: they assumed a stock MIPI
 driver, revision 3.0, or a named constant optimized away on RISC-V. They do not
 represent device failures or qualify those prototype images.
 
+## Current P4 pressure and navigation (7 November)
+
+The verified `656fc078c` image now passes the physical 20-slot P4 pressure
+cohort. Four marker-changing native-v1 publications exercise A/A/B/B dependency
+sets: 400 cards, 21 pages, 7,566 channels and exactly 524,288 live value bytes.
+Each publication receives HTTP 204 with its compatibility mirror acknowledged.
+The private cooperative feed enters the production prepared lookup and state
+callbacks; network framing/authentication and remote HA listener behaviour
+retain their separate qualification scopes. Image URLs are empty throughout.
+
+All 28 full-state snapshots retain 1,252,986 counted scene bytes in seven
+allocations, 580,604 state-metadata bytes and 180 widgets. Allocation/accounting
+errors and active/retired modal contexts remain zero. Native membership stays
+at 7,581 registrations, including 15 foreign registrations; the lookup stays
+at 60,648 bytes. Whole-device readings below are three held-Home sample medians,
+in bytes, from this instrumented current build:
+
+| Replacement | Internal free | PSRAM free | Combined free | Managed used |
+| --- | ---: | ---: | ---: | ---: |
+| A0 | 305,919 | 17,106,132 | 17,412,051 | 10,646,916 |
+| A1 | 306,091 | 17,114,008 | 17,420,099 | 10,638,868 |
+| B0 | 304,123 | 17,040,676 | 17,344,799 | 10,714,168 |
+| B1 | 303,663 | 17,037,192 | 17,340,855 | 10,718,112 |
+
+The managed pools total 28,058,967 bytes: 499,799 internal and 27,559,168 PSRAM.
+Memory outside these allocator pools is excluded. Preparation/feed windows
+reach independent per-region lows of 279,455 internal bytes and 10,561,300
+PSRAM bytes; these minima must not be added. The model remains constant while
+the whole-device free readings vary. This cohort measures steady state and
+preparation pressure, without establishing a matched v2.13.0 memory difference
+or an isolated image peak.
+
+Remote navigation completes 80 folder round trips, with 160 actual page
+transitions plus eight already-Home acknowledgements. Transition acknowledgement
+time includes HTTP and controller work: median 781.8 ms, p95 943.3 ms, maximum
+1,743.3 ms. Position acknowledgements avoid heap scans and image sampling while
+pages change. These timings do not measure physical display-flush completion;
+no new physical pixel or touch confirmation is claimed.
+
+Cleanup makes two acknowledged exact-original native/legacy publications, then
+restores published `v2.13.0`. Original native bytes, all 77 observable protected
+settings, PIN/reset and update switches pass a fresh independent read-only
+preflight at generation 381 after 74.97 seconds of stability. API encryption
+stays enabled; the controller never reads or replaces the saved key. The earlier
+HTTP-428 controller failure occurs before any test fixture publication and
+remains a separate failed/restored cohort; the corrected epoch-header run
+passes independently. Current P4 artwork decoding and remaining-grid checks
+remain unfinished.
+
 ## Remaining qualification gates
 
 The 480 × 480 S3 appearance gate has explicit user confirmation, with the host
