@@ -2652,11 +2652,50 @@ were restored before the successful retry.
 
 Separately, the unchanged 7-inch V2 reports bootloader rollback support through
 its existing API. Only that diagnostic is retained; other configuration log
-payloads are discarded. Its specific helper compiles and passes the independent
-source/ELF/layout audit, but has not been uploaded. Recovering and verifying
-that panel's exact current weather image, then its current fifteen-slot
-runtime/artwork qualification, remain unfinished. This transport proof does
-not satisfy those gates or enable production nested-page writes.
+payloads are discarded. The following cohort completes recovery of its current
+weather image. The fifteen-slot runtime/artwork qualification remains separate;
+this transport proof does not enable production nested-page writes.
+
+## Current seven-inch V2 recovery retained (7 November)
+
+The current weather application is now retained as two independent private
+5,450,416-byte OTA copies with the same SHA-256 (`0549095353e6`). Both contain
+the uniquely matched `2026-11-06 16:07:39 +0000` build timestamp. Image checksum,
+SDK 2026.10.2, V2 project descriptor and embedded ELF identity checks pass.
+The helper requires the actual pending/valid application witnesses and paired
+slot boundaries before reading the previous application. Only that identified
+application is exported; PIN material, API keys and arbitrary flash/NVS are
+outside the copy interface.
+
+The first attempt remains failed/restored: a revision-3.1-only helper is
+rejected at final OTA validation. Its active original firmware, dashboard and
+settings are verified afterward. The corrected helper uses revision-zero
+support, matching the V2 profile's engineering-sample setting and the original
+image's maximum revision of 1.99. Its compiled source/API absence/rollback/layout
+audit passes before the successful hardware run. Seven ownership tests and
+four runner tests cover foreign state, lost acknowledgements and cleanup; the
+bounded helper and copy-controller checks retain the preceding scope.
+
+The original application slot boots without another firmware upload. Its exact
+weather dashboard remains at generation 10, with all 78 observable protected
+settings, PIN status, reset state, update flags and original unencrypted API
+mode verified through an 86.23-second stability window and a fresh independent
+read-only preflight. No API key is retrieved or set, and no dashboard or
+partition-table write is performed. Recovery identity uses the retained image
+and original-slot witnesses plus fresh API/HTTP metadata; direct restored ELF
+readback and zero SDK-level NVS writes are not claimed.
+
+Separately, the exact current fifteen-slot V2 host workload passes 225 cards,
+16 pages, 4,166 channels and the full 512 KiB state cache. All C++ objects use
+the actual V2 profile with real LVGL. Four A/A/B/B replacements reject retired
+callbacks and pass 60 folder round trips with arena allocation disabled and
+135 borrowed widgets. The 64-bit host scene remains 959,586 bytes in seven
+allocations; these are host results, not physical device memory measurements.
+The compiled candidate also passes component-source, stock SDK API/MIPI,
+actual fifteen-slot/six-image template, 16 MB/revision-zero and native API
+identity checks against its ELF. Physical pressure and artwork qualification
+are still required before the remaining grid gate is complete. Actual
+compatibility releases remain required before production nested writes.
 
 ## Remaining qualification gates
 
