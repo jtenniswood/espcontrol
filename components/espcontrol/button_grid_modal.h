@@ -1027,9 +1027,9 @@ inline ControlModalShell control_modal_open_shell(ControlModalKind kind,
       return shell;
     }
     control_modal_style_chrome_button(shell.close_btn, shell.layout, button_top_right);
-    lv_obj_add_event_cb(shell.close_btn, [](lv_event_t *) {
+    bind_navigation_button_action(shell.close_btn, [](lv_event_t *) {
       control_modal_force_close_active();
-    }, LV_EVENT_CLICKED, nullptr);
+    }, nullptr);
   }
 
   control_modal_set_active(kind, shell.overlay, close_callback, definition.dismiss_policy);
