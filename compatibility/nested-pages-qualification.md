@@ -2430,6 +2430,66 @@ remains a separate failed/restored cohort; the corrected epoch-header run
 passes independently. Current P4 artwork decoding and remaining-grid checks
 remain unfinished.
 
+## Current P4 artwork completed (7 November)
+
+The same verified `656fc078c` firmware passes a separate six-case artwork
+cohort on the 10-inch V3, with 400 cards, 7,566 channels and the full 512 KiB
+value cache. No firmware rebuild or production policy change is made. Thirteen
+host checks reject stale/missing transfers, unchanged animation hashes, wrong
+static pixels/geometry, unexpected covered-card changes and resumption downloads;
+the confined asset server separately passes its four loopback/gating checks.
+
+Both initial image owners publish distinct opaque 2:1 PNGs. Every GIF case
+first establishes that static reset on the card and the larger expanded
+surface. A successful GIF then needs square geometry, a complete exact-URI
+response and at least three distinct bounded 64-byte descriptor fingerprints.
+Static samples match the configured little-endian RGB565 values. This prevents
+the retained picture from satisfying the playback gate. The evidence covers
+sampled component descriptors, with no new physical panel-pixel confirmation.
+
+| 640-pixel GIF | Disposal | Card | Expanded | Card after close |
+| --- | --- | --- | --- | --- |
+| 2 MiB | Keep | Playback | Playback | Playback, no download |
+| 2 MiB | Restore previous | Playback | Playback | Playback, no download |
+| 8 MiB | Keep | Playback | Explicit RESOURCE refusal | Playback, no download |
+| 8 MiB | Restore previous | Playback | Explicit RESOURCE refusal | Playback, no download |
+
+Every expanded attempt preserves the covered card's loaded descriptor, dimensions,
+byte count and fingerprint. After close, card animation resumes for at least
+five seconds without another source request. In the final case, a real 2 MiB
+response is held after 2,048 bytes while a disjoint configuration is published;
+after release, the old response is cancelled and both replacement PNG owners
+retain the expected pixels. This exercises in-flight cancellation and generation
+fencing, with precise post-decode callback holds retaining their separate scope.
+
+All 14 memory snapshots retain the full channel/value quota and 180 widgets,
+with zero allocation/accounting errors and retired modal contexts. The counted
+scene is 1,252,986 bytes in seven allocations with the modal closed, and
+1,253,530 bytes in nine allocations while expanded. Closing returns to the
+baseline after every attempt. Six independent IDF local-minimum windows record:
+
+| Window | Internal minimum, bytes | PSRAM minimum, bytes |
+| --- | ---: | ---: |
+| Initial layout/feed/PNGs | 277,991 | 10,588,940 |
+| 2 MiB, keep | 273,503 | 9,194,212 |
+| 2 MiB, restore previous | 270,999 | 7,556,784 |
+| 8 MiB, keep | 290,455 | 7,261,808 |
+| 8 MiB, restore previous | 289,059 | 6,442,628 |
+| Transfer/configuration overlap | 276,875 | 11,610,316 |
+
+Regional minima must not be added, and these windows include the surrounding
+controller operations rather than isolating decoder allocations. Twenty-six
+responses include 24 MiB of completely served GIF data; the refused and retired
+transfers retain their cancelled outcomes.
+
+Two acknowledged exact-original native/legacy publications precede restoration
+of official `v2.13.0`. The original dashboard, 77 observable protected settings,
+PIN/reset and update flags are stable for 75.29 seconds and pass another fresh,
+independent read-only preflight at generation 385. Encryption remains enabled;
+the controller never reads or replaces its saved key. No device, asset-server
+or build process remains running. Remaining-grid qualification and published
+compatibility release windows are still unfinished.
+
 ## Remaining qualification gates
 
 The 480 × 480 S3 appearance gate has explicit user confirmation, with the host
