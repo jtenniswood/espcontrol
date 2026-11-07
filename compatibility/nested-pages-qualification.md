@@ -2306,6 +2306,48 @@ hold, electrical recovery, another panel's qualification or a published reader
 floor. The optional user response to the unpolled 480-pixel window remains
 pending; production depth-two writes are still disabled by release policy.
 
+## P4 source and recovery-baseline audit (7 November)
+
+A fresh read-only HTTP/mDNS inventory finds all four P4s online with the
+expected hardware profiles. The 4.3-inch and replacement 7-inch V2 run
+development builds on ESPHome 2026.10.2. The 10-inch V3 and P4-86 run published
+`v2.13.0` on ESPHome 2026.9.1 with API encryption advertised. No firmware,
+configuration, preference or encryption changes are made by this inventory.
+
+The 4.3-inch build time, native bytes and generation 147 match its retained
+recovery baseline. The 7-inch V2 instead reports compilation
+`2026-11-06 16:07:39 +0000` and generation 10: its saved generation-seven
+recovery baseline is stale. Capture and verify the current 7-inch firmware,
+dashboard and settings before another temporary test; do not restore the old
+development image over that newer build. The P4-86 is identified at its expected
+address, but this observation adds no candidate runtime qualification.
+
+The 10-inch V3 passes the complete read-only recovery preflight again: exact
+generation-375 native bytes, 77 protected settings, PIN/reset state and retained
+published recovery-artifact hashes. Its existing encrypted API remains in use;
+no key is read or changed. Runtime backlight output is reported separately from
+the protected brightness configuration. Camera Dimming remains unobservable
+on that original firmware and is untouched.
+
+Historical P4 results retain their named source scopes. Comparing compiled
+sources from the 20-slot mixed-image cohort against `656fc078c` finds 424 of
+457 component files unchanged; the 6-slot native-lookup cohort retains 410 of
+448. Both historical compiled-source maps match their stated public bases.
+Changed shared-state, transport, renderer/modal and image code prevent treating
+either cohort as a current-build physical pass. In particular, current decoder
+resource classification, animation ownership and resize-workspace reuse are
+separate from the older image measurements; S3-only allocation branches do not
+describe P4 behaviour. The earlier passing device results are preserved rather
+than replaced by source-equivalence claims.
+
+The next physical work is a focused current-source 20-slot P4 integration
+cohort covering preparation/replacement, navigation and image memory, using
+the verified current recovery baseline. Keep its encryption key and retain
+the completed S3 evidence. Remaining grid checks must use current recovery
+baselines and target changed integration paths rather than repeat every
+historical case. Production nesting and the published compatibility-release
+sequence remain unfinished.
+
 ## Remaining qualification gates
 
 The 480 × 480 S3 appearance gate has explicit user confirmation, with the host
