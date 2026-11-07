@@ -2043,6 +2043,38 @@ appearance or touch actions, maximum-pressure memory, electrical interruption,
 or another device. The optional visual response is still pending; earlier
 appearance and memory evidence retains its original source scope.
 
+## Matched S3 maximum-state preparation (7 November)
+
+The earlier audit baseline `a51486f7f` and current firmware source `656fc078c`
+pass the same real-LVGL S3-profile host workload: 81 cards, ten pages, 1,406
+unique HA channels and exactly 131,072 UTF-8 value bytes. The A/A/B/B sequence
+covers same-channel replay, disjoint replacement, rejection of retired
+callbacks and 36 folder round trips. Navigation succeeds with the backing
+arena disabled and makes no new arena allocation calls.
+
+Both versions retain 286,144 requested arena bytes in seven allocations.
+Requested peak arena memory is 351,680 bytes on first activation and 633,800
+bytes after replacement. Metadata remains 107,782 bytes. The current unique
+counting implementation makes more temporary allocation calls: 70 for first
+activation and 69 per replacement, compared with 15 and 14 before. This
+all-unique workload shows no retained or peak arena saving from the audit
+fixes. It does not measure fragmentation or prove an S3 free-heap result.
+
+These host counters exclude allocator overhead, LVGL objects, the enclosing
+device, SDK connections, framebuffers and image decode/download buffers.
+Matched YAML-only S3 observers are being prepared to report byte-addressable
+internal RAM and PSRAM totals, free bytes and largest blocks separately, with
+samples taken while pages are held still. This compares the audit fixes;
+it is not a new whole-overhaul comparison with official v2.13.0. Physical
+maximum-state and current-source artwork-pressure results remain pending.
+
+The paced surrogate-HA sender passes a 1,406-channel/128 KiB check with native
+round-trip barriers every 16 frames, exclusion of user entities, stale-epoch
+rejection and distinct once/persistent handling. The real legacy adapter also
+preserves all 14 original dashboard records, including opaque image options,
+after either maximum fixture is mirrored and the original is restored.
+These are host checks; no device has been flashed for this comparison yet.
+
 ## Remaining qualification gates
 
 The 480 × 480 S3 appearance gate has explicit user confirmation, with the host
