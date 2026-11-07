@@ -2256,6 +2256,56 @@ Retain the original distinction: the 480-pixel stress case permits explicit
 RESOURCE refusal; a separate fitting control must actually play. Old physical
 results and unchanged leaf-source proofs retain their recorded scope.
 
+## Remaining S3 image integration checks completed (7 November)
+
+The seven remaining current-source checks pass as a separate cohort on the
+same `656fc078c` C++ and verified YAML observer. It retains 81 cards, 1,406
+channels and all 131,072 cached value bytes throughout nine held-page memory
+observations, with four independently stopped local-minimum intervals.
+The already-recorded 480-pixel cases are not repeated or relabelled.
+
+- The required 6,897-byte 240-pixel GIF plays as a card and expanded image,
+  with fresh source/success logs and three changing descriptor samples.
+- Both 2 MiB 640-pixel disposal sources report bounded RESOURCE refusal. The
+  previous PNG and independent PNG retain their sampled descriptors; a fresh
+  replacement PNG completes after each refusal.
+- The 240-pixel card and expanded fitting control play again after both
+  refusals. Both expanded closes resume the retained card without a download.
+- A same-configuration save replays the full state cache and resumes animated
+  playback without reconnecting HA or adding persistent listeners.
+- A transfer is held after its first 2,048 bytes, then the disjoint B
+  configuration commits before the gate is released. Its new PNG remains
+  correct through three subsequent observations; the retired source does not
+  replace it. This is an in-flight cancellation test, not a held completed
+  callback.
+
+The final native-HA peer has one persistent listener per pair, two intended
+reconnects for changed lists, zero duplicate persistent requests and zero
+unexpected diagnostic disconnects. Model memory returns to 275,724 requested
+bytes in seven allocations with the expanded context closed; while open it is
+276,268 bytes in nine allocations. There are zero arena allocation/accounting
+errors, no retired modal contexts in the settled observations and no model
+reservation growth through replay/replacement.
+
+The two fitting-control intervals have internal minima of 46,235 and 46,387
+bytes and PSRAM minima of 506,080 and 506,096 bytes. These are independent
+per-heap observations, not simultaneous combined minima or isolated decoder
+measurements. Both larger-source attempts stop cleanly and recover.
+
+Original Card Images firmware, exact original dashboard bytes, all 78 protected
+settings, PIN/reset and five JPEGs are restored at generation 1353. The final
+diagnostic connection remains stable for 65.2 seconds, followed by a fresh
+independent read-only verification. The source/artifact/result audit passes;
+no test firmware, HTTP asset server or background device process remains active.
+
+This completes the listed remaining automated image cases alongside the
+separate successful fresh 480-pixel control and recorded 480-pixel pressure
+outcomes. Earlier stopped full sequences retain their failed status. It does
+not add physical-pixel/touch confirmation, a precise current completed-callback
+hold, electrical recovery, another panel's qualification or a published reader
+floor. The optional user response to the unpolled 480-pixel window remains
+pending; production depth-two writes are still disabled by release policy.
+
 ## Remaining qualification gates
 
 The 480 × 480 S3 appearance gate has explicit user confirmation, with the host
