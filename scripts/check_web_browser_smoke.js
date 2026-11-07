@@ -7575,7 +7575,7 @@ async function assertWeatherWidthScaling(browser) {
   const page = await browser.newPage();
   try {
     await page.setContent('<style>' + createWebStyles(false) + '</style><div id="weather" class="sp-btn sp-weather-daily-card" style="position:relative;width:120px;height:120px;--btn-label:16px;--btn-icon:32px;--btn-pad:8px;--r:8px"><span class="sp-weather-days">' +
-      Array.from({ length: 8 }, (_, i) => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + (i ? 'Tues' : 'Today') + '</span><span class="sp-weather-temperature-high">18°/2°</span></span>').join('') + '</span></div>');
+      Array.from({ length: 8 }, (_, i) => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + (i ? 'Tue' : 'Today') + '</span><span class="sp-weather-temperature-high">18°/2°</span></span>').join('') + '</span></div>');
     const firstDayRows = await page.locator('.sp-weather-day').first().evaluate(day => Array.from(day.children).map(child => child.textContent));
     assert.deepStrictEqual(firstDayRows, ['☀', 'Today', '18°/2°'], 'Daily preview matches the device order and omits a separate low temperature row.');
     await page.addScriptTag({content:layoutScript});
@@ -7642,7 +7642,7 @@ async function assertWeatherWidthScaling(browser) {
     await page.setContent('<style>@font-face{font-family:Roboto;src:url(data:font/woff2;base64,' + roboto + ')}' + createWebStyles(false) + '</style>' +
       '<div class="sp-screen" style="' + Object.entries(vars).map(([key, value]) => key + ':' + value).join(';') + '"><div class="sp-main">' +
       '<div id="weather" class="sp-btn sp-weather-daily-card" style="grid-column:span 3"><span class="sp-weather-days">' +
-      ['Today','Tues','Weds','Thurs','Fri','Sat','Sun','Mon'].map(day => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + day + '</span><span class="sp-weather-temperature-high">18°/2°</span></span>').join('') + '</span></div></div></div>');
+      ['Today','Tue','Wed','Thu','Fri','Sat','Sun','Mon'].map(day => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + day + '</span><span class="sp-weather-temperature-high">18°/2°</span></span>').join('') + '</span></div></div></div>');
     await page.evaluate(() => document.fonts.ready);
     await page.addScriptTag({content:layoutScript});
     await page.evaluate(() => {
@@ -7709,7 +7709,7 @@ async function assertWeatherWidthScaling(browser) {
         assert(bounds,`${wide}w ${tall}h forecast content fits at preview width ${previewWidth}`);
         if(wide===1 && tall>1){
           assert.deepEqual(await page.locator('#weather .sp-weather-day:not([hidden])>span:nth-child(2)').allTextContents(),
-            ['Today','Tues','Weds'].slice(0,rows),'Narrow stacked cards show consecutive days without skipping entries');
+            ['Today','Tue','Wed'].slice(0,rows),'Narrow stacked cards show consecutive days without skipping entries');
         }
         if(rows>1 && !list){
           const spacing=await page.locator('#weather').evaluate((card,columns)=>{
