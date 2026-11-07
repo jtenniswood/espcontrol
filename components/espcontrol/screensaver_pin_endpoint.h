@@ -45,10 +45,16 @@ class ScreensaverPinHandler final : public esphome::web_server_idf::AsyncWebHand
       std::string pin;
       bool enabled = false, has_pin_value = false;
       bool randomize_keypad = false, has_randomize_value = false;
+      bool allow_cover_art_playback = false, has_allow_playback_value = false;
       const bool parsed = valid_ && received_ == expected_ &&
           esphome::json::parse_json(body_.data(), received_, [&](JsonObject root) {
             if (!root["enabled"].is<bool>()) return false;
             enabled = root["enabled"].as<bool>();
+            has_allow_playback_value = !root["allow_cover_art_playback"].isUnbound();
+            if (has_allow_playback_value) {
+              if (!root["allow_cover_art_playback"].is<bool>()) return false;
+              allow_cover_art_playback = root["allow_cover_art_playback"].as<bool>();
+            }
             has_randomize_value = !root["randomize_keypad"].isUnbound();
             if (has_randomize_value) {
               if (!root["randomize_keypad"].is<bool>()) return false;
@@ -67,7 +73,8 @@ class ScreensaverPinHandler final : public esphome::web_server_idf::AsyncWebHand
         return;
       }
       if (!screensaver_pin().save(enabled, has_pin_value ? &pin : nullptr,
-                                  has_randomize_value ? &randomize_keypad : nullptr)) {
+                                  has_randomize_value ? &randomize_keypad : nullptr,
+                                  has_allow_playback_value ? &allow_cover_art_playback : nullptr)) {
         httpd_resp_send_err(raw, HTTPD_500_INTERNAL_SERVER_ERROR, "PIN settings could not be saved");
         return;
       }
@@ -77,6 +84,7 @@ class ScreensaverPinHandler final : public esphome::web_server_idf::AsyncWebHand
       root["has_pin"] = screensaver_pin().has_pin();
       root["pin_length"] = screensaver_pin().pin_length();
       root["randomize_keypad"] = screensaver_pin().randomize_keypad();
+      root["allow_cover_art_playback"] = screensaver_pin().allow_cover_art_playback();
     });
     httpd_resp_set_type(raw, "application/json");
     httpd_resp_set_hdr(raw, "Cache-Control", "no-store");

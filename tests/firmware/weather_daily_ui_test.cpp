@@ -259,6 +259,20 @@ int main(){
     assert(placeholder_icon->flags & LV_OBJ_FLAG_HIDDEN);
     assert(!(card->root->flags & LV_OBJ_FLAG_HIDDEN));
     assert(card->columns.front().day->text=="Today" && card->columns.front().high->text=="19°/10°");
+    card->view=WeatherForecastView::RAINFALL;
+    weather_daily_render_card(card);
+    assert(card->columns.size()==1 && card->columns.front().day->text=="Rainfall");
+    assert(card->columns.front().high->text=="0 mm");
+    assert(card->columns.front().icon->text==find_icon("Weather Rainy"));
+    f.days[0].precipitation=2.4f; weather_daily_render_card(card);
+    assert(card->columns.front().high->text=="2.4 mm");
+    f.days[0].precipitation=NAN; weather_daily_render_card(card);
+    assert(card->columns.front().high->text=="--");
+    card->source->loading=false;
+    std::strcpy(f.days[0].date,"2026-10-12"); weather_daily_render_card(card);
+    assert(caption->text=="Forecast unavailable"); // Do not substitute tomorrow's rain.
+    card->view=WeatherForecastView::DAILY;
+
     assert(espcontrol::weather::parse("WF1|2026-10-11|2026-10-12|°C|mm|km/h\n2026-10-11|sunny|18|10|0|0|10|75\n2026-10-12|rainy|17|11|80|2|20|80\n2026-10-13|cloudy|16|9||||\n2026-10-14|sunny|18|10||||\n",f));
     weather_daily_render_card(card);assert(card->columns.size()==4);
     assert(card->columns.front().day->width==103);

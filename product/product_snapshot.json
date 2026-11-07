@@ -12,7 +12,7 @@
     "deviceProfiles": 9,
     "cardTypes": 44,
     "entityNames": 112,
-    "icons": 367,
+    "icons": 370,
     "structuralIcons": 28,
     "compatibilityFixtureGroups": 2
   },
@@ -64,7 +64,7 @@
           }
         },
         "topbar": {
-          "height": 3.2,
+          "height": 4.4,
           "padding": "0.39cqw",
           "fontSize": 1.95
         },
@@ -76,6 +76,11 @@
           "bottom": 0.49,
           "gap": 0.976562,
           "fr": "1fr"
+        },
+        "cardCurveRadii": {
+          "Small": 8,
+          "Medium": 20,
+          "Large": 24
         },
         "btn": {
           "radius": 3.125,
@@ -271,7 +276,7 @@
           }
         },
         "topbar": {
-          "height": 3.2,
+          "height": 4.4,
           "padding": "0.39cqw",
           "fontSize": 1.95
         },
@@ -283,6 +288,11 @@
           "bottom": 0.49,
           "gap": 0.976562,
           "fr": "1fr"
+        },
+        "cardCurveRadii": {
+          "Small": 8,
+          "Medium": 20,
+          "Large": 24
         },
         "btn": {
           "radius": 3.125,
@@ -6091,7 +6101,11 @@
               "today",
               "tomorrow",
               "daily",
-              "wind"
+              "wind",
+              "rainfall",
+              "pressure",
+              "humidity",
+              "visibility"
             ],
             "defaultValue": "",
             "storageField": "precision",
@@ -6118,6 +6132,78 @@
             "supportedWhen": {
               "precision": [
                 "wind"
+              ]
+            }
+          },
+          {
+            "name": "rainfall_source",
+            "label": "Rainfall Source",
+            "kind": "choice",
+            "values": [
+              "sensor",
+              "forecast"
+            ],
+            "defaultValue": "sensor",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "precision",
+                "operator": "equals",
+                "value": "rainfall"
+              }
+            ],
+            "supportedWhen": {
+              "precision": [
+                "rainfall"
+              ]
+            }
+          },
+          {
+            "name": "pressure_source",
+            "label": "Air Pressure Source",
+            "kind": "choice",
+            "values": [
+              "sensor",
+              "forecast"
+            ],
+            "defaultValue": "sensor",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "precision",
+                "operator": "equals",
+                "value": "pressure"
+              }
+            ],
+            "supportedWhen": {
+              "precision": [
+                "pressure"
+              ]
+            }
+          },
+          {
+            "name": "humidity_source",
+            "label": "Humidity Source",
+            "kind": "choice",
+            "values": [
+              "sensor",
+              "forecast"
+            ],
+            "defaultValue": "sensor",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "precision",
+                "operator": "equals",
+                "value": "humidity"
+              }
+            ],
+            "supportedWhen": {
+              "precision": [
+                "humidity"
               ]
             }
           }
@@ -6159,7 +6245,10 @@
           },
           "unknownOptions": "drop",
           "canonicalOptionOrder": [
-            "wind_source"
+            "wind_source",
+            "rainfall_source",
+            "pressure_source",
+            "humidity_source"
           ],
           "migrationActions": [
             "legacy_weather_forecast"
@@ -8447,6 +8536,11 @@
         "mdi": "broom"
       },
       {
+        "name": "Bunk Bed",
+        "codepoint": "F1302",
+        "mdi": "bunk-bed"
+      },
+      {
         "name": "Bus",
         "codepoint": "F00E7",
         "mdi": "bus"
@@ -9117,6 +9211,11 @@
         "mdi": "mailbox"
       },
       {
+        "name": "Menu",
+        "codepoint": "F035C",
+        "mdi": "menu"
+      },
+      {
         "name": "Message Video",
         "codepoint": "F036B",
         "mdi": "message-video"
@@ -9565,6 +9664,11 @@
         "name": "Sprinkler Variant",
         "codepoint": "F1060",
         "mdi": "sprinkler-variant"
+      },
+      {
+        "name": "Stairs",
+        "codepoint": "F04CD",
+        "mdi": "stairs"
       },
       {
         "name": "Stop",

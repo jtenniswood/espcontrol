@@ -40,11 +40,17 @@ test("separate wind sensors preserve their source and render two required fields
     const helpers = {
         renderCardModeSelector: () => {},
         markCardPrimaryField: () => {},
-        selectField: (_label, _id, choices, value, onChange) => {
+        disclosureSection: (label, _id, open) => {
+            assert.equal(label, "Source");
+            assert.equal(open, true);
+            return { panel: {}, section: { appendChild: () => {} } };
+        },
+        fieldWithControl: () => ({}),
+        segmentControl: (choices, value, onChange) => {
             assert.equal(value, "sensors");
             assert.deepEqual(choices.map(([key]) => key), ["weather", "sensors"]);
             sourceChange = onChange;
-            return { field: {} };
+            return { segment: {} };
         },
         renderCardEntityField: (_panel, _button, _helpers, metadata) => fields.push(metadata.entity),
         saveField: () => {},
@@ -55,7 +61,7 @@ test("separate wind sensors preserve their source and render two required fields
     // Re-register with a real rerender callback for changing sources.
     registerWeatherCardTypes({ register: (_, definition) => weather = definition }, options, {}, {}, { renderButtonSettings: () => {} });
     weather.renderSettings({ appendChild: () => {} }, config, 1, helpers);
-    sourceChange.call({ value: "weather" });
+    sourceChange("weather");
     assert.equal(config.entity, "");
     assert.equal(config.sensor, "");
     assert.equal(options.weatherWindUsesSensors(config), false);

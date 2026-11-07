@@ -272,6 +272,8 @@ rain=Lluvia
 rain_chance=Probabilidad de lluvia
 rainfall=Precipitación
 wind=Viento
+air_pressure=Presión atmosférica
+visibility=Visibilidad
 humidity=Humedad
 last_forecast=Último pronóstico
 weekday_sun=dom.
@@ -298,3 +300,8 @@ wind_south=South
 wind_south_west=South West
 wind_west=West
 wind_north_west=North West
+
+# Home Assistant connection repair
+ha_disconnected_title=Home Assistant disconnected
+ha_disconnected_instructions=Check this device in Home Assistant\nfor an encryption key or connection alert
+ha_disconnected_path=Settings > Devices & Services\n> ESPHome

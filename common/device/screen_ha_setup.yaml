@@ -2,7 +2,8 @@
 # SCREEN: HOME ASSISTANT SETUP
 # =============================================================================
 # Shown when WiFi is connected but the Home Assistant API client has not
-# connected yet. Tells the user to add the device in Home Assistant.
+# connected yet. Also shows repair guidance after a sustained HA outage on
+# configured displays. Tells first-time users to add the device in Home Assistant.
 # Automatically advances when the API client connects.
 # =============================================================================
 
@@ -11,6 +12,11 @@ esphome:
     - priority: -210
       then:
         - lambda: 'register_theme_static_page(id(ha_setup_page)->obj);'
+
+globals:
+  - id: ha_connection_warning_active
+    type: bool
+    initial_value: 'false'
 
 lvgl:
   pages:
@@ -29,14 +35,18 @@ lvgl:
             clickable: true
             on_press:
               then:
-                - script.execute: setup_screen_dim_cancel
-                - script.execute:
-                    id: backlight_note_internal_brightness
-                    brightness: 0.9
-                - light.turn_on:
-                    id: display_backlight
-                    brightness: 90%
-                - script.execute: setup_screen_dim
+                - if:
+                    condition:
+                      lambda: 'return !id(ha_connection_warning_active);'
+                    then:
+                      - script.execute: setup_screen_dim_cancel
+                      - script.execute:
+                          id: backlight_note_internal_brightness
+                          brightness: 0.9
+                      - light.turn_on:
+                          id: display_backlight
+                          brightness: 90%
+                      - script.execute: setup_screen_dim
             widgets:
               - obj:
                   align: center
@@ -86,8 +96,80 @@ script:
     mode: restart
     then:
       - lambda: |-
+          if (id(ha_connection_warning_active)) {
+            lv_label_set_text(id(ha_setup_title), espcontrol_i18n_key("ha_disconnected_title"));
+            lv_label_set_text(id(ha_setup_instructions), espcontrol_i18n_key("ha_disconnected_instructions"));
+            lv_label_set_text(id(ha_setup_path), espcontrol_i18n_key("ha_disconnected_path"));
+            return;
+          }
           lv_label_set_text(id(ha_setup_title), espcontrol_i18n("Home Assistant"));
           lv_label_set_text(
               id(ha_setup_instructions),
               espcontrol_i18n("Add this device in Home Assistant\nto enable control"));
           lv_label_set_text(id(ha_setup_path), espcontrol_i18n("Settings > Devices & Services"));
+
+  - id: ha_connection_warning_show
+    mode: restart
+    then:
+      - globals.set:
+          id: ha_connection_warning_active
+          value: 'true'
+      - script.execute: setup_screen_dim_cancel
+      - lambda: |-
+          backlight_close_modals_for_display_takeover();
+          screensaver_pin_hide();
+          id(espcontrol_app).display().request(
+              espcontrol::DisplayRequestSource::HA_CONNECTION,
+              espcontrol::DisplayMode::SETUP_DIMMED);
+      - script.execute: display_mode_reconcile
+      - script.wait: display_mode_apply_transition
+      - if:
+          condition:
+            lambda: |-
+              return id(ha_connection_warning_active) &&
+                     id(espcontrol_app).display().target_source_is(
+                         espcontrol::DisplayRequestSource::HA_CONNECTION);
+          then:
+            - script.execute: clock_bar_hide
+            - script.execute: ha_setup_text_refresh
+            - lvgl.page.show: ha_setup_page
+
+  - id: ha_connection_warning_clear
+    mode: restart
+    then:
+      - script.stop: ha_connection_warning_show
+      - globals.set:
+          id: ha_connection_warning_active
+          value: 'false'
+      - lambda: |-
+          id(espcontrol_app).display().clear(
+              espcontrol::DisplayRequestSource::HA_CONNECTION);
+      - script.execute: ha_setup_text_refresh
+      - if:
+          condition:
+            lambda: 'return lv_scr_act() == id(ha_setup_page)->obj;'
+          then:
+            - lvgl.page.show: main_page
+      - script.execute: display_mode_reconcile
+
+interval:
+  # Polling also handles a mismatch present at boot, when no authenticated
+  # Home Assistant client ever reaches the API connect/disconnect hooks.
+  - interval: 1s
+    then:
+      - lambda: |-
+          static espcontrol::HaConnectionWarning warning;
+          const bool show = warning.update(
+              millis(), esphome::network::is_connected(),
+              !id(button_order).state.empty(), ha_api_state_connected());
+          if (show &&
+              (!id(ha_connection_warning_active) ||
+               (!id(ha_connection_warning_show).is_running() &&
+                lv_scr_act() != id(ha_setup_page)->obj)) &&
+              !alarm_display_takeover_active() &&
+              !id(espcontrol_app).display().takeover_active(
+                  espcontrol::DisplayTakeoverKind::CRITICAL)) {
+            id(ha_connection_warning_show).execute();
+          } else if (!show && id(ha_connection_warning_active)) {
+            id(ha_connection_warning_clear).execute();
+          }

@@ -48,7 +48,7 @@
           }
         },
         "topbar": {
-          "height": 3.2,
+          "height": 4.4,
           "padding": "0.39cqw",
           "fontSize": 1.95
         },
@@ -60,6 +60,11 @@
           "bottom": 0.49,
           "gap": 0.976562,
           "fr": "1fr"
+        },
+        "cardCurveRadii": {
+          "Small": 8,
+          "Medium": 20,
+          "Large": 24
         },
         "btn": {
           "radius": 3.125,
@@ -250,7 +255,7 @@
           }
         },
         "topbar": {
-          "height": 3.2,
+          "height": 4.4,
           "padding": "0.39cqw",
           "fontSize": 1.95
         },
@@ -262,6 +267,11 @@
           "bottom": 0.49,
           "gap": 0.976562,
           "fr": "1fr"
+        },
+        "cardCurveRadii": {
+          "Small": 8,
+          "Medium": 20,
+          "Large": 24
         },
         "btn": {
           "radius": 3.125,
