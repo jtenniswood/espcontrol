@@ -1,5 +1,7 @@
 import type { PanelIdentityBackup } from "../model/panel_identity";
 import type { CardConfig } from "../contracts/types";
+import { decodeNativeConfigBackupPayload, decodeNativeConfigDocument } from "../model/native_config_backup";
+import { panelPageDocumentDepth } from "../model/panel_config_conversion";
 import {
   BACKUP_CONFIG_VERSION,
   BACKUP_FORMAT,
@@ -164,6 +166,11 @@ export function createBackupFeature(dependencies: BackupFeatureDependencies): Ba
 
     const nativeDeviceProfile = config.native_config?.device_profile ||
       config.native_config_skipped_device_profile;
+    if (config.native_config?.document_version === 2 && nativeDeviceProfile !== targetDeviceId &&
+        panelPageDocumentDepth(decodeNativeConfigDocument(decodeNativeConfigBackupPayload(config.native_config))) > 1) {
+      const message = "Nested-page backups must be restored to the same device profile. No settings were changed.";
+      throw Object.assign(new Error(message), { backupMessage: message });
+    }
     if (nativeDeviceProfile && nativeDeviceProfile !== targetDeviceId) {
       warnings.push(
         `This backup was taken from ${nativeDeviceProfile}; this device is ${targetDeviceId}. ` +

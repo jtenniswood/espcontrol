@@ -21,6 +21,7 @@ def definition(filename, name, kind="inline"):
 
 
 code = r'''
+#include "page_local_sensor_feed.h"
 #include <cassert>
 #include <algorithm>
 #include <cmath>
@@ -102,5 +103,5 @@ with tempfile.TemporaryDirectory(prefix="local-sensor-invalid-") as temporary:
     binary = Path(temporary) / "test"
     source.write_text(code)
     compiler = shlex.split(os.environ.get("CXX", sys.argv[1] if len(sys.argv) > 1 else "c++"))
-    subprocess.run(compiler + ["-std=c++17", "-Wall", "-Wextra", "-Werror", "-I", str(ROOT / "tests/firmware/stubs"), str(source), "-o", str(binary)], check=True)
+    subprocess.run(compiler + ["-std=c++17","-I",str(FIRMWARE), "-Wall", "-Wextra", "-Werror", "-I", str(ROOT / "tests/firmware/stubs"), str(source), "-o", str(binary)], check=True)
     subprocess.run([str(binary)], check=True)

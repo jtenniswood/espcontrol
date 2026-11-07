@@ -31,7 +31,7 @@ class MipiRgb : public display::Display {
   void draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr, display::ColorOrder order,
                       display::ColorBitness bitness, bool big_endian, int x_offset, int y_offset, int x_pad) override;
   void write_to_display_(int x_start, int y_start, int w, int h, const uint8_t *ptr, int x_offset, int y_offset,
-                         int x_pad);
+                         int x_pad, bool pre_rotated = false);
   bool check_buffer_();
 
   display::ColorOrder get_color_mode() { return this->color_mode_; }
@@ -46,6 +46,7 @@ class MipiRgb : public display::Display {
   void set_reset_pin(GPIOPin *reset_pin) { this->reset_pin_ = reset_pin; }
   void set_width(uint16_t width) { this->width_ = width; }
   void set_pclk_frequency(uint32_t pclk_frequency) { this->pclk_frequency_ = pclk_frequency; }
+  void set_bounce_buffer_rows(uint16_t rows) { this->bounce_buffer_rows_ = rows; }
   void set_pclk_inverted(bool inverted) { this->pclk_inverted_ = inverted; }
   void set_model(const char *model) { this->model_ = model; }
   int get_width() override;
@@ -68,6 +69,9 @@ class MipiRgb : public display::Display {
  protected:
   void setup_enables_();
   void common_setup_();
+  bool apply_panel_rotation_(display::DisplayRotation rotation);
+  display::DisplayRotation panel_rotation_{display::DISPLAY_ROTATION_0_DEGREES};
+  bool panel_rotation_valid_{false};
   InternalGPIOPin *de_pin_{nullptr};
   InternalGPIOPin *pclk_pin_{nullptr};
   InternalGPIOPin *hsync_pin_{nullptr};
@@ -81,6 +85,7 @@ class MipiRgb : public display::Display {
   uint16_t vsync_back_porch_ = 10;
   uint16_t vsync_front_porch_ = 10;
   uint32_t pclk_frequency_ = 16 * 1000 * 1000;
+  uint16_t bounce_buffer_rows_{20};
   bool pclk_inverted_{true};
   const char *model_{"Unknown"};
   bool invert_colors_{};

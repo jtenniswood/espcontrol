@@ -1,5 +1,7 @@
+import type { PanelConfigDocument } from "../model/panel_config";
 import type { CardConfig } from "../contracts/types";
 import type { ClipboardEntry } from "../features/clipboard";
+import type { PageCardClipboard } from "../model/page_card_transfer";
 import type { SlotSizeMap } from "../model/grid";
 
 export interface DeviceConfigFeatures {
@@ -97,6 +99,7 @@ export interface RuntimeSubpage {
 
 export interface AppClipboard {
   buttons: ClipboardEntry[];
+  native?: PageCardClipboard & { readonly cut: boolean };
 }
 
 export interface SettingsDraft {
@@ -279,6 +282,12 @@ export interface AppState {
   clockBarTempRestoreIndoor: boolean;
   clockBarTempRestoreOutdoor: boolean;
   clockBarTempRestoreEntities: string[];
+  nativePanelDocument: PanelConfigDocument | null;
+  nativePageSnapshotLoaded: boolean;
+  nativeHasNestedPages: boolean;
+  nativeConfigReadOnly: boolean;
+  nativeConfigLoading: boolean;
+  nativeTransferActive: boolean;
   subpages: Record<string, RuntimeSubpage>;
   subpageRaw: Record<string, Record<string, string>>;
   subpageSavePending: Record<string, string>;

@@ -9,6 +9,9 @@ namespace espcontrol::configuration {
 constexpr uint8_t CONFIGURATION_SLOT_COUNT = 2;
 constexpr size_t CONFIGURATION_ENVELOPE_HEADER_SIZE = 20;
 constexpr uint16_t CONFIGURATION_ENVELOPE_VERSION = 1;
+// Maximum read/write request at the store/backend boundary. Whole-blob ports
+// may still need one operation-scoped slot image below that boundary.
+constexpr size_t CONFIGURATION_IO_WINDOW_BYTES = 1024;
 
 enum class StoreStatus : uint8_t {
   OK,
@@ -21,6 +24,8 @@ enum class StoreStatus : uint8_t {
   WRITE_FAILED,
   SYNC_FAILED,
   VERIFY_FAILED,
+  ALLOCATION_FAILED,
+  STORAGE_FULL,
 };
 
 struct LoadResult {
@@ -49,11 +54,22 @@ class StorageBackend {
   virtual ~StorageBackend() = default;
 
   virtual size_t slot_capacity() const = 0;
+  // A backend may borrow scratch memory only for this load or commit. Every
+  // successful begin is paired with end, including all failure paths.
+  virtual bool begin_operation() { return true; }
+  virtual void end_operation() {}
+  // Distinguish a retryable scratch reservation from a storage I/O failure.
+  virtual StoreStatus operation_failure() const {
+    return StoreStatus::READ_FAILED;
+  }
   virtual bool read(uint8_t slot, size_t offset, uint8_t *output,
                     size_t size) = 0;
   virtual bool write(uint8_t slot, size_t offset, const uint8_t *data,
                      size_t size) = 0;
   virtual bool sync() = 0;
+  // A full shared backend is a definite capacity rejection, not an unknown
+  // I/O failure. Query immediately after a failed sync, before rollback.
+  virtual StoreStatus sync_failure() const { return StoreStatus::SYNC_FAILED; }
 };
 
 // Durable opaque-payload store for the future versioned configuration
@@ -64,6 +80,10 @@ class ConfigurationStore {
   explicit ConfigurationStore(StorageBackend &backend) : backend_(backend) {}
 
   LoadResult load(uint8_t *output, size_t output_capacity);
+  // Verify/select the whole durable payload, then copy only its prefix. The
+  // result still reports the complete size and generation; no full copy is
+  // reserved merely to inspect a document envelope.
+  LoadResult load_prefix(uint8_t *output, size_t prefix_capacity);
   CommitResult commit(const uint8_t *payload, size_t payload_size);
   CommitResult commit_if_generation(uint32_t expected_generation,
                                     const uint8_t *payload,
@@ -82,6 +102,7 @@ class ConfigurationStore {
     uint8_t slot{UINT8_MAX};
   };
 
+  LoadResult load_internal(uint8_t *output, size_t capacity, bool prefix);
   SlotMetadata inspect_slot(uint8_t slot);
   bool checksum_slot_payload(uint8_t slot, const uint8_t *header,
                              size_t payload_size, uint32_t *checksum);

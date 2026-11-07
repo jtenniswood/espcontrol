@@ -4,13 +4,18 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "configuration_buffer.h"
+
 namespace espcontrol::configuration {
 
 class ConfigurationService;
+class ConfigurationMainLoop;
 
 struct PanelConfigHttpContext {
   ConfigurationService *service{nullptr};
-  uint8_t *document{nullptr};
+  ConfigurationMainLoop *transactions{nullptr};
+  ConfigurationBuffer::Allocate allocate{nullptr};
+  ConfigurationBuffer::Release release{nullptr};
   size_t document_capacity{0};
   const char *username{nullptr};
   const char *password{nullptr};
@@ -23,19 +28,22 @@ inline PanelConfigHttpContext &panel_config_http_context() {
   return context;
 }
 
-inline void bind_panel_config_http_context(ConfigurationService &service,
-                                           uint8_t *document,
-                                           size_t document_capacity,
-                                           const char *username,
-                                           const char *password) {
+inline void bind_panel_config_http_context(
+    ConfigurationService &service, ConfigurationMainLoop &transactions,
+    size_t document_capacity, ConfigurationBuffer::Allocate allocate,
+    ConfigurationBuffer::Release release, const char *username,
+    const char *password) {
   PanelConfigHttpContext &context = panel_config_http_context();
   context.ready.store(false, std::memory_order_release);
   context.service = &service;
-  context.document = document;
+  context.transactions = &transactions;
+  context.allocate = allocate;
+  context.release = release;
   context.document_capacity = document_capacity;
   context.username = username;
   context.password = password;
-  context.ready.store(document != nullptr && document_capacity != 0,
+  context.ready.store(allocate != nullptr && release != nullptr &&
+                          document_capacity != 0,
                       std::memory_order_release);
 }
 

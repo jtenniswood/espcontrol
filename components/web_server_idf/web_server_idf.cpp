@@ -52,6 +52,7 @@ static const char *const TAG = "web_server_idf";
 
 extern "C" void espcontrol_register_web_server_handlers(
     AsyncWebServer *server) __attribute__((weak));
+extern "C" bool espcontrol_native_configuration_generation(uint32_t *generation) __attribute__((weak));
 
 // Global instance to avoid guard variable (saves 8 bytes)
 // This is initialized at program startup before any threads
@@ -1252,6 +1253,20 @@ void AsyncEventSourceResponse::loop() {
     return;
   }
   process_deferred_queue_();
+  // Native-only edits may leave every compatibility text entity unchanged.
+  // Retry under backpressure and coalesce to the newest durable generation.
+  uint32_t generation = 0;
+  if (this->fd_.load() != 0 && !this->close_requested_ && this->entities_iterator_.completed() &&
+      espcontrol_native_configuration_generation &&
+      espcontrol_native_configuration_generation(&generation) &&
+      (!configuration_generation_sent_ || configuration_generation_ != generation)) {
+    char message[40];
+    const int length = std::snprintf(message, sizeof(message), "{\"generation\":%" PRIu32 "}", generation);
+    if (this->try_send_nodefer(message, length, "panel-config")) {
+      configuration_generation_ = generation;
+      configuration_generation_sent_ = true;
+    }
+  }
   if (this->fd_.load() != 0 && !this->close_requested_ && !this->entities_iterator_.completed())
     this->entities_iterator_.try_advance(1);
 }

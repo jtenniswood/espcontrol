@@ -39,6 +39,7 @@ export function runReconnectControllerTests(): void {
     onConnected: () => calls.push("connected"),
     onDisconnected: () => calls.push("disconnected"),
     onPing: () => calls.push("ping"),
+    onConfigurationChange: () => calls.push("configuration"),
     parseState: (event: { data?: string }) => event.data || null,
     onState: (state: string) => calls.push(`state:${state}`),
   };
@@ -46,7 +47,8 @@ export function runReconnectControllerTests(): void {
   equal(previous.closed, true, "connecting closes the previous stream");
   const first = created[0]!;
   first.emit("open"); first.emit("ping"); first.emit("state", "kitchen"); first.emit("state", "");
-  equal(calls.join(","), "connected,ping,state:kitchen", "stream events retain their dispatch contract");
+  first.emit("panel-config", '{"generation":12}');
+  equal(calls.join(","), "connected,ping,state:kitchen,configuration", "native-only saves announce changes independently of entity events");
   first.readyState = 2; first.emit("error");
   equal(first.closed, true, "a terminal stream is closed before retrying");
   equal(active, null, "a terminal stream is cleared before retrying");

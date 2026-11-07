@@ -12,3 +12,9 @@ Use these fixtures for saved button config strings, subpage config strings,
 backup import/export behavior, cross-device layout adaptation, and legacy card
 migrations. Do not change fixture expectations unless the user-facing migration
 behavior is intentionally changing.
+
+The [page runtime baseline](page-runtime-baseline.md) records the device capacity
+contract and measurement procedure for the staged architecture migration.
+
+- [Modal lifetime and climate adapter](page-modal-lifecycle.md): deferred
+  context retirement, input guards and the remaining physical cutover gates.

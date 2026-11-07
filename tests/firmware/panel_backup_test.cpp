@@ -7,7 +7,7 @@
 
 using namespace espcontrol::configuration;
 
-std::vector<uint8_t> fixture() {
+std::vector<uint8_t> fixture(bool inactive = false) {
   std::vector<uint8_t> document(20000);
   PanelConfigWriter writer(document.data(), document.size());
   auto bytes = [](const std::string &s) { return reinterpret_cast<const uint8_t *>(s.data()); };
@@ -28,14 +28,18 @@ std::vector<uint8_t> fixture() {
   assert(writer.append_button(3, bytes(large), large.size()) == PanelConfigStatus::OK);
   assert(writer.append_setting(bytes("button_order"), 12, bytes(order), order.size()) == PanelConfigStatus::OK);
   assert(writer.append_setting(bytes("button_on_color"), 15, bytes(color), color.size()) == PanelConfigStatus::OK);
+  if (inactive) {
+    const std::string hidden = "light.hidden;Inactive;Auto;Auto;;;;;";
+    assert(writer.append_button(32, bytes(hidden), hidden.size()) == PanelConfigStatus::OK);
+  }
   size_t size = 0;
   assert(writer.finish(&size) == PanelConfigStatus::OK);
   document.resize(size);
   return document;
 }
 
-int main(int argc, char **) {
-  const auto document = fixture();
+int main(int argc, char **argv) {
+  const auto document = fixture(argc == 2 && std::string(argv[1]) == "--inactive-fixture");
   const std::string settings = R"({"language":"de","clock_bar_temperature_precision":2,"clock_bar":false,"ntp_server_1":"time.example.test","screensaver_timeout":90})";
   const std::string screen = R"({"brightness_day":42,"theme_mode":"Light","schedule_trigger":"sensor","schedule_sensor_entity":"binary_sensor.room"})";
   const std::string identity = R"({"version":1,"name":"Kitchen","hostname":"kitchen-ab1234","mac_suffix":"ab1234"})";
@@ -46,12 +50,13 @@ int main(int argc, char **) {
   if (argc > 1) { std::cout << output; return 0; }
   assert(output.find("Kitchen; \\\"table\\\"\\u000a°") != std::string::npos);
   assert(output.find("\"native_config\":") != std::string::npos);
-  // Invalid documents and slot mismatches must fail before writing any JSON.
+  // Invalid documents fail before writing any JSON. Inactive records outside
+  // the readable projection remain in the complete native payload.
   output.clear();
   assert(!espcontrol::backup::write_backup(document.data(), document.size() - 1, 9, settings, screen, "", "", sink));
   assert(output.empty());
-  assert(!espcontrol::backup::write_backup(document.data(), document.size(), 2, settings, screen, "", "", sink));
-  assert(output.empty());
+  assert(espcontrol::backup::write_backup(document.data(), document.size(), 2, settings, screen, "", "", sink));
+  assert(output.find("\"native_config\":") != std::string::npos);
   assert(!espcontrol::backup::write_backup(document.data(), document.size(), 33, settings, screen, "", "", sink));
   auto disconnected = [](const std::string &) { return false; };
   assert(!espcontrol::backup::write_backup(document.data(), document.size(), 9, settings, screen, "", "", disconnected));

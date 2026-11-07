@@ -1,3 +1,4 @@
+import { editorPageOwner } from "../features/page_editor";
 import { state } from "../state/app_instance";
 import { normalizeBrightnessMode } from "../model/settings";
 import type { UiRuntimeState } from "./state";
@@ -251,7 +252,7 @@ export function createAppStatusPreviewFeature(runtime: UiRuntimeState, core: Cor
                 return;
             container.innerHTML = "";
             if (section === "left" && state.editingSubpage != null) {
-                const parent = state.buttons[state.editingSubpage - 1];
+                const parent = editorPageOwner(state.editingSubpage, state.buttons, state.subpages);
                 const title = document.createElement("span");
                 title.className = "sp-clockbar-subpage-title";
                 title.textContent = String(parent?.label || "").trim() || "Subpage";

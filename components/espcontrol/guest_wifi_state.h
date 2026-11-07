@@ -2,9 +2,10 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 // Only a real HA switch may control the guest network. Never target the panel Wi-Fi.
-inline bool guest_wifi_valid_entity(const std::string &entity) {
+inline bool guest_wifi_valid_entity(std::string_view entity) {
   if (entity.size() <= 7 || entity.compare(0, 7, "switch.") != 0) return false;
   for (size_t i = 7; i < entity.size(); ++i) {
     const char c = entity[i];
@@ -21,7 +22,7 @@ struct GuestWifiState {
   bool failed = false;
   uint32_t requested_at = 0;
 
-  void receive(const std::string &state) {
+  void receive(std::string_view state) {
     known = state == "on" || state == "off";
     if (!known) { pending = false; failed = false; return; }
     const bool next_on = state == "on";

@@ -1,0 +1,1197 @@
+#include <array>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <functional>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "ha_read_coordinator.h"
+#include "page_entity_coordinator_adapter.h"
+#include "page_entity_observer_set.h"
+#include "panel_config_document.h"
+
+static size_t allocation_calls = 0;
+void *operator new(size_t bytes) {
+  ++allocation_calls;
+  if (void *p = std::malloc(bytes ? bytes : 1)) return p;
+  std::abort();
+}
+void *operator new[](size_t bytes) { return ::operator new(bytes); }
+void operator delete(void *p) noexcept { std::free(p); }
+void operator delete[](void *p) noexcept { std::free(p); }
+void operator delete(void *p, std::size_t) noexcept { std::free(p); }
+void operator delete[](void *p, std::size_t) noexcept { std::free(p); }
+
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+namespace {
+struct Arena final : PageArenaAllocator {
+  void *allocate(size_t bytes) override {
+    if (fail || remaining == 0 || bytes > max_bytes || (reject && reject(bytes))) return nullptr;
+    if (remaining > 0) --remaining;
+    ++calls;
+    auto *p = std::malloc(bytes);
+    assert(p);
+    live[p] = bytes;
+    peak_bytes = std::max(peak_bytes, live_bytes());
+    return p;
+  }
+  void release(void *p, size_t bytes) override { assert(live.at(p) == bytes); live.erase(p); std::free(p); }
+  size_t live_bytes() const {
+    size_t bytes = 0;
+    for (const auto &item : live)
+      bytes += item.second;
+    return bytes;
+  }
+  bool fail{false};
+  int remaining{-1};
+  size_t calls{0}, peak_bytes{0};
+  size_t max_bytes{SIZE_MAX};
+  std::function<bool(size_t)> reject;
+  std::unordered_map<void *, size_t> live;
+};
+struct Source final : PageDependencySource {
+  struct Item { CardId card; std::string entity, attribute; };
+  bool enumerate(const PageStore &, PageDependencySink &sink) const override {
+    if (fail) return false;
+    for (const auto &i : items) if (!sink.add(i.card, i.entity, i.attribute)) return false;
+    return true;
+  }
+  std::vector<Item> items;
+  bool fail{false};
+};
+struct Subscriptions final : PageEntitySubscriptions {
+  struct Item { std::string entity, attribute; void *owner; uint32_t revision, channel; Deliver deliver; };
+  size_t registration_scratch_bytes() const override { return scratch_bytes; }
+  bool begin_registration_batch(void *scratch, size_t bytes) override {
+    ++registration_begins;
+    assert(bytes == scratch_bytes && (!bytes || scratch));
+    if (reject_registration)
+      return false;
+    registration_scratch = scratch;
+    registration_active = true;
+    return true;
+  }
+  void end_registration_batch() override {
+    assert(registration_active);
+    if (on_registration_end)
+      on_registration_end(registration_scratch);
+    ++registration_ends;
+    registration_active = false;
+    registration_scratch = nullptr;
+  }
+  bool subscribe(const char *entity, const char *attribute, void *owner, uint32_t revision,
+                 uint32_t channel, Deliver deliver) override {
+    if (remaining == 0) return false;
+    if (remaining > 0) --remaining;
+    entries.push_back({entity, attribute, owner, revision, channel, deliver});
+    if (on_subscribe)
+      on_subscribe();
+    return true;
+  }
+  void release(void *owner) override {
+    entries.erase(std::remove_if(entries.begin(), entries.end(),
+        [owner](const Item &e) { return e.owner == owner; }), entries.end());
+  }
+  uint32_t connection_generation() const override { return connection; }
+  void send(std::string entity, std::string attribute, const std::string &value) {
+    const auto snapshot = entries;
+    for (const auto &e : snapshot) if (e.entity == entity && e.attribute == attribute)
+      e.deliver(e.owner, e.revision, e.channel, value);
+  }
+  std::vector<Item> entries; int remaining{-1}; uint32_t connection{1};
+  std::function<void()> on_subscribe;
+  size_t scratch_bytes{0}, registration_begins{0}, registration_ends{0};
+  bool reject_registration{false}, registration_active{false};
+  void *registration_scratch{nullptr};
+  std::function<void(void *)> on_registration_end;
+};
+struct Fixture {
+  Fixture() {
+    PanelConfigWriter writer(document.data(), document.size()); assert(writer.begin() == PanelConfigStatus::OK);
+    const auto &limits = DEVICE_UI_PROFILES[8];
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t *>(limits.device_profile),
+        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    for (uint8_t slot = 1; slot <= 3; ++slot) {
+      const std::string config = "light.test;Light;Auto;Auto;;;;;";
+      assert(writer.append_button(slot, reinterpret_cast<const uint8_t *>(config.data()), config.size()) == PanelConfigStatus::OK);
+    }
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, 17, arena.data(), arena.size(), &store) == PageStoreStatus::OK);
+  }
+  alignas(std::max_align_t) std::array<uint8_t, 8192> arena{};
+  std::array<uint8_t, 1024> document{}; size_t size{0}; PageStore store;
+};
+void unique_dependency_graph_sizing_is_bounded() {
+  Fixture fixture;Arena arena;Subscriptions transport;Source source;
+  source.items={{0,"sensor.shared",""},{1,"sensor.shared",""},
+                {2,"sensor.shared",""},{0,"sensor.other","unit"}};
+  PageEntityStateRuntime state(source,arena,transport,{4,2,32});
+  assert(state.prepare(fixture.store));state.activate_prepared(17);
+  const auto bytes=state.memory().active_arena_bytes;
+  const auto preparation_calls=arena.calls;
+  assert(state.memory().active_dependencies==4&&state.memory().active_channels==2);
+  const auto unique=source.items;
+  for(size_t repeat=0;repeat<100;++repeat)
+    source.items.insert(source.items.end(),unique.begin(),unique.end());
+  arena.max_bytes=bytes;
+  const bool repeated_graph_prepared=state.prepare(fixture.store);
+  assert(repeated_graph_prepared);
+  assert(state.memory().staged_arena_bytes==bytes&&arena.calls==2*preparation_calls);
+  state.activate_prepared(18);
+  assert(state.dependency_count({18,0})==2&&transport.entries.size()==2&&arena.live.size()==1);
+  {
+    Arena relaxed_arena;Subscriptions relaxed_transport;
+    PageEntityStateRuntime relaxed(source,relaxed_arena,relaxed_transport,{1024,1024,32});
+    assert(relaxed.prepare(fixture.store));relaxed.activate_prepared(19);
+    assert(relaxed.memory().active_arena_bytes==bytes);
+    assert(relaxed.memory().active_channels==2&&relaxed.memory().active_dependencies==4);
+  }
+  for(size_t failure=0;failure<preparation_calls;++failure) {
+    arena.remaining=static_cast<int>(failure);
+    assert(!state.prepare(fixture.store));
+    assert(arena.live.size()==1&&transport.entries.size()==2);
+    assert(state.memory().staged_arena_bytes==0&&state.dependency_count({18,0})==2);
+  }
+  arena.remaining=-1;
+  source.items.push_back({1,"sensor.other","unit"});
+  assert(!state.prepare(fixture.store)&&arena.live.size()==1);
+  source.items={{0,"sensor.one",""},{0,"sensor.two",""},{0,"sensor.three",""}};
+  assert(!state.prepare(fixture.store)&&arena.live.size()==1);
+  assert(state.memory().peak_arena_bytes==arena.peak_bytes);
+  state.retire_active();assert(arena.live.empty()&&transport.entries.empty());
+}
+void shared_exhaustion_survives_replacement() {
+  Fixture fixture;Arena arena;Subscriptions transport;Source source;
+  source.items={{0,"sensor.shared",""},{1,"sensor.other",""}};
+  PageEntityStateRuntime state(source,arena,transport,{8,4,4,4});
+  assert(state.prepare(fixture.store));state.activate_prepared(17);
+  transport.send("sensor.shared","","oversize");transport.send("sensor.other","","ok");
+  assert(state.dependency({17,0},0).status==PageEntityStatus::EXHAUSTED);
+  const auto overflows=state.memory().state_overflows;
+  source.items={{2,"sensor.shared",""},{1,"sensor.other",""}};
+  assert(state.prepare(fixture.store));state.activate_prepared(18);
+  assert(state.dependency({18,2},0).status==PageEntityStatus::EXHAUSTED);
+  assert(state.dependency({18,2},0).value.empty()&&state.dependency({18,1},0).value=="ok");
+  assert(state.memory().state_overflows==overflows);
+  transport.send("sensor.shared","","1");
+  assert(state.dependency({18,2},0).status==PageEntityStatus::AVAILABLE);
+  assert(state.prepare(fixture.store));state.activate_prepared(19);
+  assert(state.dependency({19,2},0).value=="1");
+  transport.send("sensor.shared","","oversize");
+  ++transport.connection;
+  assert(state.prepare(fixture.store));state.activate_prepared(20);
+  assert(state.dependency({20,2},0).status==PageEntityStatus::UNKNOWN);
+  assert(state.dependency({20,1},0).status==PageEntityStatus::UNKNOWN);
+}
+void lifetime_and_state_budget() {
+  Fixture f; Arena arena; Subscriptions transport; Source source;
+  source.items = {{0,"sensor.one",""},{1,"sensor.one",""},{0,"sensor.one",""},
+                  {0,"sensor.one","unit_of_measurement"},{2,"sensor.two",""}};
+  {
+    PageEntityStateRuntime state(source, arena, transport, {12, 4, 16});
+    assert(state.prepare(f.store)); assert(transport.entries.size() == 3);
+    assert(state.dependency_count({17,0}) == 0); // Staged values cannot replace the active configuration.
+    transport.send("sensor.one", "", "12.5"); transport.send("sensor.two", "", "abc");
+    const auto allocations = arena.calls, all_allocations = allocation_calls;
+    state.activate_prepared(17); assert(arena.calls == allocations); assert(allocation_calls == all_allocations);
+    assert(state.dependency_count({17,0}) == 2); assert(state.dependency_count({17,1}) == 1);
+    assert(state.memory().active_dependencies == 4); assert(state.memory().active_channels == 3);
+    assert(state.dependency({17,0},0).value == "12.5"); assert(state.dependency({17,1},0).value == "12.5");
+    transport.send("sensor.one", "unit_of_measurement", "°C");
+    transport.send("sensor.one", "", "1234567890"); // Compact the other values without corrupting them.
+    assert(state.dependency({17,2},0).value == "abc"); assert(state.dependency({17,0},1).value == "°C");
+    transport.send("sensor.one", "", "12345678901234567");
+    assert(state.dependency({17,0},0).status == PageEntityStatus::EXHAUSTED);
+    assert(state.dependency({17,1},0).value.empty()); assert(state.dependency({17,2},0).value == "abc");
+    assert(state.memory().active_state_bytes == 6); assert(state.memory().state_overflows == 1);
+    transport.send("sensor.one", "", "on"); assert(state.dependency({17,0},0).value == "on");
+    ++transport.connection;
+    assert(state.dependency({17,0},0).status == PageEntityStatus::UNKNOWN);
+    assert(state.memory().active_state_bytes == 0);
+    transport.send("sensor.one", "", "unavailable");
+    assert(state.dependency({17,0},0).value == "unavailable");
+    assert(arena.calls == allocations); // Receiving and querying never allocate an arena.
+    assert(state.dependency({16,0},0).status == PageEntityStatus::STALE);
+  }
+  assert(transport.entries.empty()); assert(arena.live.empty());
+}
+void preparation_and_replacements() {
+  Fixture f; Arena arena; Subscriptions transport; Source source;
+  source.items = {{0,"sensor.shared",""},{1,"sensor.old",""}};
+  PageEntityStateRuntime state(source, arena, transport, {8, 4, 128});
+  assert(state.prepare(f.store)); state.activate_prepared(1);
+  transport.send("sensor.shared", "", "live"); const auto stale = transport.entries.back();
+  source.items = {{2,"sensor.shared",""},{0,"sensor.new",""}};
+  assert(state.prepare(f.store)); assert(transport.entries.size() == 4);
+  assert(state.dependency({1,0},0).value == "live");
+  const auto allocations = arena.calls; state.activate_prepared(2); assert(arena.calls == allocations);
+  assert(transport.entries.size() == 2); assert(arena.live.size() == 1);
+  assert(state.dependency({2,2},0).value == "live");
+  assert(state.dependency({1,0},0).status == PageEntityStatus::STALE);
+  stale.deliver(stale.owner, stale.revision, stale.channel, "old");
+  assert(state.memory().stale_deliveries == 1);
+  for (uint32_t generation = 3; generation < 1003; ++generation) {
+    source.items = {{0,"sensor.generation_" + std::to_string(generation),""}};
+    assert(state.prepare(f.store)); state.activate_prepared(generation);
+    assert(transport.entries.size() == 1); assert(arena.live.size() == 1);
+    stale.deliver(stale.owner, stale.revision, stale.channel, "old");
+    assert(state.dependency({generation,0},0).status == PageEntityStatus::UNKNOWN);
+  }
+  const auto memory = state.memory(); assert(memory.active_channels == 1);
+  assert(memory.peak_arena_bytes <= 2 * 1024);
+  transport.remaining = 1; source.items = {{0,"sensor.a",""},{1,"sensor.b",""}};
+  assert(!state.prepare(f.store)); assert(transport.entries.size() == 1); assert(arena.live.size() == 1);
+  assert(state.dependency_count({1002,0}) == 1); assert(state.memory().staged_arena_bytes == 0);
+  transport.remaining = -1; arena.fail = true; assert(!state.prepare(f.store)); arena.fail = false;
+  source.fail = true; assert(!state.prepare(f.store)); source.fail = false;
+  source.items = {{NO_CARD,"sensor.bad",""}}; assert(!state.prepare(f.store));
+  source.items = {{0,std::string("sensor.bad\0suffix",17),""}}; assert(!state.prepare(f.store));
+  assert(state.memory().preparation_failures == 5);
+  assert(transport.entries.size() == 1); state.retire_active(); assert(transport.entries.empty());
+  assert(arena.live.empty());
+}
+void page_store_prepares_resources_before_activation() {
+  Fixture f; Arena arena; Subscriptions transport; Source source;
+  source.items = {{0,"sensor.one",""}};
+  PageEntityStateRuntime state(source, arena, transport, {8, 4, 128});
+  {
+    PageStoreRuntime runtime(DEVICE_UI_PROFILES[8], arena, 8192, &state);
+    assert(runtime.prepare(1, f.document.data(), f.size));
+    const auto allocations = arena.calls, all_allocations = allocation_calls;
+    assert(runtime.activate_prepared(8,1,f.document.data(),f.size)); assert(arena.calls == allocations);
+    assert(allocation_calls == all_allocations);
+    transport.send("sensor.one", "", "stable"); assert(state.dependency({8,0},0).value == "stable");
+    transport.remaining = 0; source.items = {{0,"sensor.two",""}};
+    assert(!runtime.prepare(1,f.document.data(),f.size));
+    assert(runtime.last_stage_status() == PageStoreStatus::RESOURCE_UNAVAILABLE);
+    assert(runtime.active().generation() == 8); assert(state.dependency({8,0},0).value == "stable");
+    assert(arena.live.size() == 2); // Exactly the active configuration and state arenas.
+  }
+  assert(arena.live.empty()); assert(transport.entries.empty());
+}
+struct Transport {
+  using State = std::string; using Callback = std::function<void(State)>;
+  static constexpr bool RECLAIMABLE_SUBSCRIPTIONS = true;
+  struct Entry { std::string entity,attribute; Callback callback; uint32_t token; };
+  bool available() const { return true; } bool state_connected() const { return true; }
+  uint32_t subscribe(const std::string &e,const std::string &a,Callback cb) {
+    const auto token = ++next; entries.push_back({e,a,std::move(cb),token}); return token;
+  }
+  void unsubscribe(uint32_t token) {
+    entries.erase(std::remove_if(entries.begin(),entries.end(),[token](const Entry &e){return e.token==token;}),entries.end());
+  }
+  bool request(const std::string &,const std::string &) { return true; }
+  uint32_t next{0}; std::vector<Entry> entries;
+};
+struct Heap { bool available(const char *,size_t,size_t) { return true; } };
+struct CallbackCoordinator {
+  using State = std::string;
+  using Callback = std::function<void(State)>;
+  struct Entry {
+    void *owner;
+    Callback callback;
+  };
+  std::vector<Entry> entries;
+  bool accept{true};
+  bool subscribe(const std::string &, const std::string &, Callback callback,
+                 uint32_t, void *owner, bool retain, bool replay,
+                 bool initial) {
+    assert(!retain && !replay && !initial);
+    if (!accept)
+      return false;
+    entries.push_back({owner, std::move(callback)});
+    return true;
+  }
+  void release_owner(void *owner) {
+    entries.erase(std::remove_if(entries.begin(), entries.end(),
+                                 [owner](const Entry &entry) {
+                                   return entry.owner == owner;
+                                 }),
+                  entries.end());
+  }
+  uint32_t connection_generation() const { return 1; }
+};
+struct CallbackSink {
+  size_t calls{0};
+  uint32_t revision{0}, channel{0};
+  void *adapter{nullptr};
+  void (*after)(CallbackSink &){nullptr};
+  static void receive(void *owner, uint32_t revision, uint32_t channel,
+                      std::string_view) {
+    auto &sink = *static_cast<CallbackSink *>(owner);
+    ++sink.calls;
+    sink.revision = revision;
+    sink.channel = channel;
+    if (sink.after)
+      sink.after(sink);
+  }
+};
+void coordinator_callbacks_use_allocation_free_revocable_batches() {
+  CallbackCoordinator coordinator;
+  coordinator.entries.reserve(1442);
+  CoordinatorPageEntitySubscriptions adapter(coordinator, 16);
+  PageEntitySubscriptionBatch batch;
+  CallbackSink sink;
+  const auto allocations = allocation_calls;
+  assert(adapter.prepare_batch(batch, &sink, 17, 1440, CallbackSink::receive));
+  for (uint32_t channel = 0; channel < 1440; ++channel)
+    assert(adapter.subscribe("sensor.one", "", &sink, 17, channel,
+                             CallbackSink::receive));
+  assert(allocation_calls ==
+         allocations); // Includes std::function conversion/copies.
+  assert(coordinator.entries.size() == 1440);
+  const auto first = coordinator.entries.front().callback;
+  const auto last = coordinator.entries.back().callback;
+  first("one");
+  last("last");
+  assert(sink.calls == 2 && sink.revision == 17 && sink.channel == 1439);
+  PageEntitySubscriptionBatch duplicate;
+  assert(
+      !adapter.prepare_batch(duplicate, &sink, 18, 1, CallbackSink::receive));
+  assert(!adapter.prepare_batch(batch, &sink, 18, 1, CallbackSink::receive));
+  assert(!adapter.subscribe("sensor.one", "", &sink, 18, 0,
+                            CallbackSink::receive));
+  assert(!adapter.subscribe("sensor.one", "", &sink, 17, 1440,
+                            CallbackSink::receive));
+
+  // Another port of the same type retains independent leases and callbacks.
+  CoordinatorPageEntitySubscriptions other(coordinator, 32);
+  PageEntitySubscriptionBatch other_batch;
+  CallbackSink other_sink;
+  assert(other.prepare_batch(other_batch, &other_sink, 18, 1,
+                             CallbackSink::receive));
+  assert(other.subscribe("sensor.one", "", &other_sink, 18, 0,
+                         CallbackSink::receive));
+  const auto other_report = coordinator.entries.back().callback;
+  adapter.release(&sink);
+  assert(!batch.adapter && coordinator.entries.size() == 1);
+  first("late");
+  last("late");
+  other_report("live");
+  assert(sink.calls == 2 && other_sink.calls == 1);
+
+  // Reuse the exact owner/node addresses. Old callbacks never reach a new
+  // configuration, and activation/release needs no scratch allocation.
+  for (uint32_t revision = 19; revision < 1019; ++revision) {
+    assert(adapter.prepare_batch(batch, &sink, revision, 1,
+                                 CallbackSink::receive));
+    assert(adapter.subscribe("sensor.one", "", &sink, revision, 0,
+                             CallbackSink::receive));
+    const auto current = coordinator.entries.back().callback;
+    const auto before = sink.calls;
+    first("late");
+    last("late");
+    assert(sink.calls == before);
+    current("fresh");
+    assert(sink.calls == before + 1 && sink.revision == revision);
+    adapter.release(&sink);
+    current("retired");
+    assert(sink.calls == before + 1);
+  }
+  assert(allocation_calls == allocations);
+  coordinator.accept = false;
+  assert(adapter.prepare_batch(batch, &sink, 1019, 1, CallbackSink::receive));
+  assert(!adapter.subscribe("sensor.one", "", &sink, 1019, 0,
+                            CallbackSink::receive));
+  adapter.release(&sink);
+  coordinator.accept = true;
+  other_report("still live");
+  assert(other_sink.calls == 2);
+  other.release(&other_sink);
+  assert(coordinator.entries.empty());
+
+  // Delivery may unlink its own node; dispatch borrows nothing afterwards.
+  sink.adapter = &adapter;
+  sink.after = [](CallbackSink &value) {
+    static_cast<CoordinatorPageEntitySubscriptions<CallbackCoordinator> *>(
+        value.adapter)
+        ->release(&value);
+  };
+  assert(adapter.prepare_batch(batch, &sink, 1020, 1, CallbackSink::receive));
+  assert(adapter.subscribe("sensor.one", "", &sink, 1020, 0,
+                           CallbackSink::receive));
+  const auto self_retiring = coordinator.entries.front().callback;
+  self_retiring("retire");
+  assert(coordinator.entries.empty() && !batch.adapter);
+  const auto retired_calls = sink.calls;
+  self_retiring("late");
+  assert(sink.calls == retired_calls);
+
+  CallbackCoordinator::Callback destroyed_adapter_report;
+  {
+    CoordinatorPageEntitySubscriptions temporary(coordinator, 16);
+    assert(
+        temporary.prepare_batch(batch, &sink, 1021, 1, CallbackSink::receive));
+    assert(temporary.subscribe("sensor.one", "", &sink, 1021, 0,
+                               CallbackSink::receive));
+    destroyed_adapter_report = coordinator.entries.front().callback;
+  }
+  assert(coordinator.entries.empty() && !batch.adapter);
+  destroyed_adapter_report("late");
+  assert(sink.calls == retired_calls);
+  assert(allocation_calls == allocations);
+}
+void coordinator_callback_tokens_refuse_wraparound() {
+  struct ExhaustionCoordinator : CallbackCoordinator {};
+  ExhaustionCoordinator coordinator;
+  coordinator.entries.reserve(1);
+  CoordinatorPageEntitySubscriptions adapter(coordinator, 16);
+  PageEntitySubscriptionBatch batch, extra;
+  CallbackSink sink;
+  assert(adapter.prepare_batch(batch, &sink, 1, UINT32_MAX,
+                               CallbackSink::receive));
+  assert(adapter.subscribe("sensor.one", "", &sink, 1, UINT32_MAX - 1,
+                           CallbackSink::receive));
+  const auto callback = coordinator.entries.front().callback;
+  callback("last token");
+  assert(sink.calls == 1 && sink.channel == UINT32_MAX - 1);
+  assert(!adapter.prepare_batch(extra, &sink, 2, 1, CallbackSink::receive));
+  adapter.release(&sink);
+  callback("late");
+  assert(sink.calls == 1);
+  assert(!adapter.prepare_batch(batch, &sink, 2, 1, CallbackSink::receive));
+}
+void coordinator_deduplicates_generations_without_an_extra_cache() {
+  Fixture f; Arena arena; Source source; source.items={{0,"sensor.shared",""},{1,"sensor.shared",""}};
+  HaReadCoordinator<Transport,Heap> coordinator;
+  CoordinatorPageEntitySubscriptions adapter(coordinator,1u<<4);
+  {
+    PageEntityStateRuntime state(source,arena,adapter,{8,4,128});
+    assert(state.prepare(f.store)); state.activate_prepared(1);
+    assert(coordinator.subscription_channel_count()==1); assert(coordinator.subscription_count()==1);
+    coordinator.transport().entries[0].callback("live");
+    assert(state.dependency({1,1},0).value=="live");
+    assert(state.prepare(f.store)); assert(coordinator.subscription_channel_count()==1);
+    assert(coordinator.subscription_count()==2);
+    const auto all_allocations = allocation_calls;
+    state.activate_prepared(2); assert(allocation_calls == all_allocations);
+    assert(coordinator.subscription_count()==1); assert(state.dependency({2,0},0).value=="live");
+    bool replayed=false;
+    assert(coordinator.subscribe("sensor.shared","",[&](const std::string &){replayed=true;},1));
+    assert(!replayed); // The configuration cache, not coordinator replay, owns this state.
+    coordinator.reset_subscriptions(1); coordinator.invalidate_retained_state();
+    assert(state.dependency({2,0},0).status==PageEntityStatus::UNKNOWN);
+    coordinator.transport().entries[0].callback("fresh"); assert(state.dependency({2,0},0).value=="fresh");
+  }
+  coordinator.reclaim_unused_channels(); assert(coordinator.transport().entries.empty()); assert(arena.live.empty());
+}
+void interleaved_dependencies_keep_ordinals_and_fail_atomically() {
+  Fixture f;Arena arena;Subscriptions transport;Source source;
+  source.items={{0,"sensor.old",""}};
+  PageEntityStateRuntime state(source,arena,transport,{12,8,128});
+  assert(state.prepare(f.store));state.activate_prepared(17);transport.send("sensor.old","","old");
+  source.items={{2,"sensor.two",""},{0,"sensor.zero","first"},{2,"sensor.two","second"},
+                {1,"sensor.one",""},{0,"sensor.zero","second"},{0,"sensor.zero","first"}};
+  bool rejected_grouping=false;
+  // This five-channel, embedded-value fixture needs no build lookup or elastic
+  // pool. Its first allocation after metadata is stable edge-grouping scratch.
+  arena.reject=[&](size_t) {
+    if(state.memory().staged_arena_bytes==0)return false;
+    rejected_grouping=true;return true;
+  };
+  assert(!state.prepare(f.store)&&rejected_grouping);arena.reject={};
+  assert(arena.live.size()==1&&transport.entries.size()==1);
+  assert(state.dependency({17,0},0).value=="old"&&state.dependency_count({17,1})==0);
+  assert(state.prepare(f.store));assert(arena.live.size()==2);
+  assert(arena.live_bytes()==state.memory().active_arena_bytes+state.memory().staged_arena_bytes);
+  state.activate_prepared(18);assert(arena.live.size()==1&&transport.entries.size()==5);
+  assert(state.dependency_count({18,0})==2&&state.dependency_count({18,1})==1&&state.dependency_count({18,2})==2);
+  assert(state.dependency({18,0},0).attribute=="first"&&state.dependency({18,0},1).attribute=="second");
+  assert(state.dependency({18,1},0).entity=="sensor.one");
+  assert(state.dependency({18,2},0).attribute.empty()&&state.dependency({18,2},1).attribute=="second");
+  assert(state.dependency_count({17,0})==0&&state.dependency_count({18,UINT16_MAX})==0);
+  assert(state.dependency({18,0},SIZE_MAX).status==PageEntityStatus::STALE);
+  assert(state.dependency({18,UINT16_MAX},0).status==PageEntityStatus::STALE);
+  transport.send("sensor.zero","first","aa");transport.send("sensor.zero","second","bb");transport.send("sensor.two","","cc");
+  const auto allocations=allocation_calls;
+  for(size_t i=0;i<1000;++i) {
+    const auto &entry=transport.entries[1]; // sensor.zero / first, original channel order.
+    entry.deliver(entry.owner,entry.revision,entry.channel,i%2?"11":"22");
+    assert(state.dependency({18,0},0).value==(i%2?"11":"22"));
+    assert(state.dependency({18,0},1).value=="bb"&&state.dependency({18,2},0).value=="cc");
+  }
+  assert(allocation_calls==allocations);
+}
+
+void packed_state_matches_reference_without_allocations() {
+  Fixture f; Arena arena; Subscriptions transport; Source source;
+  source.items = {{0,"sensor.a",""},{1,"sensor.b",""},{2,"sensor.c",""}};
+  PageEntityStateRuntime state(source,arena,transport,{3,3,16});
+  assert(state.prepare(f.store)); state.activate_prepared(1);
+  std::array<std::string,3> values;
+  std::array<PageEntityStatus,3> statuses;
+  statuses.fill(PageEntityStatus::UNKNOWN);
+  uint32_t random = 981;
+  for (int iteration=0;iteration<10000;++iteration) {
+    random = random * 1664525u + 1013904223u;
+    const size_t index = random % 3, length = (random >> 16) % 17;
+    const std::string incoming(length, static_cast<char>('a' + index));
+    size_t other_bytes=0;
+    for (size_t i=0;i<3;++i) if (i!=index) other_bytes+=values[i].size();
+    statuses[index] = length + other_bytes <= 16 ? PageEntityStatus::AVAILABLE : PageEntityStatus::EXHAUSTED;
+    values[index] = statuses[index] == PageEntityStatus::AVAILABLE ? incoming : "";
+    const auto &entry=transport.entries[index];
+    const auto allocations=allocation_calls;
+    entry.deliver(entry.owner,entry.revision,entry.channel,incoming);
+    for (size_t i=0;i<3;++i) {
+      const auto current=state.dependency({1,static_cast<uint16_t>(i)},0);
+      assert(current.status==statuses[i]); assert(current.value==values[i]);
+    }
+    assert(allocation_calls==allocations);
+    assert(state.memory().active_state_bytes<=16);
+    if (iteration % 127 == 0) {
+      ++transport.connection;
+      assert(state.dependency({1,0},0).status==PageEntityStatus::UNKNOWN);
+      for (auto &value:values) value.clear();
+      statuses.fill(PageEntityStatus::UNKNOWN);
+    }
+  }
+}
+
+void elastic_growth_preserves_full_ceilings() {
+  Fixture f;
+  Arena arena;
+  Subscriptions transport;
+  Source source;
+  for (uint16_t i = 0; i < 5; ++i)
+    source.items.push_back({i, "sensor." + std::to_string(i), ""});
+  PageEntityStateRuntime state(source, arena, transport,
+                               {5, 5, 128 * 1024, 32 * 1024, 4096});
+  assert(state.prepare(f.store));
+  state.activate_prepared(17);
+  assert(state.memory().active_state_capacity_bytes == 4096 &&
+         arena.live.size() == 2);
+  const std::string large(32768, 'a'), other(32768, 'b'), shorter(1000, 'z'),
+      too_long(32769, 'x');
+  for (size_t i = 0; i < 4; ++i) {
+    const auto &e = transport.entries[i];
+    e.deliver(e.owner, e.revision, e.channel, i == 0 ? large : other);
+  }
+  assert(state.memory().active_state_bytes == 128 * 1024);
+  assert(state.memory().active_state_capacity_bytes == 128 * 1024);
+  assert(state.memory().state_reservations == 4);
+  const auto fifth = transport.entries[4];
+  fifth.deliver(fifth.owner, fifth.revision, fifth.channel, "x");
+  assert(state.dependency({17, 4}, 0).status == PageEntityStatus::EXHAUSTED);
+  const auto first = transport.entries[0];
+  first.deliver(first.owner, first.revision, first.channel, too_long);
+  assert(state.dependency({17, 0}, 0).status == PageEntityStatus::EXHAUSTED);
+  assert(state.memory().state_overflows == 2 &&
+         state.memory().state_allocation_failures == 0);
+  for (uint16_t i = 1; i < 4; ++i)
+    assert(state.dependency({17, i}, 0).value == other);
+  const auto calls = arena.calls, all_calls = allocation_calls;
+  for (size_t i = 0; i < 1000; ++i) {
+    first.deliver(first.owner, first.revision, first.channel,
+                  i % 2 ? large : shorter);
+    assert(state.dependency({17, 0}, 0).value == (i % 2 ? large : shorter));
+    for (uint16_t other_card = 1; other_card < 4; ++other_card)
+      assert(state.dependency({17, other_card}, 0).value == other);
+  }
+  assert(arena.calls == calls && allocation_calls == all_calls);
+  ++transport.connection;
+  assert(state.dependency({17, 0}, 0).status == PageEntityStatus::UNKNOWN);
+  assert(state.memory().active_state_bytes == 0);
+  assert(state.prepare(f.store));
+  assert(state.memory().staged_state_capacity_bytes == 4096);
+  arena.fail = true;
+  state.activate_prepared(18);
+  arena.fail = false;
+  assert(state.memory().active_state_capacity_bytes == 4096 &&
+         arena.live.size() == 2);
+  assert(state.memory().active_arena_bytes == arena.live_bytes());
+  assert(state.memory().peak_arena_bytes == arena.peak_bytes);
+}
+
+void elastic_failures_and_atomic_copies() {
+  Fixture f;
+  Arena arena;
+  Subscriptions transport;
+  Source source;
+  source.items = {{0, "sensor.shared", ""}, {1, "sensor.old", ""}};
+  PageEntityStateRuntime state(source, arena, transport, {4, 4, 128, 64, 8});
+  arena.reject = [&](size_t bytes) {
+    return bytes == 8 && state.memory().staged_arena_bytes != 0;
+  };
+  assert(!state.prepare(f.store));
+  assert(arena.live.empty());
+  assert(state.memory().preparation_failures == 1 &&
+         state.memory().state_allocation_failures == 1);
+  arena.reject = {};
+  assert(state.prepare(f.store));
+  state.activate_prepared(17);
+  transport.send("sensor.shared", "", "one");
+  transport.send("sensor.old", "", "keep");
+  const std::string longer(20, 'z');
+  const auto shared = transport.entries[0];
+  arena.fail = true;
+  shared.deliver(shared.owner, shared.revision, shared.channel, longer);
+  arena.fail = false;
+  assert(state.dependency({17, 0}, 0).status == PageEntityStatus::EXHAUSTED);
+  assert(state.dependency({17, 1}, 0).value == "keep");
+  assert(state.memory().state_allocation_failures == 2 &&
+         state.memory().state_overflows == 0);
+  shared.deliver(shared.owner, shared.revision, shared.channel, longer);
+  assert(state.dependency({17, 0}, 0).value == longer);
+  source.items = {{2, "sensor.shared", ""}, {0, "sensor.new", ""}};
+  arena.reject = [&](size_t bytes) {
+    return bytes >= longer.size() && state.memory().staged_state_capacity_bytes == 8;
+  }; // Reject the copied value's growth, after metadata and grouping succeed.
+  assert(!state.prepare(f.store));
+  arena.reject = {};
+  assert(state.memory().state_allocation_failures == 3 &&
+         state.memory().preparation_failures == 2);
+  assert(state.memory().staged_arena_bytes == 0 && arena.live.size() == 2 &&
+         transport.entries.size() == 2);
+  assert(state.dependency({17, 0}, 0).value == longer &&
+         state.dependency({17, 1}, 0).value == "keep");
+  transport.remaining = 1;
+  assert(!state.prepare(f.store));
+  transport.remaining = -1;
+  assert(state.dependency({17, 0}, 0).value == longer &&
+         arena.live.size() == 2);
+  assert(state.prepare(f.store));
+  assert(state.memory().staged_state_capacity_bytes == 32);
+  const auto calls = arena.calls;
+  arena.fail = true;
+  state.activate_prepared(18);
+  arena.fail = false;
+  assert(arena.calls == calls && state.dependency({18, 2}, 0).value == longer);
+  assert(state.dependency({18, 0}, 0).status == PageEntityStatus::UNKNOWN);
+  shared.deliver(shared.owner, shared.revision, shared.channel, "stale");
+  assert(state.memory().stale_deliveries == 1 &&
+         state.dependency({18, 2}, 0).value == longer);
+  assert(state.memory().active_arena_bytes == arena.live_bytes());
+  assert(state.memory().peak_arena_bytes == arena.peak_bytes);
+  state.retire_active();
+  assert(arena.live.empty() && transport.entries.empty());
+}
+
+void elastic_zero_capacity_and_disjoint_replacements() {
+  Fixture f;
+  Arena arena;
+  Subscriptions transport;
+  Source source;
+  source.items = {{0, "sensor.empty", ""}};
+  {
+    PageEntityStateRuntime state(source, arena, transport, {1, 1, 64, 64, 0});
+    assert(state.prepare(f.store));
+    state.activate_prepared(1);
+    assert(arena.live.size() == 1 &&
+           state.memory().active_state_capacity_bytes == 0);
+    const auto e = transport.entries[0];
+    const auto calls = arena.calls;
+    e.deliver(e.owner, e.revision, e.channel, {});
+    assert(state.dependency({1, 0}, 0).status == PageEntityStatus::AVAILABLE &&
+           arena.calls == calls);
+    e.deliver(e.owner, e.revision, e.channel, "abcd");
+    assert(state.memory().active_state_capacity_bytes == 4 &&
+           state.dependency({1, 0}, 0).value == "abcd");
+  }
+  assert(arena.live.empty() && transport.entries.empty());
+  {
+    PageEntityStateRuntime state(source, arena, transport, {1, 1, 0, 0, 0});
+    assert(state.prepare(f.store));
+    state.activate_prepared(1);
+    const auto e = transport.entries[0];
+    e.deliver(e.owner, e.revision, e.channel, {});
+    assert(state.dependency({1, 0}, 0).status == PageEntityStatus::AVAILABLE);
+    e.deliver(e.owner, e.revision, e.channel, "x");
+    assert(state.dependency({1, 0}, 0).status == PageEntityStatus::EXHAUSTED);
+  }
+  assert(arena.live.empty() && transport.entries.empty());
+  {
+    PageEntityStateRuntime state(source, arena, transport, {1, 1, 64, 64, 4});
+    const std::string value(32, 'v');
+    Subscriptions::Item stale{};
+    for (uint32_t generation = 1; generation <= 1000; ++generation) {
+      source.items = {{0, "sensor.set_" + std::to_string(generation), ""}};
+      assert(state.prepare(f.store));
+      const auto calls = arena.calls;
+      arena.fail = true;
+      state.activate_prepared(generation);
+      arena.fail = false;
+      assert(arena.calls == calls &&
+             state.memory().active_state_capacity_bytes == 4);
+      assert(arena.live.size() == 2 && transport.entries.size() == 1);
+      if (generation > 1)
+        stale.deliver(stale.owner, stale.revision, stale.channel, "late");
+      assert(state.dependency({generation, 0}, 0).status ==
+             PageEntityStatus::UNKNOWN);
+      stale = transport.entries[0];
+      stale.deliver(stale.owner, stale.revision, stale.channel, value);
+      assert(state.dependency({generation, 0}, 0).value == value);
+      assert(state.memory().active_state_capacity_bytes == 32 &&
+             state.memory().active_arena_bytes < 256);
+    }
+    assert(state.memory().peak_arena_bytes < 1024 &&
+           state.memory().stale_deliveries == 999);
+  }
+  assert(arena.live.empty() && transport.entries.empty());
+}
+
+void borrowed_updates_and_elastic_reference() {
+  for (const size_t initial : {size_t{4}, SIZE_MAX}) {
+    Fixture f;
+    Arena arena;
+    Subscriptions transport;
+    Source source;
+    source.items = {
+        {0, "sensor.a", ""}, {1, "sensor.b", ""}, {2, "sensor.c", ""}};
+    PageEntityStateRuntime state(source, arena, transport,
+                                 {3, 3, 64, 64, initial});
+    assert(state.prepare(f.store));
+    state.activate_prepared(1);
+    transport.send("sensor.a", "", "abc");
+    transport.send("sensor.b", "", "DEFGH");
+    transport.send("sensor.c", "", "ij");
+    const auto a = transport.entries[0], b = transport.entries[1],
+               c = transport.entries[2];
+    // A borrowed view crossing the replaced value's old tail has two fragments
+    // after growth.
+    auto first = state.dependency({1, 0}, 0).value;
+    a.deliver(a.owner, a.revision, a.channel, {first.data(), 7});
+    assert(state.dependency({1, 0}, 0).value == "abcDEFG");
+    assert(state.dependency({1, 1}, 0).value == "DEFGH" &&
+           state.dependency({1, 2}, 0).value == "ij");
+    first = state.dependency({1, 0}, 0).value;
+    c.deliver(c.owner, c.revision, c.channel,
+              first); // Also crosses an elastic pool relocation.
+    assert(state.dependency({1, 2}, 0).value == "abcDEFG");
+    auto second = state.dependency({1, 1}, 0).value.substr(2, 2);
+    b.deliver(b.owner, b.revision, b.channel, second);
+    assert(state.dependency({1, 1}, 0).value == "FG" &&
+           state.dependency({1, 2}, 0).value == "abcDEFG");
+    std::array<std::string, 3> expected = {"abcDEFG", "FG", "abcDEFG"};
+    std::array<PageEntityStatus, 3> status;
+    status.fill(PageEntityStatus::AVAILABLE);
+    uint32_t random = 913;
+    for (size_t iteration = 0; iteration < 10000; ++iteration) {
+      random = random * 1664525u + 1013904223u;
+      const uint16_t target = random % 3, origin = (random >> 8) % 3;
+      auto incoming = state.dependency({1, origin}, 0).value;
+      if (iteration % 2 && incoming.size() > 1)
+        incoming = incoming.substr(1, incoming.size() - 1);
+      const std::string external((random >> 16) % 65,
+                                 static_cast<char>('a' + origin));
+      if (iteration % 3 == 0)
+        incoming = external;
+      const std::string copy(incoming);
+      size_t total = copy.size();
+      for (size_t i = 0; i < 3; ++i)
+        if (i != target)
+          total += expected[i].size();
+      const auto calls = arena.calls,
+                 capacity = state.memory().active_state_capacity_bytes;
+      const auto &e = transport.entries[target];
+      e.deliver(e.owner, e.revision, e.channel, incoming);
+      expected[target] = total <= 64 ? copy : "";
+      status[target] = total <= 64 ? PageEntityStatus::AVAILABLE
+                                   : PageEntityStatus::EXHAUSTED;
+      for (uint16_t i = 0; i < 3; ++i) {
+        assert(state.dependency({1, i}, 0).value == expected[i]);
+        assert(state.dependency({1, i}, 0).status == status[i]);
+      }
+      if (total <= capacity)
+        assert(arena.calls == calls);
+      if (iteration % 127 == 0) {
+        ++transport.connection;
+        (void)state.revision();
+        for (auto &text : expected)
+          text.clear();
+        status.fill(PageEntityStatus::UNKNOWN);
+      }
+    }
+    assert(state.memory().active_arena_bytes == arena.live_bytes());
+    assert(state.memory().peak_arena_bytes == arena.peak_bytes);
+  }
+}
+
+}  // namespace
+void observer_distinguishes_copied_state_from_transport_delivery() {
+  Fixture fixture;Arena arena;Source source;source.items={{0,"sensor.shared",""}};
+  HaReadCoordinator<Transport,Heap> coordinator;CoordinatorPageEntitySubscriptions adapter(coordinator,16);
+  bool legacy_delivered=false;assert(coordinator.subscribe("sensor.shared","",[&](const std::string &){legacy_delivered=true;},1,nullptr,true));
+  coordinator.transport().entries[0].callback("legacy retained");assert(legacy_delivered&&coordinator.retained_channel_count()==1);
+  struct Observer:PageEntityObserver {
+    size_t copied=0,live=0;uint32_t generation=0;char text[64]{},previous[64]{};
+    void observed(uint32_t config,std::string_view entity,std::string_view attribute,std::string_view value,bool seed)override {
+      assert(entity=="sensor.shared"&&attribute.empty()&&value.size()<sizeof(text));generation=config;
+      std::memcpy(text,value.data(),value.size());text[value.size()]='\0';if(seed)++copied;else ++live;
+    }
+    void observed_update(uint32_t config,std::string_view entity,std::string_view attribute,
+                         std::string_view value,bool seed,std::string_view old)override {
+      assert(old.size()<sizeof(previous));
+      if(!old.empty())std::memcpy(previous,old.data(),old.size());
+      previous[old.size()]='\0';
+      observed(config,entity,attribute,value,seed);
+    }
+  } observer;
+  {
+    PageEntityStateRuntime state(source,arena,adapter,{8,4,128},&observer);
+    assert(state.prepare(fixture.store));state.activate_prepared(17);
+    assert(observer.live==0&&observer.copied==0&&state.dependency({17,0},0).status==PageEntityStatus::UNKNOWN);
+    coordinator.transport().entries[0].callback("fresh");assert(observer.live==1&&observer.generation==17&&std::strcmp(observer.text,"fresh")==0&&observer.previous[0]==0);
+    assert(state.prepare(fixture.store));assert(observer.copied==1&&observer.live==1);
+    state.activate_prepared(18);coordinator.transport().entries[0].callback("fresh again");assert(observer.live==2&&observer.generation==18&&std::strcmp(observer.previous,"fresh")==0);
+    coordinator.transport().entries[0].callback("fresh again");
+    assert(observer.live==3&&std::strcmp(observer.previous,"fresh again")==0);
+  }
+  coordinator.reset_subscriptions(1);coordinator.reclaim_unused_channels();assert(arena.live.empty()&&coordinator.transport().entries.empty());
+}
+
+void shared_observers_see_borrowed_previous_values() {
+  struct Observer final : PageEntityObserver {
+    size_t calls = 0;
+    int order = 0;
+    int* phase = nullptr;
+    PageEntityObserverSet<2>* set = nullptr;
+    PageEntityObserver* remove_next = nullptr;
+    PageEntityObserver* add_during_dispatch = nullptr;
+    char previous[64]{};
+    void observed(uint32_t, std::string_view, std::string_view, std::string_view, bool) override {
+      ++calls;
+    }
+    void observed_update(uint32_t generation, std::string_view entity, std::string_view attribute,
+                         std::string_view, bool copied, std::string_view old) override {
+      assert(generation == 17 && entity == "media_player.room" && attribute == "entity_picture" && !copied);
+      if (order == 1)
+        *phase = 1;
+      else {
+        assert(*phase == 1);
+        *phase = 2;
+      }
+      assert(old.size() < sizeof(previous));
+      if (!old.empty()) std::memcpy(previous, old.data(), old.size());
+      previous[old.size()] = '\0';
+      ++calls;
+      if (remove_next) set->remove(*remove_next);
+      if (add_during_dispatch) assert(!set->add(*add_during_dispatch));
+    }
+  };
+  Fixture fixture;
+  Arena arena;
+  Subscriptions transport;
+  Source source;
+  source.items = {{0, "media_player.room", "entity_picture"},
+                  {1, "media_player.room", "entity_picture_local"}};
+  PageEntityObserverSet<2> observers;
+  Observer first, second, extra;
+  int phase = 0;
+  first.order = 1;
+  second.order = 2;
+  first.phase = second.phase = &phase;
+  first.set = second.set = &observers;
+  assert(observers.add(first) && observers.add(second) && !observers.add(first) && !observers.add(extra));
+  PageEntityStateRuntime state(source, arena, transport, {8, 4, 256}, &observers);
+  assert(state.prepare(fixture.store));
+  state.activate_prepared(17);
+  const auto delivery = transport.entries[0];
+  delivery.deliver(delivery.owner, delivery.revision, delivery.channel, "first");
+  assert(first.calls == 1 && second.calls == 1 && first.previous[0] == 0 && second.previous[0] == 0);
+  const auto allocations = allocation_calls;
+  for (size_t i = 0; i < 1000; ++i) {
+    delivery.deliver(delivery.owner, delivery.revision, delivery.channel, "same URL");
+    const auto current = state.read_attribute({17, 0}, "media_player.room", "entity_picture");
+    assert(current.status == PageEntityStatus::AVAILABLE && current.value == "same URL");
+    assert(state.read_attribute({17, 1}, "media_player.room", "entity_picture").status ==
+           PageEntityStatus::STALE);
+    assert(state.read_attribute({18, 0}, "media_player.room", "entity_picture").status ==
+           PageEntityStatus::STALE);
+  }
+  assert(allocation_calls == allocations && first.calls == 1001 && second.calls == 1001);
+  assert(std::strcmp(first.previous, "same URL") == 0 && std::strcmp(second.previous, "same URL") == 0);
+  first.remove_next = &second;
+  first.add_during_dispatch = &extra;
+  delivery.deliver(delivery.owner, delivery.revision, delivery.channel, "last");
+  assert(first.calls == 1002 && second.calls == 1001 && extra.calls == 0);
+  first.remove_next = nullptr;
+  first.add_during_dispatch = nullptr;
+  assert(observers.add(second));
+  ++transport.connection;
+  assert(state.read_attribute({17, 0}, "media_player.room", "entity_picture").status ==
+         PageEntityStatus::UNKNOWN);
+  observers.remove(first);
+  observers.remove(second);
+}
+
+void colliding_channel_names_keep_identity_and_card_ordinals() {
+  Fixture fixture;
+  Arena arena;
+  Subscriptions transport;
+  Source source;
+  // These distinct names share a bucket in the build lookup. Include repeated
+  // declarations, interleaved cards and duplicate edges after returning to a
+  // previous card: all must retain the original per-card order and identity.
+  const std::array<const char *, 32> entities{
+      {"sensor.lookup_2",    "sensor.lookup_19",   "sensor.lookup_42",
+       "sensor.lookup_147",  "sensor.lookup_226",  "sensor.lookup_323",
+       "sensor.lookup_381",  "sensor.lookup_419",  "sensor.lookup_442",
+       "sensor.lookup_576",  "sensor.lookup_594",  "sensor.lookup_604",
+       "sensor.lookup_741",  "sensor.lookup_778",  "sensor.lookup_837",
+       "sensor.lookup_882",  "sensor.lookup_903",  "sensor.lookup_998",
+       "sensor.lookup_1108", "sensor.lookup_1131", "sensor.lookup_1193",
+       "sensor.lookup_1203", "sensor.lookup_1298", "sensor.lookup_1337",
+       "sensor.lookup_1382", "sensor.lookup_1412", "sensor.lookup_1449",
+       "sensor.lookup_1535", "sensor.lookup_1540", "sensor.lookup_1658",
+       "sensor.lookup_1661", "sensor.lookup_1764"}};
+  for (const auto *entity : entities) {
+    source.items.push_back({0, entity, ""});
+    source.items.push_back({0, entity, ""});
+  }
+  for (const auto *entity : entities) {
+    source.items.push_back({2, entity, ""});
+    source.items.push_back({1, entity, ""});
+    source.items.push_back({0, entity, ""});
+  }
+  {
+    PageEntityStateRuntime state(source, arena, transport, {200, 32, 512});
+    assert(state.prepare(fixture.store));
+    state.activate_prepared(17);
+    assert(state.memory().active_channels == 32 &&
+           state.memory().active_dependencies == 96);
+    assert(transport.entries.size() == 32);
+    for (size_t i = 0; i < entities.size(); ++i)
+      transport.send(entities[i], "", std::to_string(i));
+    for (CardId card = 0; card < 3; ++card) {
+      assert(state.dependency_count({17, card}) == 32);
+      for (size_t i = 0; i < entities.size(); ++i) {
+        const auto dependency = state.dependency({17, card}, i);
+        assert(dependency.entity == entities[i] &&
+               dependency.attribute.empty());
+        assert(dependency.status == PageEntityStatus::AVAILABLE &&
+               dependency.value == std::to_string(i));
+      }
+    }
+    assert(state.memory().active_arena_bytes == arena.live_bytes());
+    assert(state.memory().peak_arena_bytes == arena.peak_bytes);
+    source.items.push_back({1, "sensor.one_more", ""});
+    assert(!state.prepare(fixture.store));
+    assert(state.memory().active_channels == 32 &&
+           state.memory().active_dependencies == 96);
+    assert(state.dependency({17, 0}, 31).value == "31" &&
+           transport.entries.size() == 32);
+  }
+  assert(arena.live.empty() && transport.entries.empty());
+}
+
+// Exercise the full S3 channel/cache budget, including reordered shared keys,
+// disjoint generations, connection changes, and every fallible staging step.
+void maximum_shared_state_replacement_is_atomic() {
+  Fixture fixture;
+  constexpr size_t channels = 1440, capacity = 128 * 1024;
+  size_t preparation_allocations=0, injected_failures=0;
+  for (int allocation_limit = -1; allocation_limit < static_cast<int>(preparation_allocations); ++allocation_limit) {
+    Arena arena;
+    Subscriptions subscriptions;
+    Source source;
+    for (size_t i = 0; i < channels; ++i)
+      source.items.push_back({0,
+                              "climate.qualification_" + std::to_string(i / 20),
+                              "attribute_" + std::to_string(i % 20)});
+    {
+      PageEntityStateRuntime state(
+          source, arena, subscriptions,
+          {channels, channels, capacity, 32 * 1024, 4096});
+      assert(state.prepare(fixture.store));
+      state.activate_prepared(17);
+      size_t used = 0;
+      for (size_t i = 0; i < channels; ++i) {
+        const size_t bytes = capacity / channels + (i < capacity % channels);
+        const std::string value(bytes, static_cast<char>('a' + i % 26));
+        const auto &entry = subscriptions.entries[i];
+        entry.deliver(entry.owner, entry.revision, entry.channel, value);
+        used += bytes;
+      }
+      assert(used == capacity && state.memory().active_state_bytes == capacity);
+      const auto old_delivery = subscriptions.entries.front();
+      std::reverse(source.items.begin(), source.items.end());
+      const auto calls_before=arena.calls;
+      arena.remaining = allocation_limit;
+      const bool prepared = state.prepare(fixture.store);
+      arena.remaining = -1;
+      if(allocation_limit<0) {
+        assert(prepared);
+        preparation_allocations=arena.calls-calls_before;
+        // Indexed, demand-grown preparation must not allocate per channel.
+        assert(preparation_allocations>0&&preparation_allocations<256);
+      } else {
+        assert(!prepared);++injected_failures;
+      }
+      // Successful and failed preparation both leave the active graph intact.
+      assert(state.memory().active_state_bytes == capacity);
+      for (size_t i = 0; i < channels; ++i) {
+        const auto value = state.dependency({17, 0}, i);
+        assert(value.status == PageEntityStatus::AVAILABLE);
+        assert(value.value ==
+               std::string(capacity / channels + (i < capacity % channels),
+                           static_cast<char>('a' + i % 26)));
+      }
+      if (!prepared) {
+        assert(state.memory().staged_arena_bytes == 0);
+        assert(subscriptions.entries.size() == channels &&
+               arena.live.size() == 2);
+        assert(state.prepare(fixture.store));
+      }
+      assert(state.memory().staged_state_capacity_bytes == capacity);
+      assert(state.memory().peak_arena_bytes == arena.peak_bytes);
+      state.activate_prepared(18);
+      assert(arena.live.size() == 2 &&
+             subscriptions.entries.size() == channels);
+      for (size_t i = 0; i < channels; ++i) {
+        const auto original = channels - i - 1;
+        assert(
+            state.dependency({18, 0}, i).value ==
+            std::string(capacity / channels + (original < capacity % channels),
+                        static_cast<char>('a' + original % 26)));
+      }
+      old_delivery.deliver(old_delivery.owner, old_delivery.revision,
+                           old_delivery.channel, "stale");
+      assert(state.memory().active_state_bytes == capacity);
+      for (auto &item : source.items)
+        item.entity += "_different";
+      assert(state.prepare(fixture.store));
+      state.activate_prepared(19);
+      assert(state.memory().active_state_bytes == 0);
+      assert(state.memory().active_state_capacity_bytes == 4096);
+      assert(arena.live.size() == 2 &&
+             subscriptions.entries.size() == channels);
+      assert(state.memory().peak_arena_bytes == arena.peak_bytes);
+      assert(state.dependency({19, 0}, 0).status == PageEntityStatus::UNKNOWN);
+      const auto &first = subscriptions.entries.front();
+      first.deliver(first.owner, first.revision, first.channel,
+                    "before reconnect");
+      bool reconnected = false;
+      subscriptions.on_subscribe = [&] {
+        if (!reconnected) {
+          ++subscriptions.connection;
+          reconnected = true;
+        }
+      };
+      assert(state.prepare(fixture.store));
+      subscriptions.on_subscribe = {};
+      state.activate_prepared(20);
+      assert(state.memory().active_state_bytes == 0);
+      for (size_t i = 0; i < channels; ++i)
+        assert(state.dependency({20, 0}, i).status ==
+               PageEntityStatus::UNKNOWN);
+      assert(state.memory().peak_arena_bytes == arena.peak_bytes);
+    }
+    assert(arena.live.empty() && subscriptions.entries.empty());
+  }
+  assert(injected_failures==preparation_allocations);
+  std::printf("1440-channel replacement: all %zu fallible allocations checked; exact peaks and original-state recovery verified\n",injected_failures);
+}
+
+void registration_scratch_is_fallible_counted_and_released_after_the_batch() {
+  Fixture fixture;
+  Arena arena;
+  Source source;
+  Subscriptions subscriptions;
+  source.items = {{0, "sensor.a", ""}, {1, "sensor.b", ""}};
+  PageEntityStateRuntime state(source, arena, subscriptions, {8, 4, 128});
+  assert(state.prepare(fixture.store));
+  state.activate_prepared(17);
+  subscriptions.send("sensor.a", "", "original");
+  const auto original_entries = subscriptions.entries.size();
+  const auto original_bytes = arena.live_bytes();
+  auto verify_original = [&] {
+    assert(state.dependency({17, 0}, 0).value == "original");
+    assert(subscriptions.entries.size() == original_entries &&
+           arena.live_bytes() == original_bytes);
+    assert(!subscriptions.registration_active);
+  };
+  subscriptions.scratch_bytes = 512;
+  subscriptions.on_registration_end = [&](void *scratch) {
+    assert(arena.live.at(scratch) == 512); // End must precede deallocation.
+  };
+  auto begins = subscriptions.registration_begins,
+       ends = subscriptions.registration_ends;
+  bool rejected_registration_scratch=false;
+  arena.reject = [&](size_t bytes) {
+    if(bytes!=subscriptions.scratch_bytes||state.memory().staged_arena_bytes==0)return false;
+    rejected_registration_scratch=true;return true;
+  };
+  assert(!state.prepare(fixture.store)&&rejected_registration_scratch);
+  arena.reject = {};
+  assert(subscriptions.registration_begins == begins &&
+         subscriptions.registration_ends == ends);
+  verify_original();
+  subscriptions.reject_registration = true;
+  assert(!state.prepare(fixture.store));
+  subscriptions.reject_registration = false;
+  assert(subscriptions.registration_begins == ++begins &&
+         subscriptions.registration_ends == ends);
+  verify_original();
+  subscriptions.remaining =
+      1; // Partial registration must also end its borrowed lookup.
+  assert(!state.prepare(fixture.store));
+  subscriptions.remaining = -1;
+  assert(subscriptions.registration_begins == ++begins &&
+         subscriptions.registration_ends == ++ends);
+  verify_original();
+  assert(state.prepare(fixture.store));
+  assert(subscriptions.registration_begins == ++begins &&
+         subscriptions.registration_ends == ++ends);
+  assert(!subscriptions.registration_active && arena.live.size() == 2);
+  assert(state.memory().peak_arena_bytes == arena.peak_bytes);
+  state.activate_prepared(18);
+  assert(state.dependency({18, 0}, 0).value == "original");
+  assert(arena.live_bytes() == original_bytes);
+}
+
+void card_change_queries_ignore_unrelated_channels() {
+  Fixture fixture; Arena arena; Subscriptions transport; Source source;
+  source.items={{0,"sensor.one",""},{0,"sensor.one","unit_of_measurement"},
+                {1,"sensor.two",""},{1,"sensor.one",""}};
+  PageEntityStateRuntime state(source,arena,transport,{8,4,64});
+  assert(state.prepare(fixture.store)); state.activate_prepared(17);
+  const auto initial=state.revision();
+  transport.send("sensor.two","","10");
+  assert(!state.changed_since({17,0},initial));
+  assert(state.changed_since({17,1},initial));
+  assert(!state.changed_since({17,2},initial));
+  const auto first=state.revision();
+  for(int i=0;i<100;++i)transport.send("sensor.two","",std::to_string(i));
+  const auto latest=state.revision();
+  transport.send("sensor.one","unit_of_measurement","°C");
+  assert(state.changed_since({17,0},latest));
+  assert(!state.changed_since({17,1},latest));
+  assert(!state.changed_since({17,0},state.revision()));
+  transport.send("sensor.one","","on");
+  assert(state.changed_since({17,0},first)&&state.changed_since({17,1},latest));
+  const auto connected=state.revision(); ++transport.connection;
+  assert(state.changed_since({17,0},connected)&&state.changed_since({17,1},connected));
+  assert(!state.changed_since({17,2},connected));
+  const uint64_t wrap=uint64_t{1}<<32;
+  assert(page_entity_channel_changed_since(1,wrap+3,wrap-2));
+  assert(!page_entity_channel_changed_since(UINT32_MAX-1,wrap+3,wrap-2));
+  assert(page_entity_channel_changed_since(7,wrap+3,0));
+  assert(!page_entity_channel_changed_since(3,wrap+3,wrap+3));
+}
+
+int main() {
+  card_change_queries_ignore_unrelated_channels();
+  unique_dependency_graph_sizing_is_bounded();
+  shared_exhaustion_survives_replacement();
+  registration_scratch_is_fallible_counted_and_released_after_the_batch();
+  colliding_channel_names_keep_identity_and_card_ordinals();
+  maximum_shared_state_replacement_is_atomic();
+  coordinator_callbacks_use_allocation_free_revocable_batches();
+  coordinator_callback_tokens_refuse_wraparound();
+  elastic_growth_preserves_full_ceilings();
+  elastic_failures_and_atomic_copies();
+  elastic_zero_capacity_and_disjoint_replacements();
+  borrowed_updates_and_elastic_reference();
+  shared_observers_see_borrowed_previous_values();
+  observer_distinguishes_copied_state_from_transport_delivery();
+  lifetime_and_state_budget(); preparation_and_replacements();
+  page_store_prepares_resources_before_activation(); coordinator_deduplicates_generations_without_an_extra_cache();
+  interleaved_dependencies_keep_ordinals_and_fail_atomically();
+  packed_state_matches_reference_without_allocations();
+}

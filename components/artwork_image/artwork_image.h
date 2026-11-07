@@ -8,6 +8,7 @@
 
 #include "artwork_url.h"
 #include "image_decoder.h"
+#include "image_result.h"
 #include "image_service.h"
 #include "transfer_observer.h"
 
@@ -89,10 +90,19 @@ class ArtworkImage : public PollingComponent,
   }
   /** Set the URL and start an update, returning the effective URL after any downloader rewrite. */
   std::string request_update_url(const std::string &url, int max_source_dim = 0);
+  // Exclusive pooled-slot API. Claim only an idle component with no legacy
+  // download/animation callbacks, and retain the observer until release_owner.
+  // Start on loop maintenance: URL/queue/transfer work may allocate. Navigation
+  // cancels the token; no configuration or URL view is borrowed by a request.
+  bool claim_owner(ImageResultObserver &observer);
+  bool request_owned_update(ImageResultObserver &observer, uint64_t request,
+                            const std::string &url, int max_source_dim = 0);
+  void release_owner(ImageResultObserver &observer);
   /** Stop any in-flight download/decode while keeping the last completed image buffer available. */
   void cancel_update();
   const std::string &get_url() const { return this->url_; }
   int get_last_http_status() const { return this->last_http_status_; }
+  bool last_failure_was_resource() const { return this->transfer_failure_ == TransferFailure::RESOURCE; }
   bool last_error_was_ha_media_proxy_not_found() const {
     return this->last_http_status_ == HTTP_CODE_NOT_FOUND && this->last_error_was_ha_media_proxy_;
   }
@@ -204,6 +214,7 @@ class ArtworkImage : public PollingComponent,
   void start_update_();
   void complete_service_request_();
   void cancel_service_request_();
+  void notify_result_(bool success, bool cached);
   void log_state_(const char *stage);
 
   RAMAllocator<uint8_t> allocator_{};
@@ -253,11 +264,14 @@ class ArtworkImage : public PollingComponent,
   void log_timing_(const char *result, size_t bytes_read) const;
   void finish_download_();
   void fail_download_();
+  int prepare_animation_slot_(bool replacing = false);
   void retain_animation_();
   void pause_animation_for_refresh_();
   void replace_animation_();
   void stop_animation_();
   void loop_animation_();
+  void suspend_animation_workspace_();
+  void suspend_hidden_animations_();
 
   /**
    * @brief Draw a pixel into the buffer.
@@ -277,6 +291,7 @@ class ArtworkImage : public PollingComponent,
 
   CallbackManager<void(bool)> download_finished_callback_{};
   CallbackManager<void()> download_error_callback_{};
+  ImageResultChannel result_channel_{};
 
   std::shared_ptr<http_request::HttpContainer> downloader_{nullptr};
   std::unique_ptr<ImageDecoder> decoder_{nullptr};

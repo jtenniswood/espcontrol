@@ -1,7 +1,8 @@
 #include "configuration_service.h"
 
+#include <algorithm>
+#include <array>
 #include <cstring>
-#include <vector>
 
 namespace espcontrol::configuration {
 namespace {
@@ -40,6 +41,55 @@ bool supported_version(uint16_t version) {
   return version == CURRENT_CONFIGURATION_DOCUMENT_VERSION;
 }
 
+uint16_t replacement_version(uint16_t durable, ConfigurationWriteSource source,
+                             uint16_t preferred) {
+  if (source.document_version == 1) return 1;
+  // A v1-only writer still fences converted v2 input against nested data.
+  // Only a graph writer grants a complete v2 caller deliberate flattening.
+  return source.document_version == 2 && preferred == 2 ? 2 : durable;
+}
+
+ServiceStatus store_failure(StoreStatus status) {
+  if (status == StoreStatus::GENERATION_CONFLICT) return ServiceStatus::GENERATION_CONFLICT;
+  if (status == StoreStatus::STORAGE_FULL) return ServiceStatus::CAPACITY_EXCEEDED;
+  return status == StoreStatus::ALLOCATION_FAILED
+             ? ServiceStatus::ALLOCATION_FAILED
+             : ServiceStatus::STORE_FAILED;
+}
+
+// Every unsuccessful path, including prepare itself and a generation conflict,
+// releases staged resources. Destruction after successful activation is safe:
+// adapters transfer staged ownership during activate_prepared().
+class RuntimePreparation {
+ public:
+  RuntimePreparation(ConfigurationRuntimeAdapter *runtime, uint16_t version,
+                     const uint8_t *document, size_t size, bool write = false)
+      : runtime_(runtime), version_(version), document_(document), size_(size),
+        ready_(runtime == nullptr || (write ? runtime->prepare_write(version, document, size)
+                                         : runtime->prepare(version, document, size))) {}
+  ~RuntimePreparation() {
+    if (runtime_ != nullptr) runtime_->discard_prepared();
+  }
+  bool ready() const { return ready_; }
+  ServiceStatus failure_status() const {
+    return runtime_ && runtime_->preparation_allocation_failed()
+        ? ServiceStatus::ALLOCATION_FAILED
+        : runtime_ && runtime_->preparation_capacity_exceeded()
+            ? ServiceStatus::CAPACITY_EXCEEDED : ServiceStatus::RUNTIME_PREPARE_FAILED;
+  }
+  bool activate(uint32_t generation) {
+    return ready_ && (runtime_ == nullptr ||
+      runtime_->activate_prepared(generation, version_, document_, size_));
+  }
+
+ private:
+  ConfigurationRuntimeAdapter *runtime_;
+  uint16_t version_;
+  const uint8_t *document_;
+  size_t size_;
+  bool ready_;
+};
+
 }  // namespace
 
 bool ConfigurationService::supports_version(uint16_t document_version) const {
@@ -47,19 +97,75 @@ bool ConfigurationService::supports_version(uint16_t document_version) const {
                                : supported_version(document_version);
 }
 
-bool ConfigurationService::document_is_valid(uint16_t document_version,
-                                             const uint8_t *document,
-                                             size_t document_size) const {
-  return validator_ == nullptr ||
-         validator_->validate(document_version, document, document_size);
+bool ConfigurationService::supports_write_version(uint16_t document_version) const {
+  return validator_ ? validator_->supports_write_version(document_version)
+                    : supported_version(document_version);
 }
 
-uint8_t *ConfigurationService::encoded_buffer(
-    size_t required_size, std::vector<uint8_t> *fallback) const {
+ServiceStatus ConfigurationService::document_validation_status(
+    uint16_t document_version, const uint8_t *document, size_t document_size) const {
+  return validator_ ? validator_->validation_status(document_version, document, document_size)
+                    : ServiceStatus::OK;
+}
+
+ServiceStatus ConfigurationService::document_write_validation_status(
+    uint16_t document_version, const uint8_t *document, size_t document_size) const {
+  return validator_ ? validator_->write_validation_status(document_version, document, document_size)
+                    : ServiceStatus::OK;
+}
+
+ConfigurationService::ReplacementAdmission ConfigurationService::admit_replacement(
+    uint16_t incoming, const uint32_t *expected_generation) {
+  ReplacementAdmission admission;
+  if (!validator_ || !validator_->checks_replacements(incoming)) return admission;
+  admission.checked = true;
+  std::array<uint8_t, CONFIGURATION_DOCUMENT_HEADER_SIZE> header{};
+  const auto prefix = store_.load_prefix(header.data(), header.size());
+  admission.generation = prefix.generation;
+  if (prefix.status != StoreStatus::EMPTY && !prefix.ok()) {
+    admission.status = store_failure(prefix.status); admission.store_status = prefix.status; return admission;
+  }
+  if (expected_generation && *expected_generation != prefix.generation) {
+    admission.status = ServiceStatus::GENERATION_CONFLICT;
+    admission.store_status = StoreStatus::GENERATION_CONFLICT; return admission;
+  }
+  if (prefix.status == StoreStatus::EMPTY) return admission;
+  if (prefix.payload_size < header.size() || read_u32(header.data()) != DOCUMENT_MAGIC ||
+      read_u16(header.data() + DOCUMENT_HEADER_SIZE_OFFSET) != header.size()) {
+    admission.status = ServiceStatus::INVALID_DOCUMENT; return admission;
+  }
+  const auto current_version = read_u16(header.data() + DOCUMENT_VERSION_OFFSET);
+  if (!supports_version(current_version)) { admission.status = ServiceStatus::UNSUPPORTED_VERSION; return admission; }
+  if (!validator_->replacement_needs_document(current_version, incoming)) return admission;
+  // Only a cross-format replacement borrows the exact old payload. It is
+  // released before runtime preparation, compatibility writes or commit.
+  ConfigurationBuffer current(allocate_, release_);
+  auto *bytes = current.allocate(prefix.payload_size);
+  if (!bytes) { admission.status = ServiceStatus::ALLOCATION_FAILED; return admission; }
+  const auto loaded = store_.load(bytes, prefix.payload_size);
+  if ((loaded.ok() || loaded.status == StoreStatus::BUFFER_TOO_SMALL || loaded.status == StoreStatus::EMPTY) &&
+      loaded.generation != prefix.generation) {
+    admission.status = ServiceStatus::GENERATION_CONFLICT;
+    admission.store_status = StoreStatus::GENERATION_CONFLICT;
+    admission.generation = loaded.generation; return admission;
+  }
+  if (!loaded.ok()) {
+    admission.status = store_failure(loaded.status); admission.store_status = loaded.status; return admission;
+  }
+  if (loaded.payload_size < header.size() || std::memcmp(bytes, header.data(), header.size()) != 0) {
+    admission.status = ServiceStatus::INVALID_DOCUMENT; return admission;
+  }
+  admission.status = validator_->replacement_status(current_version,
+      bytes + header.size(), loaded.payload_size - header.size(), incoming);
+  return admission;
+}
+
+uint8_t *
+ConfigurationService::encoded_buffer(size_t required_size,
+                                     ConfigurationBuffer *fallback) const {
   if (scratch_buffer_ != nullptr && scratch_capacity_ >= required_size)
     return scratch_buffer_;
-  fallback->resize(required_size);
-  return fallback->empty() ? nullptr : fallback->data();
+  return fallback->allocate(required_size);
 }
 
 size_t ConfigurationService::maximum_document_size() const {
@@ -76,10 +182,11 @@ CommitResult ConfigurationService::commit_document(
     return {StoreStatus::PAYLOAD_TOO_LARGE, 0, document_size};
   }
 
-  std::vector<uint8_t> fallback;
+  ConfigurationBuffer fallback(allocate_, release_);
   const size_t encoded_size = CONFIGURATION_DOCUMENT_HEADER_SIZE + document_size;
   uint8_t *encoded = encoded_buffer(encoded_size, &fallback);
-  if (encoded == nullptr) return {StoreStatus::WRITE_FAILED, 0, document_size};
+  if (encoded == nullptr)
+    return {StoreStatus::ALLOCATION_FAILED, 0, document_size};
   write_u32(encoded + DOCUMENT_MAGIC_OFFSET, DOCUMENT_MAGIC);
   write_u16(encoded + DOCUMENT_VERSION_OFFSET, document_version);
   write_u16(encoded + DOCUMENT_HEADER_SIZE_OFFSET,
@@ -98,10 +205,11 @@ CommitResult ConfigurationService::commit_document_if_generation(
     return {StoreStatus::PAYLOAD_TOO_LARGE, 0, document_size};
   }
 
-  std::vector<uint8_t> fallback;
+  ConfigurationBuffer fallback(allocate_, release_);
   const size_t encoded_size = CONFIGURATION_DOCUMENT_HEADER_SIZE + document_size;
   uint8_t *encoded = encoded_buffer(encoded_size, &fallback);
-  if (encoded == nullptr) return {StoreStatus::WRITE_FAILED, 0, document_size};
+  if (encoded == nullptr)
+    return {StoreStatus::ALLOCATION_FAILED, 0, document_size};
   write_u32(encoded + DOCUMENT_MAGIC_OFFSET, DOCUMENT_MAGIC);
   write_u16(encoded + DOCUMENT_VERSION_OFFSET, document_version);
   write_u16(encoded + DOCUMENT_HEADER_SIZE_OFFSET,
@@ -124,22 +232,81 @@ ServiceLoadResult ConfigurationService::load_and_apply_runtime(
   std::lock_guard<std::mutex> lock(operation_mutex_);
   const ServiceLoadResult loaded = load_unlocked(output, output_capacity);
   if (!loaded.ok() || runtime_ == nullptr) return loaded;
-  if (runtime_->apply(loaded.document_version, output, loaded.document_size)) {
+  RuntimePreparation prepared(runtime_, loaded.document_version, output,
+                               loaded.document_size);
+  if (!prepared.ready()) {
+    ServiceLoadResult failed = loaded;
+    failed.status = prepared.failure_status();
+    return failed;
+  }
+  if (!prepared.activate(loaded.generation)) {
+    ServiceLoadResult failed = loaded;
+    failed.status = ServiceStatus::RUNTIME_APPLY_FAILED;
+    return failed;
+  }
+  select_compatibility_generation(loaded.generation);
+  compatibility_state_.publication =
+      legacy_.publish_status(loaded.document_version, output, loaded.document_size);
+  compatibility_publication_current_ =
+      compatibility_state_.publication == CompatibilityStatus::OK;
+  if (!native_publication_ready()) {
+    ServiceLoadResult failed = loaded;
+    failed.status = ServiceStatus::LEGACY_MIRROR_FAILED;
+    return failed;
+  }
+  return loaded;
+}
+
+void ConfigurationService::select_compatibility_generation(uint32_t generation) {
+  if (compatibility_state_.known && compatibility_state_.generation == generation) return;
+  compatibility_state_ = {generation, true, CompatibilityStatus::RETRYABLE_FAILURE,
+      legacy_writes_enabled() ? CompatibilityStatus::RETRYABLE_FAILURE : CompatibilityStatus::OK};
+}
+
+bool ConfigurationService::native_publication_ready() const {
+  return compatibility_publication_current_ ||
+      (!legacy_writes_enabled() &&
+       compatibility_state_.publication == CompatibilityStatus::NATIVE_ONLY);
+}
+
+ConfigurationCompatibilityState ConfigurationService::compatibility_state() const {
+  std::lock_guard<std::mutex> lock(operation_mutex_);
+  return compatibility_state_;
+}
+
+ServiceLoadResult ConfigurationService::retry_compatibility(uint8_t *output, size_t capacity) {
+  std::lock_guard<std::mutex> lock(operation_mutex_);
+  auto loaded = load_unlocked(output, capacity, false);
+  if (!loaded.ok()) {
+    if (loaded.status == ServiceStatus::EMPTY || loaded.status == ServiceStatus::INVALID_DOCUMENT ||
+        loaded.status == ServiceStatus::UNSUPPORTED_VERSION) {
+      compatibility_state_.publication = compatibility_state_.persistence = CompatibilityStatus::NOT_REPRESENTABLE;
+      compatibility_publication_current_ = false;
+    }
     return loaded;
   }
-  ServiceLoadResult failed = loaded;
-  failed.status = ServiceStatus::RUNTIME_APPLY_FAILED;
-  return failed;
+  select_compatibility_generation(loaded.generation);
+  if (compatibility_state_.publication == CompatibilityStatus::RETRYABLE_FAILURE)
+    compatibility_state_.publication = legacy_.publish_status(loaded.document_version, output, loaded.document_size);
+  compatibility_publication_current_ = compatibility_state_.publication == CompatibilityStatus::OK;
+  if (compatibility_state_.persistence == CompatibilityStatus::RETRYABLE_FAILURE)
+    compatibility_state_.persistence = legacy_.mirror_status(loaded.document_version, output, loaded.document_size);
+  if (!native_publication_ready() || compatibility_state_.persistence != CompatibilityStatus::OK)
+    loaded.status = ServiceStatus::LEGACY_MIRROR_FAILED;
+  return loaded;
 }
 
 ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
-                                                      size_t output_capacity) {
+                                                      size_t output_capacity,
+                                                      bool import_legacy) {
   if (output == nullptr && output_capacity > 0) {
     return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT};
   }
-  std::vector<uint8_t> fallback;
+  ConfigurationBuffer fallback(allocate_, release_);
   const size_t encoded_capacity = store_.maximum_payload_size();
   uint8_t *encoded = encoded_buffer(encoded_capacity, &fallback);
+  if (encoded == nullptr)
+    return {ServiceStatus::ALLOCATION_FAILED, StoreStatus::ALLOCATION_FAILED};
   const LoadResult stored = store_.load(encoded, encoded_capacity);
   if (stored.ok()) {
     if (stored.payload_size < CONFIGURATION_DOCUMENT_HEADER_SIZE ||
@@ -160,8 +327,9 @@ ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
     }
     const uint8_t *document =
         encoded + CONFIGURATION_DOCUMENT_HEADER_SIZE;
-    if (!document_is_valid(version, document, document_size)) {
-      return {ServiceStatus::INVALID_DOCUMENT, stored.status, version,
+    const auto validation = document_validation_status(version, document, document_size);
+    if (validation != ServiceStatus::OK) {
+      return {validation, stored.status, version,
               stored.generation, document_size};
     }
     if (document_size > output_capacity) {
@@ -180,10 +348,13 @@ ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
   }
 
   if (stored.status != StoreStatus::EMPTY) {
-    return {ServiceStatus::STORE_FAILED, stored.status};
+    return {store_failure(stored.status), stored.status};
   }
 
-  const LegacyLoadResult legacy = legacy_.load(output, output_capacity);
+  if (!import_legacy) return {ServiceStatus::EMPTY, stored.status};
+  fallback.reset();
+  const LegacyLoadResult legacy = legacy_.load_for_write(write_version(), output,
+      std::min(output_capacity, maximum_document_size()));
   if (legacy.status == LegacyStatus::EMPTY) {
     return {ServiceStatus::EMPTY, stored.status};
   }
@@ -191,11 +362,14 @@ ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
     return {ServiceStatus::BUFFER_TOO_SMALL, stored.status,
             legacy.document_version, 0, legacy.document_size};
   }
+  if (legacy.status == LegacyStatus::ALLOCATION_FAILED)
+    return {ServiceStatus::ALLOCATION_FAILED, stored.status,
+            legacy.document_version, 0, legacy.document_size};
   if (legacy.status != LegacyStatus::OK) {
     return {ServiceStatus::LEGACY_READ_FAILED, stored.status,
             legacy.document_version, 0, legacy.document_size};
   }
-  if (!supports_version(legacy.document_version)) {
+  if (!supports_write_version(legacy.document_version)) {
     return {ServiceStatus::UNSUPPORTED_VERSION, stored.status,
             legacy.document_version, 0, legacy.document_size};
   }
@@ -207,18 +381,17 @@ ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
             stored.status, legacy.document_version, 0,
             legacy.document_size};
   }
-  if (!document_is_valid(legacy.document_version, output,
-                         legacy.document_size)) {
-    return {ServiceStatus::INVALID_DOCUMENT, stored.status,
+  const auto validation = document_write_validation_status(legacy.document_version, output, legacy.document_size);
+  if (validation != ServiceStatus::OK) {
+    return {validation, stored.status,
             legacy.document_version, 0, legacy.document_size};
   }
 
   const CommitResult imported = commit_document(
       legacy.document_version, output, legacy.document_size);
   if (!imported.ok()) {
-    return {ServiceStatus::STORE_FAILED, imported.status,
-            legacy.document_version, imported.generation,
-            legacy.document_size};
+    return {store_failure(imported.status), imported.status,
+            legacy.document_version, imported.generation, legacy.document_size};
   }
   return {ServiceStatus::IMPORTED_LEGACY, imported.status,
           legacy.document_version, imported.generation,
@@ -237,6 +410,9 @@ ServiceLoadResult ConfigurationService::refresh_legacy_shadow_unlocked(
     return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT};
   }
 
+  // This old whole-shadow utility is not the native import/merge path. Keep
+  // the source representation so a future v2 writer cannot authorize a
+  // converted flat shadow over an existing graph.
   const LegacyLoadResult legacy = legacy_.load(output, output_capacity);
   if (legacy.status == LegacyStatus::EMPTY) {
     return {ServiceStatus::EMPTY, StoreStatus::EMPTY};
@@ -245,28 +421,40 @@ ServiceLoadResult ConfigurationService::refresh_legacy_shadow_unlocked(
     return {ServiceStatus::BUFFER_TOO_SMALL, StoreStatus::EMPTY,
             legacy.document_version, 0, legacy.document_size};
   }
+  if (legacy.status == LegacyStatus::ALLOCATION_FAILED)
+    return {ServiceStatus::ALLOCATION_FAILED, StoreStatus::EMPTY,
+            legacy.document_version, 0, legacy.document_size};
   if (legacy.status != LegacyStatus::OK) {
     return {ServiceStatus::LEGACY_READ_FAILED, StoreStatus::EMPTY,
             legacy.document_version, 0, legacy.document_size};
   }
-  if (!supports_version(legacy.document_version) ||
-      !document_is_valid(legacy.document_version, output,
-                         legacy.document_size)) {
-    return {supports_version(legacy.document_version)
-                ? ServiceStatus::INVALID_DOCUMENT
-                : ServiceStatus::UNSUPPORTED_VERSION,
+  const auto validation = supports_write_version(legacy.document_version)
+      ? document_write_validation_status(legacy.document_version, output, legacy.document_size)
+      : ServiceStatus::UNSUPPORTED_VERSION;
+  if (validation != ServiceStatus::OK) {
+    return {validation,
             StoreStatus::EMPTY, legacy.document_version, 0,
             legacy.document_size};
   }
 
-  std::vector<uint8_t> fallback;
+  ConfigurationBuffer fallback(allocate_, release_);
   const size_t encoded_capacity = store_.maximum_payload_size();
   uint8_t *encoded = encoded_buffer(encoded_capacity, &fallback);
   if (encoded == nullptr) {
-    return {ServiceStatus::STORE_FAILED, StoreStatus::WRITE_FAILED,
+    return {ServiceStatus::ALLOCATION_FAILED, StoreStatus::ALLOCATION_FAILED,
             legacy.document_version, 0, legacy.document_size};
   }
   const LoadResult stored = store_.load(encoded, encoded_capacity);
+  // This legacy-only utility must not roll a newer native document back to
+  // stale preference fields. Live edits use the lossless merge path instead.
+  if (stored.ok() && stored.payload_size >= CONFIGURATION_DOCUMENT_HEADER_SIZE &&
+      read_u32(encoded + DOCUMENT_MAGIC_OFFSET) == DOCUMENT_MAGIC &&
+      read_u16(encoded + DOCUMENT_HEADER_SIZE_OFFSET) == CONFIGURATION_DOCUMENT_HEADER_SIZE &&
+      read_u16(encoded + DOCUMENT_VERSION_OFFSET) != legacy.document_version) {
+    return {ServiceStatus::UNSUPPORTED_VERSION, stored.status,
+            read_u16(encoded + DOCUMENT_VERSION_OFFSET), stored.generation,
+            stored.payload_size - CONFIGURATION_DOCUMENT_HEADER_SIZE};
+  }
   const bool matches_native =
       stored.ok() &&
       stored.payload_size ==
@@ -282,14 +470,15 @@ ServiceLoadResult ConfigurationService::refresh_legacy_shadow_unlocked(
             stored.generation, legacy.document_size};
   }
   if (stored.status != StoreStatus::OK && stored.status != StoreStatus::EMPTY) {
-    return {ServiceStatus::STORE_FAILED, stored.status,
+    return {store_failure(stored.status), stored.status,
             legacy.document_version, stored.generation, legacy.document_size};
   }
 
+  fallback.reset();
   const CommitResult committed = commit_document(
       legacy.document_version, output, legacy.document_size);
   if (!committed.ok()) {
-    return {ServiceStatus::STORE_FAILED, committed.status,
+    return {store_failure(committed.status), committed.status,
             legacy.document_version, committed.generation,
             legacy.document_size};
   }
@@ -298,43 +487,144 @@ ServiceLoadResult ConfigurationService::refresh_legacy_shadow_unlocked(
           legacy.document_size};
 }
 
+ServiceLoadResult
+ConfigurationService::synchronize_legacy_runtime(uint8_t *output,
+                                                 size_t output_capacity) {
+  std::lock_guard<std::mutex> lock(operation_mutex_);
+  const auto loaded = load_unlocked(output, output_capacity);
+  if (!loaded.ok())
+    return loaded;
+  if (!compatibility_publication_current_) {
+    if (!legacy_writes_enabled() &&
+        compatibility_state_.publication == CompatibilityStatus::NATIVE_ONLY) {
+      // No flat layout can describe this graph. Refresh only its native
+      // globals, rather than importing stale/partial legacy text as an edit.
+      // Equal values do not republish or schedule another appearance refresh.
+      compatibility_state_.publication = legacy_.publish_status(
+          loaded.document_version, output, loaded.document_size);
+      compatibility_publication_current_ =
+          compatibility_state_.publication == CompatibilityStatus::OK;
+      if (native_publication_ready()) return loaded;
+    }
+    auto failed = loaded;
+    failed.status = ServiceStatus::LEGACY_MIRROR_FAILED;
+    return failed;
+  }
+  // Load scratch has been released. Borrow a separate merge buffer until the
+  // output is ready, then release it before save prepares its encoded payload.
+  ConfigurationBuffer fallback(allocate_, release_);
+  const auto capacity = store_.maximum_payload_size();
+  auto *merged = encoded_buffer(capacity, &fallback);
+  if (!merged)
+    return {ServiceStatus::ALLOCATION_FAILED, StoreStatus::ALLOCATION_FAILED};
+  const auto output_begin = reinterpret_cast<uintptr_t>(output);
+  const auto merged_begin = reinterpret_cast<uintptr_t>(merged);
+  if (output_capacity &&
+      ((output_begin <= merged_begin &&
+        merged_begin - output_begin < output_capacity) ||
+       (merged_begin < output_begin && output_begin - merged_begin < capacity)))
+    return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT};
+  bool changed = false;
+  const auto legacy =
+      legacy_.merge_for_write(write_version(), loaded.document_version,
+                              output, loaded.document_size, merged,
+                              std::min(capacity, maximum_document_size()), &changed);
+  if (legacy.status == LegacyStatus::ALLOCATION_FAILED)
+    return {ServiceStatus::ALLOCATION_FAILED, loaded.store_status,
+            loaded.document_version, loaded.generation, loaded.document_size};
+  if (legacy.status != LegacyStatus::OK || legacy.document_size > capacity)
+    return {ServiceStatus::LEGACY_READ_FAILED, loaded.store_status,
+            loaded.document_version, loaded.generation, loaded.document_size};
+  if (!changed)
+    return loaded;
+  if (legacy.document_size > output_capacity)
+    return {ServiceStatus::BUFFER_TOO_SMALL, loaded.store_status,
+            legacy.document_version, loaded.generation, legacy.document_size};
+  std::memcpy(output, merged, legacy.document_size);
+  fallback.reset();
+  const auto saved =
+      save_unlocked(legacy.document_version, output, legacy.document_size, {1});
+  if (saved.status == ServiceStatus::CAPACITY_EXCEEDED) {
+    // A legacy client may already have persisted individual text fields. A
+    // rejected native edit must not leave those fields as a false downgrade
+    // copy. Fence the partial view and repair it from the durable generation.
+    select_compatibility_generation(loaded.generation);
+    compatibility_state_.publication = CompatibilityStatus::RETRYABLE_FAILURE;
+    compatibility_state_.persistence = legacy_writes_enabled()
+        ? CompatibilityStatus::RETRYABLE_FAILURE : CompatibilityStatus::OK;
+    compatibility_publication_current_ = false;
+  }
+  return {saved.status, saved.store_status, saved.document_version,
+          saved.generation, saved.document_size};
+}
+
 ServiceSaveResult ConfigurationService::save(uint16_t document_version,
                                              const uint8_t *document,
-                                             size_t document_size) {
+                                             size_t document_size, ConfigurationWriteSource source) {
   std::lock_guard<std::mutex> lock(operation_mutex_);
-  return save_unlocked(document_version, document, document_size);
+  return save_unlocked(document_version, document, document_size, source);
 }
 
 ServiceSaveResult ConfigurationService::save_unlocked(
-    uint16_t document_version, const uint8_t *document, size_t document_size) {
+    uint16_t document_version, const uint8_t *document, size_t document_size, ConfigurationWriteSource source) {
   if (document_size > 0 && document == nullptr) {
     return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT,
             document_version, 0, document_size};
   }
-  if (!supports_version(document_version)) {
+  if (!supports_write_version(document_version)) {
     return {ServiceStatus::UNSUPPORTED_VERSION, StoreStatus::INVALID_ARGUMENT,
             document_version, 0, document_size};
   }
-  if (!document_is_valid(document_version, document, document_size)) {
-    return {ServiceStatus::INVALID_DOCUMENT, StoreStatus::INVALID_ARGUMENT,
+  const auto validation = document_write_validation_status(document_version, document, document_size);
+  if (validation != ServiceStatus::OK) {
+    return {validation, StoreStatus::INVALID_ARGUMENT,
+            document_version, 0, document_size};
+  }
+
+  if (document_size > maximum_document_size()) {
+    return {ServiceStatus::STORE_FAILED, StoreStatus::PAYLOAD_TOO_LARGE,
+            document_version, 0, document_size};
+  }
+  // Protect old-format callers even after conversion to v2. Conversely, a
+  // complete v2 editor may intentionally remove nesting and select a lossless
+  // flat-v1 durable fallback; storage encoding is not the caller's identity.
+  const auto replacement = admit_replacement(replacement_version(document_version, source, write_version()), nullptr);
+  if (replacement.status != ServiceStatus::OK)
+    return {replacement.status, replacement.store_status, document_version, replacement.generation, document_size};
+  if (legacy_writes_enabled()) {
+    const auto admission = legacy_.admit_write(document_version, document, document_size);
+    if (admission != CompatibilityStatus::OK)
+      return {admission == CompatibilityStatus::RETRYABLE_FAILURE ? ServiceStatus::ALLOCATION_FAILED
+                                                                 : ServiceStatus::CAPACITY_EXCEEDED,
+              StoreStatus::EMPTY, document_version, 0, document_size};
+  }
+  RuntimePreparation prepared(runtime_, document_version, document, document_size, true);
+  if (!prepared.ready()) {
+    return {prepared.failure_status(), StoreStatus::EMPTY,
             document_version, 0, document_size};
   }
 
   const CommitResult committed =
-      commit_document(document_version, document, document_size);
+      replacement.checked
+        ? commit_document_if_generation(replacement.generation, document_version, document, document_size)
+        : commit_document(document_version, document, document_size);
   if (!committed.ok()) {
-    return {ServiceStatus::STORE_FAILED, committed.status, document_version,
+    return {store_failure(committed.status), committed.status, document_version,
             committed.generation, document_size};
   }
-  const bool mirrored = !legacy_writes_enabled() ||
-                        legacy_.mirror(document_version, document, document_size);
-  const bool applied = runtime_ == nullptr ||
-                       runtime_->apply(document_version, document, document_size);
+  const bool applied = prepared.activate(committed.generation);
+  select_compatibility_generation(committed.generation);
+  compatibility_state_.publication = legacy_.publish_status(document_version, document, document_size);
+  compatibility_publication_current_ = compatibility_state_.publication == CompatibilityStatus::OK;
+  compatibility_state_.persistence = legacy_writes_enabled()
+      ? legacy_.mirror_status(document_version, document, document_size) : CompatibilityStatus::OK;
+  const bool published = native_publication_ready();
+  const bool mirrored = compatibility_state_.persistence == CompatibilityStatus::OK;
   if (!applied) {
     return {ServiceStatus::RUNTIME_APPLY_FAILED, committed.status,
             document_version, committed.generation, document_size};
   }
-  if (!mirrored) {
+  if (!published || !mirrored) {
     return {ServiceStatus::LEGACY_MIRROR_FAILED, committed.status,
             document_version, committed.generation, document_size};
   }
@@ -344,25 +634,46 @@ ServiceSaveResult ConfigurationService::save_unlocked(
 
 ServiceSaveResult ConfigurationService::save_if_generation(
     uint32_t expected_generation, uint16_t document_version,
-    const uint8_t *document, size_t document_size) {
+    const uint8_t *document, size_t document_size, ConfigurationWriteSource source) {
   std::lock_guard<std::mutex> lock(operation_mutex_);
   return save_if_generation_unlocked(expected_generation, document_version,
-                                     document, document_size);
+                                     document, document_size, source);
 }
 
 ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
     uint32_t expected_generation, uint16_t document_version,
-    const uint8_t *document, size_t document_size) {
+    const uint8_t *document, size_t document_size, ConfigurationWriteSource source) {
   if (document_size > 0 && document == nullptr) {
     return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT,
             document_version, 0, document_size};
   }
-  if (!supports_version(document_version)) {
+  if (!supports_write_version(document_version)) {
     return {ServiceStatus::UNSUPPORTED_VERSION, StoreStatus::INVALID_ARGUMENT,
             document_version, 0, document_size};
   }
-  if (!document_is_valid(document_version, document, document_size)) {
-    return {ServiceStatus::INVALID_DOCUMENT, StoreStatus::INVALID_ARGUMENT,
+  const auto validation = document_write_validation_status(document_version, document, document_size);
+  if (validation != ServiceStatus::OK) {
+    return {validation, StoreStatus::INVALID_ARGUMENT,
+            document_version, 0, document_size};
+  }
+
+  if (document_size > maximum_document_size()) {
+    return {ServiceStatus::STORE_FAILED, StoreStatus::PAYLOAD_TOO_LARGE,
+            document_version, 0, document_size};
+  }
+  const auto replacement = admit_replacement(replacement_version(document_version, source, write_version()), &expected_generation);
+  if (replacement.status != ServiceStatus::OK)
+    return {replacement.status, replacement.store_status, document_version, replacement.generation, document_size};
+  if (legacy_writes_enabled()) {
+    const auto admission = legacy_.admit_write(document_version, document, document_size);
+    if (admission != CompatibilityStatus::OK)
+      return {admission == CompatibilityStatus::RETRYABLE_FAILURE ? ServiceStatus::ALLOCATION_FAILED
+                                                                 : ServiceStatus::CAPACITY_EXCEEDED,
+              StoreStatus::EMPTY, document_version, 0, document_size};
+  }
+  RuntimePreparation prepared(runtime_, document_version, document, document_size, true);
+  if (!prepared.ready()) {
+    return {prepared.failure_status(), StoreStatus::EMPTY,
             document_version, 0, document_size};
   }
 
@@ -373,18 +684,22 @@ ServiceSaveResult ConfigurationService::save_if_generation_unlocked(
             document_version, committed.generation, document_size};
   }
   if (!committed.ok()) {
-    return {ServiceStatus::STORE_FAILED, committed.status, document_version,
+    return {store_failure(committed.status), committed.status, document_version,
             committed.generation, document_size};
   }
-  const bool mirrored = !legacy_writes_enabled() ||
-                        legacy_.mirror(document_version, document, document_size);
-  const bool applied = runtime_ == nullptr ||
-                       runtime_->apply(document_version, document, document_size);
+  const bool applied = prepared.activate(committed.generation);
+  select_compatibility_generation(committed.generation);
+  compatibility_state_.publication = legacy_.publish_status(document_version, document, document_size);
+  compatibility_publication_current_ = compatibility_state_.publication == CompatibilityStatus::OK;
+  compatibility_state_.persistence = legacy_writes_enabled()
+      ? legacy_.mirror_status(document_version, document, document_size) : CompatibilityStatus::OK;
+  const bool published = native_publication_ready();
+  const bool mirrored = compatibility_state_.persistence == CompatibilityStatus::OK;
   if (!applied) {
     return {ServiceStatus::RUNTIME_APPLY_FAILED, committed.status,
             document_version, committed.generation, document_size};
   }
-  if (!mirrored) {
+  if (!published || !mirrored) {
     return {ServiceStatus::LEGACY_MIRROR_FAILED, committed.status,
             document_version, committed.generation, document_size};
   }

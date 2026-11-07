@@ -160,8 +160,7 @@ inline int decimal_places(const Metadata &metadata) {
                    decimal_places(std::fabs(metadata.maximum))});
 }
 
-inline std::string format_value(double value, const Metadata &metadata) {
-  char buffer[48];
+inline void format_value_into(char (&buffer)[48], double value, const Metadata& metadata) {
   const int places = decimal_places(metadata);
   const double magnitude = std::fabs(value);
   const int integer_places = magnitude >= 1.0
@@ -177,6 +176,11 @@ inline std::string format_value(double value, const Metadata &metadata) {
     if (value == 0.0) value = std::fabs(value);
     std::snprintf(buffer, sizeof(buffer), "%.*g", MAX_DECIMAL_PLACES, value);
   }
+}
+
+inline std::string format_value(double value, const Metadata& metadata) {
+  char buffer[48];
+  format_value_into(buffer, value, metadata);
   return buffer;
 }
 

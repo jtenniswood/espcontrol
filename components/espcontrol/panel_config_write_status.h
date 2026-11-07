@@ -8,13 +8,20 @@ enum class PanelConfigWriteResponse : uint8_t {
   NO_CONTENT,
   ACCEPTED_WITH_LEGACY_WARNING,
   BAD_REQUEST,
+  INCOMPATIBLE_REPLACEMENT,
+  CAPACITY_EXCEEDED,
   GENERATION_CONFLICT,
+  RUNTIME_UNAVAILABLE,
   INTERNAL_ERROR,
 };
 
 inline PanelConfigWriteResponse panel_config_write_response(
     ServiceStatus status) {
   switch (status) {
+    case ServiceStatus::INCOMPATIBLE_REPLACEMENT:
+      return PanelConfigWriteResponse::INCOMPATIBLE_REPLACEMENT;
+    case ServiceStatus::CAPACITY_EXCEEDED:
+      return PanelConfigWriteResponse::CAPACITY_EXCEEDED;
     case ServiceStatus::OK:
       return PanelConfigWriteResponse::NO_CONTENT;
     case ServiceStatus::LEGACY_MIRROR_FAILED:
@@ -25,6 +32,9 @@ inline PanelConfigWriteResponse panel_config_write_response(
       return PanelConfigWriteResponse::BAD_REQUEST;
     case ServiceStatus::GENERATION_CONFLICT:
       return PanelConfigWriteResponse::GENERATION_CONFLICT;
+    case ServiceStatus::ALLOCATION_FAILED:
+    case ServiceStatus::RUNTIME_PREPARE_FAILED:
+      return PanelConfigWriteResponse::RUNTIME_UNAVAILABLE;
     default:
       return PanelConfigWriteResponse::INTERNAL_ERROR;
   }

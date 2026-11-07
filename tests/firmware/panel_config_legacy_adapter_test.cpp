@@ -297,7 +297,8 @@ bool expanded_native_configuration_preserves_every_byte() {
     // Rejected downgrade copies must not partially overwrite existing values.
     if (bindings.persist_document(document.data(), size) || order.value() != "old-order" ||
         button.value() != "old-button" || button.persistent_writes != 0) return false;
-    if (!bindings.publish_document(document.data(), size) || button.value() != large_button) return false;
+    PanelConfigLegacyAdapter publication(bindings);
+    if (!publication.publish(1,document.data(), size) || button.value() != large_button) return false;
     std::string combined;
     for (const auto &field : fields) {
       if (!espcontrol::configuration::panel_config_valid_utf8(
@@ -360,10 +361,155 @@ bool legacy_unicode_capacity_is_checked_before_writing() {
   return true;
 }
 
+bool native_only_settings_do_not_take_legacy_text_capacity() {
+  // Badge rows are native records, not 255-byte compatibility text entities.
+  // Oversized owned settings must still reject the whole mirror before writes.
+  for (const std::string key : {"badge_row_0", "button_order", "button_on_color"}) {
+    FakeText order("old-order"), color("old-color"), button("old-button");
+    PanelConfigTextBindings bindings;
+    bindings.set_device_profile("profile");
+    bindings.set_button_order(&order);
+    bindings.set_button_on_color(&color);
+    bindings.set_button(1, &button, {});
+    PanelConfigLegacyAdapter adapter(bindings);
+    const std::string large = "{\"label\":\"" + std::string(305, 'x') + "\"}";
+    std::array<uint8_t, 1024> document{}, merged{};
+    PanelConfigWriter writer(document.data(), document.size());
+    const auto bytes = [](const std::string &value) {
+      return reinterpret_cast<const uint8_t *>(value.data());
+    };
+    size_t size = 0;
+    if (writer.begin() != PanelConfigStatus::OK ||
+        writer.append_device_profile(bytes("profile"), 7) != PanelConfigStatus::OK ||
+        writer.append_button(1, bytes("new-button"), 10) != PanelConfigStatus::OK ||
+        writer.append_setting(bytes(key), key.size(), bytes(large), large.size()) != PanelConfigStatus::OK)
+      return false;
+    if (key != "button_order" &&
+        writer.append_setting(bytes("button_order"), 12, bytes("1"), 1) != PanelConfigStatus::OK)
+      return false;
+    if (writer.finish(&size) != PanelConfigStatus::OK) return false;
+    const bool native_only = key == "badge_row_0";
+    if (adapter.mirror(1, document.data(), size) != native_only) return false;
+    if (!native_only) {
+      if (button.value() != "old-button" || order.value() != "old-order" ||
+          color.value() != "old-color" || button.persistent_writes ||
+          order.persistent_writes || color.persistent_writes)
+        return false;
+      continue;
+    }
+    if (button.value() != "new-button" || order.value() != "1" ||
+        button.persistent_writes != 1 || order.persistent_writes != 1 ||
+        !adapter.mirror(1, document.data(), size) || button.persistent_writes != 1)
+      return false;
+    bool changed = true;
+    const auto result = adapter.merge(1, document.data(), size, merged.data(), merged.size(), &changed);
+    if (result.status != LegacyStatus::OK || changed) return false;
+    PanelConfigReader reader(merged.data(), result.document_size);
+    if (reader.begin() != PanelConfigStatus::OK) return false;
+    PanelConfigRecord record;
+    bool preserved = false;
+    while (reader.next(&record) == PanelConfigStatus::OK) {
+      if (record.type == PanelConfigRecordType::SETTING && record.key_size == key.size() &&
+          std::memcmp(record.key, key.data(), key.size()) == 0)
+        preserved = record.value_size == large.size() &&
+          std::memcmp(record.value, large.data(), large.size()) == 0;
+    }
+    if (!preserved) return false;
+  }
+  return true;
+}
+
+bool compatibility_merge_preserves_native_only_fields_and_order_independence() {
+  FakeText order("1"), button("native button"), child("old child");
+  PanelConfigTextBindings bindings;
+  bindings.set_device_profile("profile");
+  bindings.set_button_order(&order);
+  std::array<PanelConfigTextValue *,
+             PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS>
+      chunks{};
+  chunks[0] = &child;
+  bindings.set_button(1, &button, chunks);
+  PanelConfigLegacyAdapter adapter(bindings);
+  std::array<uint8_t, 4096> native{}, output{};
+  PanelConfigWriter writer(native.data(), native.size());
+  const auto bytes = [](const char *value) {
+    return reinterpret_cast<const uint8_t *>(value);
+  };
+  if (writer.begin() != PanelConfigStatus::OK ||
+      writer.append_setting(bytes("unknown_setting"), 15, bytes("keep me"),
+                            7) != PanelConfigStatus::OK ||
+      writer.append_button(2, bytes("unbound card"), 12) !=
+          PanelConfigStatus::OK ||
+      writer.append_subpage(2, bytes("unbound child"), 13) !=
+          PanelConfigStatus::OK ||
+      writer.append_setting(bytes("button_order"), 12, bytes("1"), 1) !=
+          PanelConfigStatus::OK ||
+      writer.append_device_profile(bytes("profile"), 7) !=
+          PanelConfigStatus::OK ||
+      writer.append_subpage(1, bytes("old child"), 9) !=
+          PanelConfigStatus::OK ||
+      writer.append_button(1, bytes("native button"), 13) !=
+          PanelConfigStatus::OK)
+    return false;
+  size_t size = 0;
+  if (writer.finish(&size) != PanelConfigStatus::OK)
+    return false;
+  bool changed = true;
+  auto merged = adapter.merge(1, native.data(), size, output.data(),
+                              output.size(), &changed);
+  if (merged.status != LegacyStatus::OK || changed)
+    return false;
+  // Edit a real compatibility field while retaining every unowned record.
+  child.publish_value("new child", 9);
+  merged = adapter.merge(1, native.data(), size, output.data(), output.size(),
+                         &changed);
+  if (merged.status != LegacyStatus::OK || !changed)
+    return false;
+  PanelConfigReader reader(output.data(), merged.document_size);
+  reader.begin();
+  PanelConfigRecord record;
+  int preserved = 0, edited = 0;
+  while (reader.next(&record) == PanelConfigStatus::OK) {
+    const std::string value(reinterpret_cast<const char *>(record.value),
+                            record.value_size);
+    if (value == "keep me" || value == "unbound card" ||
+        value == "unbound child")
+      ++preserved;
+    if (record.type == PanelConfigRecordType::SUBPAGE && record.slot == 1 &&
+        value == "new child")
+      ++edited;
+  }
+  if (preserved != 3 || edited != 1)
+    return false;
+  std::copy(output.begin(), output.begin() + merged.document_size,
+            native.begin());
+  size = merged.document_size;
+  button.publish_value("", 0);
+  child.publish_value("", 0);
+  order.publish_value("", 0);
+  merged = adapter.merge(1, native.data(), size, output.data(), output.size(),
+                         &changed);
+  if (merged.status != LegacyStatus::OK || !changed)
+    return false;
+  reader = PanelConfigReader(output.data(), merged.document_size);
+  reader.begin();
+  while (reader.next(&record) == PanelConfigStatus::OK)
+    if ((record.type == PanelConfigRecordType::BUTTON ||
+         record.type == PanelConfigRecordType::SUBPAGE) &&
+        record.slot == 1)
+      return false;
+  return adapter
+             .merge(2, native.data(), size, output.data(), output.size(),
+                    &changed)
+             .status == LegacyStatus::READ_FAILED;
+}
+
 }  // namespace
 
 int main() {
-  return imports_legacy_button_subpage_and_order() &&
+  return native_only_settings_do_not_take_legacy_text_capacity() &&
+                 compatibility_merge_preserves_native_only_fields_and_order_independence() &&
+                 imports_legacy_button_subpage_and_order() &&
                  native_document_mirrors_back_to_legacy_entities_for_downgrade() &&
                  native_document_updates_live_grid_without_writing_legacy_preferences() &&
                  twenty_slot_document_reaches_order_and_subpage_settings() &&

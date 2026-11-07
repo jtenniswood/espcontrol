@@ -1,0 +1,166 @@
+#include <cassert>
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <string>
+#include <vector>
+
+#include "button_grid_subpage_parser.h"
+#include "media_playback_clock.h"
+
+template <class... Args>
+void log_sink(Args&&...) {}
+#define ESP_LOGI(...) log_sink(__VA_ARGS__)
+#define ESP_LOGW(...) log_sink(__VA_ARGS__)
+namespace esphome::api {
+struct HomeassistantActionRequest {
+  uint32_t call_id{0};
+  std::string service;
+  std::map<std::string, std::string> data;
+};
+struct ActionResponse {
+  bool success;
+  bool is_success() const { return success; }
+  std::string get_error_message() const { return "rejected"; }
+};
+}  // namespace esphome::api
+using Request = esphome::api::HomeassistantActionRequest;
+using Response = esphome::api::ActionResponse;
+std::vector<Request> requests;
+std::map<uint32_t, std::function<void(const Response&)>> callbacks;
+std::string reject_begin, reject_send;
+bool register_ok = true;
+
+bool ha_action_begin(Request& r, const char* service, bool, size_t, uint32_t call = 0) {
+  if (reject_begin == service) return false;
+  r.service = service;
+  r.call_id = call;
+  return true;
+}
+void ha_action_add_data(Request& r, const char* key, const char* value) { r.data[key] = value; }
+void ha_action_add_entity(Request& r, const std::string& entity) { r.data["entity_id"] = entity; }
+bool ha_action_send(Request& r) {
+  requests.push_back(r);
+  return r.service != reject_send;
+}
+bool ha_register_action_response_callback(uint32_t id, std::function<void(const Response&)> callback) {
+  if (!register_ok) return false;
+  callbacks[id] = std::move(callback);
+  return true;
+}
+void ha_cancel_action_response_callback(uint32_t id, const char*) { callbacks.erase(id); }
+bool ha_send_entity_action(const std::string& entity, const char* service, const char* key = nullptr,
+                           const char* value = nullptr) {
+  Request request;
+  if (!ha_action_begin(request, service, false, key ? 2 : 1)) return false;
+  ha_action_add_entity(request, entity);
+  if (key) ha_action_add_data(request, key, value);
+  return ha_action_send(request);
+}
+// @production-function cover_command_service
+// @production-function cover_tilt_command_service
+// @production-function cover_position_value
+// @production-function next_cover_stop_call_id
+// @production-function cover_stop_pending_call_id
+// @production-function cover_stop_clear_pending
+// @production-function cover_stop_track_pending
+// @production-function cover_stop_cancel_pending_request
+// @production-function send_cover_command_action
+#include "page_native_device_commands.h"
+using namespace espcontrol::pages;
+int main() {
+  using A = PageDeviceAction;
+  ParsedCfg config;
+  config.entity = "fan.room";
+  for (const auto action : {A::FAN_ON,
+                            A::FAN_OFF,
+                            A::OSCILLATE_ON,
+                            A::OSCILLATE_OFF,
+                            A::FORWARD,
+                            A::REVERSE,
+                            A::TOGGLE,
+                            A::BUTTON,
+                            A::TURN_ON,
+                            A::TURN_OFF,
+                            A::LOCK,
+                            A::UNLOCK,
+                            A::OPEN,
+                            A::CLOSE,
+                            A::VACUUM_START,
+                            A::VACUUM_STOP,
+                            A::VACUUM_DOCK,
+                            A::VACUUM_PAUSE,
+                            A::VACUUM_START_PAUSE,
+                            A::VACUUM_SPOT,
+                            A::VACUUM_LOCATE,
+                            A::MOWER_START,
+                            A::MOWER_PAUSE,
+                            A::MOWER_DOCK}) {
+    assert(send_page_device_action(config, action));
+    assert(requests.back().service == page_device_service(action));
+    assert(requests.back().data.at("entity_id") == config.entity);
+    if (action == A::OSCILLATE_ON || action == A::OSCILLATE_OFF)
+      assert(requests.back().data.at("oscillating") == (action == A::OSCILLATE_ON ? "true" : "false"));
+    if (action == A::FORWARD || action == A::REVERSE)
+      assert(requests.back().data.at("direction") == (action == A::FORWARD ? "forward" : "reverse"));
+    reject_send = page_device_service(action);
+    assert(!send_page_device_action(config, action));
+    reject_send.clear();
+    reject_begin = page_device_service(action);
+    assert(!send_page_device_action(config, action));
+    reject_begin.clear();
+  }
+  assert(!send_page_device_action(config, A::NONE) && !send_page_device_action(config, static_cast<A>(255)));
+  assert(!send_page_device_action(config, A::VACUUM_AREA));
+  config.unit = u8"kitchen,1 ☃";
+  assert(send_page_device_action(config, A::VACUUM_AREA));
+  assert(requests.back().data.at("cleaning_area_id") == config.unit);
+  config.entity = "cover.room";
+  for (const auto* mode : {"open", "close", "stop", "set_position"}) {
+    config.sensor = mode;
+    config.unit = "120";
+    for (const auto action : {A::COVER, A::COVER_TILT}) {
+      assert(send_page_device_action(config, action));
+      assert(requests.back().service ==
+             (action == A::COVER ? cover_command_service(mode) : cover_tilt_command_service(mode)));
+      if (config.sensor == "set_position")
+        assert(requests.back().data.at(action == A::COVER ? "position" : "tilt_position") == "100");
+      cover_stop_cancel_pending_request();
+    }
+  }
+  config.sensor = "set_position";
+  for (const auto* value : {"garbage", "-10", "75suffix"}) {
+    config.unit = value;
+    assert(send_page_device_action(config, A::COVER));
+    assert(requests.back().data.at("position") == std::to_string(cover_position_value(value)));
+  }
+  config.sensor = "stop";
+  for (int i = 0; i < 1000; ++i) {
+    assert(send_page_device_action(config, A::COVER) && callbacks.size() == 1);
+    auto pending = std::move(callbacks);
+    callbacks.clear();
+    config.entity.clear();
+    for (auto& pair : pending) pair.second(Response{i % 2 == 0});
+    assert(!cover_stop_pending_call_id());
+    config.entity = "cover.room";
+  }
+  reject_send = "cover.stop_cover";
+  assert(!send_page_device_action(config, A::COVER) && callbacks.empty() && !cover_stop_pending_call_id());
+  reject_send.clear();
+  register_ok = false;
+  assert(send_page_device_action(config, A::COVER) && callbacks.empty() && !cover_stop_pending_call_id());
+  register_ok = true;
+  assert(send_page_device_action(config, A::COVER));
+  const auto old = cover_stop_pending_call_id();
+  assert(send_page_device_action(config, A::COVER) && cover_stop_pending_call_id() == old &&
+         callbacks.size() == 1);
+  ++ha_subscription_generation();
+  auto pending = std::move(callbacks);
+  callbacks.clear();
+  for (auto& pair : pending) pair.second(Response{false});
+  assert(!cover_stop_pending_call_id());
+  config.sensor = "invalid";
+  assert(!send_page_device_action(config, A::COVER));
+  config.entity.clear();
+  assert(!send_page_device_action(config, A::FAN_ON));
+}

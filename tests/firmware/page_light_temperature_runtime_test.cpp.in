@@ -1,0 +1,398 @@
+#include <array>
+#include <cassert>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
+#include <functional>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "i18n_generated.h"
+#include "page_light_temperature_runtime.h"
+struct lv_obj_t {
+  void* data{nullptr};
+  lv_obj_t* parent{nullptr};
+  int value{0}, color{4250};
+  std::string text;
+};
+struct lv_event_t {
+  lv_obj_t* target;
+};
+constexpr int LV_ANIM_OFF = 0, LV_PART_MAIN = 0;
+void* lv_event_get_target(lv_event_t* event) {
+  return event->target;
+}
+void* lv_obj_get_user_data(lv_obj_t* object) {
+  return object->data;
+}
+lv_obj_t* lv_obj_get_parent(lv_obj_t* object) {
+  return object->parent;
+}
+void lv_slider_set_value(lv_obj_t* object, int value, int) {
+  object->value = value;
+}
+int lv_slider_get_value(lv_obj_t* object) {
+  return object->value;
+}
+void lv_obj_set_style_bg_color(lv_obj_t* object, int color, int) {
+  object->color = color;
+}
+void lv_label_set_text(lv_obj_t*, const char*) {}
+void lv_label_set_display_text(lv_obj_t* object, const char* value) {
+  object->text = value;
+}
+#include "button_grid_config_parser.h"
+#include "page_card_dependencies.h"
+#include "page_runtime_resources_group.h"
+#include "page_store_runtime.h"
+#include "panel_config_document.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+static size_t cpp_allocations = 0;
+void* operator new(size_t bytes) {
+  ++cpp_allocations;
+  if (void* pointer = std::malloc(bytes ? bytes : 1)) return pointer;
+  std::abort();
+}
+void* operator new[](size_t bytes) {
+  return ::operator new(bytes);
+}
+void operator delete(void* pointer) noexcept {
+  std::free(pointer);
+}
+void operator delete[](void* pointer) noexcept {
+  std::free(pointer);
+}
+void operator delete(void* pointer, std::size_t) noexcept {
+  std::free(pointer);
+}
+void operator delete[](void* pointer, std::size_t) noexcept {
+  std::free(pointer);
+}
+namespace {
+struct Arena : PageArenaAllocator {
+  std::unordered_map<void*, size_t> live;
+  bool fail{false};
+  size_t calls{0};
+  void* allocate(size_t bytes) override {
+    ++calls;
+    if (fail) return nullptr;
+    auto* pointer = std::malloc(bytes);
+    assert(pointer);
+    live[pointer] = bytes;
+    return pointer;
+  }
+  void release(void* pointer, size_t bytes) override {
+    assert(live.at(pointer) == bytes);
+    live.erase(pointer);
+    std::free(pointer);
+  }
+};
+struct Subscriptions : PageEntitySubscriptions {
+  bool subscribe(const char*, const char*, void*, uint32_t, uint32_t, Deliver) override {
+    std::abort();
+  }
+  void release(void*) override {
+    std::abort();
+  }
+  uint32_t connection_generation() const override {
+    return connection;
+  }
+  uint32_t connection{1};
+};
+struct Fixture {
+  Fixture(uint32_t generation, const std::string& entity = "light.room",
+          const std::string& type = "light_temperature", const std::string& mode = "2000-6500",
+          const DeviceUiLimits& limits = DEVICE_UI_PROFILES[8]) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const auto card = entity + ";Room;Auto;Auto;;" + mode + ";" + type + ";color;";
+    for (size_t i = 0; i < 2; ++i)
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(card.data()), card.size()) ==
+             PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, generation, storage.data(), storage.size(),
+                               &store) == PageStoreStatus::OK);
+  }
+  std::array<uint8_t, 8192> document{};
+  size_t size{0};
+  alignas(std::max_align_t) std::array<uint8_t, 32768> storage{};
+  PageStore store;
+};
+// @legacy-light-temperature-reference
+void parity() {
+  for (const auto* range : {"2000-6500", "5000-6000", "1000-2000", "bad"}) {
+    Fixture fixture(17, "light.room", "light_temperature", range);
+    Arena arena;
+    Subscriptions subscriptions;
+    PageLightTemperatureRuntime runtime(arena, subscriptions);
+    assert(runtime.prepare(fixture.store));
+    runtime.activate_prepared(fixture.store);
+    auto snapshot = runtime.read({17, 0});
+    assert(snapshot.available && snapshot.percent == 0);
+    lv_obj_t button, slider, fill, label;
+    SliderCtx context;
+    context.fill = &fill;
+    context.text_lbl = &label;
+    context.kelvin_min = snapshot.minimum;
+    context.kelvin_max = snapshot.maximum;
+    context.light_temp_last_kelvin = context.kelvin_min;
+    fill.color = context.kelvin_min + (context.kelvin_max - context.kelvin_min) / 2;
+    slider.parent = &button;
+    slider.data = &context;
+    label.text = "Room";
+    lv_event_t event{&slider};
+    legacy_bindings.clear();
+    subscribe_light_temp_state(&button, &slider, "light.room", 0, 0, true);
+    assert(legacy_bindings.size() == 2);
+    bool held = false;
+    auto report = [&](const char* attribute, const char* value) {
+      for (const auto& binding : legacy_bindings)
+        if (binding.attribute == attribute) binding.callback(esphome::StringRef(value));
+      runtime.observed(17, "light.room", attribute, value, false);
+      if (!context.available && held) {
+        held = false;
+        context.light_temp_dragging = false;
+        light_temp_restore_label(&context);
+      }
+    };
+    auto move = [&](int percent) {
+      if (!held) return;
+      if (slider.value != percent) {
+        slider.value = percent;
+        legacy_drag_event(&event);
+      }
+      assert(runtime.drag({17, 0}, percent));
+    };
+    uint32_t seed = 1234567;
+    for (int n = 0; n < 10000; ++n) {
+      seed = seed * 1664525 + 1013904223;
+      switch (seed % 7) {
+        case 0: {
+          const char* values[] = {"on", "off", "unavailable", " ON ", "unknown", "true"};
+          report("", values[(seed >> 8) % 6]);
+          break;
+        }
+        case 1: {
+          const char* values[] = {"2000", "5494.4", "7000", "1200", "garbage", "5000 K"};
+          report("color_temp_kelvin", values[(seed >> 8) % 6]);
+          break;
+        }
+        case 2:
+          if (!held && context.available) {
+            assert(runtime.begin({17, 0}));
+            held = true;
+            move((seed >> 8) % 101);
+          }
+          break;
+        case 3:
+          move((seed >> 8) % 101);
+          break;
+        case 4:
+          if (held) {
+            legacy_release_event(&event);
+            int target = -1;
+            assert(runtime.finish({17, 0}, slider.value, target));
+            assert(target == legacy_target);
+            held = false;
+          }
+          break;
+        case 5:
+          if (held) {
+            runtime.cancel({17, 0});
+            context.light_temp_dragging = false;
+            light_temp_restore_label(&context);
+            held = false;
+          }
+          break;
+        case 6:
+          report("color_temp_kelvin", "5494.4");
+          break;
+      }
+      snapshot = runtime.read({17, 0});
+      assert(snapshot.percent == slider.value && snapshot.percent == fill.value &&
+             snapshot.fill_kelvin == fill.color);
+      assert(snapshot.available == context.available && snapshot.dragging == context.light_temp_dragging);
+      if (snapshot.dragging) assert(label.text == std::to_string(snapshot.display_kelvin) + "K");
+    }
+  }
+}
+void lifecycle() {
+  Arena arena;
+  Subscriptions subscriptions;
+  Fixture first(17), second(18, "light.other"), empty(19, "sensor.room", "sensor"), blank(20, "");
+  {
+    PageLightTemperatureRuntime runtime(arena, subscriptions);
+    assert(runtime.prepare(first.store));
+    runtime.activate_prepared(first.store);
+    assert(runtime.memory().sources == 1 && runtime.memory().cards == 2);
+    auto report = [&](const char* attribute, const char* value) {
+      runtime.observed(17, "light.room", attribute, value, false);
+    };
+    report("color_temp_kelvin", "5000");
+    assert(runtime.read({17, 0}).percent == 0);
+    report("", "on");
+    assert(runtime.read({17, 0}).percent == 66);
+    assert(runtime.begin({17, 0}) && runtime.drag({17, 0}, 75));
+    assert(runtime.read({17, 0}).dragging && runtime.read({17, 1}).percent == 66);
+    report("", "off");
+    assert(runtime.read({17, 0}).percent == 0 && runtime.read({17, 0}).dragging);
+    report("color_temp_kelvin", "6000");
+    assert(runtime.read({17, 0}).percent == 0);
+    report("", "on");
+    assert(runtime.read({17, 0}).percent == 88);
+    runtime.cancel({17, 0});
+    assert(!runtime.read({17, 0}).dragging);
+    for (const auto* invalid : {"nan", "inf", "-inf", "1e50", "2147483648", ""}) {
+      report("color_temp_kelvin", invalid);
+      assert(runtime.read({17, 0}).percent == 88);
+    }
+    runtime.observed(17, "light.room", "color_temp_kelvin", "3000", true);
+    assert(runtime.read({17, 0}).percent == 88);  // Copied snapshots cannot overwrite a live report.
+    assert(runtime.prepare(second.store));
+    runtime.discard_prepared();
+    assert(arena.live.size() == 1);
+    arena.fail = true;
+    assert(!runtime.prepare(second.store));
+    arena.fail = false;
+    assert(runtime.read({17, 0}).percent == 88);
+    const auto allocations = cpp_allocations, calls = arena.calls;
+    for (int i = 0; i < 1000; ++i) {
+      report("", "on");
+      report("color_temp_kelvin", "4500");
+      assert(runtime.begin({17, 0}) && runtime.drag({17, 0}, 50));
+      int target;
+      assert(runtime.finish({17, 0}, 50, target));
+      runtime.loop();
+      (void)runtime.read({17, 0});
+    }
+    assert(allocations == cpp_allocations && calls == arena.calls);
+    ++subscriptions.connection;
+    runtime.loop();
+    assert(!runtime.read({17, 0}).available && !runtime.begin({17, 0}));
+    for (int i = 0; i < 1000; ++i) {
+      const auto& store = i % 2 ? first.store : second.store;
+      assert(runtime.prepare(store));
+      runtime.activate_prepared(store);
+      assert(runtime.memory().sources == 1 && runtime.memory().cards == 2 && arena.live.size() == 1);
+    }
+    assert(runtime.prepare(empty.store));
+    runtime.activate_prepared(empty.store);
+    assert(arena.live.empty());
+    assert(runtime.prepare(blank.store));
+    runtime.activate_prepared(blank.store);
+    assert(!runtime.begin({20, 0}));
+  }
+  assert(arena.live.empty());
+  for (int limit = 0; limit < 3; ++limit) {
+    PageLightTemperatureRuntime runtime(arena, subscriptions, limit == 0 ? 0 : 32, limit == 1 ? 0 : 512,
+                                        limit == 2 ? 0 : 2048);
+    assert(!runtime.prepare(first.store) && arena.live.empty());
+  }
+  for (const auto& limits : DEVICE_UI_PROFILES) {
+    Fixture fixture(17, "light.room", "light_temperature", "2000-6500", limits);
+    PageLightTemperatureRuntime runtime(arena, subscriptions);
+    assert(runtime.prepare(fixture.store));
+    runtime.activate_prepared(fixture.store);
+    assert(runtime.read({17, 0}).minimum == 2000);
+  }
+  assert(arena.live.empty());
+}
+void graph_snapshots() {
+  struct Transport : PageEntitySubscriptions {
+    struct Binding {
+      const char* entity;
+      const char* attribute;
+      void* owner;
+      uint32_t revision, channel;
+      Deliver deliver;
+    };
+    std::vector<Binding> bindings;
+    bool subscribe(const char* entity, const char* attribute, void* owner, uint32_t revision,
+                   uint32_t channel, Deliver deliver) override {
+      bindings.push_back({entity, attribute, owner, revision, channel, deliver});
+      return true;
+    }
+    void release(void* owner) override {
+      bindings.erase(std::remove_if(bindings.begin(), bindings.end(),
+                                    [&](const auto& binding) { return binding.owner == owner; }),
+                     bindings.end());
+    }
+    uint32_t connection_generation() const override {
+      return 1;
+    }
+    void send(const char* attribute, const char* value) {
+      for (const auto& binding : bindings)
+        if (std::strcmp(binding.attribute, attribute) == 0)
+          binding.deliver(binding.owner, binding.revision, binding.channel, value);
+    }
+  } subscriptions;
+  Fixture fixture(17);
+  Arena arena;
+  PageCardDependencies dependencies;
+  {
+    PageLightTemperatureRuntime runtime(arena, subscriptions);
+    PageEntityStateRuntime state(dependencies, arena, subscriptions, {64, 64, 2048}, &runtime);
+    PageRuntimeResourcesGroup<2> resources({&runtime, &state});
+    PageStoreRuntime store(DEVICE_UI_PROFILES[8], arena, 32768, &resources);
+    const auto prepare = [&]() {
+      return store.prepare(PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size);
+    };
+    const auto activate = [&](uint32_t generation) {
+      return store.activate_prepared(generation, PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(),
+                                     fixture.size);
+    };
+    assert(prepare() && activate(0));
+    subscriptions.send("color_temp_kelvin", "5000");
+    subscriptions.send("", "on");
+    assert(runtime.read({0, 0}).percent == 66);
+    int target;
+    assert(runtime.begin({0, 0}) && runtime.finish({0, 0}, 100, target) && target == 6500);
+    assert(prepare());
+    assert(runtime.read({0, 0}).percent == 100);
+    store.discard_prepared();
+    assert(runtime.read({0, 0}).percent == 100 && subscriptions.bindings.size() == 2);
+    assert(prepare() && activate(2));
+    assert(runtime.read({2, 0}).percent == 66 && runtime.read({2, 1}).percent == 66 &&
+           !runtime.read({0, 0}).available);
+    assert(prepare());
+    subscriptions.send("", "off");
+    assert(activate(3));
+    assert(runtime.read({3, 0}).percent == 0);
+    subscriptions.send("", "on");
+    assert(runtime.read({3, 0}).percent == 66);
+  }
+  assert(arena.live.empty() && subscriptions.bindings.empty());
+}
+void publication() {
+  Arena arena;
+  Subscriptions subscriptions;
+  Fixture first(17), empty(18, "sensor.room", "sensor");
+  PageLightTemperatureRuntime runtime(arena, subscriptions);
+  {
+    PageStoreRuntime store(DEVICE_UI_PROFILES[8], arena, 32768, &runtime);
+    assert(store.prepare(PANEL_CONFIG_DOCUMENT_VERSION, first.document.data(), first.size));
+    runtime.observed(UINT32_MAX, "light.room", "color_temp_kelvin", "5000", false);
+    runtime.observed(UINT32_MAX, "light.room", "", "on", false);
+    assert(store.activate_prepared(0, PANEL_CONFIG_DOCUMENT_VERSION, first.document.data(), first.size));
+    assert(runtime.read({0, 0}).percent == 66 && !runtime.read({UINT32_MAX, 0}).available);
+    assert(store.prepare(PANEL_CONFIG_DOCUMENT_VERSION, empty.document.data(), empty.size));
+    store.discard_prepared();
+    assert(runtime.read({0, 0}).percent == 66);
+    assert(store.prepare(PANEL_CONFIG_DOCUMENT_VERSION, empty.document.data(), empty.size));
+    assert(store.activate_prepared(2, PANEL_CONFIG_DOCUMENT_VERSION, empty.document.data(), empty.size));
+    assert(!runtime.read({0, 0}).available && runtime.memory().active_bytes == 0);
+  }
+  assert(arena.live.empty());
+}
+}  // namespace
+int main() {
+  parity();
+  lifecycle();
+  publication();
+  graph_snapshots();
+}

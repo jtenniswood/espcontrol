@@ -53,6 +53,11 @@ try {
   assert.equal(native.subpages[1], backup.subpages["1"]);
   assert.equal(native.settings.button_order, backup.button_order);
   assert.equal(native.settings.button_on_color, backup.button_on_color);
+  const inactive = JSON.parse(execFileSync(binary, ["--inactive-fixture"], {encoding: "utf8"}));
+  assert.equal(inactive.buttons.length, 9);
+  const inactivePlan = feature.planBackupImport(inactive);
+  assert.equal(model.parseRawButtonConfig(model.decodePanelConfig(
+    model.decodePanelConfigBackupPayload(inactivePlan.config.native_config)).buttons[32]).label, "Inactive");
   // Verify the redundant readable fields also restore without native support.
   delete backup.native_config;
   const portable = feature.planBackupImport(backup, {device: "other-panel", slots: 12});

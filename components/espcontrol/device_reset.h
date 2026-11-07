@@ -1,5 +1,6 @@
 #pragma once
 #include "reset_policy.h"
+#include "reset_write_lease.h"
 #include "esphome/core/component.h"
 #include <atomic>
 

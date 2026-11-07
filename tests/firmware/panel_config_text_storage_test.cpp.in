@@ -1,0 +1,138 @@
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstdlib>
+#include <memory>
+#include <new>
+#include <type_traits>
+#include <utility>
+#include "panel_config_esphome_text.h"
+#include "panel_config_text_storage.h"
+namespace esphome::template_ { class TemplateText : public esphome::text::Text {}; }
+using namespace espcontrol::configuration;
+namespace configuration = espcontrol::configuration;
+class MiniApp {
+public:
+ using PanelConfigTextSources = espcontrol::configuration::PanelConfigTextSources<esphome::text::Text>;
+ std::array<PanelConfigTextSources,PANEL_CONFIG_TEXT_SLOT_COUNT> panel_config_button_texts_{};
+ esphome::text::Text *panel_config_button_order_{nullptr},*panel_config_button_on_color_{nullptr};
+ bool panel_config_order_template_{false},panel_config_color_template_{false};
+ uint8_t panel_config_chrome_empty_defaults_{0};
+ void set_panel_config_button(uint8_t,esphome::text::Text*,esphome::text::Text*,esphome::text::Text*,esphome::text::Text*,esphome::text::Text*,esphome::text::Text* =nullptr,esphome::text::Text* =nullptr,esphome::text::Text* =nullptr,esphome::text::Text* =nullptr);
+ void set_panel_config_text_empty_default(esphome::text::Text*);
+@APP_TEMPLATE@
+};
+@APP_SETTER@
+@APP_EMPTY@
+static size_t allocations=0,releases=0,constructions=0,destructions=0;
+static bool refuse=false,constructor_throws=false;
+[[maybe_unused]] static uint8_t *allocate_configuration_slot(size_t size) {++allocations;return refuse?nullptr:static_cast<uint8_t*>(std::malloc(size));}
+[[maybe_unused]] static void release_configuration_slot(uint8_t *p) {++releases;std::free(p);}
+class NativeConfigurationRuntime {
+public:
+@ALLOCATION_OPERATORS@
+ NativeConfigurationRuntime() {++constructions;if(constructor_throws)throw 42;}
+ ~NativeConfigurationRuntime(){++destructions;}
+ char payload[1904]{};
+};
+template<size_t...I>void populate(MiniApp&a,uint8_t slot,esphome::template_::TemplateText&button,std::array<esphome::template_::TemplateText,PANEL_CONFIG_TEXT_CHUNK_COUNT>&chunks,std::index_sequence<I...>) {a.set_panel_config_button(slot,&button,&chunks[I]...);}
+template<size_t I>auto mixed_chunk(std::array<esphome::template_::TemplateText,PANEL_CONFIG_TEXT_CHUNK_COUNT>&templates,std::array<esphome::text::Text,PANEL_CONFIG_TEXT_CHUNK_COUNT>&custom) {
+ if constexpr(I%2==0)return &templates[I];else return &custom[I];
+}
+template<size_t...I>void populate_mixed(MiniApp&a,uint8_t slot,esphome::text::Text&button,std::array<esphome::template_::TemplateText,PANEL_CONFIG_TEXT_CHUNK_COUNT>&templates,std::array<esphome::text::Text,PANEL_CONFIG_TEXT_CHUNK_COUNT>&custom,std::index_sequence<I...>) {a.set_panel_config_button(slot,&button,mixed_chunk<I>(templates,custom)...);}
+int main() {
+ static_assert(PANEL_CONFIG_MAX_SLOT_COUNT==32);
+ static_assert(PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS==8);
+ MiniApp app;
+ for(auto&s:app.panel_config_button_texts_){assert(!s.button&&!s.template_button&&!s.empty_defaults);for(auto*p:s.subpages)assert(!p);for(auto f:s.template_subpages)assert(!f);}
+ esphome::template_::TemplateText button;button.state="button";
+ std::array<esphome::template_::TemplateText,PANEL_CONFIG_TEXT_CHUNK_COUNT> chunks;
+ for(size_t i=0;i<chunks.size();++i)chunks[i].state=std::to_string(i);
+ populate(app,PANEL_CONFIG_TEXT_SLOT_COUNT,button,chunks,std::make_index_sequence<PANEL_CONFIG_TEXT_CHUNK_COUNT>{});
+ auto&last=app.panel_config_button_texts_.back();assert(last.button==&button&&last.template_button);
+ app.set_panel_config_text_empty_default(&button);
+ for(size_t i=0;i<chunks.size();++i){assert(last.subpages[i]==&chunks[i]&&last.template_subpages[i]);app.set_panel_config_text_empty_default(&chunks[i]);}
+ assert(last.empty_defaults==(uint16_t{1}<<(PANEL_CONFIG_TEXT_CHUNK_COUNT+1))-1);
+ const auto previous=app.panel_config_button_texts_;
+ populate(app,0,button,chunks,std::make_index_sequence<PANEL_CONFIG_TEXT_CHUNK_COUNT>{});
+ populate(app,PANEL_CONFIG_TEXT_SLOT_COUNT+1,button,chunks,std::make_index_sequence<PANEL_CONFIG_TEXT_CHUNK_COUNT>{});
+ for(size_t i=0;i<previous.size();++i){assert(app.panel_config_button_texts_[i].button==previous[i].button);assert(app.panel_config_button_texts_[i].subpages==previous[i].subpages);assert(app.panel_config_button_texts_[i].empty_defaults==previous[i].empty_defaults);}
+ std::array<PanelConfigTextValues<EspHomePanelConfigTextValue>,PANEL_CONFIG_TEXT_SLOT_COUNT> values;
+ values.back().button.bind(last.button,last.template_button,true);
+ assert(values.back().button.value()=="button");
+ for(size_t i=0;i<chunks.size();++i){values.back().subpages[i].bind(last.subpages[i],last.template_subpages[i],true);assert(values.back().subpages[i].value()==std::to_string(i));}
+ static_assert(sizeof(values)==PANEL_CONFIG_TEXT_SLOT_COUNT*(PANEL_CONFIG_TEXT_CHUNK_COUNT+1)*sizeof(EspHomePanelConfigTextValue));
+ // The native envelope still supports32 slots, while compatibility pointers
+ // are bounded by configured fields. Unowned native records must survive merge.
+ static_assert(sizeof(PanelConfigTextBindings)<=sizeof(std::string)+
+   (PANEL_CONFIG_TEXT_SLOT_COUNT*(PANEL_CONFIG_TEXT_CHUNK_COUNT+1)+3)*sizeof(void*));
+ esphome::text::Text order_text;order_text.state=std::to_string(PANEL_CONFIG_TEXT_SLOT_COUNT);
+ EspHomePanelConfigTextValue order_value;order_value.bind(&order_text);
+ PanelConfigTextBindings bindings;bindings.set_device_profile("profile");bindings.set_button_order(&order_value);
+ std::array<PanelConfigTextValue*,PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS> pointers{};
+ for(size_t i=0;i<chunks.size();++i)pointers[i]=&values.back().subpages[i];
+ assert(bindings.set_button(PANEL_CONFIG_TEXT_SLOT_COUNT,&values.back().button,pointers));
+ assert(!bindings.set_button(0,&values.back().button,pointers));
+ assert(!bindings.set_button(PANEL_CONFIG_TEXT_SLOT_COUNT+1,&values.back().button,pointers));
+ if constexpr(PANEL_CONFIG_TEXT_CHUNK_COUNT<PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS){
+  auto unsupported=pointers;unsupported[PANEL_CONFIG_TEXT_CHUNK_COUNT]=&values.back().button;
+  assert(!bindings.set_button(PANEL_CONFIG_TEXT_SLOT_COUNT,&values.back().button,unsupported));
+ }
+ const auto bytes=[](const char*value){return reinterpret_cast<const uint8_t*>(value);};
+ std::array<uint8_t,4096> owned_document{},native_document{},merged_document{};size_t owned_size=0,native_size=0,merged_size=0;
+ PanelConfigWriter owned_writer(owned_document.data(),owned_document.size());
+ assert(owned_writer.begin()==PanelConfigStatus::OK);
+ assert(owned_writer.append_device_profile(bytes("profile"),7)==PanelConfigStatus::OK);
+ assert(owned_writer.append_button(PANEL_CONFIG_TEXT_SLOT_COUNT,bytes("updated"),7)==PanelConfigStatus::OK);
+ assert(owned_writer.finish(&owned_size)==PanelConfigStatus::OK);
+ assert(bindings.publish_document(owned_document.data(),owned_size));
+ assert(values.back().button.value()=="updated");
+ for(auto&value:values.back().subpages)assert(value.value().empty());
+ if constexpr(PANEL_CONFIG_TEXT_SLOT_COUNT<PANEL_CONFIG_MAX_SLOT_COUNT){
+  PanelConfigWriter native_writer(native_document.data(),native_document.size());
+  assert(native_writer.begin()==PanelConfigStatus::OK);
+  assert(native_writer.append_device_profile(bytes("profile"),7)==PanelConfigStatus::OK);
+  assert(native_writer.append_button(PANEL_CONFIG_MAX_SLOT_COUNT,bytes("inactive"),8)==PanelConfigStatus::OK);
+  assert(native_writer.append_subpage(PANEL_CONFIG_MAX_SLOT_COUNT,bytes("child"),5)==PanelConfigStatus::OK);
+  assert(native_writer.append_setting(bytes("badge_row_0"),11,bytes("keep"),4)==PanelConfigStatus::OK);
+  assert(native_writer.finish(&native_size)==PanelConfigStatus::OK);
+  assert(bindings.merge_document(native_document.data(),native_size,merged_document.data(),merged_document.size(),&merged_size));
+  PanelConfigReader merged_reader(merged_document.data(),merged_size);assert(merged_reader.validate()==PanelConfigStatus::OK&&merged_reader.begin()==PanelConfigStatus::OK);
+  PanelConfigRecord record;bool inactive_button=false,inactive_child=false,extra_setting=false;
+  while(merged_reader.next(&record)==PanelConfigStatus::OK){
+   if(record.type==PanelConfigRecordType::BUTTON&&record.slot==PANEL_CONFIG_MAX_SLOT_COUNT)inactive_button=record.value_size==8&&std::memcmp(record.value,"inactive",8)==0;
+   if(record.type==PanelConfigRecordType::SUBPAGE&&record.slot==PANEL_CONFIG_MAX_SLOT_COUNT)inactive_child=record.value_size==5&&std::memcmp(record.value,"child",5)==0;
+   if(record.type==PanelConfigRecordType::SETTING&&record.key_size==11&&std::memcmp(record.key,"badge_row_0",11)==0)extra_setting=record.value_size==4&&std::memcmp(record.value,"keep",4)==0;
+  }
+  assert(inactive_button&&inactive_child&&extra_setting);
+  // Preferences are deliberately unavailable in this adapter-layout fixture.
+  // That separate failure must preserve the current live field values.
+  assert(!bindings.persist_document(native_document.data(),native_size));
+  assert(values.back().button.value()=="updated");
+  // Publication owns only configured fields. Native inactive slots stay in
+  // the source document; their absence from this projection clears live fields.
+  assert(bindings.publish_document(native_document.data(),native_size));
+  assert(values.back().button.value().empty()&&order_value.value().empty());
+  for(auto&value:values.back().subpages)assert(value.value().empty());
+  assert(PanelConfigReader(native_document.data(),native_size).validate()==PanelConfigStatus::OK);
+ }
+ esphome::text::Text custom_button;
+ std::array<esphome::text::Text,PANEL_CONFIG_TEXT_CHUNK_COUNT> custom_chunks;
+ populate_mixed(app,PANEL_CONFIG_TEXT_SLOT_COUNT,custom_button,chunks,custom_chunks,std::make_index_sequence<PANEL_CONFIG_TEXT_CHUNK_COUNT>{});
+ assert(!last.template_button&&last.empty_defaults==0);
+ app.set_panel_config_text_empty_default(last.button);
+ uint16_t expected_mask=0;
+ for(size_t i=0;i<chunks.size();++i){assert(last.template_subpages[i]==(i%2==0));app.set_panel_config_text_empty_default(last.subpages[i]);if(i%2==0)expected_mask|=uint16_t{1}<<(i+1);}
+ assert(last.empty_defaults==expected_mask);
+ // Rebinding to the four-field minimum must clear old tail pointers and flags.
+ populate(app,PANEL_CONFIG_TEXT_SLOT_COUNT,button,chunks,std::make_index_sequence<4>{});
+ assert(last.template_button&&last.empty_defaults==0);
+ for(size_t i=0;i<chunks.size();++i){assert(last.subpages[i]==(i<4?&chunks[i]:nullptr));assert(last.template_subpages[i]==(i<4));}
+ {std::unique_ptr<NativeConfigurationRuntime> object(new(std::nothrow)NativeConfigurationRuntime());assert(object&&constructions==1&&destructions==0);}
+ assert(destructions==1);
+#ifdef USE_ESP32
+ assert(allocations==1&&releases==1);
+ refuse=true;auto*failed=new(std::nothrow)NativeConfigurationRuntime();assert(!failed&&allocations==2&&releases==1&&constructions==1);refuse=false;
+ constructor_throws=true;bool caught=false;try{auto*unexpected=new(std::nothrow)NativeConfigurationRuntime();delete unexpected;}catch(int value){assert(value==42);caught=true;}assert(caught&&allocations==3&&releases==2&&constructions==2&&destructions==1);
+#endif
+}

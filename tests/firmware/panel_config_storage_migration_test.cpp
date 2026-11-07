@@ -63,11 +63,15 @@ StoreStatus migrate() {
   EspIdfPanelConfigBlobStorage source, destination;
   source.begin_read_only();
   assert(destination.begin_card_images_partition(FLASH_CAPACITY));
-  std::array<uint8_t, FLASH_CAPACITY * 4> memory{};
+  TransientBlobStorageBackend<FLASH_CAPACITY> backend(
+      destination, ConfigurationBuffer::allocate_host,
+      ConfigurationBuffer::release_host);
+  assert(backend.begin(FLASH_CAPACITY));
   const auto original = nvs;
   const int original_writes = nvs_writes;
   auto result = migrate_panel_config_storage<FLASH_CAPACITY>(
-      source, destination, FLASH_CAPACITY, memory.data(), memory.size());
+      source, backend, ConfigurationBuffer::allocate_host,
+      ConfigurationBuffer::release_host);
   assert(nvs == original && nvs_writes == original_writes);
   assert(std::all_of(flash.end() - espcontrol::PANEL_IDENTITY_STORAGE_BYTES,
                      flash.end(), [](uint8_t byte) { return byte == 0xA5; }));

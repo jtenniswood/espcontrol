@@ -38,9 +38,17 @@ struct Component {
   virtual void on_safe_shutdown() {}
   virtual void on_shutdown() {}
 };
+struct NativeConfigurationRuntime {
+  struct Transactions {bool stopped=false;void stop(){stopped=true;}} transactions;
+};
 struct EspControlApp : Component {
+  NativeConfigurationRuntime runtime_;
+  NativeConfigurationRuntime *native_configuration_runtime_=&runtime_;
   Resolver home_assistant_endpoint_;
   Core core_;
+  bool shutting_down_=false;
+  struct Scene { void stop() {} };
+  Scene *application_scene_=nullptr;
 '''
 for name in ('on_safe_shutdown', 'on_shutdown'):
     if any('EspControlApp::' + name + '(' in f for f in functions):
@@ -59,10 +67,12 @@ int main() {
   mdns_alive = false;
   component.on_shutdown();
   assert(app.home_assistant_endpoint_.releases == 1);
+  assert(app.runtime_.transactions.stopped);
 
   // Forced reboot skips safe hooks; don't dereference mDNS-owned handles
   // after the service has already destroyed them. Reset reclaims the memory.
   EspControlApp forced;
+  forced.native_configuration_runtime_=nullptr;
   forced.on_shutdown();
   assert(forced.home_assistant_endpoint_.releases == 0);
 }

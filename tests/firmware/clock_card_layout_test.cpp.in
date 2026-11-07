@@ -1,0 +1,73 @@
+#include <cassert>
+#include <cstdio>
+
+#include "button_grid_subpage_parser.h"
+#include "clock_card_view.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+enum lv_align_t { LV_ALIGN_CENTER, LV_ALIGN_LEFT_MID };
+struct Context {
+  struct {
+    card_runtime::CardTypeId type;
+  } runtime;
+};
+struct BtnSlot {
+  bool large{false}, hidden{false};
+  lv_align_t align{LV_ALIGN_CENTER};
+};
+struct DisplayProfile {
+  bool font;
+};
+bool date_time_driver_matches(const Context&) {
+  return true;
+}
+bool large_number_square_card_layout(int r, int c) {
+  return card_span_is_large(r, c);
+}
+bool wide_large_date_time_card_layout(int r, int c) {
+  return card_span_is_wide(r, c);
+}
+bool card_large_numbers_active_for_layout(const ParsedCfg& cfg, int r, int c) {
+  return card_large_numbers_supported(cfg) && !card_large_numbers_disabled(cfg) &&
+         (large_number_square_card_layout(r, c) || card_large_numbers_enabled(cfg));
+}
+bool calendar_card_shows_time(const ParsedCfg& cfg) {
+  return cfg.precision == "datetime";
+}
+bool display_large_sensor_font(const DisplayProfile& d) {
+  return d.font;
+}
+int display_large_sensor_unit_offset_percent(const DisplayProfile&) {
+  return 0;
+}
+void apply_large_sensor_number_style(BtnSlot& slot, bool, int) {
+  slot.large = true;
+}
+void apply_wide_large_date_time_card_layout(BtnSlot& slot, lv_align_t align) {
+  slot.hidden = true;
+  slot.align = align;
+}
+// @legacy-clock-layout
+int main() {
+  size_t checked = 0;
+  for (const auto* type : {"clock", "timezone"})
+    for (const auto* option : {"", "large_numbers", "large_numbers=off", "large_numbers,center_clock",
+                               "large_numbers=off,center_clock", "center_clock"})
+      for (int rows = 1; rows <= 5; ++rows)
+        for (int cols = 1; cols <= 5; ++cols)
+          for (bool font : {false, true}) {
+            const auto cfg = parse_cfg(std::string(";;Auto;Auto;;;") + type + ";;" + option);
+            Context context{{std::string(type) == "clock" ? card_runtime::CardTypeId::CLOCK
+                                                          : card_runtime::CardTypeId::TIMEZONE}};
+            BtnSlot legacy;
+            assert(date_time_driver_refresh_layout(legacy, cfg, context, {font}, rows, cols));
+            const auto layout =
+                clock_card_layout({std::string(type) == "timezone", card_large_numbers_enabled(cfg),
+                                   cfg_option_token_present(cfg.options, "center_clock")},
+                                  !card_large_numbers_disabled(cfg) && font, rows, cols);
+            assert(layout.large == legacy.large && layout.wide == legacy.hidden);
+            if (layout.wide) assert(layout.center == (legacy.align == LV_ALIGN_CENTER));
+            ++checked;
+          }
+  std::printf("clock legacy layout parity: %zu cases\n", checked);
+}

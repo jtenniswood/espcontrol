@@ -3109,6 +3109,7 @@ def gen_card_contract_h(data):
         "\n",
         "#include <cstdint>\n",
         "#include <string>\n",
+        "#include <string_view>\n",
         "\n",
         "// =============================================================================\n",
         "// GENERATED CARD CONFIG CONTRACT - do not edit by hand\n",
@@ -3436,6 +3437,14 @@ def gen_card_contract_h(data):
         "  return code;\n",
         "}\n",
     ])
+    for function, argument, mappings in (
+        ("card_contract_subpage_code_view", "type", codes.items()),
+        ("card_contract_subpage_type_view", "code", ((code, kind) for kind, code in codes.items())),
+    ):
+        lines.append(f"\ninline std::string_view {function}(std::string_view {argument}) {{\n")
+        for source, target in mappings:
+            lines.append(f'  if ({argument} == "{source}") return "{target}";\n')
+        lines.extend([f"  return {argument};\n", "}\n"])
     return "".join(lines)
 
 
@@ -3706,22 +3715,32 @@ def web_mdi_icon_names(data, codepoints):
 
     The picker gets its names from the Product Model. A smaller set of fixed
     controls and card badges is written directly in the editor source, so scan
-    those string literals too. Filtering them through the pinned MDI map keeps
-    unrelated UI text out of the font stylesheet.
+    runtime string literals too. Type-only names must not add glyphs. Filtering
+    bare names through the pinned MDI map keeps unrelated UI text out of the
+    font stylesheet; explicit MDI classes are always checked.
     """
     names = {item["mdi"] for item in icon_items(data)}
-    for path in WEB_SOURCE_DIR.rglob("*.ts"):
-        source = path.read_text(encoding="utf-8")
-        names.update(
-            match.group(1)
-            for match in re.finditer(r"\bmdi-([a-z0-9-]+)\b", source)
-            if match.group(1) in codepoints
+    overlays = GENERATED_TRANSACTION.overlays() if GENERATED_TRANSACTION is not None else {}
+    paths = set(WEB_SOURCE_DIR.rglob("*.ts"))
+    paths.update(Path(path) for path in overlays
+                 if Path(path).suffix == ".ts" and Path(path).is_relative_to(WEB_SOURCE_DIR))
+    sources = []
+    for path in sorted(paths):
+        source = overlays.get(str(path.resolve()))
+        if source is None:
+            source = path.read_text(encoding="utf-8")
+        sources.append({"file": str(path), "source": source})
+    try:
+        result = subprocess.run(
+            ["node", str(ROOT / "scripts" / "web_icon_names.js")],
+            input=json.dumps({"sources": sources, "knownNames": list(codepoints)}),
+            text=True, capture_output=True, check=False,
         )
-        names.update(
-            match.group(1)
-            for match in re.finditer(r"['\"]([a-z][a-z0-9-]*)['\"]", source)
-            if match.group(1) in codepoints
-        )
+    except FileNotFoundError as exc:
+        raise BuildError("Node.js and npm ci are required to validate browser icons") from exc
+    if result.returncode != 0:
+        raise BuildError(result.stderr.strip() or "Browser icon source scan failed")
+    names.update(json.loads(result.stdout))
     return names
 
 

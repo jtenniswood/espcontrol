@@ -5,32 +5,109 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
+#include "ha_callback_lease.h"
+
+template<typename Transport, typename = void>
+struct HaTransportOwnsSubscriptions : std::false_type {};
+template<typename Transport>
+struct HaTransportOwnsSubscriptions<Transport,
+    std::void_t<decltype(Transport::RECLAIMABLE_SUBSCRIPTIONS)>>
+    : std::bool_constant<Transport::RECLAIMABLE_SUBSCRIPTIONS> {};
+
 // Instance-owned Home Assistant read state. Transport and HeapProbe are
-// compile-time policies so production calls remain direct and allocation-free
-// beyond the callback ownership already required by ESPHome's API.
+// compile-time policies so production calls remain direct. Retained values and
+// callback ownership outlive individual widgets; replay snapshots also survive
+// a callback retiring the cache it is currently consuming.
 template<typename Transport, typename HeapProbe,
          typename Allocator = std::allocator<std::byte>>
 class HaReadCoordinator {
  public:
   using State = typename Transport::State;
   using Callback = typename Transport::Callback;
+  using CallbackLease = HaCallbackLease<Callback, Allocator>;
   template<typename T>
   using ReboundAllocator =
       typename std::allocator_traits<Allocator>::template rebind_alloc<T>;
   template<typename T>
   using AllocatedVector = std::vector<T, ReboundAllocator<T>>;
+  using AllocatedString = std::basic_string<char, std::char_traits<char>, ReboundAllocator<char>>;
 
   explicit HaReadCoordinator(Transport transport = Transport(), HeapProbe heap_probe = HeapProbe())
       : transport_(std::move(transport)), heap_probe_(std::move(heap_probe)) {}
+
+  ~HaReadCoordinator() {
+    if constexpr (HaTransportOwnsSubscriptions<Transport>::value) {
+      for (const auto &channel : subscription_channels_)
+        transport_.unsubscribe(channel.transport_registration);
+    }
+  }
+  HaReadCoordinator(const HaReadCoordinator &) = delete;
+  HaReadCoordinator &operator=(const HaReadCoordinator &) = delete;
+
+  // Maintenance runs after a complete grid rebuild, outside native dispatch.
+  // Stable channel IDs keep old callbacks harmless when indices are compacted.
+  size_t reclaim_unused_channels() {
+    if constexpr (!HaTransportOwnsSubscriptions<Transport>::value) {
+      return 0;  // Legacy host policies do not own their native registrations.
+    } else {
+      if (!channels_need_reclamation_ || dispatching() || unique_batch_active_)
+        return 0;
+      const size_t before = subscription_channels_.size();
+      mark_channel_activity();
+      size_t write = 0;
+      // Build the complete old-to-new map before moving any channel. The
+      // subscription and deferred lists then each need only one pass.
+      for (auto &channel : subscription_channels_) {
+        channel.maintenance_index = (channel.maintenance_flags & CHANNEL_ACTIVE)
+                                        ? static_cast<uint32_t>(write++)
+                                        : UINT32_MAX;
+      }
+      for (const auto &channel : subscription_channels_) {
+        if (channel.maintenance_index == UINT32_MAX)
+          transport_.unsubscribe(channel.transport_registration);
+      }
+      deferred_.erase(
+          std::remove_if(deferred_.begin(), deferred_.end(),
+                         [this](const DeferredRequest &request) {
+                           return request.channel >=
+                                      subscription_channels_.size() ||
+                                  subscription_channels_[request.channel]
+                                          .maintenance_index == UINT32_MAX;
+                         }),
+          deferred_.end());
+      for (auto &ref : subscriptions_)
+        if (ref.channel < before)
+          ref.channel = subscription_channels_[ref.channel].maintenance_index;
+      for (auto &request : deferred_)
+        request.channel =
+            subscription_channels_[request.channel].maintenance_index;
+      for (size_t read = 0; read < before; ++read) {
+        const auto destination = subscription_channels_[read].maintenance_index;
+        if (destination != UINT32_MAX && destination != read)
+          subscription_channels_[destination] =
+              std::move(subscription_channels_[read]);
+      }
+      subscription_channels_.resize(write);
+      rebuild_callback_index();
+      trim_container(subscription_channels_);
+      trim_container(subscriptions_);
+      trim_container(owner_generations_);
+      release_empty_deferred_storage();
+      channels_need_reclamation_ = false;
+      return before - write;
+    }
+  }
 
   Transport &transport() { return transport_; }
   const Transport &transport() const { return transport_; }
   HeapProbe &heap_probe() { return heap_probe_; }
 
+  bool dispatching() const { return callback_depth_ != 0 || channel_dispatch_depth_ != 0; }
   bool available() const { return transport_.available(); }
   bool state_connected() const { return transport_.state_connected(); }
   uint32_t generation() const { return generation_; }
@@ -102,6 +179,8 @@ class HaReadCoordinator {
     size_t attempts = 0;
     for (size_t i = 0; i < subscription_channels_.size(); ++i) {
       auto &channel = subscription_channels_[i];
+      if (channel.refresh_scopes == 0)
+        continue;
       channel.refresh_scopes &= active_channel_scopes(i);
       if (channel.refresh_scopes == 0 || static_cast<int32_t>(now - channel.refresh_due) < 0) continue;
       channel.refresh_due = now + 1000;
@@ -130,9 +209,8 @@ class HaReadCoordinator {
     if (!heap_probe_.available("Home Assistant state request", min_free, min_largest)) return false;
     size_t channel = find_subscription_channel(entity_id, attribute, has_attribute);
     if (channel == subscription_channels_.size() || !channel_reuses_reads(channel)) return false;
-    CallbackRef callback_ref{
-        std::allocate_shared<Callback>(ReboundAllocator<Callback>{}, std::move(callback)),
-        owner, owner_generation(owner)};
+    CallbackRef callback_ref{CallbackLease::create(std::move(callback)), owner,
+                             owner_generation(owner)};
     if (callback_depth_ != 0) {
       return queue(channel, std::move(callback_ref));
     }
@@ -144,34 +222,104 @@ class HaReadCoordinator {
                  Callback callback,
                  uint32_t scope,
                  void *owner = nullptr,
-                 bool retain_latest = false) {
-    if (!available() || entity_id.empty() || !callback) return false;
-    auto callback_ref =
-        std::allocate_shared<Callback>(ReboundAllocator<Callback>{}, std::move(callback));
-    size_t channel = find_subscription_channel(entity_id, attribute, true);
-    const bool new_channel = channel == subscription_channels_.size();
-    if (new_channel) {
-      SubscriptionChannel subscription_channel;
-      subscription_channel.entity_id = entity_id;
-      subscription_channel.attribute = attribute;
-      subscription_channels_.push_back(std::move(subscription_channel));
-      // Transport callbacks retain this numeric index for the firmware
-      // lifetime, so channels are append-only and their indices stay stable.
-      transport_.subscribe(
-          entity_id, attribute,
-          [this, channel](State state) { invoke_subscription_channel(channel, state); });
-    }
-    subscriptions_.push_back({callback_ref, scope, owner, channel, retain_latest});
-    // A grid rebuild re-subscribes on an existing channel; replay the last value
-    // so rebuilt cards reflect the live state immediately.
-    if (!new_channel && subscription_channels_[channel].has_last_state) {
-      invoke(callback_ref, State(subscription_channels_[channel].last_state));
-    }
-    return true;
+                 bool retain_latest = false,
+                 bool retain_replay = true,
+                 bool initial_replay = true) {
+    return subscribe_on_channel(
+        entity_id, attribute, std::move(callback), scope, owner, retain_latest,
+        retain_replay, initial_replay,
+        find_subscription_channel(entity_id, attribute, true));
   }
 
-  bool request_fresh(const std::string &entity_id,
-                    const std::string &attribute) {
+  // A native graph enumerates each entity/attribute pair exactly once. Borrow a
+  // sorted index of channels that existed before its synchronous registration
+  // pass, so neither old nor newly appended channels require repeated scans.
+  size_t unique_subscription_scratch_bytes() const {
+    return subscription_channels_.size() > UINT32_MAX ||
+                   subscription_channels_.size() > SIZE_MAX / sizeof(uint32_t)
+               ? SIZE_MAX
+               : subscription_channels_.size() * sizeof(uint32_t);
+  }
+  bool begin_unique_subscription_batch(void *scratch, size_t bytes) {
+    const auto required = unique_subscription_scratch_bytes();
+    if (unique_batch_active_ || dispatching() || required == SIZE_MAX ||
+        required > bytes ||
+        (subscription_channels_.size() &&
+         (!scratch ||
+          reinterpret_cast<uintptr_t>(scratch) % alignof(uint32_t))))
+      return false;
+    unique_batch_index_ = static_cast<uint32_t *>(scratch);
+    unique_batch_count_ = subscription_channels_.size();
+    for (size_t i = 0; i < unique_batch_count_; ++i)
+      unique_batch_index_[i] = static_cast<uint32_t>(i);
+    if (unique_batch_count_ > 1)
+      std::sort(unique_batch_index_, unique_batch_index_ + unique_batch_count_,
+                [this](uint32_t a, uint32_t b) {
+                  return channel_key(a) < channel_key(b);
+                });
+    unique_batch_active_ = true;
+    return true;
+  }
+  void end_unique_subscription_batch() {
+    unique_batch_active_ = false;
+    unique_batch_index_ = nullptr;
+    unique_batch_count_ = 0;
+  }
+  bool subscribe_unique(const std::string &entity_id,
+                        const std::string &attribute, Callback callback,
+                        uint32_t scope, void *owner) {
+    if (!unique_batch_active_)
+      return false;
+    size_t channel = subscription_channels_.size();
+    if (unique_batch_count_) {
+      const auto wanted =
+          std::pair<std::string_view, std::string_view>{entity_id, attribute};
+      const auto *found = std::lower_bound(
+          unique_batch_index_, unique_batch_index_ + unique_batch_count_,
+          wanted, [this](uint32_t index, const auto &key) {
+            return channel_key(index) < key;
+          });
+      if (found != unique_batch_index_ + unique_batch_count_ &&
+          channel_key(*found) == wanted)
+        channel = *found;
+    }
+    return subscribe_on_channel(entity_id, attribute, std::move(callback),
+                                scope, owner, false, false, false, channel);
+  }
+
+  // Prime only this owner's subscriptions which have never received a value.
+  // Source returns an optional OWNED terminated snapshot with data()/size()
+  // and current() validation against its cache/configuration epoch. It must read
+  // synchronously and may fail without marking the callback delivered. No state
+  // is injected into transport or retained in another coordinator cache. Call
+  // outside callback dispatch (for example after modal binding/lazy setup).
+  template<typename Source>
+  size_t replay_owner_missing(void *owner,Source source) {
+    if(!owner || callback_depth_!=0 || !available() || !state_connected())return 0;
+    const auto generation=generation_,connection=connection_generation_;
+    const size_t count=subscriptions_.size();size_t delivered=0;
+    ++callback_depth_; // Keep release/reset compaction out of this iteration.
+    for(size_t index=0;index<count&&index<subscriptions_.size();++index) {
+      if(generation!=generation_||connection!=connection_generation_)break;
+      const auto &entry=subscriptions_[index];
+      if(entry.owner!=owner||entry.pending_release||entry.initial_delivery||!entry.callback||!*entry.callback||entry.channel>=subscription_channels_.size())continue;
+      const auto callback=entry.callback;
+      const auto &channel=subscription_channels_[entry.channel];
+      auto snapshot=source(std::string_view(channel.entity_id),std::string_view(channel.attribute));
+      if(generation!=generation_||connection!=connection_generation_)break;
+      // Source/earlier callbacks may retire this owner or deliver a live value.
+      if(!snapshot||!snapshot->data()||!snapshot->current()||!mark_initial_delivery(callback))continue;
+      invoke(callback,State(snapshot->data(),snapshot->size()));++delivered;
+    }
+    --callback_depth_;
+    if(pending_subscription_compaction_) {
+      pending_subscription_compaction_=false;compact_released_subscriptions();
+    }
+    return delivered;
+  }
+
+  bool request_fresh(std::string_view entity_id,
+                    std::string_view attribute) {
     if (!state_connected() || entity_id.empty() || attribute.empty()) return false;
     const size_t channel = find_subscription_channel(entity_id, attribute, true);
     if (channel == subscription_channels_.size()) return false;
@@ -187,7 +335,7 @@ class HaReadCoordinator {
     // Replies use the existing subscription dispatcher, with no additional
     // native callback or borrowed request strings retained after this call.
     subscription_channels_[channel].fresh_request_pending = true;
-    if (transport_.request(entity_id, attribute)) return true;
+    if (request_transport(transport_, entity_id, attribute, 0)) return true;
     subscription_channels_[channel].fresh_request_pending = false;
     return false;
   }
@@ -231,6 +379,7 @@ class HaReadCoordinator {
   }
 
   void reset_subscriptions(uint32_t scope = 0) {
+    channels_need_reclamation_ = true;
     cancel_fresh(scope == 0 ? UINT32_MAX : scope);
     if (callback_depth_ != 0) {
       // A callback can rebuild a card immediately after requesting its old
@@ -259,6 +408,7 @@ class HaReadCoordinator {
 
   void release_owner(void *owner) {
     if (!owner) return;
+    channels_need_reclamation_ = true;
     release_owner_generation(owner);
     for (auto &channel : subscription_channels_) {
       channel.pending_reads.erase(
@@ -281,8 +431,82 @@ class HaReadCoordinator {
   }
 
  private:
+   std::pair<std::string_view, std::string_view>
+   channel_key(size_t channel) const {
+     return std::pair<std::string_view, std::string_view>{
+         subscription_channels_[channel].entity_id,
+         subscription_channels_[channel].attribute};
+   }
+   bool subscribe_on_channel(const std::string &entity_id,
+                             const std::string &attribute, Callback callback,
+                             uint32_t scope, void *owner, bool retain_latest,
+                             bool retain_replay, bool initial_replay,
+                             size_t channel) {
+     if (!available() || entity_id.empty() || !callback)
+       return false;
+     auto callback_ref = CallbackLease::create(std::move(callback));
+     const bool new_channel = channel == subscription_channels_.size();
+     if (new_channel) {
+       if (next_channel_id_ == 0)
+         return false;
+       SubscriptionChannel subscription_channel;
+       const uint32_t id = next_channel_id_++;
+       subscription_channel.id = id;
+       subscription_channel.entity_id.assign(entity_id.data(),
+                                             entity_id.size());
+       subscription_channel.attribute.assign(attribute.data(),
+                                             attribute.size());
+       subscription_channels_.push_back(std::move(subscription_channel));
+       auto deliver = [this, id](State state) {
+         // IDs increase on append and stable reclamation preserves their order.
+         const auto found = std::lower_bound(
+             subscription_channels_.begin(), subscription_channels_.end(), id,
+             [](const auto &entry, uint32_t value) {
+               return entry.id < value;
+             });
+         if (found != subscription_channels_.end() && found->id == id)
+           invoke_subscription_channel(found - subscription_channels_.begin(),
+                                       state);
+       };
+       if constexpr (HaTransportOwnsSubscriptions<Transport>::value) {
+         const uint32_t token =
+             transport_.subscribe(entity_id, attribute, std::move(deliver));
+         if (token == 0) {
+           subscription_channels_.pop_back();
+           return false;
+         }
+         subscription_channels_[channel].transport_registration = token;
+       } else {
+         transport_.subscribe(entity_id, attribute, std::move(deliver));
+       }
+     }
+     subscriptions_.push_back({callback_ref, scope, owner, channel,
+                               retain_latest, false, retain_replay});
+     auto &registered_channel = subscription_channels_[channel];
+     registered_channel.maintenance_flags |=
+         CHANNEL_ACTIVE | (retain_latest ? CHANNEL_RETAINED_READS : 0) |
+         (retain_replay ? CHANNEL_REPLAY : 0);
+     if (!(registered_channel.maintenance_flags & CHANNEL_SHARED)) {
+       if (registered_channel.maintenance_index == UINT32_MAX)
+         registered_channel.maintenance_index =
+             static_cast<uint32_t>(subscriptions_.size() - 1);
+       else
+         registered_channel.maintenance_flags |= CHANNEL_SHARED;
+     }
+     // A grid rebuild re-subscribes on an existing channel; replay the last
+     // value so rebuilt cards reflect the live state immediately.
+     if (initial_replay && !new_channel &&
+         subscription_channels_[channel].has_last_state) {
+       const AllocatedString snapshot =
+           subscription_channels_[channel].last_state;
+       subscriptions_.back().initial_delivery = true;
+       invoke(callback_ref, State(snapshot.c_str(), snapshot.size()));
+     }
+     return true;
+   }
+
   struct CallbackRef {
-    std::shared_ptr<Callback> callback;
+    CallbackLease callback;
     void *owner = nullptr;
     // Only retained-read callbacks need this token. It prevents an old read
     // from being delivered after its LVGL owner address has been reused.
@@ -301,26 +525,39 @@ class HaReadCoordinator {
   };
 
   struct SubscriptionRef {
-    std::shared_ptr<Callback> callback;
+    CallbackLease callback;
     uint32_t scope = 0;
     void *owner = nullptr;
     size_t channel = 0;
     bool retain_latest = false;
     bool pending_release = false;
+    // Configuration-owned consumers keep state in their own bounded cache.
+    // Existing widget consumers retain the legacy rebuild replay behaviour.
+    bool retain_replay = true;
+    bool initial_delivery = false;
   };
 
   struct SubscriptionChannel {
-    std::string entity_id;
-    std::string attribute;
-    std::string last_state;
-    bool has_last_state = false;
-    std::string cached_state;
+    uint32_t id = 0;
+    uint32_t transport_registration = 0;
+    AllocatedString entity_id;
+    AllocatedString attribute;
+    AllocatedString last_state;
+    AllocatedString cached_state;
     AllocatedVector<CallbackRef> pending_reads;
-    bool has_cached_state = false;
-    bool fresh_request_pending = false;
     uint32_t refresh_scopes = 0;
     uint32_t refresh_due = 0;
+    uint32_t maintenance_index = UINT32_MAX;
+    bool has_last_state = false;
+    bool has_cached_state = false;
+    bool fresh_request_pending = false;
+    uint8_t maintenance_flags = 0;
   };
+
+  static constexpr uint8_t CHANNEL_ACTIVE = 1;
+  static constexpr uint8_t CHANNEL_REPLAY = 2;
+  static constexpr uint8_t CHANNEL_RETAINED_READS = 4;
+  static constexpr uint8_t CHANNEL_SHARED = 8;
 
   static constexpr size_t MAX_DEFERRED_REQUESTS = 64;
   static constexpr size_t MAX_PENDING_READS = 64;
@@ -369,7 +606,8 @@ class HaReadCoordinator {
     if (channel < subscription_channels_.size() && channel_reuses_reads(channel)) {
       auto &subscription = subscription_channels_[channel];
       if (subscription.has_cached_state) {
-        State state(subscription.cached_state);
+        const AllocatedString snapshot = subscription.cached_state;
+        State state(snapshot.c_str(), snapshot.size());
         for (const auto &callback_ref : callbacks) {
           if (owner_generation_current(callback_ref)) invoke(callback_ref.callback, state);
         }
@@ -381,7 +619,15 @@ class HaReadCoordinator {
     }
   }
 
-  void invoke(const std::shared_ptr<Callback> &callback, State state) {
+  bool mark_initial_delivery(const CallbackLease &callback) {
+    for(auto &entry:subscriptions_) {
+      if(entry.callback!=callback||entry.pending_release||entry.initial_delivery)continue;
+      entry.initial_delivery=true;return true;
+    }
+    return false;
+  }
+
+  void invoke(const CallbackLease &callback, State state) {
     if (!callback || !*callback) return;
     callback_depth_++;
     (*callback)(state);
@@ -394,26 +640,48 @@ class HaReadCoordinator {
 
   void invoke_subscription_channel(size_t channel, State state) {
     if (channel >= subscription_channels_.size()) return;
+    struct Guard {
+      uint32_t &depth;
+      explicit Guard(uint32_t &value) : depth(value) { ++depth; }
+      ~Guard() { --depth; }
+    } guard(channel_dispatch_depth_);
     SubscriptionChannel &subscription = subscription_channels_[channel];
     subscription.fresh_request_pending = false;
     AllocatedVector<CallbackRef> pending_reads;
     pending_reads.swap(subscription.pending_reads);
-    AllocatedVector<std::shared_ptr<Callback>> callbacks;
-    size_t matching_callbacks = 0;
-    for (const auto &ref : subscriptions_) {
-      if (!ref.pending_release && ref.channel == channel &&
-          ref.callback && *ref.callback) matching_callbacks++;
-    }
-    callbacks.reserve(matching_callbacks);
-    bool retain_latest = false;
-    for (const auto &ref : subscriptions_) {
-      if (!ref.pending_release && ref.channel == channel &&
-          ref.callback && *ref.callback) {
-        callbacks.push_back(ref.callback);
-        retain_latest = retain_latest || ref.retain_latest;
+    CallbackLease single_callback;
+    AllocatedVector<CallbackLease> callbacks;
+    bool retain_latest = false, retain_replay = false;
+    if (!(subscription.maintenance_flags & CHANNEL_SHARED)) {
+      const auto index = subscription.maintenance_index;
+      if (index < subscriptions_.size()) {
+        auto &ref = subscriptions_[index];
+        if (!ref.pending_release && ref.channel == channel && ref.callback &&
+            *ref.callback) {
+          ref.initial_delivery = true;
+          single_callback = ref.callback;
+          retain_latest = ref.retain_latest;
+          retain_replay = ref.retain_replay;
+        }
+      }
+    } else {
+      size_t matching_callbacks = 0;
+      for (const auto &ref : subscriptions_)
+        if (!ref.pending_release && ref.channel == channel && ref.callback &&
+            *ref.callback)
+          ++matching_callbacks;
+      callbacks.reserve(matching_callbacks);
+      for (auto &ref : subscriptions_) {
+        if (!ref.pending_release && ref.channel == channel && ref.callback &&
+            *ref.callback) {
+          ref.initial_delivery = true;
+          callbacks.push_back(ref.callback);
+          retain_latest = retain_latest || ref.retain_latest;
+          retain_replay = retain_replay || ref.retain_replay;
+        }
       }
     }
-    if (callbacks.empty()) {
+    if (!retain_replay) {
       release_string_storage(subscription.last_state);
       subscription.has_last_state = false;
     } else {
@@ -429,6 +697,22 @@ class HaReadCoordinator {
     for (const auto &callback_ref : pending_reads) {
       if (owner_generation_current(callback_ref)) invoke(callback_ref.callback, state);
     }
+    if (single_callback) {
+      // Pending reads can retire/rebuild the owner or add another consumer.
+      // Validate against the current cache after their reentrant callbacks.
+      const auto &current = subscription_channels_[channel];
+      const auto index = current.maintenance_index;
+      const bool active =
+          (current.maintenance_flags & CHANNEL_SHARED)
+              ? subscription_callback_active(single_callback)
+              : index < subscriptions_.size() &&
+                    !subscriptions_[index].pending_release &&
+                    subscriptions_[index].channel == channel &&
+                    subscriptions_[index].callback == single_callback &&
+                    *single_callback;
+      if (active)
+        invoke(single_callback, state);
+    }
     for (const auto &callback : callbacks) {
       // An earlier callback can reset this scope while the channel snapshot is
       // being dispatched. Skip callbacks marked by that reset, but keep the
@@ -437,13 +721,13 @@ class HaReadCoordinator {
     }
   }
 
-  size_t find_subscription_channel(const std::string &entity_id,
-                                   const std::string &attribute,
+  size_t find_subscription_channel(std::string_view entity_id,
+                                   std::string_view attribute,
                                    bool has_attribute) const {
-    const std::string expected_attribute = has_attribute ? attribute : std::string();
+    const std::string_view expected_attribute = has_attribute ? attribute : std::string_view{};
     for (size_t i = 0; i < subscription_channels_.size(); i++) {
-      if (subscription_channels_[i].entity_id == entity_id &&
-          subscription_channels_[i].attribute == expected_attribute) {
+      if (std::string_view(subscription_channels_[i].entity_id) == entity_id &&
+          std::string_view(subscription_channels_[i].attribute) == expected_attribute) {
         return i;
       }
     }
@@ -454,7 +738,10 @@ class HaReadCoordinator {
     if (channel == subscription_channels_.size() || !channel_reuses_reads(channel)) return false;
     SubscriptionChannel &subscription = subscription_channels_[channel];
     if (subscription.has_cached_state) {
-      State state(subscription.cached_state);
+      // A callback can retire its owner or invalidate retained values before
+      // it finishes reading this view. Keep the delivered bytes alive locally.
+      const AllocatedString snapshot = subscription.cached_state;
+      State state(snapshot.c_str(), snapshot.size());
       if (owner_generation_current(callback_ref)) invoke(callback_ref.callback, state);
     } else {
       return queue_pending_channel_read(subscription, std::move(callback_ref));
@@ -484,6 +771,17 @@ class HaReadCoordinator {
   }
 
   uint32_t active_channel_scopes(size_t channel) const {
+    const auto &entry = subscription_channels_[channel];
+    if (!(entry.maintenance_flags & CHANNEL_SHARED)) {
+      const auto index = entry.maintenance_index;
+      if (index >= subscriptions_.size())
+        return 0;
+      const auto &ref = subscriptions_[index];
+      return !ref.pending_release && ref.channel == channel && ref.callback &&
+                     *ref.callback
+                 ? ref.scope
+                 : 0;
+    }
     uint32_t scopes = 0;
     for (const auto &ref : subscriptions_) {
       if (!ref.pending_release && ref.channel == channel && ref.callback && *ref.callback) scopes |= ref.scope;
@@ -492,14 +790,12 @@ class HaReadCoordinator {
   }
 
   bool channel_reuses_reads(size_t channel) const {
-    for (const auto &ref : subscriptions_) {
-      if (!ref.pending_release && ref.channel == channel && ref.retain_latest &&
-          ref.callback && *ref.callback) return true;
-    }
-    return false;
+    return channel < subscription_channels_.size() &&
+           (subscription_channels_[channel].maintenance_flags &
+            CHANNEL_RETAINED_READS);
   }
 
-  bool subscription_callback_active(const std::shared_ptr<Callback> &callback) const {
+  bool subscription_callback_active(const CallbackLease &callback) const {
     for (const auto &ref : subscriptions_) {
       if (!ref.pending_release && ref.callback == callback && ref.callback && *ref.callback) return true;
     }
@@ -526,10 +822,29 @@ class HaReadCoordinator {
     subscription.has_last_state = true;
   }
 
+  void mark_channel_activity() {
+    for (auto &channel : subscription_channels_)
+      channel.maintenance_flags &= CHANNEL_SHARED;
+    for (const auto &ref : subscriptions_) {
+      if (ref.pending_release || ref.channel >= subscription_channels_.size() ||
+          !ref.callback || !*ref.callback)
+        continue;
+      subscription_channels_[ref.channel].maintenance_flags |=
+          CHANNEL_ACTIVE | (ref.retain_replay ? CHANNEL_REPLAY : 0) |
+          (ref.retain_latest ? CHANNEL_RETAINED_READS : 0);
+    }
+  }
+
   void release_inactive_channel_state() {
-    for (size_t channel = 0; channel < subscription_channels_.size(); channel++) {
-      if (channel_reuses_reads(channel)) continue;
-      SubscriptionChannel &subscription = subscription_channels_[channel];
+    mark_channel_activity();
+    for (auto &subscription : subscription_channels_) {
+      const auto flags = subscription.maintenance_flags;
+      if ((flags & CHANNEL_ACTIVE) && !(flags & CHANNEL_REPLAY)) {
+        release_string_storage(subscription.last_state);
+        subscription.has_last_state = false;
+      }
+      if (flags & CHANNEL_RETAINED_READS)
+        continue;
       release_string_storage(subscription.cached_state);
       release_callback_storage(subscription.pending_reads);
       subscription.has_cached_state = false;
@@ -540,8 +855,32 @@ class HaReadCoordinator {
     AllocatedVector<CallbackRef>().swap(callbacks);
   }
 
-  static void release_string_storage(std::string &value) {
-    std::string().swap(value);
+  // Production accepts borrowed views and encodes the request synchronously.
+  // Preserve older transport policies which require std::string arguments.
+  template<typename Policy>
+  static auto request_transport(Policy &transport, std::string_view entity,
+                                std::string_view attribute, int)
+      -> decltype(transport.request(entity, attribute)) {
+    return transport.request(entity, attribute);
+  }
+  template<typename Policy>
+  static bool request_transport(Policy &transport, std::string_view entity,
+                                std::string_view attribute, long) {
+    return transport.request(std::string(entity), std::string(attribute));
+  }
+
+  static void release_string_storage(AllocatedString &value) {
+    AllocatedString().swap(value);
+  }
+
+  template<typename T>
+  static void trim_container(AllocatedVector<T> &values) {
+    if (values.empty()) { AllocatedVector<T>().swap(values); return; }
+    if (values.capacity() <= std::max(size_t{8}, values.size() * 2)) return;
+    AllocatedVector<T> replacement;
+    replacement.reserve(values.size());
+    for (auto &value : values) replacement.push_back(std::move(value));
+    replacement.swap(values);
   }
 
   void release_empty_deferred_storage() {
@@ -577,6 +916,30 @@ class HaReadCoordinator {
     }
     subscriptions_.resize(write_index);
     if (subscriptions_.empty()) AllocatedVector<SubscriptionRef>().swap(subscriptions_);
+    rebuild_callback_index();
+  }
+
+  void rebuild_callback_index() {
+    // Reuse the remapping word outside channel reclamation. A single native
+    // consumer needs neither a global scan nor an allocated callback snapshot.
+    for (auto &channel : subscription_channels_) {
+      channel.maintenance_index = UINT32_MAX;
+      channel.maintenance_flags = 0;
+    }
+    for (size_t i = 0; i < subscriptions_.size(); ++i) {
+      const auto &ref = subscriptions_[i];
+      if (ref.pending_release || !ref.callback || !*ref.callback ||
+          ref.channel >= subscription_channels_.size())
+        continue;
+      auto &channel = subscription_channels_[ref.channel];
+      channel.maintenance_flags |=
+          CHANNEL_ACTIVE | (ref.retain_latest ? CHANNEL_RETAINED_READS : 0) |
+          (ref.retain_replay ? CHANNEL_REPLAY : 0);
+      if (channel.maintenance_index == UINT32_MAX)
+        channel.maintenance_index = static_cast<uint32_t>(i);
+      else
+        channel.maintenance_flags |= CHANNEL_SHARED;
+    }
   }
 
   void release_owner_subscriptions(void *owner) {
@@ -601,6 +964,12 @@ class HaReadCoordinator {
   uint32_t generation_ = 1;
   uint32_t connection_generation_ = 1;
   uint32_t next_owner_generation_ = 1;
+  uint32_t next_channel_id_ = 1;
+  uint32_t channel_dispatch_depth_ = 0;
+  bool channels_need_reclamation_ = false;
   bool pending_subscription_compaction_ = false;
   uint8_t callback_depth_ = 0;
+  uint32_t *unique_batch_index_ = nullptr;
+  size_t unique_batch_count_ = 0;
+  bool unique_batch_active_ = false;
 };

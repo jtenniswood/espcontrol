@@ -1,5 +1,7 @@
 #pragma once
 
+#include "button_grid_order_parser.h"
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 // ── Subpage helpers ───────────────────────────────────────────────────
@@ -297,6 +299,155 @@ inline std::vector<SubpageBtn> parse_subpage_config(const std::string &sp_cfg) {
   return btns;
 }
 
+// Extract the order string (everything before the first pipe) from subpage config
+inline std::string get_subpage_order(const std::string &sp_cfg) {
+  if (sp_cfg.empty()) return "";
+  size_t start = sp_cfg[0] == '~' ? 1 : 0;
+  size_t pe = sp_cfg.find('|', start);
+  if (pe == std::string::npos) return sp_cfg.substr(start);
+  return sp_cfg.substr(start, pe - start);
+}
+
+inline bool subpage_back_token_span(const std::string &order_str, size_t start, size_t end, char &suffix,
+                                    size_t *label_start = nullptr) {
+  while (start < end && std::isspace(static_cast<unsigned char>(order_str[start]))) start++;
+  while (end > start && std::isspace(static_cast<unsigned char>(order_str[end - 1]))) end--;
+  size_t eq = order_str.find('=', start);
+  size_t base_end = (eq == std::string::npos || eq > end) ? end : eq;
+  while (base_end > start && std::isspace(static_cast<unsigned char>(order_str[base_end - 1]))) base_end--;
+  size_t len = base_end - start;
+  if (len < 1 || len > 2 || order_str[start] != 'B') return false;
+  suffix = len == 2 ? order_str[start + 1] : '\0';
+  if (suffix != '\0' && !grid_token_has_span_suffix(suffix)) return false;
+  if (label_start) *label_start = (eq == std::string::npos || eq >= end) ? std::string::npos : eq + 1;
+  return true;
+}
+
+inline std::string get_subpage_back_custom_label(const std::string &order_str) {
+  if (order_str.empty()) return std::string{};
+  size_t st = 0;
+  while (st <= order_str.length()) {
+    size_t cm = order_str.find(',', st);
+    if (cm == std::string::npos) cm = order_str.length();
+    if (cm > st) {
+      char suffix = '\0';
+      size_t label_start = std::string::npos;
+      if (subpage_back_token_span(order_str, st, cm, suffix, &label_start)) {
+        if (label_start != std::string::npos) {
+          size_t label_end = order_str.find(':', label_start);
+          if (label_end == std::string::npos || label_end > cm) label_end = cm;
+          std::string label = decode_compact_subpage_field(order_str, label_start, label_end - label_start);
+          return label.empty() ? std::string{} : label;
+        }
+        return std::string{};
+      }
+    }
+    st = cm + 1;
+  }
+  return std::string{};
+}
+
+inline std::string get_subpage_back_label(const std::string &order_str) {
+  const std::string label = get_subpage_back_custom_label(order_str);
+  return label.empty() ? espcontrol_i18n(std::string("Back")) : label;
+}
+
+// A colour suffix follows the encoded label: B=Return%3AHome:FF8C00.
+inline std::string get_subpage_back_color(const std::string &order_str) {
+  size_t start = 0;
+  while (start < order_str.size()) {
+    size_t end = order_str.find(',', start);
+    if (end == std::string::npos) end = order_str.size();
+    char suffix = '\0';
+    size_t label_start = std::string::npos;
+    if (subpage_back_token_span(order_str, start, end, suffix, &label_start)) {
+      if (label_start == std::string::npos) return "";
+      const size_t separator = order_str.find(':', label_start);
+      if (separator == std::string::npos || separator >= end) return "";
+      return normalize_card_color_value(order_str.substr(separator + 1, end - separator - 1));
+    }
+    start = end + 1;
+  }
+  return "";
+}
+
+// Subpage grid layout with support for a back button token ("B")
+struct SubpageOrder {
+  int positions[MAX_GRID_SLOTS] = {};
+  int row_span[MAX_GRID_SLOTS] = {};
+  int col_span[MAX_GRID_SLOTS] = {};
+  int back_pos = 0;
+  int back_row_span = 1;
+  int back_col_span = 1;
+  bool has_back_token = false;
+};
+
+inline void parse_subpage_order(const std::string &order_str, int num_slots, int num_btns,
+                                SubpageOrder &result) {
+  int slot_limit = bounded_grid_slots(num_slots);
+  int btn_limit = bounded_grid_slots(num_btns);
+  for (int i = 0; i < MAX_GRID_SLOTS; i++) {
+    result.row_span[i] = 1;
+    result.col_span[i] = 1;
+  }
+  if (order_str.empty()) return;
+  size_t gp2 = 0, st2 = 0;
+  while (st2 <= order_str.length() && gp2 < (size_t)slot_limit) {
+    size_t cm = order_str.find(',', st2);
+    if (cm == std::string::npos) cm = order_str.length();
+    if (cm > st2) {
+      char back_suffix = '\0';
+      if (subpage_back_token_span(order_str, st2, cm, back_suffix)) {
+        result.back_pos = gp2;
+        grid_token_spans(back_suffix, result.back_row_span, result.back_col_span);
+        result.has_back_token = true;
+      } else {
+        size_t token_end = cm;
+        int row_span = 1, col_span = 1;
+        while (token_end > st2 && std::isspace(static_cast<unsigned char>(order_str[token_end - 1]))) {
+          token_end--;
+        }
+        if (token_end > st2 && grid_token_has_span_suffix(order_str[token_end - 1])) {
+          grid_token_spans(order_str[token_end - 1], row_span, col_span);
+          token_end--;
+        }
+        int v = parse_positive_int_span(order_str, st2, token_end);
+        if (v >= 1 && v <= btn_limit) {
+          result.positions[gp2] = v;
+          result.row_span[v - 1] = row_span;
+          result.col_span[v - 1] = col_span;
+        }
+      }
+    }
+    gp2++;
+    st2 = cm + 1;
+  }
+}
+
+inline void normalize_subpage_order_spans(SubpageOrder &order, int num_slots,
+                                          int cols) {
+  int slot_limit = bounded_grid_slots(num_slots);
+  if (order.has_back_token) {
+    normalize_grid_span_for_position(order.back_pos, slot_limit, cols,
+                                     order.back_row_span,
+                                     order.back_col_span);
+  }
+  for (int position = 0; position < slot_limit; position++) {
+    int button_index = order.positions[position];
+    if (button_index < 1 || button_index > MAX_GRID_SLOTS) continue;
+    int rendered_position = order.has_back_token ? position : position + 1;
+    if (rendered_position >= slot_limit) {
+      order.positions[position] = 0;
+      continue;
+    }
+    int &row_span = order.row_span[button_index - 1];
+    int &col_span = order.col_span[button_index - 1];
+    normalize_grid_span_for_position(rendered_position, slot_limit, cols,
+                                     row_span, col_span);
+  }
+}
+
+
 #ifndef ESPCONTROL_SUBPAGE_PARSER_ONLY
 
 inline lv_obj_t *create_grid_card_button(lv_obj_t *parent, lv_coord_t radius,
@@ -385,84 +536,6 @@ inline BtnSlot create_dynamic_card_slot(lv_obj_t *btn,
   return slot;
 }
 
-// Extract the order string (everything before the first pipe) from subpage config
-inline std::string get_subpage_order(const std::string &sp_cfg) {
-  if (sp_cfg.empty()) return "";
-  size_t start = sp_cfg[0] == '~' ? 1 : 0;
-  size_t pe = sp_cfg.find('|', start);
-  if (pe == std::string::npos) return sp_cfg.substr(start);
-  return sp_cfg.substr(start, pe - start);
-}
-
-inline bool subpage_back_token_span(const std::string &order_str, size_t start, size_t end, char &suffix,
-                                    size_t *label_start = nullptr) {
-  while (start < end && std::isspace(static_cast<unsigned char>(order_str[start]))) start++;
-  while (end > start && std::isspace(static_cast<unsigned char>(order_str[end - 1]))) end--;
-  size_t eq = order_str.find('=', start);
-  size_t base_end = (eq == std::string::npos || eq > end) ? end : eq;
-  while (base_end > start && std::isspace(static_cast<unsigned char>(order_str[base_end - 1]))) base_end--;
-  size_t len = base_end - start;
-  if (len < 1 || len > 2 || order_str[start] != 'B') return false;
-  suffix = len == 2 ? order_str[start + 1] : '\0';
-  if (suffix != '\0' && !grid_token_has_span_suffix(suffix)) return false;
-  if (label_start) *label_start = (eq == std::string::npos || eq >= end) ? std::string::npos : eq + 1;
-  return true;
-}
-
-inline std::string get_subpage_back_label(const std::string &order_str) {
-  if (order_str.empty()) return espcontrol_i18n(std::string("Back"));
-  size_t st = 0;
-  while (st <= order_str.length()) {
-    size_t cm = order_str.find(',', st);
-    if (cm == std::string::npos) cm = order_str.length();
-    if (cm > st) {
-      char suffix = '\0';
-      size_t label_start = std::string::npos;
-      if (subpage_back_token_span(order_str, st, cm, suffix, &label_start)) {
-        if (label_start != std::string::npos) {
-          size_t label_end = order_str.find(':', label_start);
-          if (label_end == std::string::npos || label_end > cm) label_end = cm;
-          std::string label = decode_compact_subpage_field(order_str, label_start, label_end - label_start);
-          return label.empty() ? espcontrol_i18n(std::string("Back")) : label;
-        }
-        return espcontrol_i18n(std::string("Back"));
-      }
-    }
-    st = cm + 1;
-  }
-  return espcontrol_i18n(std::string("Back"));
-}
-
-// A colour suffix follows the encoded label: B=Return%3AHome:FF8C00.
-inline std::string get_subpage_back_color(const std::string &order_str) {
-  size_t start = 0;
-  while (start < order_str.size()) {
-    size_t end = order_str.find(',', start);
-    if (end == std::string::npos) end = order_str.size();
-    char suffix = '\0';
-    size_t label_start = std::string::npos;
-    if (subpage_back_token_span(order_str, start, end, suffix, &label_start)) {
-      if (label_start == std::string::npos) return "";
-      const size_t separator = order_str.find(':', label_start);
-      if (separator == std::string::npos || separator >= end) return "";
-      return normalize_card_color_value(order_str.substr(separator + 1, end - separator - 1));
-    }
-    start = end + 1;
-  }
-  return "";
-}
-
-// Subpage grid layout with support for a back button token ("B")
-struct SubpageOrder {
-  int positions[MAX_GRID_SLOTS] = {};
-  int row_span[MAX_GRID_SLOTS] = {};
-  int col_span[MAX_GRID_SLOTS] = {};
-  int back_pos = 0;
-  int back_row_span = 1;
-  int back_col_span = 1;
-  bool has_back_token = false;
-};
-
 inline void subscribe_subpage_parent_indicator(
     const std::string &entity_id,
     lv_obj_t *parent_btn, lv_obj_t *parent_icon,
@@ -549,69 +622,4 @@ inline void subscribe_climate_subpage_parent_indicator(
 }
 
 // Parse subpage order CSV; "B"/"Bd"/"Bw"/"Bb"/"Bt"/"Bx" tokens mark the back button position
-inline void parse_subpage_order(const std::string &order_str, int num_slots, int num_btns,
-                                SubpageOrder &result) {
-  int slot_limit = bounded_grid_slots(num_slots);
-  int btn_limit = bounded_grid_slots(num_btns);
-  for (int i = 0; i < MAX_GRID_SLOTS; i++) {
-    result.row_span[i] = 1;
-    result.col_span[i] = 1;
-  }
-  if (order_str.empty()) return;
-  size_t gp2 = 0, st2 = 0;
-  while (st2 <= order_str.length() && gp2 < (size_t)slot_limit) {
-    size_t cm = order_str.find(',', st2);
-    if (cm == std::string::npos) cm = order_str.length();
-    if (cm > st2) {
-      char back_suffix = '\0';
-      if (subpage_back_token_span(order_str, st2, cm, back_suffix)) {
-        result.back_pos = gp2;
-        grid_token_spans(back_suffix, result.back_row_span, result.back_col_span);
-        result.has_back_token = true;
-      } else {
-        size_t token_end = cm;
-        int row_span = 1, col_span = 1;
-        while (token_end > st2 && std::isspace(static_cast<unsigned char>(order_str[token_end - 1]))) {
-          token_end--;
-        }
-        if (token_end > st2 && grid_token_has_span_suffix(order_str[token_end - 1])) {
-          grid_token_spans(order_str[token_end - 1], row_span, col_span);
-          token_end--;
-        }
-        int v = parse_positive_int_span(order_str, st2, token_end);
-        if (v >= 1 && v <= btn_limit) {
-          result.positions[gp2] = v;
-          result.row_span[v - 1] = row_span;
-          result.col_span[v - 1] = col_span;
-        }
-      }
-    }
-    gp2++;
-    st2 = cm + 1;
-  }
-}
-
-inline void normalize_subpage_order_spans(SubpageOrder &order, int num_slots,
-                                          int cols) {
-  int slot_limit = bounded_grid_slots(num_slots);
-  if (order.has_back_token) {
-    normalize_grid_span_for_position(order.back_pos, slot_limit, cols,
-                                     order.back_row_span,
-                                     order.back_col_span);
-  }
-  for (int position = 0; position < slot_limit; position++) {
-    int button_index = order.positions[position];
-    if (button_index < 1 || button_index > MAX_GRID_SLOTS) continue;
-    int rendered_position = order.has_back_token ? position : position + 1;
-    if (rendered_position >= slot_limit) {
-      order.positions[position] = 0;
-      continue;
-    }
-    int &row_span = order.row_span[button_index - 1];
-    int &col_span = order.col_span[button_index - 1];
-    normalize_grid_span_for_position(rendered_position, slot_limit, cols,
-                                     row_span, col_span);
-  }
-}
-
 #endif  // ESPCONTROL_SUBPAGE_PARSER_ONLY

@@ -1,12 +1,14 @@
 #pragma once
 
+#include "display_color.h"
+#include "lvgl.h"
+
 // LVGL's draw-task clip is needed to split a glyph at the fill boundary.
 // Reuse the native label descriptor so wrapping, scrolling and fonts stay intact.
 #include "src/draw/lv_draw_private.h"
 #include "src/misc/lv_area_private.h"
 
-inline void slider_text_contrast_event_cb(lv_event_t *event) {
-  auto *fill = static_cast<lv_obj_t *>(lv_event_get_user_data(event));
+inline void slider_text_contrast_event(lv_event_t *event,lv_obj_t *fill) {
   auto *task = static_cast<lv_draw_task_t *>(lv_event_get_param(event));
   if (!fill || !task || lv_draw_task_get_type(task) != LV_DRAW_TASK_TYPE_LABEL ||
       lv_obj_get_width(fill) <= 0 || lv_obj_get_height(fill) <= 0) return;
@@ -40,6 +42,10 @@ inline void slider_text_contrast_event_cb(lv_event_t *event) {
   layer->_clip_area = saved_clip;
   task->clip_area = covered;
   descriptor->color = fill_color;
+}
+
+inline void slider_text_contrast_event_cb(lv_event_t *event) {
+  slider_text_contrast_event(event,static_cast<lv_obj_t *>(lv_event_get_user_data(event)));
 }
 
 inline void slider_bind_text_contrast(lv_obj_t *object, lv_obj_t *fill) {

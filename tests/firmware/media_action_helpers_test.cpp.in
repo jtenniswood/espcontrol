@@ -1,0 +1,112 @@
+#include <cassert>
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <string>
+#include <vector>
+
+#include "button_grid_subpage_parser.h"
+#include "media_playback_clock.h"
+
+template <class... Args>
+void log_sink(Args&&...) {}
+#define ESP_LOGI(...) log_sink(__VA_ARGS__)
+#define ESP_LOGW(...) log_sink(__VA_ARGS__)
+namespace esphome::api {
+struct HomeassistantActionRequest {
+  uint32_t call_id{0};
+  std::string service;
+  std::map<std::string, std::string> data;
+};
+struct ActionResponse {
+  bool success;
+  bool is_success() const { return success; }
+  std::string get_error_message() const { return "rejected"; }
+};
+}  // namespace esphome::api
+using Request = esphome::api::HomeassistantActionRequest;
+using Response = esphome::api::ActionResponse;
+std::vector<Request> requests;
+std::map<uint32_t, std::function<void(const Response&)>> callbacks;
+std::string reject_begin, reject_send;
+bool ha_action_begin(Request& r, const char* service, bool, size_t, uint32_t call = 0) {
+  if (reject_begin == service) return false;
+  r.service = service;
+  r.call_id = call;
+  return true;
+}
+void ha_action_add_data(Request& r, const char* key, const char* value) { r.data[key] = value; }
+void ha_action_add_entity(Request& r, const std::string& entity) { r.data["entity_id"] = entity; }
+bool ha_action_send(Request& r) {
+  requests.push_back(r);
+  return r.service != reject_send;
+}
+bool ha_register_action_response_callback(uint32_t id, std::function<void(const Response&)> callback) {
+  callbacks[id] = std::move(callback);
+  return true;
+}
+void ha_cancel_action_response_callback(uint32_t id, const char*) { callbacks.erase(id); }
+const char* media_service_for_mode(const std::string& mode) {
+  return card_runtime_media_playback_service(mode);
+}
+// @production-function send_media_player_action
+// @production-function send_media_playback_action
+// @production-function send_media_seek_action
+// @production-function next_media_playlist_call_id
+// @production-function send_media_playlist_action
+
+int main() {
+  assert(!send_media_player_action("", "media_player.media_play_pause"));
+  assert(!send_media_player_action("media_player.room", nullptr));
+  for (const auto* mode : {"play_pause", "previous", "next"}) {
+    assert(send_media_playback_action("media_player.room", mode));
+    assert(requests.back().service == card_runtime_media_playback_service(mode));
+    assert(requests.back().data.at("entity_id") == "media_player.room");
+  }
+  assert(send_media_seek_action("media_player.room", 65, 301));
+  assert(requests.back().service == "media_player.media_seek" &&
+         requests.back().data.at("seek_position") == "196");
+  assert(!send_media_seek_action("media_player.room", 50, 0));
+  reject_send = "media_player.media_seek";
+  assert(!send_media_seek_action("media_player.room", 50, 300));
+  reject_send.clear();
+  reject_begin = "media_player.media_play_pause";
+  const auto count = requests.size();
+  assert(!send_media_playback_action("media_player.room", "play_pause") && requests.size() == count);
+  reject_begin.clear();
+  ParsedCfg p;
+  p.entity = "media_player.room";
+  p.type = "media";
+  p.sensor = "playlist";
+  assert(!send_media_playlist_action(p));
+  p.options =
+      "playlist_content_id=https%3A%2F%2Fexample.test%2Ftrack%3Fpart%3D1%2C2,playlist_content_type=music,"
+      "playlist_player_source=Living%20Room%20%E2%98%83";
+  for (int i = 0; i < 1000; ++i) {
+    requests.clear();
+    assert(send_media_playlist_action(p) && requests.size() == 2 && callbacks.size() == 2);
+    assert(requests[0].service == "media_player.select_source" &&
+           requests[0].data.at("source") == u8"Living Room ☃");
+    assert(requests[1].service == "media_player.play_media" &&
+           requests[1].data.at("media_content_id") == "https://example.test/track?part=1,2" &&
+           requests[1].data.at("media_content_type") == "music");
+    // Delayed responses retain decoded strings independently of the caller.
+    auto pending = std::move(callbacks);
+    callbacks.clear();
+    const auto saved = p;
+    p = {};
+    for (auto& item : pending) item.second(Response{i % 2 == 0});
+    p = saved;
+  }
+  reject_send = "media_player.play_media";
+  assert(!send_media_playlist_action(p) && callbacks.size() == 1);
+  callbacks.clear();
+  reject_send = "media_player.select_source";
+  assert(send_media_playlist_action(p) && callbacks.size() == 1);
+  callbacks.clear();
+  reject_send.clear();
+  p.options = "playlist_content_id=test";
+  assert(send_media_playlist_action(p));
+  assert(requests.back().data.at("media_content_type") == "playlist");
+  callbacks.clear();
+}

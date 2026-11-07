@@ -15,6 +15,7 @@ export interface ConfigPersistenceFeature {
     connectRequestApi(requestApi: ApplicationApiFeature): void;
     subpageEntityKeys(): string[];
     buttonConfigByteLimit(): number;
+    writableNavigationDepth(): number;
     subpageConfigFits(value: string): boolean;
     saveButtonConfig(slot: number): Promise<any>;
     saveButtonConfigAndOrder(slot: number, order: string): Promise<any>;
@@ -187,6 +188,7 @@ export function createConfigPersistenceFeature(
         saveSubpageEntityLegacy(slot, full);
     }
     function scheduleSliderSubpageMigration(this: any, slot?: any) {
+        if (state.nativeConfigLoading || state.nativeTransferActive || state.nativeHasNestedPages) return;
         runtime.pendingSliderSubpageMigrations[slot] = true;
         clearTimeout(runtime.sliderMigrationTimer as any);
         runtime.sliderMigrationTimer = setTimeout(function (this: any) {
@@ -203,6 +205,7 @@ export function createConfigPersistenceFeature(
         connectRequestApi,
         subpageEntityKeys,
         buttonConfigByteLimit,
+        writableNavigationDepth: () => nativePanelConfig?.writableNavigationDepth() ?? 1,
         subpageConfigFits,
         saveButtonConfig: (slot) => saveButtonConfig(slot),
         saveButtonConfigAndOrder: (slot, order) => saveButtonConfigAndOrder(slot, order),

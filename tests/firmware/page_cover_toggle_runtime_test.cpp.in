@@ -1,0 +1,340 @@
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
+#include <unordered_map>
+#include <vector>
+
+#include "bounded_status_text.h"
+#include "i18n_generated.h"
+#include "page_card_dependencies.h"
+#include "page_cover_toggle_runtime.h"
+#include "page_runtime_resources_group.h"
+#include "page_store_runtime.h"
+#include "panel_config_document.h"
+struct lv_obj_t;
+void lv_label_set_text(lv_obj_t*, const char*) {}
+#include "button_grid_config_parser.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+static size_t cpp_allocations = 0;
+void* operator new(size_t bytes) {
+  ++cpp_allocations;
+  if (void* pointer = std::malloc(bytes ? bytes : 1)) return pointer;
+  std::abort();
+}
+void* operator new[](size_t bytes) {
+  return ::operator new(bytes);
+}
+void operator delete(void* pointer) noexcept {
+  std::free(pointer);
+}
+void operator delete[](void* pointer) noexcept {
+  std::free(pointer);
+}
+void operator delete(void* pointer, std::size_t) noexcept {
+  std::free(pointer);
+}
+void operator delete[](void* pointer, std::size_t) noexcept {
+  std::free(pointer);
+}
+namespace {
+uint32_t tick = 100;
+uint32_t now() {
+  return tick;
+}
+struct Arena : PageArenaAllocator {
+  std::unordered_map<void*, size_t> live;
+  bool fail{false};
+  size_t calls{0};
+  void* allocate(size_t bytes) override {
+    ++calls;
+    if (fail) return nullptr;
+    auto* pointer = std::malloc(bytes);
+    assert(pointer);
+    live[pointer] = bytes;
+    return pointer;
+  }
+  void release(void* pointer, size_t bytes) override {
+    assert(live.at(pointer) == bytes);
+    live.erase(pointer);
+    std::free(pointer);
+  }
+};
+struct Subscriptions : PageEntitySubscriptions {
+  bool subscribe(const char*, const char*, void*, uint32_t, uint32_t, Deliver) override {
+    std::abort();
+  }
+  void release(void*) override {
+    std::abort();
+  }
+  uint32_t connection_generation() const override {
+    return connection;
+  }
+  uint32_t connection{1};
+};
+struct Fixture {
+  Fixture(uint32_t generation, const char* key = "cover.room", bool empty = false,
+          const DeviceUiLimits& limits = DEVICE_UI_PROFILES[8]) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    for (size_t i = 0; i < 3; ++i) {
+      const std::string card =
+          empty ? ";;;;sensor.test;;sensor;1;" : std::string(key) + ";;Auto;Auto;toggle;;cover;;";
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(card.data()), card.size()) ==
+             PanelConfigStatus::OK);
+    }
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, generation, storage.data(), storage.size(),
+                               &store) == PageStoreStatus::OK);
+  }
+  std::array<uint8_t, 8192> document{};
+  size_t size{0};
+  alignas(std::max_align_t) std::array<uint8_t, 32768> storage{};
+  PageStore store;
+};
+// @legacy-cover-toggle-reference
+void parity() {
+  const char* states[] = {"open",         "closed",     "opening", "closing",  "unknown",
+                          "unavailable",  "",           "Open",    " CLOSED ", "custom-state",
+                          "CUSTOM_state", "état_fermé", "açık",    "OPEN",     "Open"};
+  for (const auto* language : {"en", "de", "fr", "ru", "pt-br", "he", "tr", "uk", "cs"}) {
+    set_espcontrol_language(language);
+    tick = 100;
+    Arena arena;
+    Subscriptions subscriptions;
+    Fixture fixture(17);
+    PageCoverToggleRuntime runtime(arena, subscriptions, now, 32, 2048,
+                                   {espcontrol_i18n, espcontrol_i18n_key});
+    assert(runtime.prepare(fixture.store));
+    runtime.activate_prepared(fixture.store);
+    lv_obj_t label;
+    lv_timer_t timer;
+    TransientStatusLabel status;
+    timer.user = &status;
+    status.label = &label;
+    status.revert_timer = &timer;
+    status.steady_text = "Cover";
+    uint32_t random = 1234567;
+    for (int i = 0; i < 10000; ++i) {
+      if (i % 1000 == 0) set_espcontrol_language((i / 1000) % 2 ? "en" : language);
+      random = random * 1664525u + 1013904223u;
+      tick += (random >> 24) % 4000;
+      if (!timer.paused && static_cast<uint32_t>(tick - timer.reset_ms) >= 3000)
+        transient_status_label_revert_cb(&timer);
+      const auto* value = states[(random >> 8) % 15];
+      transient_status_label_show_if_changed(&status, garage_state_label(value),
+                                             garage_state_releases_label(value));
+      runtime.observed(17, "cover.room", "", value, false);
+      const auto snapshot = runtime.read({17, 0});
+      assert(snapshot.on == cover_toggle_state_is_active(value) &&
+             snapshot.icon_open == garage_state_uses_open_icon(value));
+      assert(snapshot.showing == status.showing_status && snapshot.status == status.last_status_text);
+      assert(runtime.read({17, 1}).showing == snapshot.showing &&
+             runtime.read({17, 2}).status == snapshot.status);
+    }
+  }
+  set_espcontrol_language("en");
+}
+void formatter() {
+  for (const auto* raw :
+       {"open", "__hello--WORLD  ", "état_fermé", "açık", "ångström_ÉTÉ", "Straße", "\xe2\x82", "x\ny"}) {
+    char output[97];
+    format_status_text(output, sizeof(output), raw);
+    assert(output == sentence_cap_text(raw));
+  }
+  char output[4];
+  format_status_text(output, sizeof(output), "ééé");
+  assert(std::strcmp(output, "É") == 0);
+}
+void lifetime() {
+  tick = 100;
+  Arena arena;
+  Subscriptions subscriptions;
+  Fixture first(17), second(18, "cover.other"), empty(19, "", true);
+  {
+    PageCoverToggleRuntime runtime(arena, subscriptions, now);
+    assert(runtime.prepare(first.store));
+    runtime.activate_prepared(first.store);
+    const auto report = [&](const char* value) { runtime.observed(17, "cover.room", "", value, false); };
+    report("closed");
+    assert(runtime.read({17, 0}).on && !runtime.read({17, 0}).showing);
+    report("opening");
+    assert(runtime.read({17, 0}).showing && runtime.read({17, 0}).icon_open);
+    tick += 10000;
+    runtime.loop();
+    assert(runtime.read({17, 0}).showing);  // Movement stays visible.
+    report("open");
+    assert(runtime.read({17, 0}).showing);
+    tick += 2999;
+    runtime.loop();
+    assert(runtime.read({17, 0}).showing);
+    report("open");
+    ++tick;
+    runtime.loop();
+    assert(!runtime.read({17, 0}).showing);  // Repeated terminal state does not restart expiry.
+    report("closing");
+    report("closed");
+    tick += 3000;
+    runtime.loop();
+    assert(!runtime.read({17, 0}).showing);
+    const auto before = cpp_allocations, calls = arena.calls;
+    for (int i = 0; i < 1000; ++i) {
+      report("opening");
+      report("closed");
+      tick += 3000;
+      runtime.loop();
+      (void)runtime.read({17, 0});
+    }
+    assert(cpp_allocations == before && arena.calls == calls);
+    assert(runtime.prepare(second.store));
+    runtime.discard_prepared();
+    assert(runtime.read({17, 0}).on && arena.live.size() == 1);
+    arena.fail = true;
+    assert(!runtime.prepare(second.store));
+    arena.fail = false;
+    assert(runtime.read({17, 0}).on);
+    ++subscriptions.connection;
+    runtime.loop();
+    assert(!runtime.read({17, 0}).on && runtime.read({17, 0}).status == "--" &&
+           runtime.read({17, 0}).showing);
+    tick = UINT32_MAX - 100;
+    report("open");
+    tick += 3000;
+    runtime.loop();
+    assert(!runtime.read({17, 0}).showing);
+    for (int i = 0; i < 1000; ++i) {
+      const auto& store = i % 2 ? first.store : second.store;
+      assert(runtime.prepare(store));
+      runtime.activate_prepared(store);
+      assert(runtime.memory().sources == 1 && arena.live.size() == 1);
+    }
+    assert(runtime.prepare(empty.store));
+    runtime.activate_prepared(empty.store);
+    assert(arena.live.empty());
+  }
+  assert(arena.live.empty());
+  for (const auto& limit : {std::pair<size_t, size_t>{0, 2048}, {32, 0}}) {
+    PageCoverToggleRuntime runtime(arena, subscriptions, now, limit.first, limit.second);
+    assert(!runtime.prepare(first.store));
+  }
+  {
+    PageCoverToggleRuntime runtime(arena, subscriptions, nullptr);
+    assert(!runtime.prepare(first.store));
+  }
+  {
+    PageCoverToggleRuntime runtime(arena, subscriptions, now, 32, 2048, {espcontrol_i18n, nullptr});
+    assert(!runtime.prepare(first.store));
+  }
+  for (const auto& limits : DEVICE_UI_PROFILES) {
+    Fixture fixture(17, "cover.room", false, limits);
+    PageCoverToggleRuntime runtime(arena, subscriptions, now);
+    assert(runtime.prepare(fixture.store));
+    runtime.activate_prepared(fixture.store);
+    assert(runtime.memory().sources == 1);
+  }
+  assert(arena.live.empty());
+}
+void graph_snapshots() {
+  struct Transport : PageEntitySubscriptions {
+    struct Binding {
+      const char* entity;
+      const char* attribute;
+      void* owner;
+      uint32_t revision, channel;
+      Deliver deliver;
+    };
+    std::vector<Binding> bindings;
+    bool subscribe(const char* entity, const char* attribute, void* owner, uint32_t revision,
+                   uint32_t channel, Deliver deliver) override {
+      bindings.push_back({entity, attribute, owner, revision, channel, deliver});
+      return true;
+    }
+    void release(void* owner) override {
+      bindings.erase(std::remove_if(bindings.begin(), bindings.end(),
+                                    [&](const auto& binding) { return binding.owner == owner; }),
+                     bindings.end());
+    }
+    uint32_t connection_generation() const override {
+      return 1;
+    }
+    void send(const char* attribute, const char* value) {
+      for (const auto& binding : bindings)
+        if (std::strcmp(binding.attribute, attribute) == 0)
+          binding.deliver(binding.owner, binding.revision, binding.channel, value);
+    }
+  } subscriptions;
+  Fixture fixture(17);
+  Arena arena;
+  PageCardDependencies dependencies;
+  {
+    PageCoverToggleRuntime runtime(arena, subscriptions, now);
+    PageEntityStateRuntime state(dependencies, arena, subscriptions, {64, 64, 2048}, &runtime);
+    PageRuntimeResourcesGroup<2> resources({&runtime, &state});
+    PageStoreRuntime store(DEVICE_UI_PROFILES[8], arena, 32768, &resources);
+    const auto prepare = [&]() {
+      return store.prepare(PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size);
+    };
+    const auto activate = [&](uint32_t generation) {
+      return store.activate_prepared(generation, PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(),
+                                     fixture.size);
+    };
+    assert(prepare() && activate(0));
+    subscriptions.send("", "opening");
+    assert(runtime.read({0, 0}).showing && runtime.read({0, 0}).icon_open);
+    subscriptions.send("", "open");
+    tick += 3000;
+    runtime.loop();
+    assert(!runtime.read({0, 0}).showing);
+    assert(prepare());
+    store.discard_prepared();
+    assert(!runtime.read({0, 0}).showing);
+    assert(prepare() && activate(2));
+    assert(runtime.read({2, 0}).icon_open && !runtime.read({2, 0}).showing);
+    assert(prepare());
+    subscriptions.send("", "closing");
+    assert(activate(3));
+    assert(runtime.read({3, 0}).showing && runtime.read({3, 1}).on);
+  }
+  assert(arena.live.empty() && subscriptions.bindings.empty());
+}
+
+void publication() {
+  tick = 100;
+  Arena arena;
+  Subscriptions subscriptions;
+  Fixture fixture(17), empty(18, "", true);
+  PageCoverToggleRuntime runtime(arena, subscriptions, now);
+  {
+    PageStoreRuntime store(DEVICE_UI_PROFILES[8], arena, 32768, &runtime);
+    assert(store.prepare(PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
+    runtime.observed(UINT32_MAX, "cover.room", "", "opening", false);
+    assert(store.activate_prepared(0, PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
+    assert(runtime.read({0, 0}).showing && runtime.read({0, 0}).status == "Opening" &&
+           !runtime.read({UINT32_MAX, 0}).showing);
+    assert(store.prepare(PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
+    runtime.observed(UINT32_MAX, "cover.room", "", "closed", true);
+    store.discard_prepared();
+    assert(runtime.read({0, 0}).status == "Opening");
+    assert(store.prepare(PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
+    runtime.observed(UINT32_MAX, "cover.room", "", "closed", true);
+    assert(store.activate_prepared(2, PANEL_CONFIG_DOCUMENT_VERSION, fixture.document.data(), fixture.size));
+    assert(runtime.read({2, 0}).on && !runtime.read({2, 0}).showing && !runtime.read({0, 0}).on);
+    assert(store.prepare(PANEL_CONFIG_DOCUMENT_VERSION, empty.document.data(), empty.size));
+    assert(store.activate_prepared(3, PANEL_CONFIG_DOCUMENT_VERSION, empty.document.data(), empty.size));
+    assert(runtime.memory().active_bytes == 0);
+  }
+  assert(arena.live.empty());
+}
+}  // namespace
+int main() {
+  formatter();
+  parity();
+  lifetime();
+  graph_snapshots();
+  publication();
+}

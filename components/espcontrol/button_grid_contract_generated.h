@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 // =============================================================================
 // GENERATED CARD CONFIG CONTRACT - do not edit by hand
@@ -214,7 +215,7 @@ inline CardRuntimeSpec card_runtime_spec(CardTypeId type) {
     case CardTypeId::SENSOR: return {type, CardDriverId::SENSOR, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     case CardTypeId::LOCAL_SENSOR: return {type, CardDriverId::SENSOR, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_SUBPAGE)};
     case CardTypeId::SLIDER: return {type, CardDriverId::NUMERIC, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_NUMERIC_CONTROL | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
-    case CardTypeId::SUBPAGE: return {type, CardDriverId::SUBPAGE, static_cast<uint16_t>(CAPABILITY_ACTIONS | CAPABILITY_RUNTIME_ALLOCATION)};
+    case CardTypeId::SUBPAGE: return {type, CardDriverId::SUBPAGE, static_cast<uint16_t>(CAPABILITY_ACTIONS | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     case CardTypeId::TIMEZONE: return {type, CardDriverId::DATE_TIME, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_SUBPAGE)};
     case CardTypeId::WEATHER: return {type, CardDriverId::WEATHER, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     case CardTypeId::IMAGE: return {type, CardDriverId::IMAGE, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
@@ -663,7 +664,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "sensor") return true;
   if (type == "local_sensor") return true;
   if (type == "slider") return true;
-  if (type == "subpage") return false;
+  if (type == "subpage") return true;
   if (type == "timezone") return true;
   if (type == "weather") return true;
   if (type == "image") return true;
@@ -845,6 +846,94 @@ inline const char *card_contract_subpage_type_code(const std::string &type) {
 }
 
 inline std::string card_contract_subpage_type_from_code(const std::string &code) {
+  if (code == "TM") return "timer";
+  if (code == "A") return "action";
+  if (code == "D") return "calendar";
+  if (code == "CK") return "clock";
+  if (code == "T") return "timezone";
+  if (code == "S") return "sensor";
+  if (code == "LS") return "local_sensor";
+  if (code == "X") return "door_window";
+  if (code == "PR") return "presence";
+  if (code == "W") return "weather";
+  if (code == "F") return "weather_forecast";
+  if (code == "U") return "option_select";
+  if (code == "B") return "fan_switch";
+  if (code == "J") return "fan_speed";
+  if (code == "FC") return "fan_control";
+  if (code == "O") return "fan_oscillate";
+  if (code == "E") return "fan_direction";
+  if (code == "Z") return "fan_preset";
+  if (code == "V") return "light_brightness";
+  if (code == "Q") return "light_switch";
+  if (code == "LC") return "light_control";
+  if (code == "Y") return "alarm";
+  if (code == "AA") return "alarm_action";
+  if (code == "L") return "slider";
+  if (code == "C") return "cover";
+  if (code == "VC") return "vacuum";
+  if (code == "LM") return "lawn_mower";
+  if (code == "N") return "light_temperature";
+  if (code == "R") return "garage";
+  if (code == "GT") return "gate";
+  if (code == "K") return "lock";
+  if (code == "M") return "media";
+  if (code == "H") return "climate";
+  if (code == "HC") return "climate_control";
+  if (code == "P") return "push";
+  if (code == "SL") return "screen_lock";
+  if (code == "SS") return "screensaver";
+  if (code == "WH") return "webhook";
+  if (code == "I") return "internal";
+  if (code == "G") return "subpage";
+  return code;
+}
+
+inline std::string_view card_contract_subpage_code_view(std::string_view type) {
+  if (type == "timer") return "TM";
+  if (type == "action") return "A";
+  if (type == "calendar") return "D";
+  if (type == "clock") return "CK";
+  if (type == "timezone") return "T";
+  if (type == "sensor") return "S";
+  if (type == "local_sensor") return "LS";
+  if (type == "door_window") return "X";
+  if (type == "presence") return "PR";
+  if (type == "weather") return "W";
+  if (type == "weather_forecast") return "F";
+  if (type == "option_select") return "U";
+  if (type == "fan_switch") return "B";
+  if (type == "fan_speed") return "J";
+  if (type == "fan_control") return "FC";
+  if (type == "fan_oscillate") return "O";
+  if (type == "fan_direction") return "E";
+  if (type == "fan_preset") return "Z";
+  if (type == "light_brightness") return "V";
+  if (type == "light_switch") return "Q";
+  if (type == "light_control") return "LC";
+  if (type == "alarm") return "Y";
+  if (type == "alarm_action") return "AA";
+  if (type == "slider") return "L";
+  if (type == "cover") return "C";
+  if (type == "vacuum") return "VC";
+  if (type == "lawn_mower") return "LM";
+  if (type == "light_temperature") return "N";
+  if (type == "garage") return "R";
+  if (type == "gate") return "GT";
+  if (type == "lock") return "K";
+  if (type == "media") return "M";
+  if (type == "climate") return "H";
+  if (type == "climate_control") return "HC";
+  if (type == "push") return "P";
+  if (type == "screen_lock") return "SL";
+  if (type == "screensaver") return "SS";
+  if (type == "webhook") return "WH";
+  if (type == "internal") return "I";
+  if (type == "subpage") return "G";
+  return type;
+}
+
+inline std::string_view card_contract_subpage_type_view(std::string_view code) {
   if (code == "TM") return "timer";
   if (code == "A") return "action";
   if (code == "D") return "calendar";

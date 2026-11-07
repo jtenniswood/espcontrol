@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 #include "esphome/core/string_ref.h"
 
@@ -43,7 +44,8 @@ inline std::string normalize_display_text(const std::string &text) {
   return normalized;
 }
 
-inline bool append_html_code_point(std::string &output, uint32_t code_point) {
+template<typename Output>
+inline bool append_html_code_point(Output &output, uint32_t code_point) {
   if (code_point == 0 || code_point > 0x10FFFF ||
       (code_point >= 0xD800 && code_point <= 0xDFFF)) {
     return false;
@@ -80,11 +82,10 @@ inline uint32_t remap_legacy_html_code_point(uint32_t code_point) {
 // Home Assistant integrations can expose HTML-escaped media metadata. Decode
 // the common named entities plus numeric character references before sending
 // titles and artist names to LVGL labels.
-inline std::string decode_html_entities(const std::string &text) {
-  if (text.find('&') == std::string::npos) return text;
-
-  std::string decoded;
-  decoded.reserve(text.size());
+// Every decoded reference is no longer than its input spelling. Callers using
+// fixed storage reserve at least text.size() bytes before invoking this helper.
+template<typename Output>
+inline void decode_html_entities_to(std::string_view text, Output &decoded) {
   size_t index = 0;
   while (index < text.size()) {
     if (text[index] != '&') {
@@ -199,5 +200,26 @@ inline std::string decode_html_entities(const std::string &text) {
 
     decoded.push_back(text[index++]);
   }
+}
+
+inline std::string decode_html_entities(const std::string &text) {
+  if (text.find('&') == std::string::npos) return text;
+  std::string decoded;
+  decoded.reserve(text.size());
+  decode_html_entities_to(text, decoded);
   return decoded;
+}
+
+// Preserve protocol/identity bytes; display-only transliteration is separate.
+// Apply the existing byte cap before decoding, just like string_ref_limited.
+inline std::string_view decode_html_entities_bounded(char *output, size_t capacity, std::string_view text) {
+  if (!output || capacity == 0) return {};
+  struct Buffer {
+    char *data;
+    size_t used{0};
+    void push_back(char value) { data[used++] = value; }
+  } buffer{output};
+  decode_html_entities_to(text.substr(0, capacity - 1), buffer);
+  output[buffer.used] = '\0';
+  return {output, buffer.used};
 }

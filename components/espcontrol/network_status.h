@@ -6,6 +6,8 @@
 #include "button_grid_limits.h"
 #include "display_text.h"
 #include "network_status_layout.h"
+#include "network_status_text.h"
+#include "page_scene_selection.h"
 #include "screen_lock_state.h"
 
 #include <cmath>
@@ -117,58 +119,12 @@ inline std::string network_status_ip_address() {
   return espcontrol_i18n(std::string("Not available"));
 }
 
-inline std::string network_status_trim_copy(const std::string &value) {
-  const size_t first = value.find_first_not_of(" \t\r\n");
-  if (first == std::string::npos) return "";
-  const size_t last = value.find_last_not_of(" \t\r\n");
-  return value.substr(first, last - first + 1);
-}
-
-inline bool network_status_is_specific_firmware_version(
-    const std::string &version) {
-  std::string trimmed = network_status_trim_copy(version);
-  const size_t len = trimmed.size();
-  if (len < 6 || (trimmed[0] != 'v' && trimmed[0] != 'V')) return false;
-
-  size_t pos = 1;
-  auto read_number = [&]() -> bool {
-    if (pos >= len ||
-        !std::isdigit(static_cast<unsigned char>(trimmed[pos]))) return false;
-    while (pos < len &&
-           std::isdigit(static_cast<unsigned char>(trimmed[pos]))) ++pos;
-    return true;
-  };
-
-  if (!read_number()) return false;
-  for (int part = 0; part < 2; ++part) {
-    if (pos >= len || trimmed[pos] != '.') return false;
-    ++pos;
-    if (!read_number()) return false;
-  }
-  if (pos == len) return true;
-  if (trimmed[pos] != '-' && trimmed[pos] != '+') return false;
-  ++pos;
-  if (pos == len) return false;
-  while (pos < len) {
-    unsigned char c = static_cast<unsigned char>(trimmed[pos]);
-    if (!std::isalnum(c) && trimmed[pos] != '.' && trimmed[pos] != '-') {
-      return false;
-    }
-    ++pos;
-  }
-  return true;
-}
-
-inline std::string network_status_firmware_label(const std::string &version) {
-  std::string trimmed = network_status_trim_copy(version);
-  if (trimmed.empty() || trimmed == "Version unknown") {
-    return espcontrol_i18n(std::string("Version unknown"));
-  }
-  if (network_status_is_specific_firmware_version(trimmed)) return trimmed;
-  return espcontrol_i18n(std::string("Dev build"));
-}
-
 inline void network_status_hide_modal() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto *scene = espcontrol::application_scene_navigation())
+      scene->close_settings();
+    return;
+  }
   NetworkStatusModalUi &ui = network_status_modal_ui();
   if (ui.refresh_timer) lv_timer_del(ui.refresh_timer);
   lv_obj_t *overlay = ui.overlay;
@@ -239,6 +195,11 @@ inline void network_status_open_modal(const std::string &device_name,
                                       const lv_font_t *text_font,
                                       const lv_font_t *icon_font,
                                       float (*wifi_quality)() = nullptr) {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto *scene = espcontrol::application_scene_navigation())
+      scene->open_settings();
+    return;
+  }
   // Settings is explicit navigation: dismiss nested menus and the current
   // modal before saving the underlying page title.
   control_modal_close_nested_menu();

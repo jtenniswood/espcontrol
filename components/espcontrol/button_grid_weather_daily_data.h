@@ -2,6 +2,7 @@
 #include <memory>
 #include <vector>
 #include "weather_daily_forecast.h"
+#include "weather_modal_lifetime.h"
 
 // Only configured multi-day cards allocate a source. Cards for the same entity
 // share one compact forecast; the legacy per-slot registry is not enlarged.

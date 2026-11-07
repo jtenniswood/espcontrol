@@ -1,0 +1,423 @@
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <vector>
+
+#include "page_alarm_ack_runtime.h"
+#include "page_card_dependencies.h"
+#include "page_entity_observer_set.h"
+#include "page_runtime_resources_group.h"
+#include "panel_config_document.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+static size_t allocations = 0;
+void* operator new(size_t n) {
+  ++allocations;
+  if (auto* p = std::malloc(n ? n : 1)) return p;
+  std::abort();
+}
+void* operator new[](size_t n) {
+  return ::operator new(n);
+}
+void operator delete(void* p) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p) noexcept {
+  std::free(p);
+}
+void operator delete(void* p, size_t) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p, size_t) noexcept {
+  std::free(p);
+}
+uint32_t tick = 100;
+bool advancing_clock = false;
+uint32_t now() {
+  const auto value = tick;
+  if (advancing_clock) ++tick;
+  return value;
+}
+namespace legacy {
+struct lv_timer_t {
+  void* user;
+  uint32_t started, period;
+};
+struct AlarmCardCtx {
+  lv_timer_t* pending_action_timer{nullptr};
+  std::string pending_action_mode, state, arm_mode;
+  bool pending_action_had_code{false};
+};
+PageAlarmFailureReason failure = PageAlarmFailureReason::NONE;
+void* lv_timer_get_user_data(lv_timer_t* timer) {
+  return timer->user;
+}
+void lv_timer_del(lv_timer_t* timer) {
+  delete timer;
+}
+lv_timer_t* lv_timer_create(void (*)(lv_timer_t*), uint32_t period, void* user) {
+  return new lv_timer_t{user, tick, period};
+}
+void alarm_show_failure(AlarmCardCtx*, const char* text) {
+  failure = std::strcmp(text, "PIN was not accepted") == 0 ? PageAlarmFailureReason::CODE
+                                                           : PageAlarmFailureReason::ACTION;
+}
+// @legacy-alarm-ack
+void expire(AlarmCardCtx& ctx) {
+  if (ctx.pending_action_timer &&
+      static_cast<uint32_t>(tick - ctx.pending_action_timer->started) >= ctx.pending_action_timer->period)
+    alarm_pending_action_timer_cb(ctx.pending_action_timer);
+}
+}  // namespace legacy
+namespace {
+struct Arena : PageArenaAllocator {
+  size_t live{0}, calls{0};
+  bool fail{false};
+  void* allocate(size_t n) override {
+    ++calls;
+    if (fail) return nullptr;
+    ++live;
+    return std::malloc(n);
+  }
+  void release(void* p, size_t) override {
+    assert(live);
+    --live;
+    std::free(p);
+  }
+};
+struct Transport : PageEntitySubscriptions {
+  struct Binding {
+    const char* entity;
+    const char* attribute;
+    void* owner;
+    uint32_t revision, channel;
+    Deliver deliver;
+  };
+  std::vector<Binding> bindings;
+  uint32_t connection{1};
+  uint32_t connection_generation() const override {
+    return connection;
+  }
+  bool subscribe(const char* entity, const char* attribute, void* owner, uint32_t revision, uint32_t channel,
+                 Deliver deliver) override {
+    bindings.push_back({entity, attribute, owner, revision, channel, deliver});
+    return true;
+  }
+  void release(void* owner) override {
+    bindings.erase(
+        std::remove_if(bindings.begin(), bindings.end(), [&](const auto& b) { return b.owner == owner; }),
+        bindings.end());
+  }
+  void send(const char* entity, const char* attribute, const char* value) {
+    for (const auto& b : bindings)
+      if (std::strcmp(entity, b.entity) == 0 && std::strcmp(attribute, b.attribute) == 0)
+        b.deliver(b.owner, b.revision, b.channel, value);
+  }
+};
+struct Fixture {
+  std::array<uint8_t, 16384> document{};
+  alignas(std::max_align_t) std::array<uint8_t, 32768> storage{};
+  size_t size{0};
+  PageStore store;
+  Fixture(uint32_t generation, const char* entity = "alarm_control_panel.home",
+          const DeviceUiLimits& limits = DEVICE_UI_PROFILES[8], bool empty = false) {
+    PanelConfigWriter writer(document.data(), document.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {
+        std::string(entity) + ";;Auto;Auto;;;alarm;;",
+        std::string(entity) + ";;Auto;Auto;away;;alarm_action;;",
+        std::string(entity) + ";Alarms;Auto;Auto;indicator;;subpage;;subpage_kind=alarm"};
+    for (size_t i = 0; i < 3; ++i) {
+      const auto card = empty ? std::string(";;;;sensor.empty;;sensor;1;") : cards[i];
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(card.data()), card.size()) ==
+             PanelConfigStatus::OK);
+    }
+    const std::string child = empty ? "~B,1|S,,Value,Auto,Auto,sensor.empty,,1,"
+                                    : "~B,1,2|Y,,,Auto,Auto,,,,|AA,,,Auto,Auto,home,,,";
+    assert(writer.append_subpage(3, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(document.data(), size, limits, generation, storage.data(), storage.size(),
+                               &store) == PageStoreStatus::OK);
+  }
+};
+void parity() {
+  tick = UINT32_MAX - 5000;
+  Fixture fixture(17);
+  Arena arena;
+  Transport transport;
+  PageAlarmStateRuntime state(arena, transport, now);
+  PageAlarmAckRuntime ack(arena, transport, state, now);
+  assert(state.prepare(fixture.store) && ack.prepare(fixture.store));
+  state.activate_prepared(fixture.store);
+  ack.activate_prepared(fixture.store);
+  legacy::AlarmCardCtx reference;
+  const char* states[] = {"",       "disarmed", "armed_away", "armed_home",  "armed_night", "armed_vacation",
+                          "arming", "pending",  "triggered",  "unavailable", "unknown"};
+  const char* modes[] = {"away", "home", "night", "vacation", "disarm"};
+  const char* arm_modes[] = {"", "away", "home", "armed_night", "armed_custom_bypass", "invalid"};
+  uint32_t random = 1234567;
+  for (size_t i = 0; i < 200000; ++i) {
+    random = random * 1664525u + 1013904223u;
+    tick += random % 1800;
+    legacy::expire(reference);
+    const auto before = allocations;
+    ack.loop();
+    const auto failure = ack.take_failure();
+    assert(allocations == before && failure.valid == (legacy::failure != PageAlarmFailureReason::NONE));
+    if (failure.valid)
+      assert(failure.reason == legacy::failure && failure.origin.generation == 17 &&
+             failure.origin.index == 0 && failure.connection == transport.connection);
+    legacy::failure = PageAlarmFailureReason::NONE;
+    const auto event = (random >> 16) % 5;
+    if (event == 0) {
+      const auto* mode = modes[random % std::size(modes)];
+      const bool had_code = (random >> 10) % 2;
+      legacy::alarm_start_pending_action(&reference, mode, had_code);
+      const auto before = allocations;
+      assert(ack.accepted({17, 0}, transport.connection, alarm::action(mode), had_code));
+      assert(allocations == before);
+    } else if (event == 1 || event == 2) {
+      const char* attribute = event == 1 ? "" : "arm_mode";
+      const char* text =
+          event == 1 ? states[random % std::size(states)] : arm_modes[random % std::size(arm_modes)];
+      if (event == 1)
+        reference.state = text;
+      else
+        reference.arm_mode = text;
+      legacy::alarm_clear_pending_action_if_progressed(&reference);
+      const auto before = allocations;
+      state.observed(17, "alarm_control_panel.home", attribute, text, false);
+      ack.observed(17, "alarm_control_panel.home", attribute, text, false);
+      assert(allocations == before);
+    }  // Other events model no dispatch/time passage; unsuccessful dispatch must not replace pending work.
+    assert(ack.pending({17, 0}) == (reference.pending_action_timer != nullptr));
+  }
+  legacy::alarm_clear_pending_action(&reference);
+  std::puts(
+      "alarm acknowledgement legacy parity: 200000 command/report/timeout sequences, including tick wrap");
+}
+
+void clock_order() {
+  tick = 100;
+  Fixture fixture(17);
+  Arena arena;
+  Transport transport;
+  PageAlarmStateRuntime state(arena, transport, now);
+  PageAlarmAckRuntime ack(arena, transport, state, now);
+  assert(state.prepare(fixture.store) && ack.prepare(fixture.store));
+  state.activate_prepared(fixture.store);
+  ack.activate_prepared(fixture.store);
+  const auto child = fixture.store.page(1)->first_card;
+  assert(ack.accepted({17, child}, 1, alarm::Action::HOME, true));
+  ++tick;
+  assert(ack.accepted({17, 0}, 1, alarm::Action::AWAY, false));
+  tick += 3500;
+  ack.loop();
+  assert(ack.memory().failures_ready == 2);
+  advancing_clock = true;
+  const auto first = ack.take_failure();
+  advancing_clock = false;
+  assert(first.valid && first.origin.index == child && first.reason == PageAlarmFailureReason::CODE);
+  const auto second = ack.take_failure();
+  assert(second.valid && second.origin.index == 0);
+}
+void lifecycle() {
+  for (const auto& limits : DEVICE_UI_PROFILES) {
+    tick = 100;
+    Fixture first(17, "alarm_control_panel.home", limits), changed(18, "alarm_control_panel.new", limits),
+        empty(19, "", limits, true);
+    Arena arena;
+    Transport transport;
+    {
+      PageAlarmStateRuntime state(arena, transport, now);
+      PageAlarmAckRuntime ack(arena, transport, state, now);
+      assert(ack.prepare(first.store) && state.prepare(first.store));
+      ack.activate_prepared(first.store);
+      state.activate_prepared(first.store);
+      assert(ack.memory().configured_cards == 4 && ack.memory().pending == 0);
+      assert(!ack.accepted({18, 0}, 1, alarm::Action::AWAY, false));
+      assert(!ack.accepted({17, NO_CARD}, 1, alarm::Action::AWAY, false));
+      assert(!ack.accepted({17, 2}, 1, alarm::Action::AWAY, false));
+      assert(!ack.accepted({17, 0}, 2, alarm::Action::AWAY, false));
+      assert(!ack.accepted({17, 0}, 1, alarm::Action::NONE, false));
+      assert(!ack.accepted({17, 0}, 1, static_cast<alarm::Action>(255), false));
+      const auto child = first.store.page(1)->first_card;
+      assert(ack.accepted({17, static_cast<CardId>(child + 1)}, 1, alarm::Action::HOME, true));
+      assert(ack.accepted({17, 1}, 1, alarm::Action::AWAY, false));
+      tick += 3499;
+      ack.loop();
+      assert(!ack.take_failure().valid && ack.memory().pending == 2);
+      ++tick;
+      ack.loop();
+      assert(ack.memory().failures_ready == 2 && ack.memory().pending == 0);
+      auto failure = ack.take_failure();
+      assert(failure.valid && failure.origin.index == child + 1 &&
+             failure.reason == PageAlarmFailureReason::CODE);
+      failure = ack.take_failure();
+      assert(failure.valid && failure.origin.index == 1 && failure.reason == PageAlarmFailureReason::ACTION);
+      assert(!ack.take_failure().valid);
+      assert(ack.accepted({17, 0}, 1, alarm::Action::AWAY, false));
+      state.observed(17, "alarm_control_panel.home", "", "arming", false);
+      ack.observed(17, "alarm_control_panel.home", "", "arming", false);
+      assert(!ack.pending({17, 0}));
+      assert(ack.accepted({17, 1}, 1, alarm::Action::DISARM, true));
+      state.observed(17, "alarm_control_panel.home", "arm_mode", "away", false);
+      ack.observed(17, "alarm_control_panel.home", "arm_mode", "away", false);
+      assert(ack.pending({17, 1}));
+      state.observed(17, "alarm_control_panel.home", "", "disarmed", false);
+      ack.observed(17, "alarm_control_panel.home", "", "disarmed", false);
+      assert(!ack.pending({17, 1}) && !ack.take_failure().valid);
+      assert(ack.accepted({17, 0}, 1, alarm::Action::HOME, true));
+      tick += 3500;
+      ack.observed(17, "alarm_control_panel.home", "", "armed_home",
+                   false);  // Due timer, report before source observer.
+      state.observed(17, "alarm_control_panel.home", "", "armed_home", false);
+      assert(!ack.pending({17, 0}) && !ack.take_failure().valid);
+      state.observed(17, "alarm_control_panel.home", "", "disarmed", false);
+
+      assert(ack.accepted({17, 0}, 1, alarm::Action::AWAY, true));
+      tick += 3500;
+      ack.loop();
+      state.observed(17, "alarm_control_panel.home", "", "armed_away", false);
+      ack.observed(17, "alarm_control_panel.home", "", "armed_away", false);
+      assert(ack.take_failure().reason ==
+             PageAlarmFailureReason::CODE);  // Already-produced feedback isn't rewritten by a later report.
+      assert(ack.accepted({17, 0}, 1, alarm::Action::HOME, true));
+      tick += 2000;
+      assert(ack.accepted({17, 0}, 1, alarm::Action::NIGHT, false));
+      tick += 1500;
+      assert(ack.pending({17, 0}) && !ack.take_failure().valid);
+      tick += 2000;
+      assert(ack.take_failure().reason == PageAlarmFailureReason::ACTION);
+      assert(ack.accepted({17, 0}, 1, alarm::Action::HOME, true));
+      assert(ack.accepted({17, 1}, 1, alarm::Action::NIGHT, false));
+      tick += 3500;
+      ack.loop();
+      assert(ack.memory().failures_ready == 2);
+      ++transport.connection;
+      ack.loop();
+      assert(!ack.take_failure().valid && ack.memory().pending == 0);
+      assert(!ack.accepted({17, 0}, 1, alarm::Action::HOME, true));
+      state.observed(17, "alarm_control_panel.home", "", "disarmed", false);
+      assert(ack.accepted({17, 0}, transport.connection, alarm::Action::HOME, true));
+      assert(ack.prepare(changed.store) && state.prepare(changed.store));
+      assert(!ack.accepted({18, 0}, transport.connection, alarm::Action::HOME, true));
+      ack.discard_prepared();
+      state.discard_prepared();
+      assert(ack.pending({17, 0}));
+      arena.fail = true;
+      assert(!ack.prepare(changed.store));
+      arena.fail = false;
+      assert(ack.pending({17, 0}) && !ack.prepare(PageStore{}));
+      assert(ack.memory().preparation_failures == 2);
+      const auto before = allocations, calls = arena.calls;
+      for (size_t i = 0; i < 1000; ++i) {
+        assert(ack.prepare(changed.store) && state.prepare(changed.store));
+        ack.activate_prepared(changed.store);
+        state.activate_prepared(changed.store);
+        assert(!ack.pending({17, 0}) && !ack.take_failure().valid);
+        assert(ack.accepted({18, 0}, transport.connection, alarm::Action::HOME, true));
+        assert(ack.prepare(first.store) && state.prepare(first.store));
+        ack.activate_prepared(first.store);
+        state.activate_prepared(first.store);
+        assert(!ack.pending({18, 0}) && !ack.take_failure().valid);
+      }
+      assert(allocations == before && arena.calls == calls + 4000 && arena.live == 2);
+      assert(ack.accepted({17, 0}, transport.connection, alarm::Action::HOME, true));
+      tick += 3500;
+      ack.loop();
+      assert(ack.memory().failures_ready == 1);
+      assert(ack.prepare(empty.store) && state.prepare(empty.store));
+      ack.activate_prepared(empty.store);
+      state.activate_prepared(empty.store);
+      assert(!ack.take_failure().valid && ack.memory().active_bytes == 0 &&
+             ack.memory().configured_cards == 0);
+      ack.retire_active();
+      state.retire_active();
+      assert(arena.live == 0);
+    }
+    assert(arena.live == 0);
+  }
+  Fixture fixture(17), empty(18, "", DEVICE_UI_PROFILES[8], true);
+  Arena arena;
+  Transport transport;
+  PageAlarmStateRuntime state(arena, transport, now);
+  PageAlarmAckRuntime limited(arena, transport, state, now, 3), exact(arena, transport, state, now, 4),
+      missing_clock(arena, transport, state, nullptr);
+  assert(!limited.prepare(fixture.store) && !missing_clock.prepare(fixture.store));
+  assert(exact.prepare(fixture.store));
+  assert(exact.memory().staged_bytes == 64);
+  exact.discard_prepared();
+  assert(limited.prepare(empty.store));
+  limited.discard_prepared();
+  assert(arena.live == 0);
+}
+void publication() {
+  tick = 100;
+  Fixture first(17), changed(18, "alarm_control_panel.new");
+  Arena arena;
+  Transport transport;
+  PageCardDependencies dependencies;
+  PageAlarmStateRuntime state(arena, transport, now);
+  PageAlarmAckRuntime ack(arena, transport, state, now);
+  PageEntityObserverSet<2> observers;
+  assert(observers.add(state) && observers.add(ack));
+  {
+    PageEntityStateRuntime graph(dependencies, arena, transport, {128, 128, 8192}, &observers);
+    PageRuntimeResourcesGroup<3> resources({&ack, &state, &graph});
+    PageStoreRuntime publication(DEVICE_UI_PROFILES[8], arena, 32768, &resources);
+    auto prepare = [&](const Fixture& cfg) {
+      return publication.prepare(PANEL_CONFIG_DOCUMENT_VERSION, cfg.document.data(), cfg.size);
+    };
+    auto activate = [&](const Fixture& cfg, uint32_t generation) {
+      return publication.activate_prepared(generation, PANEL_CONFIG_DOCUMENT_VERSION, cfg.document.data(),
+                                           cfg.size);
+    };
+    assert(prepare(first));
+    assert(activate(first, 0));
+    transport.send("alarm_control_panel.home", "", "disarmed");
+    assert(ack.accepted({0, 0}, transport.connection, alarm::Action::AWAY, false));
+    transport.send("alarm_control_panel.home", "", "arming");
+    assert(!ack.pending({0, 0}));
+    assert(ack.accepted({0, 0}, transport.connection, alarm::Action::DISARM, true));
+    transport.send("alarm_control_panel.home", "arm_mode", "away");
+    assert(ack.pending({0, 0}));
+    transport.send("alarm_control_panel.home", "", "disarmed");
+    assert(!ack.pending({0, 0}));
+    assert(ack.accepted({0, 0}, transport.connection, alarm::Action::HOME, true));
+    assert(prepare(changed));
+    transport.send("alarm_control_panel.new", "", "armed_home");
+    assert(ack.pending({0, 0}));
+    publication.discard_prepared();
+    assert(ack.pending({0, 0}));
+    assert(prepare(first));
+    assert(activate(first, 2));
+    assert(!ack.pending({0, 0}) && !ack.take_failure().valid);
+    assert(!ack.accepted({0, 0}, transport.connection, alarm::Action::HOME, true));
+    assert(ack.accepted({2, 0}, transport.connection, alarm::Action::HOME, true));
+    ++transport.connection;
+    (void)graph.revision();
+    ack.loop();
+    assert(!ack.pending({2, 0}) && !ack.take_failure().valid);
+  }
+  assert(arena.live == 0 && transport.bindings.empty());
+  std::puts(
+      "alarm acknowledgements: scoped records, hidden reports, reconnect and private-to-zero publication "
+      "passed");
+}
+
+}  // namespace
+int main() {
+  parity();
+  clock_order();
+  lifecycle();
+  publication();
+}

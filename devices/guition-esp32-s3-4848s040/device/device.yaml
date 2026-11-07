@@ -42,17 +42,12 @@ esp32:
       # The static RX pool of eight requires an RX BA window of at most 16.
       CONFIG_ESP_WIFI_RX_BA_WIN: "16"
       CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
-      # Route ordinary allocations larger than 4 KiB to PSRAM while keeping
-      # a 32 KiB internal reserve for DMA and cache-disabled operations.
-      CONFIG_SPIRAM_USE_MALLOC: "y"
-      CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "4096"
-      CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL: "32768"
       # RGB bounce-buffer scan-out requires 64-byte data-cache lines. The
       # default 32-byte lines can desynchronise PSRAM reads from panel DMA and
       # leave the whole display vertically shifted until the next restart.
       CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
-      # The RGB driver already restarts after a genuine DMA underflow. Restarting
-      # on every VSYNC can instead shift the framebuffer by one bounce-buffer block.
+      # Recover detected missed bounce-buffer refills at VSYNC. Restarting
+      # unconditionally every refresh can itself shift the pixel stream.
       CONFIG_LCD_RGB_RESTART_IN_VSYNC: "n"
       CONFIG_LCD_RGB_ISR_IRAM_SAFE: "y"
       CONFIG_SPIRAM_FETCH_INSTRUCTIONS: "y"
@@ -110,7 +105,6 @@ esphome:
   name: ${name}
   friendly_name: ${friendly_name}
   build_flags:
-    - "-DESPCONTROL_MAX_GRID_SLOTS=9"
     - "-DESPCONTROL_IMAGE_CARD_MAX_CONTEXTS=2"
     - "-DESPCONTROL_LOW_HEAP_MEDIA_CONTROL=1"
     - "-DESPCONTROL_LOW_HEAP_COVER_ART=1"
@@ -227,6 +221,7 @@ safe_mode:
 # Shared infrastructure (API, logging, web server, restart button)
 # ---------------------------------------------------------------------------
 packages:
+  psram_malloc: !include ../../../common/device/psram_malloc.yaml
   core_infra: !include ../../../common/device/core_infra.yaml
 
 # The S3 panel runs close to the internal RAM limit once the RGB display,
@@ -430,10 +425,11 @@ display:
     # Start WiFi before the RGB panel allocates its frame buffers; otherwise the
     # WiFi driver can fail to claim enough internal RX buffers on fresh boots.
     setup_priority: 240
-    # Keep the S3 RGB clock conservative while lifting the panel scan rate above
-    # the visibly shimmery 8MHz setting. Higher clocks have caused screen shifts
-    # and pixel breakup when WiFi, flash, and web traffic compete for PSRAM.
-    pclk_frequency: 10MHz
+    # Leave PSRAM bandwidth for expanded artwork and the full state cache.
+    # A lower refresh rate prevents scanout shifts during large image changes.
+    pclk_frequency: 7MHz
+    # Internal bounce buffers isolate display DMA from direct PSRAM bus stalls.
+    bounce_buffer_rows: 30
     update_interval: never
     auto_clear_enabled: False
     # Keep the ST7701S panel init sequence on the non-mirrored path. The
@@ -450,9 +446,10 @@ lvgl:
   id: main_lvgl
   # Keep LVGL after WiFi and after the display driver.
   setup_priority: 230
-  # Keep the buffer small so WiFi and runtime display resources retain PSRAM
-  # headroom on the memory-constrained S3.
-  buffer_size: 12%
+  # Use one full-screen render buffer so page changes are presented in a single
+  # LVGL flush instead of several horizontal partial-buffer updates.
+  buffer_size: 100%
+  full_refresh: true
   displays: my_display
   rotation: 180
   touchscreens:

@@ -374,7 +374,7 @@ export function buildSubpageGrid(
     grid[0] = -2;
     delete sizes[String(-2)];
   }
-  applySpans(grid, sizes, maxSlots, gridCols);
+  applySpans(grid, sizes, maxSlots, gridCols, buttonCount);
   return { grid, sizes };
 }
 

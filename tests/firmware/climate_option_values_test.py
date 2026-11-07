@@ -32,6 +32,7 @@ struct ClimateControlCtx {
   lv_obj_t *btn=nullptr;
   const lv_font_t *card_icon_font=nullptr,*icon_font=nullptr,*option_menu_font=nullptr;
 };
+#include "climate_modal_lifetime.h"
 std::vector<std::pair<const char*,std::string>> sent;
 void climate_send_action(const std::string&,const char*,const std::vector<std::pair<const char*,std::string>>&data){sent=data;}
 void climate_select_target_for_mode(ClimateControlCtx*,const std::string&){}
@@ -47,8 +48,9 @@ source += r'''
 constexpr int CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_ICON_ZOOM=214,CLIMATE_OPTION_MAX_OPTIONS=32;
 struct lv_event_t {void *data;};
 struct ClimateOptionClick {ClimateControlCtx *ctx=nullptr;std::string kind,value;};
-struct ClimateControlModalUi {lv_obj_t *panel=nullptr,*option_list_view=nullptr;int option_click_count=0;ClimateOptionClick option_clicks[CLIMATE_OPTION_MAX_OPTIONS];} ui;
+struct ClimateControlModalUi {ClimateControlCtx *active=nullptr;lv_obj_t *overlay=nullptr;lv_obj_t *panel=nullptr,*option_list_view=nullptr;int option_click_count=0;ClimateOptionClick option_clicks[CLIMATE_OPTION_MAX_OPTIONS];} ui;
 ClimateControlModalUi &climate_control_modal_ui(){return ui;}
+void climate_control_hide_modal(){}
 struct ControlModalLayout {};
 ControlModalLayout climate_control_calc_layout(ClimateControlCtx*){return {};}
 bool compact=false;
@@ -115,6 +117,6 @@ source += r'''int main(){
 }'''
 with tempfile.TemporaryDirectory() as temp:
     cpp=Path(temp)/"test.cpp";exe=Path(temp)/"test";cpp.write_text(source)
-    subprocess.run([os.environ.get("CXX","c++"),"-std=c++17","-Wall","-Wextra","-Werror",str(cpp),"-o",str(exe)],check=True)
+    subprocess.run([os.environ.get("CXX","c++"),"-std=c++17","-Wall","-Wextra","-Werror","-I",str(ROOT/"components/espcontrol"),str(cpp),"-o",str(exe)],check=True)
     subprocess.run([str(exe)],check=True)
 print("climate_option_values regression passed.")
