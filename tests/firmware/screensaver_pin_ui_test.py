@@ -37,7 +37,6 @@ constexpr unsigned LV_EVENT_RELEASED = 2;
 constexpr unsigned LV_OBJ_FLAG_HIDDEN = 8;
 constexpr int LV_GRID_TEMPLATE_LAST = -1;
 int LV_GRID_FR(int value) { return value; }
-constexpr int LV_TEXT_ALIGN_RIGHT = 3, LV_ALIGN_TOP_RIGHT = 4, LV_PART_MAIN = 0;
 lv_obj_t system_layer;
 lv_obj_t *active_page;
 constexpr int LV_SCR_LOAD_ANIM_NONE = 0;
@@ -113,18 +112,17 @@ int main() {
   auto &pin = espcontrol::screensaver_pin();
   pin.setup();
   std::string code = "04";
-  assert(pin.save(true, &code));
+  bool allow_playback = true;
+  assert(pin.save(true, &code, nullptr, &allow_playback));
   pin.arm();
-  lv_font_t header_font;
-  screensaver_pin_refresh(true, nullptr, nullptr, nullptr, true, &header_font);
+  screensaver_pin_refresh(true, nullptr, nullptr, nullptr, true);
   auto &ui = screensaver_pin_ui();
   assert(ui.overlay && ui.overlay->parent == &system_layer);
   assert(!rendered_randomize);
   assert(rendered_center_prompt);
-  assert(rendered_title && rendered_title->text == "Screen Lock" && rendered_title->font == &header_font);
-  assert(rendered_title->align == LV_ALIGN_TOP_RIGHT && rendered_title->text_align == LV_TEXT_ALIGN_RIGHT);
-  assert(rendered_title->x < 0 && rendered_title->y > 0);
-  assert(rendered_prompt_top > rendered_title->y + lv_obj_get_height(rendered_title));
+  assert(rendered_title == nullptr); // The keypad shows only the PIN prompt, without a page heading.
+  assert(ui.label->text == "Enter Pin");
+  assert(rendered_prompt_top == ControlModalLayout{}.inset);
   assert(ui.overlay->full_screen && (ui.overlay->flags & LV_OBJ_FLAG_CLICKABLE));
   // A press on a card/status/modal behind this full-screen system-layer object
   // is intercepted before LVGL searches the top layer and active page.

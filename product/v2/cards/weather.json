@@ -16,11 +16,39 @@
         "today",
         "tomorrow",
         "daily",
-        "rainfall"
+        "wind",
+        "rainfall",
+        "pressure",
+        "humidity",
+        "visibility"
       ],
       "defaultValue": "",
       "storageField": "precision",
       "omitDefault": true
+    },
+    {
+      "name": "wind_source",
+      "label": "Wind Source",
+      "kind": "choice",
+      "values": [
+        "weather",
+        "sensors"
+      ],
+      "defaultValue": "weather",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "precision",
+          "operator": "equals",
+          "value": "wind"
+        }
+      ],
+      "supportedWhen": {
+        "precision": [
+          "wind"
+        ]
+      }
     },
     {
       "name": "rainfall_source",
@@ -45,6 +73,54 @@
           "rainfall"
         ]
       }
+    },
+    {
+      "name": "pressure_source",
+      "label": "Air Pressure Source",
+      "kind": "choice",
+      "values": [
+        "sensor",
+        "forecast"
+      ],
+      "defaultValue": "sensor",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "precision",
+          "operator": "equals",
+          "value": "pressure"
+        }
+      ],
+      "supportedWhen": {
+        "precision": [
+          "pressure"
+        ]
+      }
+    },
+    {
+      "name": "humidity_source",
+      "label": "Humidity Source",
+      "kind": "choice",
+      "values": [
+        "sensor",
+        "forecast"
+      ],
+      "defaultValue": "sensor",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "precision",
+          "operator": "equals",
+          "value": "humidity"
+        }
+      ],
+      "supportedWhen": {
+        "precision": [
+          "humidity"
+        ]
+      }
     }
   ],
   "normalization": {
@@ -63,7 +139,8 @@
         "policy": "keep"
       },
       "sensor": {
-        "policy": "clear"
+        "policy": "hook",
+        "hook": "normalize_weather_fields"
       },
       "unit": {
         "policy": "keep"
@@ -83,7 +160,10 @@
     },
     "unknownOptions": "drop",
     "canonicalOptionOrder": [
-      "rainfall_source"
+      "wind_source",
+      "rainfall_source",
+      "pressure_source",
+      "humidity_source"
     ],
     "migrationActions": [
       "legacy_weather_forecast"

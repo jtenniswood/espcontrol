@@ -5,7 +5,9 @@
 
 #include "button_grid_weather_daily_ui.h"
 #include "card_modal_target.h"
+#include "button_grid_weather_wind.h"
 #include "button_grid_rainfall.h"
+#include "button_grid_weather_metric.h"
 
 namespace espcontrol::cards {
 
@@ -36,6 +38,19 @@ inline bool weather_driver_setup_visual(
   weather_driver_apply_background(slot, palette);
   lv_obj_clear_flag(slot.btn, LV_OBJ_FLAG_CLICKABLE);
 
+  if (config.precision == "wind") {
+    weather_wind_layout(slot, display);
+    lv_label_set_display_text(slot.icon_lbl, find_icon("Weather Windy"));
+    lv_label_set_display_text(slot.text_lbl, "--");
+    lv_label_set_display_text(slot.sensor_lbl, "--");
+    lv_label_set_display_text(slot.unit_lbl, "");
+    return true;
+  }
+
+  if (weather_metric_mode(config.precision)) {
+    weather_metric_setup(slot, config.precision, display);
+    return true;
+  }
   if (config.precision == "rainfall" && !rainfall_uses_forecast(config)) {
     rainfall_setup(slot, display);
     return true;
@@ -72,8 +87,16 @@ inline bool weather_driver_bind_data(
     BtnSlot &slot, const ParsedCfg &config, const Context &context) {
   if (!weather_driver_matches(context)) return false;
   if (weather_driver_shows_forecast(config)) return true;
+  if (config.precision == "wind") {
+    subscribe_weather_wind(slot, config.entity, config.sensor, weather_wind_uses_sensors(config));
+    return true;
+  }
+  if (weather_metric_mode(config.precision)) {
+    subscribe_weather_metric(slot, config.entity, config.precision, weather_metric_uses_forecast(config));
+    return true;
+  }
   if (config.precision == "rainfall") {
-    if (!config.entity.empty()) subscribe_rainfall_sensor(slot, config.entity);
+    if (!config.entity.empty()) subscribe_rainfall_sensor(slot, config.entity, config.unit);
     return true;
   }
   if (!config.entity.empty()) {
@@ -87,6 +110,8 @@ inline bool weather_driver_refresh_layout(
     const DisplayProfile &display, int row_span, int col_span) {
   if (!weather_driver_matches(context)) return false;
   (void) row_span; (void) col_span;
+  if (config.precision == "wind") weather_wind_layout(slot, display);
+  if (weather_metric_mode(config.precision)) weather_reading_layout(slot, display);
   if (config.precision == "rainfall" && !rainfall_uses_forecast(config)) rainfall_layout(slot, display);
   if (weather_driver_shows_forecast(config))
     weather_daily_render_card(weather_daily_card_for(slot.btn));

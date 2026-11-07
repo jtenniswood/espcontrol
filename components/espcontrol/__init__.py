@@ -127,6 +127,10 @@ async def to_code(config):
             ]
             cg.add(var.set_panel_config_button(slot, button, *subpages))
 
+    if panel_config is not None and "web_server" in CORE.config:
+        from .backup import register_backup
+        await register_backup(panel_config, cg, CORE.config)
+
     for update_config in CORE.config.get("update", []):
         update_entity = await cg.get_variable(update_config[CONF_ID])
         cg.add(espcontrol_ns.namespace("reset").watch_update(update_entity))

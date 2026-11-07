@@ -344,10 +344,12 @@ async function installRoutes(context, slug, options = {}) {
         pin.enabled = settings.enabled;
         if (typeof settings.pin === "string") pin.pin = settings.pin;
         if (typeof settings.randomize_keypad === "boolean") pin.randomize = settings.randomize_keypad;
+        if (typeof settings.allow_cover_art_playback === "boolean") pin.allowPlayback = settings.allow_cover_art_playback;
       }
       await route.fulfill({ status: 200, contentType: "application/json",
         body: JSON.stringify({ enabled: pin.enabled, has_pin: !!pin.pin, pin_length: pin.pin.length,
-          randomize_keypad: pin.randomize ?? true }) });
+          randomize_keypad: pin.randomize ?? true,
+          ...(typeof pin.allowPlayback === "boolean" ? { allow_cover_art_playback: pin.allowPlayback } : {}) }) });
       return;
     }
     if (nativeState && requestUrl.pathname.startsWith("/api/v1/")) {
@@ -7106,7 +7108,7 @@ async function assertPanelNaming(browser) {
 async function assertScreensaverPinSettings(browser) {
   const testCase = ACTIVE_CASES[0];
   const context = await browser.newContext({ viewport: testCase.viewport });
-  const pin = { enabled: false, pin: "", randomize: true, posts: [], failSave: false };
+  const pin = { enabled: false, pin: "", randomize: true, allowPlayback: false, posts: [], failSave: false };
   const resetState = { epoch: 3, pending: false, requests: [] };
   await installRoutes(context, testCase.slug, { screensaverPinState: pin, resetState });
   const page = await context.newPage();
@@ -7168,6 +7170,20 @@ async function assertScreensaverPinSettings(browser) {
     assert.strictEqual(pin.randomize, true, "saved PIN layout can be changed independently");
     assert.strictEqual(pin.pin, "0042", "layout update preserves stored PIN");
     assert.strictEqual(await input.inputValue(), "004200", "layout update preserves an unsaved replacement PIN");
+    const playback = page.locator("#sp-set-screensaver-pin-allow-playback");
+    const playbackTrack = page.locator("#sp-set-screensaver-pin-allow-playback + .sp-toggle-track");
+    assert.strictEqual(await playback.isChecked(), false, "playback exception defaults off");
+    pin.failSave = true;
+    await playbackTrack.click();
+    await card.getByRole("alert").waitFor();
+    assert.strictEqual(pin.allowPlayback, false, "failed setting change keeps protection");
+    assert.strictEqual(await playback.isChecked(), false, "failed save restores the toggle");
+    pin.failSave = false;
+    await playbackTrack.click();
+    await page.waitForFunction(() => !document.querySelector("#sp-set-screensaver-pin-allow-playback").disabled);
+    assert.strictEqual(pin.allowPlayback, true, "playback exception can be enabled independently");
+    assert.strictEqual(pin.pin, "0042", "playback preference preserves the PIN");
+    assert.strictEqual(await input.inputValue(), "004200", "playback preference preserves unsaved replacement PIN");
     await enable.click();
     await page.waitForFunction(() => !document.querySelector("#sp-set-screensaver-pin-enabled").disabled);
     assert.strictEqual(pin.enabled, false);
@@ -7205,6 +7221,8 @@ async function assertScreensaverPinSettings(browser) {
     await lockInput.waitFor({ state: "visible" });
     await page.waitForFunction(() => !document.querySelector('.sp-settings-modal input[type="password"]').disabled);
     assert.strictEqual(await lockSettings.locator('input[id$="-randomize"]').isChecked(), false);
+    assert.strictEqual(await lockSettings.locator('input[id$="-allow-playback"]').isChecked(), true,
+      'Screen Lock editor reads the shared playback preference');
     assert.strictEqual(await lockSettings.getByText('Require PIN after wake', { exact: true }).count(), 0,
       'manual Screen Lock always requires its saved PIN');
     assert.strictEqual(await lockSettings.getByRole('button', { name: 'Clear', exact: true }).count(), 0);
@@ -7233,6 +7251,10 @@ async function assertScreensaverPinSettings(browser) {
     await page.waitForFunction(() => document.querySelector('.sp-settings-modal input[type="password"]').value === "");
     assert.strictEqual(pin.pin, "123456");
     assert.strictEqual(pin.enabled, false, "card PIN can be saved without enabling automatic wake protection");
+    await lockSettings.locator('input[id$="-allow-playback"] + .sp-toggle-track').click();
+    await page.waitForFunction(() => !document.querySelector('.sp-settings-modal input[id$="-allow-playback"]').disabled);
+    assert.strictEqual(pin.allowPlayback, false);
+    assert.strictEqual(await playback.isChecked(), false, 'Screen Lock changes synchronize PIN Protection settings');
     assert.strictEqual(await input.getAttribute("placeholder"), "••••••", "card save updates screensaver PIN controls");
     await page.locator('.sp-settings-modal input[id$="screensaver-on-lock"] + .sp-toggle-track').click();
     await page.locator(".sp-settings-modal .sp-save-btn").click();
@@ -7330,13 +7352,14 @@ async function assertCardCurveSettings(browser, testCase) {
     const base = Number(substitutions.radius.replace("px", ""));
     const small = Number((substitutions.card_curve_small_radius || '').replace('px', '')) || Math.round(base * .6);
     const medium = Number((substitutions.card_curve_medium_radius || '').replace('px', '')) || Math.round(base * .8);
-    for (const [preset, expected] of [["Small", small], ["Medium", medium], ["Large", base]]) {
+    for (const [preset, firmwareRadius] of [["Small", small], ["Medium", medium], ["Large", base]]) {
+      const expected = profile.web.cardCurveRadii?.[preset] ?? firmwareRadius;
       const posted = page.waitForResponse(response => response.url().includes(`/select/screen__card_curve/set?option=${preset}`));
       await page.locator("#sp-set-card-curve").getByRole("button", { name: preset, exact: true }).click();
       await posted;
       assert.strictEqual(savedPreset, preset, "curve changes must reach the saved firmware select");
       const radius = await page.evaluate(logicalWidth => parseFloat(document.documentElement.style.getPropertyValue("--btn-r")) * logicalWidth / 100, width);
-      assert(Math.abs(radius - expected) < .001, `${testCase.slug}: ${preset} must match the firmware radius ${expected}`);
+      assert(Math.abs(radius - expected) < .001, `${testCase.slug}: ${preset} must match the configured preview radius ${expected}`);
       await page.getByRole("tab", { name: "Layout", exact: true }).click();
       const checkCards = async surface => {
         await page.waitForFunction(() => [...document.querySelectorAll(".sp-main .sp-btn")].every(card => getComputedStyle(card).clipPath.startsWith("path(")));
@@ -7738,11 +7761,14 @@ async function assertS3ForecastEditorLayout(browser) {
     await page.locator('.sp-main [data-slot="1"]').click();
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await page.waitForSelector(".sp-settings-overlay.sp-visible");
-    const modeSelect = page.locator('.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select');
+    const modeSelect = page.locator('[id$="weather-display"]');
     assert.deepStrictEqual(await modeSelect.locator('option').allTextContents(),
-      ["Current Conditions", "Rainfall", "Today's Forecast", "Tomorrow's Forecast", "Daily Forecast"]);
+      ["Air Pressure", "Current Conditions", "Forecast", "Humidity", "Rainfall", "Visibility", "Wind"]);
+    assert.strictEqual(await modeSelect.inputValue(), "forecast");
+    assert.strictEqual(await page.locator('[id$="weather-period"]').inputValue(), "daily");
+    assert.deepStrictEqual(await page.locator('[id$="weather-period"] option').allTextContents(), ["Today", "Tomorrow", "Week"]);
     for (const [mode, label] of [["today", "Today"], ["tomorrow", "Tomorrow"]]) {
-      await page.locator('.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select').selectOption(mode);
+      await page.locator('[id$="weather-period"]').selectOption(mode);
       await page.getByRole("button", { name: "Save", exact: true }).click();
       await page.waitForSelector(".sp-settings-overlay.sp-visible", {state: "hidden"});
       const days = page.locator('.sp-main [data-slot="1"] .sp-weather-day:not([hidden])');
@@ -7765,10 +7791,31 @@ async function assertS3ForecastEditorLayout(browser) {
       await page.locator('.sp-main [data-slot="1"]').click();
       await page.getByRole("button", { name: "Edit", exact: true }).click();
       await page.waitForSelector(".sp-settings-overlay.sp-visible");
+      assert.strictEqual(await page.locator('[id$="weather-period"]').inputValue(), mode, "Saved forecast period is retained");
+      assert.strictEqual(await page.locator('[id$="weather-display"]').inputValue(), "forecast");
       assert.strictEqual(await page.getByText("Large Temperature Numbers", {exact: true}).count(), 0);
       assert.strictEqual(await page.locator('.sp-settings-modal #sp-inp-label').count(), 0);
     }
-    console.log('S3 editor: renamed Today/Tomorrow modes each show one forecast day and omit obsolete controls.');
+    await page.locator('[id$="weather-period"]').selectOption("daily");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible", { state: "hidden" });
+    await waitForNativeState(nativeState, () => nativeState.document.buttons[1].includes("daily"), "Week forecast saved with its existing stored value");
+    await page.reload();
+    await page.waitForSelector('#sp-app');
+    await seedNativeDocument(page, nativeState);
+    await page.waitForFunction(() => document.querySelectorAll('.sp-main [data-slot="1"] .sp-weather-day:not([hidden])').length === 4);
+    await page.locator('.sp-main [data-slot="1"]').click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible");
+    assert.strictEqual(await page.locator('[id$="weather-display"]').inputValue(), "forecast");
+    assert.strictEqual(await page.locator('[id$="weather-period"]').inputValue(), "daily", "Week survives a full page reload");
+    await page.locator('.sp-settings-modal').screenshot({ path: '/tmp/weather-forecast-period-editor.png' });
+    await page.locator('[id$="weather-display"]').selectOption("");
+    assert.strictEqual(await page.locator('[id$="weather-period"]').count(), 0, "Period only appears for Forecast");
+    await page.locator('[id$="weather-display"]').selectOption("forecast");
+    assert.strictEqual(await page.locator('[id$="weather-period"]').inputValue(), "today", "New Forecast selection defaults to Today");
+    assert.strictEqual(await page.locator('.sp-settings-modal input[id$="entity"]').inputValue(), "weather.home", "Switching between weather types retains the weather entity");
+    console.log('Grouped Forecast editor: alphabetic types, Today/Tomorrow/Week period changes, legacy values, save/reload and conditional Period passed.');
 
   } finally { await context.close(); }
 }
@@ -7869,6 +7916,84 @@ async function assertCameraScreensaverDimming(browser, testCase) {
 }
 
 
+async function assertWindSensorEditor(browser) {
+  const slug = "guition-esp32-p4-jc1060p470";
+  const nativeState = nativeConfigState(slug);
+  nativeState.document.buttons[1] = "weather.home;;Auto;Auto;;;weather;wind";
+  nativeState.document.buttons[2] = "weather.home;;Auto;Auto;;;weather;today";
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await installRoutes(context, slug, { nativeState });
+  const page = await context.newPage();
+  await installFakeEventSource(page);
+  async function openWind() {
+    await page.locator('.sp-main [data-slot="1"]').click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  }
+  try {
+    await page.goto('http://espcontrol.test/' + slug + '?events=1');
+    await page.waitForSelector('#sp-app');
+    await seedNativeDocument(page, nativeState);
+    await openWind();
+    await page.locator('[id$="wind-source"]').getByRole("button", {name:"Forecast",exact:true}).click();
+    assert.strictEqual(await page.locator('.sp-settings-modal input[id$="entity"]').inputValue(), "weather.home", "Active Wind Forecast preserves its entity");
+    const sourceGroup = page.locator('.sp-disclosure').filter({ has: page.locator('[id$="wind-source-settings"]') });
+    assert.strictEqual(await sourceGroup.locator('.sp-disclosure-button').innerText(), "Source");
+    assert.strictEqual(await sourceGroup.locator('.sp-disclosure-body input[id$="entity"]').count(), 1);
+    assert(await sourceGroup.locator('.sp-disclosure-body').evaluate(body =>
+      body.getBoundingClientRect().bottom - body.lastElementChild.getBoundingClientRect().bottom >= 28),
+      "Wind Source retains extra bottom spacing");
+    await page.locator('[id$="wind-source"]').getByRole("button", { name: "Sensor", exact: true }).click();
+    assert.strictEqual(await sourceGroup.locator('.sp-disclosure-body input[id$="wind-direction"]').count(), 1);
+    assert.strictEqual(await sourceGroup.locator('.sp-disclosure-body input[id$="wind-speed"]').count(), 1);
+    await page.locator('[id$="wind-source-settings"]').click();
+    assert(!(await page.locator('input[id$="wind-speed"]').isVisible()), "Source group collapses like Custom Colours");
+    await page.locator('[id$="wind-source-settings"]').click();
+    await page.locator('input[id$="wind-direction"]').fill("sensor.wind_direction");
+    await page.locator('input[id$="wind-speed"]').fill("sensor.wind_speed");
+    await page.locator('input[id$="wind-speed"]').press("Tab");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible", { state: "hidden" });
+    await waitForNativeState(nativeState, () => nativeState.document.buttons[1].includes("sensor.wind_speed"), "Wind sensors saved");
+    assert(nativeState.document.buttons[1].includes("wind_source"));
+    const geometry = await page.locator('.sp-main [data-slot="1"] .sp-weather-wind-speed').evaluate(speed => {
+      const card = speed.closest('.sp-btn').getBoundingClientRect();
+      const rect = speed.getBoundingClientRect();
+      return { left: rect.left - card.left, bottom: card.bottom - rect.bottom };
+    });
+    assert(geometry.left >= 10 && geometry.bottom >= 10, "Wind preview retains card padding");
+    const styles = await page.evaluate(() => {
+      const properties = ["fontFamily", "fontSize", "fontWeight", "color", "opacity"];
+      const style = selector => {
+        const css = getComputedStyle(document.querySelector(selector));
+        return Object.fromEntries(properties.map(key => [key, css[key]]));
+      };
+      return { wind: style('.sp-main [data-slot="1"] .sp-weather-wind-speed'),
+        forecast: style('.sp-main [data-slot="2"] .sp-weather-temperature-high') };
+    });
+    assert.deepStrictEqual(styles.wind, styles.forecast, "Wind secondary text matches forecast temperatures");
+    await page.reload();
+    await page.waitForSelector('#sp-app');
+    await seedNativeDocument(page, nativeState);
+    await openWind();
+    assert(await page.locator('[id$="wind-source"]').getByRole("button", { name: "Sensor", exact: true }).evaluate(button => button.classList.contains("active")));
+    assert.strictEqual(await page.locator('input[id$="wind-direction"]').inputValue(), "sensor.wind_direction");
+    await page.locator('[id$="wind-source"]').getByRole("button", {name:"Sensor",exact:true}).click();
+    assert.strictEqual(await page.locator('input[id$="wind-direction"]').inputValue(), "sensor.wind_direction", "Active Wind Sensor preserves direction");
+    assert.strictEqual(await page.locator('input[id$="wind-speed"]').inputValue(), "sensor.wind_speed", "Active Wind Sensor preserves speed");
+    await page.locator('[id$="wind-source"]').getByRole("button", { name: "Forecast", exact: true }).click();
+    assert.strictEqual(await page.locator('input[id$="wind-speed"]').count(), 0);
+    await page.locator('.sp-settings-modal input[id$="entity"]').fill("weather.home");
+    await page.locator('.sp-settings-modal input[id$="entity"]').press("Tab");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible", { state: "hidden" });
+    await waitForNativeState(nativeState, () => nativeState.document.buttons[1].includes("weather.home"), "Weather source saved");
+    assert(!nativeState.document.buttons[1].includes("sensor.wind_speed"));
+    assert(!nativeState.document.buttons[1].includes("wind_source"));
+    console.log("Wind editor: separate sensors save/reload, source switching, and padded preview passed.");
+  } finally { await context.close(); }
+}
+
 async function assertRainfallEditor(browser) {
   const slug="guition-esp32-p4-jc1060p470";
   const nativeState=nativeConfigState(slug);
@@ -7890,23 +8015,45 @@ async function assertRainfallEditor(browser) {
     await page.goto('http://espcontrol.test/'+slug+'?events=1');
     await page.waitForSelector('#sp-app'); await seedNativeDocument(page,nativeState);
     await open();
-    assert.strictEqual(await page.locator('select[id$="rainfall-source"]').inputValue(),"sensor");
+    await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Sensor",exact:true}).click();
+    const sourceGroup = page.locator('.sp-disclosure').filter({ has: page.locator('[id$="rainfall-source-settings"]') });
+    assert.strictEqual(await sourceGroup.locator('.sp-disclosure-button').innerText(), "Source");
+    assert(await sourceGroup.locator('.sp-disclosure-body').evaluate(body =>
+      body.getBoundingClientRect().bottom - body.lastElementChild.getBoundingClientRect().bottom >= 28),
+      "Rainfall Source retains extra bottom spacing");
+    assert(await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Sensor",exact:true}).evaluate(button=>button.classList.contains("active")));
+    await page.locator('[id$="rainfall-source-settings"]').click();
+    assert(!(await page.locator('.sp-settings-modal input[id$="entity"]').isVisible()), "Rainfall Source collapses like Custom Colours");
+    await page.locator('[id$="rainfall-source-settings"]').click();
     assert.strictEqual(await page.locator('.sp-settings-modal input[id$="entity"]').inputValue(),"sensor.rainfall_today");
-    await page.locator('select[id$="rainfall-source"]').selectOption("forecast");
+    await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Forecast",exact:true}).click();
+    assert.strictEqual(await page.locator('.sp-settings-modal input[id$="unit"]').count(), 0, "Forecast rainfall keeps provider units");
     await page.locator('.sp-settings-modal input[id$="entity"]').fill("weather.home");
     await page.locator('.sp-settings-modal input[id$="entity"]').press("Tab");
     await save();
     await waitForNativeState(nativeState,()=>nativeState.document.buttons[1].includes("rainfall_source"),"Forecast rainfall saved");
     await page.reload(); await page.waitForSelector('#sp-app'); await seedNativeDocument(page,nativeState);
     await open();
-    assert.strictEqual(await page.locator('select[id$="rainfall-source"]').inputValue(),"forecast");
-    assert.strictEqual(await page.locator('.sp-settings-modal input[id$="entity"]').inputValue(),"weather.home");
-    await page.locator('select[id$="rainfall-source"]').selectOption("sensor");
+    assert(await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Forecast",exact:true}).evaluate(button=>button.classList.contains("active")));
+    await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Forecast",exact:true}).click();
+    assert.strictEqual(await page.locator('.sp-settings-modal input[id$="entity"]').inputValue(),"weather.home", "Active Rainfall Forecast preserves its entity");
+    await page.locator('[id$="rainfall-source"]').getByRole("button", {name:"Sensor",exact:true}).click();
     await page.locator('.sp-settings-modal input[id$="entity"]').fill("sensor.rainfall_today");
     await page.locator('.sp-settings-modal input[id$="entity"]').press("Tab");
     await save();
     await waitForNativeState(nativeState,()=>nativeState.document.buttons[1].includes("sensor.rainfall_today"),"Rainfall sensor saved");
     assert(!nativeState.document.buttons[1].includes("rainfall_source"));
+    for (const suffix of ["in", "mm", ""]) {
+      await open();
+      await page.locator('.sp-settings-modal input[id$="unit"]').fill(suffix);
+      await page.locator('.sp-settings-modal input[id$="unit"]').press("Tab");
+      await save();
+      await page.reload(); await page.waitForSelector('#sp-app'); await seedNativeDocument(page,nativeState);
+      assert.strictEqual(await page.locator('.sp-main [data-slot="1"] .sp-rainfall-value').innerText(), "2.4 " + (suffix || "mm"));
+      await open();
+      assert.strictEqual(await page.locator('.sp-settings-modal input[id$="unit"]').inputValue(), suffix, "Rainfall unit suffix survives save and reload");
+      await save();
+    }
     const styles=await page.evaluate(()=>{
       const keys=["fontFamily","fontSize","fontWeight","color","opacity"];
       const style=selector=>{const css=getComputedStyle(document.querySelector(selector));return Object.fromEntries(keys.map(key=>[key,css[key]]))};
@@ -7916,14 +8063,115 @@ async function assertRainfallEditor(browser) {
     });
     assert.deepStrictEqual(styles.rain,styles.forecast,"Rainfall matches forecast secondary text");
     assert(styles.left>=10 && styles.bottom>=10,"Rainfall retains card padding");
-    console.log("Rainfall editor source changes, save/reload, padding and forecast text-style parity passed.");
+    console.log("Rainfall editor source changes, unit suffix save/reload, padding and forecast text-style parity passed.");
   } finally {await context.close()}
+}
+
+async function assertWeatherReadingEditors(browser) {
+  const slug = "guition-esp32-p4-jc1060p470";
+  for (const mode of ["pressure", "humidity", "visibility"]) {
+    const nativeState = nativeConfigState(slug);
+    const sensor = "sensor." + mode;
+    nativeState.document.buttons[1] = (mode === "visibility" ? "weather.home" : sensor) + ";;Auto;Auto;;;weather;" + mode;
+    nativeState.document.buttons[2] = "weather.home;;Auto;Auto;;;weather;rainfall";
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await installRoutes(context, slug, { nativeState });
+    const page = await context.newPage();
+    await installFakeEventSource(page);
+    const entity = () => page.locator('.sp-settings-modal input[id$="entity"]');
+    const source = () => page.locator('[id$="' + mode + '-source"]');
+    async function open() {
+      await page.locator('.sp-main [data-slot="1"]').click();
+      await page.getByRole("button", { name: "Edit", exact: true }).click();
+      await page.waitForSelector('.sp-settings-overlay.sp-visible');
+    }
+    async function save() {
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      await page.waitForSelector('.sp-settings-overlay.sp-visible', { state: "hidden" });
+    }
+    try {
+      await page.goto('http://espcontrol.test/' + slug + '?events=1');
+      await page.waitForSelector('#sp-app');
+      await seedNativeDocument(page, nativeState);
+      await open();
+      if (mode === "visibility") {
+        assert.strictEqual(await source().count(), 0, "Visibility has no source tabs");
+        assert.strictEqual(await entity().inputValue(), "weather.home");
+      } else {
+        assert.strictEqual(await source().getByRole("button").count(), 2);
+        assert.strictEqual(await entity().inputValue(), sensor);
+        await source().getByRole("button", { name: "Forecast", exact: true }).click();
+        assert.strictEqual(await entity().inputValue(), "", "Changing source clears the sensor entity");
+      }
+      await entity().fill("weather.home");
+      await entity().press("Tab");
+      await save();
+      await waitForNativeState(nativeState, () => nativeState.document.buttons[1].includes("weather.home"), mode + " weather source saved");
+      if (mode !== "visibility") assert(nativeState.document.buttons[1].includes(mode + "_source"));
+      else assert(!nativeState.document.buttons[1].includes("visibility_source"));
+      const styles = await page.evaluate(() => {
+        const keys = ["fontFamily", "fontSize", "fontWeight", "color", "opacity"];
+        const style = slot => {
+          const css = getComputedStyle(document.querySelector('.sp-main [data-slot="' + slot + '"] .sp-rainfall-value'));
+          return Object.fromEntries(keys.map(key => [key, css[key]]));
+        };
+        const reading = document.querySelector('.sp-main [data-slot="1"] .sp-rainfall-value');
+        const rect = reading.getBoundingClientRect(), card = reading.closest('.sp-btn').getBoundingClientRect();
+        return { reading: style(1), rain: style(2), text: reading.textContent, left: rect.left - card.left, bottom: card.bottom - rect.bottom };
+      });
+      assert.deepStrictEqual(styles.reading, styles.rain, mode + " matches Rainfall text styling");
+      assert(styles.left >= 10 && styles.bottom >= 10, mode + " retains card padding");
+      assert.strictEqual(styles.text, mode === "pressure" ? "1013 hPa" : mode === "humidity" ? "65 %" : "10 km");
+      await page.reload();
+      await page.waitForSelector('#sp-app');
+      await seedNativeDocument(page, nativeState);
+      await open();
+      assert.strictEqual(await entity().inputValue(), "weather.home", mode + " retains its entity on reload");
+      if (mode === "visibility") assert.strictEqual(await source().count(), 0);
+      else {
+        assert(await source().getByRole("button", { name: "Forecast", exact: true }).evaluate(button => button.classList.contains("active")));
+        await source().getByRole("button", { name: "Forecast", exact: true }).click();
+        assert.strictEqual(await entity().inputValue(), "weather.home", "Active source preserves entity");
+        await source().getByRole("button", { name: "Sensor", exact: true }).click();
+        assert.strictEqual(await entity().inputValue(), "");
+        await entity().fill(sensor);
+        await entity().press("Tab");
+        await save();
+        await waitForNativeState(nativeState, () => nativeState.document.buttons[1].includes(sensor), mode + " sensor source saved");
+        assert(!nativeState.document.buttons[1].includes(mode + "_source"));
+        await page.reload();
+        await page.waitForSelector('#sp-app');
+        await seedNativeDocument(page, nativeState);
+        await open();
+        assert.strictEqual(await entity().inputValue(), sensor, mode + " retains sensor source on reload");
+        assert(await source().getByRole("button", { name: "Sensor", exact: true }).evaluate(button => button.classList.contains("active")));
+      }
+      console.log(mode + " editor source controls, save/reload and Rainfall preview parity passed.");
+    } finally { await context.close(); }
+  }
 }
 
 (async function main() {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_PIN_ONLY === "1") {
+      await assertScreensaverPinSettings(browser);
+      console.log("PIN settings browser checks passed.");
+      return;
+    }
+    if (process.env.ESPCONTROL_FORECAST_PERIOD_ONLY === "1") {
+      await assertS3ForecastEditorLayout(browser);
+      await assertWeatherReadingEditors(browser);
+      return;
+    }
+    if (process.env.ESPCONTROL_WEATHER_READINGS_ONLY === "1") {
+      await assertWeatherReadingEditors(browser);
+      await assertRainfallEditor(browser);
+      return;
+    }
+    await assertWindSensorEditor(browser);
+    if (process.env.ESPCONTROL_WIND_ONLY === "1") return;
     if (process.env.ESPCONTROL_RAINFALL_ONLY === "1") { await assertRainfallEditor(browser); return; }
     if (process.env.ESPCONTROL_CAMERA_DIMMING_ONLY === "1") {
       for (const testCase of ACTIVE_CASES) await assertCameraScreensaverDimming(browser, testCase);
@@ -7995,6 +8243,7 @@ async function assertRainfallEditor(browser) {
     if (process.env.ESPCONTROL_PIN_ONLY === "1") { console.log("Screensaver PIN browser checks passed."); return; }
 
     await assertRainfallEditor(browser);
+    await assertWeatherReadingEditors(browser);
     await assertWeatherWidthScaling(browser);
     await assertS3ForecastEditorLayout(browser);
     if (process.env.ESPCONTROL_RESET_ONLY === "1") {

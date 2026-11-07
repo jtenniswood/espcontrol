@@ -134,7 +134,7 @@ export function createConfigCodecFeature(
         imageIconEnabled,
         normalizeImageOptions,
     } = imageOptions;
-    const { normalizeWeatherCardMode, normalizeWeatherOptions } = weatherOptions;
+    const { normalizeWeatherCardMode, weatherWindUsesSensors, normalizeWeatherOptions } = weatherOptions;
     const { normalizeWebhookConfig, webhookMethod } = webhookOptions;
     const {
         lawnMowerModeDefaultIcon,
@@ -406,6 +406,7 @@ export function createConfigCodecFeature(
         if (wasLegacyForecast && b.label === "Weather")
             b.label = "";
         b.precision = normalizeWeatherCardMode(b.precision);
+        if (!weatherWindUsesSensors(b)) b.sensor = "";
     }
     function normalizeSavedConfigWeatherOptions(this: any, options?: any, b?: any) {
         return normalizeWeatherOptions(options, b);
@@ -613,8 +614,8 @@ export function createConfigCodecFeature(
         if (type === "calendar" && precision !== "datetime")
             precision = "";
         if (type === "weather") {
-            sensor = "";
             precision = normalizeWeatherCardMode(precision);
+            if (!weatherWindUsesSensors({ precision, options: b && b.options })) sensor = "";
         }
         if (type === "image") {
             iconOn = "Auto";

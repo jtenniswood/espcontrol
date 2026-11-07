@@ -4,7 +4,7 @@ function assert(value: unknown, message: string): asserts value { if (!value) th
 export async function runScreensaverPinTests(): Promise<void> {
   const calls: RequestInit[] = [];
   let enabled = false, pin = "", fail = false, supported = true;
-  let randomize = false;
+  let randomize = false, allowPlayback = false;
   const request = (async (url: any, options: RequestInit) => {
     assert(url === "/api/v1/screensaver-pin" || url === "/api/v1/capabilities", "use device-local settings API");
     assert(options.credentials === "include" && options.cache === "no-store", "authenticated uncached requests");
@@ -17,8 +17,9 @@ export async function runScreensaverPinTests(): Promise<void> {
       enabled = settings.enabled;
       if (typeof settings.pin === "string") pin = settings.pin;
       if (typeof settings.randomize_keypad === "boolean") randomize = settings.randomize_keypad;
+      if (typeof settings.allow_cover_art_playback === "boolean") allowPlayback = settings.allow_cover_art_playback;
     }
-    return Response.json({ enabled, has_pin: !!pin, pin_length: pin.length, randomize_keypad: randomize });
+    return Response.json({ enabled, has_pin: !!pin, pin_length: pin.length, randomize_keypad: randomize, allow_cover_art_playback: allowPlayback });
   }) as typeof fetch;
   assert((await screensaverPinRequest(request))?.has_pin === false, "empty PIN status");
   const saved = await screensaverPinRequest(request, { enabled: true, pin: "0042" });
@@ -26,7 +27,11 @@ export async function runScreensaverPinTests(): Promise<void> {
   assert(!JSON.stringify(saved).includes("0042"), "response holds no secret");
   const layout = await screensaverPinRequest(request, { enabled: true, randomize_keypad: false });
   assert(layout?.randomize_keypad === false && pin === "0042", "layout updates preserve the saved PIN");
+  assert(saved.allow_cover_art_playback === false, "locked playback defaults to protected");
+  const playback = await screensaverPinRequest(request, { enabled: true, allow_cover_art_playback: true });
+  assert(playback?.allow_cover_art_playback === true && pin === "0042", "playback preference preserves the PIN");
   await screensaverPinRequest(request, { enabled: false });
+  assert((await screensaverPinRequest(request))?.allow_cover_art_playback === true, "omitted preference remains saved");
   assert(pin === "0042", "disabling keeps PIN");
   await screensaverPinRequest(request, { enabled: true });
   await screensaverPinRequest(request, { enabled: true, pin: "9876" });

@@ -45,6 +45,43 @@ class ReconnectRecoveryTest(unittest.TestCase):
                 finally:
                     CORE.reset()
 
+    def test_setup_navigation_before_delayed_state_subscription(self):
+        # HA's authenticated connect hook runs once; state subscriptions may
+        # arrive later. Exercise the actual navigation predicate for each
+        # transport rather than leaving first-time setup stuck in that gap.
+        for filename in ("connectivity.yaml", "connectivity_deployed.yaml",
+                         "connectivity_ethernet.yaml"):
+            with self.subTest(transport=filename):
+                source = (ROOT / "common/addon" / filename).read_text()
+                script = source.split("  - id: ha_restore_after_api\n", 1)[1]
+                predicate = re.search(r"lambda: 'return ([^']+);'", script).group(1)
+                harness = r'''
+#include <cassert>
+#define id(value) value
+bool api_connected = false;
+bool state_subscribed = false;
+bool ha_connection_warning_active = false;
+bool ha_api_connected() { return api_connected; }
+bool ha_api_state_connected() { return state_subscribed; }
+bool can_restore() { return PREDICATE; }
+int main() {
+  assert(!can_restore());
+  api_connected = true;
+  assert(can_restore());  // HA authenticated; subscription not ready yet.
+  state_subscribed = true;
+  assert(can_restore());
+  ha_connection_warning_active = true;
+  assert(!can_restore());  // Warning poll owns repair-screen recovery.
+}
+'''.replace("PREDICATE", predicate)
+                with tempfile.TemporaryDirectory() as directory:
+                    cpp = Path(directory) / "setup_navigation.cpp"
+                    binary = Path(directory) / "setup_navigation"
+                    cpp.write_text(harness)
+                    subprocess.run([*shlex.split(os.environ.get("CXX", "c++")),
+                                    "-std=c++17", str(cpp), "-o", str(binary)], check=True)
+                    subprocess.run([str(binary)], check=True)
+
     def test_recovery_has_one_restartable_owner_and_yields_first(self):
         script = self.core.split("  - id: ha_refresh_after_connect\n", 1)[1]
         self.assertIn("    mode: restart\n", script)

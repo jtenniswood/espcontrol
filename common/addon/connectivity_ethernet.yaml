@@ -56,7 +56,7 @@ script:
     then:
       - if:
           condition:
-            lambda: 'return ha_api_connected();'
+            lambda: 'return ha_api_connected() && !id(ha_connection_warning_active);'
           then:
             - if:
                 condition:

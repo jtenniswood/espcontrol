@@ -5,10 +5,11 @@
 namespace espcontrol {
 namespace {
 struct PinRecord {
-  uint32_t version{2};
+  uint32_t version{3};
   char pin[17]{};
   uint8_t enabled{0};
   uint8_t randomize_keypad{0};
+  uint8_t allow_cover_art_playback{0};
 };
 static_assert(sizeof(PinRecord) == 24, "PIN settings must preserve the version 1 record size");
 constexpr char PIN_NAMESPACE[] = "espcontrol_pin";
@@ -30,8 +31,9 @@ void ScreensaverPin::setup() {
     return;
   }
   const bool valid_record = result == ESP_OK && size == sizeof(record) &&
-      (record.version == 1 || record.version == 2) && record.enabled <= 1 &&
+      (record.version >= 1 && record.version <= 3) && record.enabled <= 1 &&
       (record.version == 1 || record.randomize_keypad <= 1) &&
+      (record.version < 3 || record.allow_cover_art_playback <= 1) &&
       std::memchr(record.pin, 0, sizeof(record.pin)) != nullptr && valid_pin(record.pin);
   // Bad/unknown records must remain replaceable through the settings API.
   // Genuine storage failures still leave the service unavailable.
@@ -39,11 +41,14 @@ void ScreensaverPin::setup() {
   pin_ = record.pin;
   enabled_ = record.enabled && !pin_.empty();
   // Version 1 had no layout preference; use the current fixed-order default.
-  randomize_keypad_ = record.version == 2 && record.randomize_keypad;
+  randomize_keypad_ = record.version >= 2 && record.randomize_keypad;
+  // Older records used padding here; they must keep playback protected.
+  allow_cover_art_playback_ = record.version >= 3 && record.allow_cover_art_playback;
   ready_ = true;
   locked_ = enabled_ && !pin_.empty();
 }
-bool ScreensaverPin::save(bool enabled, const std::string *pin, const bool *randomize_keypad) {
+bool ScreensaverPin::save(bool enabled, const std::string *pin, const bool *randomize_keypad,
+                         const bool *allow_cover_art_playback) {
   Guard guard(mutex_);
   if (!ready_ || (pin && !valid_pin(*pin))) return false;
   const auto &next_pin = pin ? *pin : pin_;
@@ -53,6 +58,8 @@ bool ScreensaverPin::save(bool enabled, const std::string *pin, const bool *rand
   record.enabled = next_enabled;
   const bool next_randomize = randomize_keypad ? *randomize_keypad : randomize_keypad_;
   record.randomize_keypad = next_randomize;
+  const bool next_allow_playback = allow_cover_art_playback ? *allow_cover_art_playback : allow_cover_art_playback_;
+  record.allow_cover_art_playback = next_allow_playback;
   nvs_handle_t handle;
   if (nvs_open(PIN_NAMESPACE, NVS_READWRITE, &handle) != ESP_OK) return false;
   auto result = nvs_set_blob(handle, "settings", &record, sizeof(record));
@@ -62,6 +69,7 @@ bool ScreensaverPin::save(bool enabled, const std::string *pin, const bool *rand
   pin_ = next_pin;
   enabled_ = next_enabled;
   randomize_keypad_ = next_randomize;
+  allow_cover_art_playback_ = next_allow_playback;
   if (!enabled_ || pin_.empty()) locked_ = false;
   else if (sleeping_) locked_ = true;
   if (pin_.empty()) {

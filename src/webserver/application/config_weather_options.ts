@@ -13,21 +13,23 @@ export function createConfigWeatherOptionsFeature(
     }
 
     function weatherModeOptions(this: any) {
-        const options: any = [
+        const options: [string, string][] = [
+            ["pressure", "Air Pressure"],
             ["", "Current Conditions"],
+            ["forecast", "Forecast"],
+            ["humidity", "Humidity"],
             ["rainfall", "Rainfall"],
-            ["today", "Today's Forecast"],
-            ["tomorrow", "Tomorrow's Forecast"],
-            ["daily", "Daily Forecast"],
+            ["visibility", "Visibility"],
+            ["wind", "Wind"],
         ];
-        return weatherForecastCardsSupported() ? options : options.slice(0, 2);
+        return weatherForecastCardsSupported() ? options : options.filter(([value]) => value !== "forecast");
     }
 
     function weatherModeOptionValues(this: any) {
         const spec: any = cardContractOptionSpec("weather", "weather_mode");
-        const values: any = spec && spec.values ? spec.values.slice() : ["", "today", "tomorrow", "daily", "rainfall"];
+        const values: any = spec && spec.values ? spec.values.slice() : ["", "today", "tomorrow", "daily", "wind", "rainfall", "pressure", "humidity", "visibility"];
         return weatherForecastCardsSupported() ? values : values.filter(function (value: any) {
-            return value === "" || value === "rainfall";
+            return value === "" || value === "wind" || value === "rainfall" || weatherMetricMode(value);
         });
     }
 
@@ -45,16 +47,29 @@ export function createConfigWeatherOptionsFeature(
         return button.precision === "today" ? "Today" : "Tomorrow";
     }
 
-    function rainfallUsesForecast(button?: any): boolean {
-        return weatherForecastCardsSupported() && !!button && button.precision === "rainfall" &&
-            configOptionValue(button.options, "rainfall_source") === "forecast";
+    function weatherWindUsesSensors(button?: any): boolean {
+        return !!button && button.precision === "wind" && configOptionValue(button.options, "wind_source") === "sensors";
     }
-
-    function normalizeWeatherOptions(options?: string, button?: any): string {
+    function rainfallUsesForecast(button?: any): boolean {
+        return weatherForecastCardsSupported() && !!button && button.precision === "rainfall" && configOptionValue(button.options, "rainfall_source") === "forecast";
+    }
+    function weatherMetricMode(mode?: string): boolean {
+        return ["pressure", "humidity", "visibility"].includes(mode || "");
+    }
+    function weatherMetricUsesForecast(button?: any): boolean {
+        return !!button && weatherMetricMode(button.precision) &&
+            (button.precision === "visibility" || configOptionValue(button.options, button.precision + "_source") === "forecast");
+    }
+    function normalizeWeatherOptions(options?: any, button?: any): string {
+        if (weatherMetricUsesForecast({ ...button, options }) && button.precision !== "visibility")
+            return button.precision + "_source=forecast";
+        if (weatherWindUsesSensors({ ...button, options })) return "wind_source=sensors";
         return rainfallUsesForecast({ ...button, options }) ? "rainfall_source=forecast" : "";
     }
-
     return {
+        weatherMetricMode,
+        weatherMetricUsesForecast,
+        weatherWindUsesSensors,
         rainfallUsesForecast,
         normalizeWeatherOptions,
         weatherCardDefaultForecastLabel,

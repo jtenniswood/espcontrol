@@ -12,8 +12,8 @@
     "deviceProfiles": 9,
     "cardTypes": 44,
     "entityNames": 112,
-    "icons": 367,
-    "structuralIcons": 22,
+    "icons": 374,
+    "structuralIcons": 28,
     "compatibilityFixtureGroups": 2
   },
   "deviceProfiles": {
@@ -64,7 +64,7 @@
           }
         },
         "topbar": {
-          "height": 3.2,
+          "height": 4.4,
           "padding": "0.39cqw",
           "fontSize": 1.95
         },
@@ -76,6 +76,11 @@
           "bottom": 0.49,
           "gap": 0.976562,
           "fr": "1fr"
+        },
+        "cardCurveRadii": {
+          "Small": 8,
+          "Medium": 20,
+          "Large": 24
         },
         "btn": {
           "radius": 3.125,
@@ -271,7 +276,7 @@
           }
         },
         "topbar": {
-          "height": 3.2,
+          "height": 4.4,
           "padding": "0.39cqw",
           "fontSize": 1.95
         },
@@ -283,6 +288,11 @@
           "bottom": 0.49,
           "gap": 0.976562,
           "fr": "1fr"
+        },
+        "cardCurveRadii": {
+          "Small": 8,
+          "Medium": 20,
+          "Large": 24
         },
         "btn": {
           "radius": 3.125,
@@ -6091,11 +6101,39 @@
               "today",
               "tomorrow",
               "daily",
-              "rainfall"
+              "wind",
+              "rainfall",
+              "pressure",
+              "humidity",
+              "visibility"
             ],
             "defaultValue": "",
             "storageField": "precision",
             "omitDefault": true
+          },
+          {
+            "name": "wind_source",
+            "label": "Wind Source",
+            "kind": "choice",
+            "values": [
+              "weather",
+              "sensors"
+            ],
+            "defaultValue": "weather",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "precision",
+                "operator": "equals",
+                "value": "wind"
+              }
+            ],
+            "supportedWhen": {
+              "precision": [
+                "wind"
+              ]
+            }
           },
           {
             "name": "rainfall_source",
@@ -6120,6 +6158,54 @@
                 "rainfall"
               ]
             }
+          },
+          {
+            "name": "pressure_source",
+            "label": "Air Pressure Source",
+            "kind": "choice",
+            "values": [
+              "sensor",
+              "forecast"
+            ],
+            "defaultValue": "sensor",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "precision",
+                "operator": "equals",
+                "value": "pressure"
+              }
+            ],
+            "supportedWhen": {
+              "precision": [
+                "pressure"
+              ]
+            }
+          },
+          {
+            "name": "humidity_source",
+            "label": "Humidity Source",
+            "kind": "choice",
+            "values": [
+              "sensor",
+              "forecast"
+            ],
+            "defaultValue": "sensor",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "precision",
+                "operator": "equals",
+                "value": "humidity"
+              }
+            ],
+            "supportedWhen": {
+              "precision": [
+                "humidity"
+              ]
+            }
           }
         ],
         "normalization": {
@@ -6138,7 +6224,8 @@
               "policy": "keep"
             },
             "sensor": {
-              "policy": "clear"
+              "policy": "hook",
+              "hook": "normalize_weather_fields"
             },
             "unit": {
               "policy": "keep"
@@ -6158,7 +6245,10 @@
           },
           "unknownOptions": "drop",
           "canonicalOptionOrder": [
-            "rainfall_source"
+            "wind_source",
+            "rainfall_source",
+            "pressure_source",
+            "humidity_source"
           ],
           "migrationActions": [
             "legacy_weather_forecast"
@@ -8157,6 +8247,36 @@
         "codepoint": "F035B",
         "mdi": "memory",
         "comment": "Build information card"
+      },
+      {
+        "name": "Wind arrow-top-right",
+        "codepoint": "F005C",
+        "mdi": "arrow-top-right"
+      },
+      {
+        "name": "Wind arrow-right",
+        "codepoint": "F0054",
+        "mdi": "arrow-right"
+      },
+      {
+        "name": "Wind arrow-bottom-right",
+        "codepoint": "F0043",
+        "mdi": "arrow-bottom-right"
+      },
+      {
+        "name": "Wind arrow-bottom-left",
+        "codepoint": "F0042",
+        "mdi": "arrow-bottom-left"
+      },
+      {
+        "name": "Wind arrow-left",
+        "codepoint": "F004D",
+        "mdi": "arrow-left"
+      },
+      {
+        "name": "Wind arrow-top-left",
+        "codepoint": "F005B",
+        "mdi": "arrow-top-left"
       }
     ],
     "icons": [
@@ -8414,6 +8534,11 @@
         "name": "Broom",
         "codepoint": "F00E2",
         "mdi": "broom"
+      },
+      {
+        "name": "Bunk Bed",
+        "codepoint": "F1302",
+        "mdi": "bunk-bed"
       },
       {
         "name": "Bus",
@@ -8806,6 +8931,11 @@
         "mdi": "gauge-low"
       },
       {
+        "name": "Gift",
+        "codepoint": "F0E44",
+        "mdi": "gift"
+      },
+      {
         "name": "Grid Export",
         "codepoint": "F192C",
         "mdi": "transmission-tower-export"
@@ -9086,6 +9216,11 @@
         "mdi": "mailbox"
       },
       {
+        "name": "Menu",
+        "codepoint": "F035C",
+        "mdi": "menu"
+      },
+      {
         "name": "Message Video",
         "codepoint": "F036B",
         "mdi": "message-video"
@@ -9181,6 +9316,11 @@
         "mdi": "nintendo-switch"
       },
       {
+        "name": "Ornament",
+        "codepoint": "F03CF",
+        "mdi": "ornament"
+      },
+      {
         "name": "Outdoor Lamp",
         "codepoint": "F1054",
         "mdi": "outdoor-lamp"
@@ -9214,6 +9354,11 @@
         "name": "Pill Multiple",
         "codepoint": "F1B4C",
         "mdi": "pill-multiple"
+      },
+      {
+        "name": "Pine Tree",
+        "codepoint": "F0405",
+        "mdi": "pine-tree"
       },
       {
         "name": "Plus",
@@ -9534,6 +9679,16 @@
         "name": "Sprinkler Variant",
         "codepoint": "F1060",
         "mdi": "sprinkler-variant"
+      },
+      {
+        "name": "Stairs",
+        "codepoint": "F04CD",
+        "mdi": "stairs"
+      },
+      {
+        "name": "Stocking",
+        "codepoint": "F04DA",
+        "mdi": "stocking"
       },
       {
         "name": "Stop",

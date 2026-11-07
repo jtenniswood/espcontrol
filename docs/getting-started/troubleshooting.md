@@ -37,6 +37,12 @@ If saving or importing a backup fails, try opening `http://YOUR-DISPLAY-IP/?espc
 - Make sure the display and Home Assistant are on the **same WiFi network** (not a guest network or a different VLAN).
 - In Home Assistant, go to **Settings > Devices & Services > Add Integration** and search for **ESPHome**. Enter the device's IP address manually.
 
+## The Screen Shows "Home Assistant disconnected"
+
+On an already configured display, this warning appears after 60 seconds with a network connection but no Home Assistant connection. It stays visible at reduced brightness instead of entering the screensaver and clears automatically when Home Assistant reconnects.
+
+Open **Settings > Devices & Services > ESPHome** in Home Assistant and check the display for an encryption key or connection alert. Complete any repair prompt shown there. The warning can also appear while Home Assistant is offline; it does not specifically diagnose an incorrect key. If the network drops, the usual network reconnect screen takes over.
+
 ## Home Assistant Says "Connection Requires Encryption"
 
 - Update both Home Assistant and ESPHome Device Builder to 2026.8 or newer. These versions pass a display's unique API encryption key between Home Assistant and Device Builder when the display is adopted or rebuilt.

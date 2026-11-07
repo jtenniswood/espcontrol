@@ -1,6 +1,7 @@
 #pragma once
 
 #include "card_curve.h"
+#include "external_memory_allocator.h"
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
@@ -284,6 +285,7 @@ inline void apply_large_sensor_number_style(const BtnSlot &s, const lv_font_t *l
 }
 
 inline void apply_standard_sensor_number_style(const BtnSlot &s, const DisplayProfile &display) {
+  // A reused Wind slot must not dim the next card's ordinary sensor value.
   if (s.sensor_lbl) lv_obj_set_style_text_opa(s.sensor_lbl, LV_OPA_COVER, LV_PART_MAIN);
   if (s.sensor_lbl && display_sensor_font(display)) {
     lv_obj_set_style_text_font(s.sensor_lbl, display_sensor_font(display), LV_PART_MAIN);
@@ -987,7 +989,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
   control_modal_register_card_label(s);
   display_apply_slot_text_width(s, display);
   if (espcontrol::cards::weather_driver_matches(context) &&
-      (p.precision == "rainfall" || espcontrol::cards::weather_driver_shows_forecast(p))) {
+      (p.precision == "wind" || p.precision == "rainfall" || weather_metric_mode(p.precision) || espcontrol::cards::weather_driver_shows_forecast(p))) {
     espcontrol::cards::weather_driver_refresh_layout(s, p, context, display, row_span, col_span);
     return;
   }
@@ -1912,6 +1914,14 @@ inline void grid_clear_navigation_targets(BtnSlot *slots, int slot_count) {
   }
 }
 
+// Button callbacks retain pointers to these strings across grid updates.
+// Allocate the full capacity once so addresses remain stable in PSRAM.
+inline std::string *subpage_toggle_entity_ids() {
+  static std::vector<std::string, EspControlExternalAllocator<std::string>>
+      ids(MAX_SUBPAGE_ITEMS);
+  return ids.data();
+}
+
 inline void grid_phase2(
     BtnSlot *slots, const GridConfig &cfg,
     esphome::text::Text **sp_configs,
@@ -1950,7 +1960,7 @@ inline void grid_phase2(
   static const char* icon_off_cp[MAX_GRID_SLOTS] = {};
   static const char* icon_on_cp[MAX_GRID_SLOTS] = {};
 
-  static std::string sp_entity_ids[MAX_SUBPAGE_ITEMS];
+  std::string *sp_entity_ids = subpage_toggle_entity_ids();
   static int sp_entity_alloc_idx = 0;
   static espcontrol::cards::NavigationDriverChildIndicators
     navigation_child_indicators;
