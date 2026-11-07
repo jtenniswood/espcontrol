@@ -44,7 +44,7 @@ export function createAppConfigEventsFeature(
         b.type = parsed.type;
         b.precision = parsed.precision;
         b.options = parsed.options;
-        if (migrateConfig && !state.nativeConfigLoading)
+        if (migrateConfig && !state.nativeConfigLoading && !state.nativeTransferActive)
             configPersistence.saveButtonConfig(slot);
         renderQueue.schedule();
     }

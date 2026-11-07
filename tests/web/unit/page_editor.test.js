@@ -141,3 +141,46 @@ test("a superseded load failure cannot replace the current connection banner", a
   assert.equal(await old, false);
   assert.equal(fixture.failures.length, 0);
 });
+
+test("read-only captures retain pending or deferred external refreshes", async () => {
+  for (const phase of ["pending", "deferred"]) {
+    const fixture = loader(), pending = fixture.instance.refresh(); await settle();
+    fixture.dirty();
+    if (phase === "deferred") {
+      fixture.reads[0].resolve(snapshot(source())); await pending;
+      assert.equal(fixture.timers.size, 1);
+    }
+    fixture.instance.invalidate(true);
+    assert.equal(fixture.reads[0].signal.aborted, phase === "pending");
+    assert.equal(fixture.timers.size, 1, "capture preserves one refresh obligation");
+    fixture.tick(); await settle();
+    assert.equal(fixture.reads.length, 1, "do not read while the transfer lock is held");
+    fixture.idle(); fixture.tick(); await settle();
+    assert.equal(fixture.reads.length, 2);
+    const newest = { ...source(), buttons: { ...source().buttons, 2: "light.other;External edit" } };
+    fixture.reads[1].resolve(snapshot(newest)); await settle();
+    assert.equal(fixture.applied.at(-1).buttons[2], "light.other;External edit");
+    if (phase === "pending") { fixture.reads[0].resolve(snapshot(source())); assert.equal(await pending, false); }
+    assert.equal(fixture.applied.length, 1, "the cancelled response cannot overwrite the refreshed editor");
+    assert.equal(fixture.timers.size, 0);
+  }
+  const idle = loader(); idle.instance.invalidate(true);
+  assert.equal(idle.timers.size, 0, "copy without an external refresh does not add a poll");
+});
+
+test("subpage rotation reserves spans for retained card identities above the visible capacity", () => {
+  const { createCoreFeature } = load("application/core.ts");
+  const page = { grid: [-2, 1, 7, -1, 0, 0], sizes: { 7: model.CARD_SIZE_WIDE } };
+  const saved = [], state = { screenRotation: "90", grid: [1, 0, 0, 0, 0, 0], sizes: {}, subpages: { 1: page } };
+  const layout = { previewSlots: 6, totalSlots: 6, numSlots: 6, gridCols: 2,
+    config: { slots: 6, cols: 2, rows: 3, screen: {}, grid: {}, btn: {}, topbar: {}, sensorBadge: {}, subpageBadge: {}, emptyCell: {},
+      portrait: { slots: 6, cols: 3, rows: 2, screen: {} } } };
+  const core = createCoreFeature(layout, sp => model.serializeGridOrder(sp.grid, sp.sizes), { orderReceived: true },
+    { state, document: { querySelector: () => null, documentElement: { style: { setProperty() {}, removeProperty() {} } } }, clockBarVisibleInPreview: () => false,
+      postButtonOrder() {}, saveSubpage: key => saved.push(key) });
+  core.syncPreviewOrientation();
+  assert.deepEqual(page.grid, [-2, 1, 0, 7, -1, 0]);
+  assert.equal(page.sizes[7], model.CARD_SIZE_WIDE);
+  assert.deepEqual(saved, ["1"]);
+  assert.deepEqual(state.grid, [1, 0, 0, 0, 0, 0], "root identity policy is unchanged");
+});

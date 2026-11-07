@@ -1,3 +1,7 @@
+import type { CardConfig } from "../contracts/types";
+import { cloneCardConfig } from "../model/card";
+import { pageDepth } from "../model/page_keys";
+import type { ConfigCodecFeature } from "./config_codec";
 import { state } from "../state/app_instance";
 import { createClipboardEntry } from "../features/clipboard";
 import { capturePageCards, planPageCardDelete, planPageCardPaste, PageTransferConflict,
@@ -18,6 +22,22 @@ export interface NativePageTransfersFeature {
   duplicate(slot: number): Promise<boolean>;
   delete(slots: readonly number[]): Promise<boolean>;
 }
+/** Validate normalized temporary views, preserving the raw transfer payload. */
+export function validatePageTransferCards(
+  entries: readonly PageTransferCard[], target: number,
+  codec: Pick<ConfigCodecFeature, "normalizeButtonConfig" | "parseSubpageConfig">,
+  validate: (button: CardConfig, inSubpage: boolean) => void,
+): void {
+  const check = (button: CardConfig, inSubpage: boolean) =>
+    validate(codec.normalizeButtonConfig(cloneCardConfig(button)), inSubpage);
+  for (const entry of entries) {
+    check(entry.button, pageDepth(target) > 0);
+    if (entry.subtree) for (const raw of [entry.subtree.configuration, ...Object.values(entry.subtree.children)]) {
+      if (raw !== null) for (const button of codec.parseSubpageConfig(raw, true).buttons) check(button, true);
+    }
+  }
+}
+
 /** Publish the complete native transaction before changing the visible editor. */
 export function createNativePageTransfersFeature(options: {
   native: NativePanelConfigController;
@@ -39,9 +59,9 @@ export function createNativePageTransfersFeature(options: {
       options.shell.showBanner("Save or cancel the open card before transferring cards.", "warning"); return false;
     }
     busy = true;
-    options.editor().invalidate();
+    state.nativeTransferActive = true;
+    options.editor().invalidate(true);
     options.native.markLocalEdit();
-    state.nativeConfigLoading = true;
     options.shell.syncConfigLockUi();
     try {
       options.grid.flushMainGridSave();
@@ -56,7 +76,7 @@ export function createNativePageTransfersFeature(options: {
       options.shell.showBanner(error instanceof Error ? error.message : "The cards could not be transferred.", "error");
       return false;
     } finally {
-      busy = false; state.nativeConfigLoading = false; options.shell.syncConfigLockUi();
+      busy = false; state.nativeTransferActive = false; options.shell.syncConfigLockUi();
     }
   }
   function savedDocument(): PanelConfigDocument {

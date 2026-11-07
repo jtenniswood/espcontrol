@@ -188,7 +188,7 @@ export function createConfigPersistenceFeature(
         saveSubpageEntityLegacy(slot, full);
     }
     function scheduleSliderSubpageMigration(this: any, slot?: any) {
-        if (state.nativeConfigLoading || state.nativeHasNestedPages) return;
+        if (state.nativeConfigLoading || state.nativeTransferActive || state.nativeHasNestedPages) return;
         runtime.pendingSliderSubpageMigrations[slot] = true;
         clearTimeout(runtime.sliderMigrationTimer as any);
         runtime.sliderMigrationTimer = setTimeout(function (this: any) {

@@ -1,5 +1,7 @@
+import { migrateSavedConfigSensorLegacy } from "../../src/webserver/generated/saved_config_sensor";
+import { parseRawButtonConfig, parseRawSubpageConfig } from "../../src/webserver/model";
 import { NativePanelConfigController } from "../../src/webserver/controllers/native_panel_config_controller";
-import { createNativePageTransfersFeature } from "../../src/webserver/application/native_page_transfers";
+import { createNativePageTransfersFeature, validatePageTransferCards } from "../../src/webserver/application/native_page_transfers";
 import { initializeAppState, state } from "../../src/webserver/state/app_instance";
 import { initializeDeviceConfig } from "../../src/webserver/device_config";
 import { encodePanelPageDocument, decodePanelPageDocument } from "../../src/webserver/model/panel_config_conversion";
@@ -50,11 +52,11 @@ export async function runNativePageTransferTests(): Promise<void> {
   const clipboard = () => state.clipboard;
   const layout = { previewSlots: 9, gridCols: 5 } as ApplicationLayoutState;
   const feature = createNativePageTransfersFeature({ native,
-    editor: () => ({ invalidate() {}, replace(document: PanelConfigDocument) { visible = document; } }) as NativePageEditorLoader,
+    editor: () => ({ invalidate(preserve?: boolean) { check(preserve === true, "transfers retain interrupted external refreshes"); }, replace(document: PanelConfigDocument) { visible = document; } }) as NativePageEditorLoader,
     layout,
-    api: { postQueueIdle: async () => {}, postQueueHadError: () => false },
+    api: { postQueueIdle: async () => { check(state.nativeTransferActive && !state.nativeConfigLoading, "transfers own an independent lock"); }, postQueueHadError: () => false },
     grid: { flushMainGridSave() {}, ctx: () => ({ grid: [1, 0, 0, 0, 0, 0, 0, 0, 0] }) },
-    shell: { isConfigLocked: () => state.configLocked || state.nativeConfigLoading, syncConfigLockUi() {}, showBanner: message => banners.push(message) },
+    shell: { isConfigLocked: () => state.configLocked || state.nativeConfigLoading || state.nativeTransferActive, syncConfigLockUi() {}, showBanner: message => banners.push(message) },
     validate() {},
   });
   layout.gridCols = 3; // Orientation changes after application composition.
@@ -64,7 +66,7 @@ export async function runNativePageTransferTests(): Promise<void> {
   check(!(await feature.paste(2)).ok, "rejected PUT fails the transfer");
   check(JSON.stringify(persisted) === before && JSON.stringify(visible) === before && published === 0,
     "rejection changes neither storage nor visible state and cannot announce a successful save");
-  check(clipboard()?.native?.cut && !state.nativeConfigLoading, "rejection retains the cut clipboard and unlocks retry");
+  check(clipboard()?.native?.cut && !state.nativeConfigLoading && !state.nativeTransferActive, "rejection retains the cut clipboard and unlocks retry");
   check(!!await feature.capture([1]), "copy can read a source after an explicit rejection");
   await native.readSnapshot();
   await native.readForBackup().catch(() => null);
@@ -138,4 +140,29 @@ export async function runNativePageTransferTests(): Promise<void> {
   const writesBeforeBlockedRetry = writes;
   check(!await feature.duplicate(1) && writes === writesBeforeBlockedRetry,
     "a later unrelated failed save cannot inherit the transfer's retry permission");
+}
+
+export function runNativeTransferValidationTests(): void {
+  const codec = {
+    normalizeButtonConfig(button: any) { migrateSavedConfigSensorLegacy(button); return button; },
+    parseSubpageConfig(raw: string) { return parseRawSubpageConfig(raw, value => value); },
+  } as any;
+  for (const alias of ["text_sensor", "local_sensor"]) {
+    const button = { ...parseRawButtonConfig(""), type: alias, label: "Saved label", options: "future=value" };
+    const entries = [{ button, size: 1, subtree: null }];
+    const before = JSON.stringify(entries), seen: any[] = [];
+    validatePageTransferCards(entries, 1, codec, (normalized, subpage) => {
+      check(normalized.type === "sensor" && subpage, "legacy sensor is checked using its supported type"); seen.push(normalized);
+    });
+    check(seen.length === 1 && JSON.stringify(entries) === before && button.type === alias,
+      "validation cannot rewrite the original card or saved values");
+  }
+  const folder = [{ button: { ...parseRawButtonConfig(""), type: "subpage" }, size: 1,
+    subtree: { configuration: "~B,1|text_sensor,,Legacy", children: { 1: "~B,1|local_sensor,,Local" } } }];
+  const before = JSON.stringify(folder), types: string[] = [];
+  validatePageTransferCards(folder, 0, codec, (button, subpage) => {
+    check(button.type === (subpage ? "sensor" : "subpage"), "descendant aliases use normalized validation too"); types.push(button.type);
+  });
+  check(types.join() === "subpage,sensor,sensor" && JSON.stringify(folder) === before,
+    "folder validation preserves both levels of original serialized data");
 }

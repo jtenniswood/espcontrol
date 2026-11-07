@@ -25,7 +25,7 @@ export function createNativePageEditorFeature(options: {
     readDepth: () => native.readNavigationDepth(),
     revision: () => native.changeRevision(),
     read: signal => native.readSnapshot(signal),
-    canApply: () => options.canApply() && !state.configLocked && !state.settingsDraft?.dirty && !state.settingsDraft?.isNew &&
+    canApply: () => options.canApply() && !state.configLocked && !state.nativeTransferActive && !state.settingsDraft?.dirty && !state.settingsDraft?.isNew &&
       runtime.dragSrcPos < 0 && !state.clockBarDragItem &&
       !options.document.activeElement?.closest(".sp-card-name-input"),
     apply: (document) => {

@@ -226,7 +226,7 @@ export function createPreviewInteractionsFeature(
             if (isConfigLocked()) {
                 e.preventDefault();
                 e.stopPropagation();
-                if (state.nativeConfigReadOnly && state.nativePanelDocument && !state.configLocked && !state.nativeConfigLoading) {
+                if (state.nativeConfigReadOnly && state.nativePanelDocument && !state.configLocked && !state.nativeConfigLoading && !state.nativeTransferActive) {
                     const target = e.target.closest("[data-slot]");
                     const slot = Number(target?.getAttribute("data-slot"));
                     if (slot === -2) exitSubpage();

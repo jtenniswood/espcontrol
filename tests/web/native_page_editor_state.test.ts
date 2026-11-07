@@ -100,3 +100,29 @@ export function runNativeEditorStateTests(): void {
   state.nativeConfigLoading = false; state.nativePanelDocument = null; shell.syncConfigLockUi(); click(1);
   check(entered === 1 && classes["sp-config-locked"], "failed native loading cannot expose a partial preview");
 }
+
+export async function runNativeEditorTransferLockTests(): Promise<void> {
+  initialize();
+  state.nativePanelDocument = { deviceProfile: "test", buttons: {}, subpages: {}, settings: {} };
+  state.nativeTransferActive = true;
+  const apply = { disabled: false, textContent: "" }, classes: Record<string, boolean> = {};
+  const runtime = { dragSrcPos: -1, els: {
+    root: { classList: { toggle: (key: string, enabled: boolean) => { classes[key] = enabled; } }, querySelectorAll: () => [apply] },
+    previewMain: { setAttribute() {} },
+  } } as any;
+  const shell = createControlsShellFeature(runtime, { state, document: {}, updatePreviewHint() {} } as any);
+  let discover!: (value: false) => void;
+  const discovery = new Promise<false>(resolve => { discover = resolve; });
+  const editor = createNativePageEditorFeature({ native: { waitForDiscovery: () => discovery, changeRevision: () => 0 } as any,
+    codec: {} as any, layout: {} as any, runtime, document: { activeElement: null } as any,
+    shell, closeSettings() {}, render() {}, canApply: () => true });
+  const background = editor.refresh();
+  check(!state.nativeConfigLoading, "a loaded editor does not take the initial snapshot lock");
+  check(state.nativeTransferActive && shell.isConfigLocked() && apply.disabled && classes["sp-config-locked"],
+    "starting background discovery cannot release the transfer's edit or navigation lock");
+  discover(false); await background;
+  check(state.nativeTransferActive && shell.isConfigLocked() && apply.disabled,
+    "finishing background discovery cannot release another operation's lock");
+  state.nativeTransferActive = false; shell.syncConfigLockUi();
+  check(!shell.isConfigLocked() && !apply.disabled && !classes["sp-config-locked"], "the transfer owner releases its own lock");
+}

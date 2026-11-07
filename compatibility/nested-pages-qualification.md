@@ -2749,6 +2749,44 @@ independent diagnosis audit passes while leaving qualification failed. No test
 is left armed. The shared NVS capacity handling must be addressed before
 crediting repeated full-size saves on this deployed layout.
 
+## Verified storage rejection and editor review fixes (7 November)
+
+Source `dced5b330` distinguishes a rejected NVS blob write from an unconfirmed
+commit. `ESP_ERR_NVS_NOT_ENOUGH_SPACE` and `ESP_ERR_NVS_VALUE_TOO_LONG` from
+`nvs_set_blob` now propagate through both storage adapters and the configuration
+service as HTTP 413, with the active dashboard retained. A failed commit stays
+an I/O error even if it reports a capacity code; rollback cannot erase the
+original error classification. No storage format, preference key, partition
+layout or API encryption policy changes.
+
+Six ASan/UBSan storage/service/status targets pass, including 24 save-fault
+cases across both backends and all four boundaries, the ambiguous final-commit
+case, fresh old-generation recovery, staged-runtime discard and later CAS
+retry. A source/stock-SDK/ELF-audited fifteen-slot image then reproduces the
+unchanged 225-card fixture on the actual V2: the first save returns 204 at
+generation 17; the next real 11,365-byte write returns NVS 4357 and **HTTP 413**
+with the exact capacity explanation. Native data and generation remain
+unchanged. There are 406 free NVS entries at the rejection. This verifies
+capacity handling; it does not increase available space or complete four
+maximum-size replacements and artwork testing.
+
+The exact weather application and original dashboard are restored in both
+native slots at generation 19. All 78 protected settings, PIN/reset/update
+policy and plain API mode pass a 78.59-second stability window plus a fresh
+read-only preflight. The independent capacity audit passes; no test is armed.
+
+Four editor reviews are also addressed: legacy card aliases are normalized on
+temporary copies for validation; transfers hold their own edit/navigation lock;
+copying preserves interrupted external refreshes; subpage rotation normalizes
+spans using the saved-card identity range. Raw transferred records and subtree
+values remain intact. TypeScript, 301 web unit tests, state-contract checks and
+fresh generated web assets pass. Chromium journeys against mocked APIs pass
+on 7-inch V2, 4.3-inch V3, 10-inch V3 and S3 layouts, covering nested creation,
+reload, immediate-parent Back, transfers/rejection retry, retained identities,
+subtrees, writer-depth limits and durable-byte rejection. These are simulated
+reader/writer capabilities, not production depth-two enablement or physical
+display qualification. Production still writes v1 at depth one.
+
 ## Follow-up refresh requests during an active sweep (7 November)
 
 Runtime PR #2400 commit `b713e1315` retains one coalesced follow-up Home

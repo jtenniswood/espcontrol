@@ -69,7 +69,7 @@ import { createButtonSettingsFeature, type ButtonSettingsFeature } from "./appli
 import { createPreviewGridPlacementFeature } from "./application/preview_grid_placement";
 import { createPreviewContextMenuFeature, type PreviewContextMenuFeature } from "./application/preview_context_menu";
 import { createPreviewClipboardFeature } from "./application/preview_clipboard";
-import { createNativePageTransfersFeature } from "./application/native_page_transfers";
+import { createNativePageTransfersFeature, validatePageTransferCards } from "./application/native_page_transfers";
 import { pageDepth } from "./model/page_keys";
 import { panelPageDocumentDepth } from "./model/panel_config_conversion";
 import { createPreviewInteractionsFeature, type PreviewInteractionsFeature } from "./application/preview_interactions";
@@ -640,12 +640,7 @@ function composeApplicationContext(): ApplicationContext {
           throw new Error("A copied card is not supported on this page.");
         if (imageConfigurationOptions.isImageCard(button)) ++images;
       };
-      for (const entry of entries) {
-        checkCard(entry.button, pageDepth(target) > 0);
-        if (entry.subtree) for (const raw of [entry.subtree.configuration, ...Object.values(entry.subtree.children)]) {
-          if (raw !== null) for (const button of configurationCodec.parseSubpageConfig(raw, true).buttons) checkCard(button, true);
-        }
-      }
+      validatePageTransferCards(entries, target, configurationCodec, checkCard);
       if (!moving && !imageConfigurationOptions.canAddImageCards(images))
         throw new Error(imageConfigurationOptions.imageSlotCapacityMessage());
     },

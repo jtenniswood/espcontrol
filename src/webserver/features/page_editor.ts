@@ -62,9 +62,13 @@ export class NativePageEditorLoader {
   private refreshAgain = false;
   private retry: ReturnType<typeof setTimeout> | null = null;
   constructor(private readonly options: NativePageEditorLoaderOptions) {}
-  invalidate(): void {
+  invalidate(preserveRefresh = false): void {
+    const refreshRequested = preserveRefresh === true && (this.pending !== null || this.retry !== null || this.refreshAgain);
     ++this.epoch; this.abort?.abort(); this.abort = null; this.pending = null; this.refreshAgain = false;
     this.cancelRetry();
+    // Read-only captures temporarily invalidate the old response, but must
+    // retain the external change notification until their lock is released.
+    if (refreshRequested) this.deferRefresh();
   }
   private cancelRetry(): void {
     if (this.retry !== null) (this.options.cancel ?? clearTimeout)(this.retry);

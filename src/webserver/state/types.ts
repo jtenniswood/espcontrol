@@ -286,6 +286,7 @@ export interface AppState {
   nativeHasNestedPages: boolean;
   nativeConfigReadOnly: boolean;
   nativeConfigLoading: boolean;
+  nativeTransferActive: boolean;
   subpages: Record<string, RuntimeSubpage>;
   subpageRaw: Record<string, Record<string, string>>;
   subpageSavePending: Record<string, string>;
