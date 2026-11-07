@@ -2148,6 +2148,114 @@ JPEGs are restored, with 65.2 seconds of connection stability and a fresh
 independent read-only preflight. Only native generation advances to 1341.
 No test firmware or background device process remains active.
 
+## Current-source S3 image pressure investigation (7 November)
+
+The current observer compiles unmodified production C++ from `656fc078c` with
+YAML-only owner memory, IDF local minima and descriptor liveness probes. It
+verifies 439 compiled C++ files, the stock API, native wrapper, unchanged
+partition table, depth-one/v1 writer policy and 6 MHz clock. The sampler reads
+at most 64 descriptor bytes, with a sanitizer check covering empty, short and
+large surfaces. It does not read panel pixels or full frames. Forty-four
+image/decoder/RGB/owner leaf files also match the earlier qualified `d183c6898`;
+changed shared-state/renderer callers still need integration evidence.
+
+The new public-API/native-HA case retains 81 cards, 1,406 channels and the full
+128 KiB value cache. The initial run completes both PNG controls, the
+369,953-byte 480-pixel GIF as a card, bounded expanded RESOURCE refusal and
+retained-card resumption without download. It then stops because replacing the
+playing GIF has no fresh successful decode. It is `failed_restored`, not a
+completed image qualification. A separate revised controller records explicit
+playback or RESOURCE admission and retains filtered decode events and views.
+
+One controller retry reuses the initial image-state revision for its first
+update and correctly causes no refresh. A regression against the actual
+`PageImageRefreshState` confirms that repeated image states are ignored and a
+new revision makes the tile dirty. The corrected controller seeds a finite
+fixed-length revision counter from the actual initial HA value. Host tests also
+cover result completeness, cleanup failures, source/success freshness and the
+settings publication delay previously found during memory qualification.
+
+With distinct revisions, the current binary completes six cases: both PNGs,
+the larger GIF card, expanded refusal, retained-card resumption, direct
+replacement admission and the smaller 25,825-byte 480-pixel GIF as a card.
+Direct replacement explicitly reports RESOURCE while the previous animation
+continues changing. At that point free PSRAM is 645,792 bytes but its largest
+block is 286,720 bytes; another 480-pixel RGB565 canvas requires 460,800
+contiguous bytes. A successful static PNG resets the old canvas, returning free
+PSRAM to 1,549,456 bytes. The subsequent smaller GIF card plays with fresh
+source/success logs and three changing descriptor samples.
+
+Its expanded view repeatedly reports `GIF playback cannot reserve staging and
+PSRAM headroom` for the 470 × 436 target. The strict fresh-success gate fails;
+the mandatory 240-pixel, 640-pixel source, replay/replacement and unpolled visual
+checks later in this sequence therefore remain unfinished. Do not substitute
+an old descriptor or the earlier source's positive result for this failed gate.
+The earlier pressure controller allowed a bounded 480-pixel expanded refusal,
+although playback was actually observed; its mandatory 240-pixel control did
+require playback. Fresh versus stressed capacity must be distinguished before
+calling the current result a firmware regression or accepting a fitting control.
+
+All saved display preferences match the earlier source. Relative to its
+retained ELF, the current observer adds 16 static DRAM data bytes, 152 BSS bytes,
+6,832 flash-text bytes and 2,288 read-only bytes. These section sizes are not
+live heap measurements and do not prove the cause. A fresh-boot control is the
+next check for baseline capacity versus heap fragmentation after the stress
+sequence; no resource guard or image-quality requirement has been weakened.
+
+All three stopped cohorts retain separate records and verified original
+recovery. The latest restores current Card Images firmware, exact original
+dashboard bytes at generation 1347, all 78 protected settings, PIN/reset and
+five JPEGs, followed by 65.2 seconds of connection stability. No device test is
+left running. Production firmware sources and the release policy are unchanged.
+
+## Fresh 480-pixel control and fragmentation comparison (7 November)
+
+A separate focused control boots the same verified `656fc078c` observer and
+loads the same 81-card, 1,406-channel, full-128-KiB workload. It omits only the
+preceding large-GIF/failed-replacement stress. Both PNG controls, the smaller
+480-pixel GIF as a card, its expanded playback and retained-card resumption
+pass, with fresh source/success logs and at least three changing descriptor
+samples per animation. The expanded target remains 470 × 436, with a
+409,840-byte surface. Closing it makes no additional image download.
+
+Immediately before expansion, the paired card observations are:
+
+| Observation | After stress | Fresh boot | Difference |
+| --- | ---: | ---: | ---: |
+| Internal heap free | 69,739 B | 69,751 B | +12 B |
+| PSRAM free | 996,464 B | 996,784 B | +320 B |
+| Largest PSRAM block | 655,360 B | 851,968 B | +196,608 B |
+| Requested model arena | 275,724 B | 275,724 B | 0 B |
+
+This supports heap fragmentation as the explanation for the stressed staging
+refusal, rather than a loss of aggregate capacity for the 480-pixel image.
+It does not isolate the allocator operation responsible or guarantee that
+other heap histories will fit. No image-size, cache or admission guard changes
+are made. The earlier full stress sequence remains a failed cohort; this
+four-case diagnostic is not substituted for its remaining checks.
+
+During expanded playback, sampled free internal RAM is 48,635 bytes and PSRAM
+174,152 bytes. The local interval minima are 46,099 internal bytes and 117,528
+PSRAM bytes; they are independent minima and must not be added. Requested
+arena memory is 275,724 bytes in seven allocations when closed and 276,268 in
+nine while its single expanded context is open, returning to the closed value.
+All four observations retain the exact channel/cache totals with zero arena
+allocation/accounting errors and zero diagnostic disconnects.
+
+The test includes a 90-second window without descriptor or memory probes.
+The optional user pixel response remains pending; changing descriptors do not
+qualify the panel's physical appearance. The original Card Images firmware,
+exact dashboard bytes, all 78 protected settings, PIN/reset and five JPEGs are
+restored at generation 1349, verified stable for 65.2 seconds and checked again
+read-only. No device test is left running.
+
+Remaining current-source image work is the mandatory 240-pixel fitting control,
+two larger-source refusal/recovery cases, same-configuration replay and in-flight
+disjoint replacement after the expanded pressure outcomes are classified.
+Retain the original distinction: the 480-pixel stress case permits explicit
+RESOURCE refusal; a separate fitting control must actually play. Old physical
+results and unchanged leaf-source proofs retain their recorded scope.
+
 ## Remaining qualification gates
 
 The 480 × 480 S3 appearance gate has explicit user confirmation, with the host
