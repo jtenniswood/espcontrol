@@ -336,9 +336,9 @@ inline void network_status_open_modal(const std::string &device_name,
     lv_label_set_display_text(slot.text_lbl, labels[i]);
 
     if (i == NETWORK_STATUS_BACK_CARD_INDEX) {
-      lv_obj_add_event_cb(
+      bind_navigation_button_action(
           button, [](lv_event_t *) { network_status_hide_modal(); },
-          LV_EVENT_CLICKED, nullptr);
+          nullptr);
       continue;
     }
     if (i == NETWORK_STATUS_LOCK_CARD_INDEX) {

@@ -2188,10 +2188,10 @@ inline void grid_phase2(
     configure_button_label_wrap(back_slot.text_lbl);
     const bool back_neutral_background = apply_subpage_back_colors(back_btn, sp_order_str, display);
 
-    lv_obj_add_event_cb(back_btn, [](lv_event_t *e) {
+    bind_navigation_button_action(back_btn, [](lv_event_t *e) {
       lv_scr_load_anim((lv_obj_t *)lv_event_get_user_data(e), LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
       refresh_visible_image_cards();
-    }, LV_EVENT_CLICKED, main_page_obj);
+    }, main_page_obj);
     navigation_register_subpage_back_button(si + 1, back_slot, back_neutral_background);
 
     auto add_parent_indicator = [&](const std::string &entity_id,

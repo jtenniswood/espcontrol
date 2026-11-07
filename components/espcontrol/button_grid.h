@@ -43,6 +43,7 @@
 #include "theme_runtime_tree.h"
 #include "button_grid_card_runtime.h"
 #include "button_grid_layout.h"
+#include "button_grid_touch.h"
 #include "button_grid_display.h"
 #include "button_grid_cards.h"
 #include "button_grid_modal.h"

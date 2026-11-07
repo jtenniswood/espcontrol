@@ -403,7 +403,7 @@ def firmware_subpage_modal_wiring_errors(root: Path) -> list[str]:
         "create_light_control_context" not in body
         or "subscribe_light_control_state(" not in body
         or "light_control_open_modal(" not in body
-        or "LV_EVENT_CLICKED" not in body
+        or "bind_navigation_button_action(" not in body
     ):
         errors.append("components/espcontrol/button_grid_grid.h: open light control modals from subpage cards")
 
@@ -418,7 +418,7 @@ def firmware_subpage_modal_wiring_errors(root: Path) -> list[str]:
             "create_fan_card_context" not in body
             or "subscribe_fan_card_state(" not in body
             or "fan_control_open_modal(" not in body
-            or "LV_EVENT_CLICKED" not in body
+            or "bind_navigation_button_action(" not in body
         ):
             errors.append("components/espcontrol/button_grid_grid.h: open fan control modals from subpage cards")
 

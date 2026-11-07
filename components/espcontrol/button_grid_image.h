@@ -3350,10 +3350,10 @@ inline bool image_card_bind_runtime(BtnSlot &s, const ParsedCfg &p,
   lv_obj_set_user_data(s.btn, ctx);
   lv_obj_add_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
   if (bind_click_handler) {
-    lv_obj_add_event_cb(s.btn, [](lv_event_t *e) {
+    bind_navigation_button_action(s.btn, [](lv_event_t *e) {
       ImageCardCtx *ctx = static_cast<ImageCardCtx *>(lv_event_get_user_data(e));
       image_card_open_modal(ctx);
-    }, LV_EVENT_CLICKED, ctx);
+    }, ctx);
   }
 
   const std::string image_card_entity_id = p.entity;
