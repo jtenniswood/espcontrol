@@ -427,8 +427,14 @@ void navigation_and_state() {
   h.scene->loop();
   assert(sends==sent+1 && sent_entity=="switch.one");
   for(int i=0;i<1000;++i) {
-    click(h.widgets[1].button); h.scene->loop();
+    const auto before = h.scene->binding(0);
+    click(h.widgets[1].button);
+    // A display refresh between touch dispatch and the scene loop must still
+    // see the complete old page, rather than new content with old colours.
+    assert(h.scene->active_page()==0 && h.scene->binding(0).binding==before.binding);
+    h.scene->loop();
     assert(h.scene->active_page()==1 && objects(h.root)==count);
+    assert(lv_obj_has_state(h.widgets[1].button,LV_STATE_CHECKED));
     click(h.widgets[0].button); h.scene->loop();
     assert(h.scene->active_page()==0 && objects(h.root)==count);
   }

@@ -913,6 +913,10 @@ private:
       const auto token = renderer_.binding(shell);
       if (token.binding && !token.back && token.card == request.card) {
         view_.activate(token);
+        // Activating a folder queues its destination. Consume that page request
+        // in this same scene update so remote navigation also paints once.
+        if (ui_request_.kind == UiKind::PAGE)
+          process_ui_request();
         return;
       }
     }
@@ -985,14 +989,14 @@ private:
   void navigate(PageBindingToken t, PageId page, bool back) {
     if (!grid_valid(this, t))
       return;
-    commands_.cancel();
-    modals_.runtime().dismiss(PageModalClose::SWITCH);
-    const bool changed = back ? renderer_.back() : renderer_.open_page(page);
-    if (changed) {
-      origin_ = {};
-      advance_chrome();
-      chrome_dirty_ = layout_dirty_ = true;
-    }
+    const auto *current = active().page(renderer_.active_page());
+    if (back && !current)
+      return;
+    // Queue touch navigation just like remote navigation. Binding here would
+    // expose new labels to LVGL before the scene loop paints their state colours.
+    // The loop binds, lays out and paints the destination before returning.
+    if (request_page(back ? current->parent : page))
+      commands_.cancel();
   }
   void open(PageBindingToken t,
             ControlModalKind kind = ControlModalKind::NONE) {
