@@ -314,6 +314,15 @@ inline bool clock_bar_should_show(
 
 // ── Temperature labels ─────────────────────────────────────────────────────
 
+inline int &clock_bar_temperature_precision() {
+  static int precision = 0;
+  return precision;
+}
+
+inline void set_clock_bar_temperature_precision(int precision) {
+  clock_bar_temperature_precision() = std::max(0, std::min(2, precision));
+}
+
 inline void format_clock_bar_temperature_single(char *buf, size_t size,
                                                 const char *value_text) {
   snprintf(buf, size, "%s%s", value_text ? value_text : "-",
@@ -501,7 +510,7 @@ inline void format_clock_bar_temperature_list(char *buf, size_t size,
   for (size_t i = 0; i < values.size(); i++) {
     char value_buf[16];
     if (std::isnan(values[i])) snprintf(value_buf, sizeof(value_buf), "-");
-    else format_fixed_decimal(value_buf, sizeof(value_buf), values[i], 1);
+    else format_fixed_decimal(value_buf, sizeof(value_buf), values[i], clock_bar_temperature_precision());
     int written = snprintf(buf + used, size - used, "%s%s%s",
                            i == 0 ? "" : " / ", value_buf, suffix);
     if (written < 0) break;
@@ -574,7 +583,7 @@ inline void refresh_clock_bar_temperature_label_values(
       if (!label) return;
       char value_buf[16];
       if (std::isnan(value)) snprintf(value_buf, sizeof(value_buf), "-");
-      else format_fixed_decimal(value_buf, sizeof(value_buf), value, 1);
+      else format_fixed_decimal(value_buf, sizeof(value_buf), value, clock_bar_temperature_precision());
       char buf[24];
       format_clock_bar_temperature_single(buf, sizeof(buf), value_buf);
       lv_label_set_display_text(label, buf);
@@ -603,7 +612,7 @@ inline void refresh_clock_bar_temperature_label_values(
     }
     char value_buf[16];
     if (std::isnan(values[i])) snprintf(value_buf, sizeof(value_buf), "-");
-    else format_fixed_decimal(value_buf, sizeof(value_buf), values[i], 1);
+    else format_fixed_decimal(value_buf, sizeof(value_buf), values[i], clock_bar_temperature_precision());
     char buf[24];
     format_clock_bar_temperature_single(buf, sizeof(buf), value_buf);
     lv_label_set_display_text(label, buf);

@@ -60,6 +60,27 @@ int main() {
   auto refresh = [&](bool visible, bool temperature, float value) {
     refresh_clock_bar_temperature_label_values(nullptr, visible, temperature, false, value, NAN);
   };
+  assert(clock_bar_temperature_precision() == 0);
+  refresh(true, true, 21.5f);
+  assert(left.text == "22°");
+  set_clock_bar_temperature_precision(2);
+  refresh(true, true, 21.25f);
+  assert(left.text == "21.25°");
+  set_clock_bar_temperature_value_count(1);
+  clock_bar_temperature_values()[0] = 21.25f;
+  refresh_clock_bar_temperature_label_values(nullptr, true, false, true, NAN, NAN);
+  assert(left.text == "21.25°");
+  set_clock_bar_modal_label("Climate");
+  clock_bar_temperature_values()[0] = -3.25f;
+  refresh_clock_bar_temperature_label_values(nullptr, true, false, true, NAN, NAN);
+  set_clock_bar_modal_label("");
+  assert(left.text == "-3.25°");
+  set_clock_bar_temperature_value_count(0);
+  set_clock_bar_temperature_precision(-1);
+  assert(clock_bar_temperature_precision() == 0);
+  set_clock_bar_temperature_precision(3);
+  assert(clock_bar_temperature_precision() == 2);
+  set_clock_bar_temperature_precision(1);
   // Legacy and configured sensor paths retain tenths, including whole values.
   for (const auto &sample : std::vector<std::pair<float, std::string>>{
            {21.5f, "21.5°"}, {20.0f, "20.0°"}, {-3.25f, "-3.3°"},

@@ -19,6 +19,7 @@ export interface ClockBarPostApiFeature {
     postAlarmDelayExitAnnouncement(value?: any): void;
     postAlarmDelayBeepVolume(value?: any): void;
     postAlarmDelayFinalCountdown(value?: any): void;
+    postClockBarTemperaturePrecision(value: number): void;
     postTemperatureDegreeSymbol(on?: any): void;
     postSubpageChevron(on?: any): void;
 }
@@ -92,6 +93,10 @@ export function createClockBarPostApiFeature(
     function postAlarmDelayFinalCountdown(this: any, value?: any) {
         postNumberWithObjectIds(entityName("alarm_delay_final_countdown"), entityObjectIds("alarm_delay_final_countdown"), value);
     }
+    function postClockBarTemperaturePrecision(value: number) {
+        postNumberWithObjectIds(entityName("clock_bar_temperature_precision"), entityObjectIds("clock_bar_temperature_precision"), value,
+            "Temperature precision is not available on this firmware. Update the device firmware, then reload this page.");
+    }
     var TEMPERATURE_DEGREE_SYMBOL_UNAVAILABLE: any = "Temperature degree symbol setting is not available on this firmware. Update the device firmware, then reload this page.";
     function postTemperatureDegreeSymbol(this: any, on?: any) {
         postSwitchWithObjectIds(entityName("screen_temperature_degree_symbol"), entityObjectIds("screen_temperature_degree_symbol"), on, TEMPERATURE_DEGREE_SYMBOL_UNAVAILABLE);
@@ -119,6 +124,7 @@ export function createClockBarPostApiFeature(
         postAlarmDelayExitAnnouncement,
         postAlarmDelayBeepVolume,
         postAlarmDelayFinalCountdown,
+        postClockBarTemperaturePrecision,
         postTemperatureDegreeSymbol,
         postSubpageChevron,
     };
