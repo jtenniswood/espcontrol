@@ -34,7 +34,7 @@ test("weather readings are available without daily forecast support and normaliz
             const preview = card.renderPreview({ precision: mode });
             assert.equal(preview.labelEditable, false);
             assert.match(preview.iconHtml, new RegExp(mode === "temperature" ? "thermometer" : mode === "pressure" ? "gauge" : mode === "humidity" ? "water-percent" : "weather-hazy"));
-            assert.match(preview.labelHtml, new RegExp(mode === "temperature" ? "Temp.*18.5 °C" : mode === "pressure" ? "Air Pressure.*1013 hPa" : mode === "humidity" ? "Humidity.*65 %" : "Visibility.*10 km"));
+            assert.match(preview.labelHtml, new RegExp(mode === "temperature" ? "Currently.*18.5 °C" : mode === "pressure" ? "Air Pressure.*1013 hPa" : mode === "humidity" ? "Humidity.*65 %" : "Visibility.*10 km"));
         }
     }
 });
