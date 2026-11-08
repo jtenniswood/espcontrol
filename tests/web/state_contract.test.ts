@@ -103,6 +103,7 @@ export function runStateContractTests(): void {
     alarmDelayExitAnnouncement: "text-alarm_delay__exit_announcement",
     alarmDelayBeepVolume: "number-alarm_delay__beep_volume",
     alarmDelayFinalCountdown: "number-alarm_delay__final_countdown",
+    clockBarTemperaturePrecision: "number-clock_bar__temperature_precision",
     temperatureDegreeSymbol: "switch-screen__temperature_degree_symbol",
     subpageChevron: "switch-screen__subpage_chevron",
     screensaverTimeout: "number-screensaver_timeout",
