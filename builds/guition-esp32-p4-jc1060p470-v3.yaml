@@ -1,6 +1,6 @@
 # Local/CI build profile for the JC1060P470 V3 production-silicon panel.
 substitutions:
-  name: "espcontrol-jc8012p4a1-v3"
+  name: "espcontrol-jc1060p470-v3"
   friendly_name: "EspControl 7inch V3"
   espcontrol_component_url: "file:///config"
   mdi_font_file: "/config/common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"

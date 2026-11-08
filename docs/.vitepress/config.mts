@@ -362,8 +362,8 @@ export default defineConfig({
             link: '/screens/jc1060p470',
             collapsed: true,
             items: [
-              { text: 'V2', link: '/screens/jc1060p470-v2' },
               { text: 'V3', link: '/screens/jc1060p470-v3' },
+              { text: 'V2', link: '/screens/jc1060p470-v2' },
               { text: 'V1', link: '/screens/jc1060p470-v1' },
             ],
           },

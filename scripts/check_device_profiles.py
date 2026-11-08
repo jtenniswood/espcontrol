@@ -398,6 +398,8 @@ def test_jc1060p470_v3_configuration() -> None:
     assert f'firmware_manifest_slug: "{slug}"' in package
     assert 'screen_width: "1024"' in package
     assert 'screen_height: "600"' in package
+    build = (ROOT / "builds" / f"{slug}.yaml").read_text()
+    assert 'name: "espcontrol-jc1060p470-v3"' in build
     # Retain the panel initialization that was physically tested in issue #2442.
     assert device[device.index("display:"):] == v2[v2.index("display:"):]
 
