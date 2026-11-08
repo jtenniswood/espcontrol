@@ -18,6 +18,24 @@ def git(*args: str) -> str:
     return subprocess.check_output(["git", "-C", str(ROOT), *args], text=True).strip()
 
 
+def docker_command(root: Path, cache: Path, git_common_dir: Path, git_dir: Path,
+                   git_file: Path) -> list[str]:
+    """Map host paths and Git metadata into the Linux build container."""
+    command = ["docker", "run", "--rm"]
+    # Windows has no POSIX user IDs; Docker Desktop uses the image's default user.
+    if os.name != "nt":
+        command += ["--user", f"{os.getuid()}:{os.getgid()}"]
+    command += ["-e", "HOME=/tmp", "-v", f"{root}:/config",
+                "-v", f"{cache}:/idf-cache", "-e", "ESPHOME_ESP_IDF_PREFIX=/idf-cache"]
+    if git_dir != git_common_dir:
+        # Overlay the linked worktree's host-specific .git pointer with a Linux
+        # path. Its commondir is relative, so mounting the common metadata is enough.
+        # Avoid global GIT_DIR overrides: ESPHome also clones other repositories.
+        command += ["-v", f"{git_common_dir}:/git-metadata:ro",
+                    "-v", f"{git_file}:/config/.git:ro"]
+    return command
+
+
 def main(*, slug: str = SLUG, name: str = "espctl-v3-test",
          version_prefix: str = "dev-v3", updates_disabled: bool = False) -> None:
     if git("status", "--porcelain", "--untracked-files=normal"):
@@ -25,28 +43,29 @@ def main(*, slug: str = SLUG, name: str = "espctl-v3-test",
     revision = git("rev-parse", "HEAD")
     version = f"{version_prefix}-{revision[:12]}"
     config = f"/config/builds/{slug}.factory.yaml"
-    pinned = (ROOT / ".github/esphome.env").read_text().strip().removeprefix("ESPHOME_VERSION=")
+    pinned = (ROOT / ".github/esphome.env").read_text(encoding="utf-8").strip().removeprefix("ESPHOME_VERSION=")
     image = f"ghcr.io/esphome/esphome:{pinned}"
     output = ROOT / "build" / "v3-test" / slug / revision
     output.mkdir(parents=True, exist_ok=True)
     # Keep native ESP-IDF tools between containers and subsequent runs.
     cache = Path(os.environ.get("ESPCONTROL_IDF_CACHE", ROOT / ".esphome/idf-cache")).resolve()
     cache.mkdir(parents=True, exist_ok=True)
-    # A worktree's .git points outside /config; preserve that path in the container.
-    git_dir = git("rev-parse", "--path-format=absolute", "--git-common-dir")
-    docker = ["docker", "run", "--rm", "--user"]
-    docker += [f"{os.getuid()}:{os.getgid()}", "-e", "HOME=/tmp",
-               "-v", f"{ROOT}:/config", "-v", f"{git_dir}:{git_dir}:ro",
-               "-v", f"{cache}:/idf-cache", "-e", "ESPHOME_ESP_IDF_PREFIX=/idf-cache"]
+    git_common_dir = Path(git("rev-parse", "--path-format=absolute", "--git-common-dir"))
+    git_dir = Path(git("rev-parse", "--absolute-git-dir"))
+    git_file = output / "container.git"
+    if git_dir != git_common_dir:
+        relative_git_dir = git_dir.relative_to(git_common_dir).as_posix()
+        git_file.write_text(f"gitdir: /git-metadata/{relative_git_dir}\n", encoding="utf-8")
+    docker = docker_command(ROOT, cache, git_common_dir, git_dir, git_file)
 
     def run(args: list[str], log_name: str, *, python: bool = False) -> str:
         # Invoke the CLI directly: the image's shell entrypoint overwrites the
         # explicit ESPHOME_ESP_IDF_PREFIX with its own default cache location.
         command = docker + ["--entrypoint", "python", image]
         command += args if python else ["-m", "esphome", *args]
-        with (output / log_name).open("w") as log:
+        with (output / log_name).open("w", encoding="utf-8") as log:
             result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, text=True)
-        content = (output / log_name).read_text()
+        content = (output / log_name).read_text(encoding="utf-8")
         if result.returncode:
             print(content[-12000:])
             raise SystemExit(f"Failed; full log: {output / log_name}")
@@ -64,23 +83,23 @@ def main(*, slug: str = SLUG, name: str = "espctl-v3-test",
 
     build = ROOT / "builds/.esphome/build" / name
     sdk_files = list(build.rglob("sdkconfig*"))
-    sdk = next((p for p in sdk_files if p.is_file() and "CONFIG_IDF_TARGET=" in p.read_text()), None)
+    sdk = next((p for p in sdk_files if p.is_file() and "CONFIG_IDF_TARGET=" in p.read_text(encoding="utf-8")), None)
     if sdk is None:
         raise SystemExit(f"Cannot find generated sdkconfig in {build}")
-    sdk_text = sdk.read_text()
+    sdk_text = sdk.read_text(encoding="utf-8")
     assert "CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y" not in sdk_text
     assert ("# CONFIG_ESP32P4_SELECTS_REV_LESS_V3 is not set" in sdk_text
             or "CONFIG_ESP32P4_SELECTS_REV_LESS_V3=n" in sdk_text)
-    defines = (build / "src/esphome/core/defines.h").read_text()
+    defines = (build / "src/esphome/core/defines.h").read_text(encoding="utf-8")
     assert "#define USE_WEBSERVER_OTA_DISABLED" in defines
     # Confirm the external component was fetched from this commit, including the upload guard.
-    server = (build / "src/esphome/components/web_server_idf/web_server_idf.cpp").read_text()
+    server = (build / "src/esphome/components/web_server_idf/web_server_idf.cpp").read_text(encoding="utf-8")
     assert "Browser firmware uploads are disabled" in server
     # Reject stale upstream sources: their legacy PHY default aborts on P4 v3.
-    display = (build / "src/esphome/components/mipi_dsi/mipi_dsi.cpp").read_text()
-    assert display == (ROOT / "components/mipi_dsi/mipi_dsi.cpp").read_text()
+    display = (build / "src/esphome/components/mipi_dsi/mipi_dsi.cpp").read_text(encoding="utf-8")
+    assert display == (ROOT / "components/mipi_dsi/mipi_dsi.cpp").read_text(encoding="utf-8")
     assert ".phy_clk_src = {}," in display
-    generated = (build / "src/main.cpp").read_text()
+    generated = (build / "src/main.cpp").read_text(encoding="utf-8")
     assert "esphome::ESPHomeOTAComponent" in generated
     assert "->set_port(3232)" in generated
     if updates_disabled:
@@ -98,7 +117,7 @@ def main(*, slug: str = SLUG, name: str = "espctl-v3-test",
 
     # Use the native IDF flash plan to identify the actual app and bootloader.
     flash_plan_path = build / "build/flasher_args.json"
-    flash_plan = json.loads(flash_plan_path.read_text())
+    flash_plan = json.loads(flash_plan_path.read_text(encoding="utf-8"))
     image_dir = flash_plan_path.parent
     application = image_dir / flash_plan["app"]["file"]
     bootloader = image_dir / flash_plan["bootloader"]["file"]
@@ -114,7 +133,7 @@ def main(*, slug: str = SLUG, name: str = "espctl-v3-test",
     shutil.copy2(application.with_suffix(".elf"), output / "firmware.elf")
     shutil.copy2(flash_plan_path, output / "flasher_args.json")
     for role, binary in (("bootloader", bootloader), ("application", application)):
-        container_path = "/config/" + str(binary.relative_to(ROOT))
+        container_path = "/config/" + binary.relative_to(ROOT).as_posix()
         run(["-c", "import json,sys; from esptool.bin_image import LoadFirmwareImage; "
              "i=LoadFirmwareImage('esp32p4',sys.argv[1]); "
              "assert 300 <= i.min_rev_full <= 302 <= i.max_rev_full, "
@@ -126,14 +145,14 @@ def main(*, slug: str = SLUG, name: str = "espctl-v3-test",
     factory = output / f"{slug}.factory.bin"
     shutil.copy2(factories[0], factory)
     checksum = hashlib.sha256(factory.read_bytes()).hexdigest()
-    (output / "SHA256SUMS").write_text(f"{checksum}  {factory.name}\n")
+    (output / "SHA256SUMS").write_text(f"{checksum}  {factory.name}\n", encoding="utf-8")
     shutil.copy2(sdk, output / "sdkconfig")
     (output / "build-info.json").write_text(json.dumps({
         "source_revision": revision, "firmware_version": version, "esphome": pinned,
         **json.loads(toolchain), "factory_image": factory.name, "sha256": checksum,
         "device": slug, "chip_target": "ESP32-P4 v3.x",
         "updaters_omitted": updates_disabled, "physical_device_tested": False,
-    }, indent=2) + "\n")
+    }, indent=2) + "\n", encoding="utf-8")
     print(f"Factory image: {factory}\nSHA-256: {checksum}")
 
 

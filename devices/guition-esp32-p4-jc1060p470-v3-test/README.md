@@ -33,6 +33,18 @@ git switch test-jc1060p470-v3
 python3 scripts/build_jc1060p470_v3_test.py
 ```
 
+On Windows, install Git for Windows, Python 3 and Docker Desktop. Start Docker
+Desktop with **Linux containers**, then run from PowerShell or Command Prompt:
+
+```powershell
+python scripts/build_jc1060p470_v3_test.py
+```
+
+Use `py -3` instead of `python` if that is how Python is installed. Keep the
+checkout and any custom `ESPCONTROL_IDF_CACHE` directory accessible to Docker
+Desktop. Paths containing spaces are supported. Windows uses Docker's default
+container user; macOS/Linux builds retain the host user's file ownership.
+
 The builder requires a clean committed checkout. It uses `.github/esphome.env`
 (currently ESPHome 2026.10.2), verifies ESP-IDF 5.5.5 or newer in the 5.5 series,
 validates the configuration and performs a clean compile. It checks production
