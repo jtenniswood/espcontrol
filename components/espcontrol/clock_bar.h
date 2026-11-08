@@ -740,19 +740,18 @@ inline void apply_clock_bar_fixed_layout(lv_obj_t *temperature_label,
                                          int left_x, int label_y,
                                          int right_x, int network_y,
                                          int item_gap) {
-  int temperature_width = item_gap - 8;
-  if (temperature_width < 56) temperature_width = 56;
-  if (temperature_width > 88) temperature_width = 88;
-
   int time_width = item_gap;
   if (time_width < 62) time_width = 62;
   if (time_width > 96) time_width = 96;
 
   auto &left_state = clock_bar_left_text_state();
-  left_state.temperature_width = temperature_width;
-  const int title_width =
+  // Use the available space up to the centred clock for fractional and
+  // negative readings, rather than clipping to the old whole-number slot.
+  const int available_width =
       (clock_bar_current_screen_width(480) - time_width) / 2 - left_x - 8;
-  left_state.title_width = title_width > 0 ? title_width : temperature_width;
+  const int temperature_width = std::max(1, available_width);
+  left_state.temperature_width = temperature_width;
+  left_state.title_width = temperature_width;
   clock_bar_prepare_text_label(
       temperature_label, temperature_width, LV_TEXT_ALIGN_LEFT);
   clock_bar_update_left_text_width(temperature_label);

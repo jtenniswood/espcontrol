@@ -34,6 +34,20 @@ bool clock_bar_active_on_button_grid_page(lv_obj_t *) { return true; }
 const char *temperature_suffix = "°";
 const char *display_clock_bar_temperature_suffix() { return temperature_suffix; }
 
+constexpr int LV_TEXT_ALIGN_LEFT = 0;
+constexpr int LV_TEXT_ALIGN_CENTER = 1;
+constexpr int LV_ALIGN_TOP_LEFT = 0;
+constexpr int LV_ALIGN_TOP_MID = 1;
+constexpr int LV_ALIGN_TOP_RIGHT = 2;
+int screen_width = 480;
+int clock_bar_current_screen_width(int) { return screen_width; }
+void clock_bar_prepare_text_label(lv_obj_t *obj, int width, int) {
+  if (obj) obj->width = width;
+}
+void lv_obj_align(lv_obj_t *, int, int, int) {}
+void lv_obj_move_background(lv_obj_t *) {}
+void clock_bar_raise_settings_button(lv_obj_t *) {}
+
 // @production
 
 int main() {
@@ -57,6 +71,22 @@ int main() {
   lv_obj_t left;
   lv_obj_t *labels[] = {&left};
   set_clock_bar_temperature_labels(labels, 1);
+  lv_obj_t time;
+  // The S3's 60px item gap must not restrict a fractional reading to 56px.
+  apply_clock_bar_fixed_layout(&left, &time, nullptr, true, true, false,
+                              20, 0, 20, 0, 60);
+  assert(left.width == 181 && time.width == 62);
+  assert(20 + left.width + 8 == (screen_width - time.width) / 2);
+  for (const int width : {480, 800, 1024}) {
+    screen_width = width;
+    apply_clock_bar_fixed_layout(&left, &time, nullptr, true, true, false,
+                                20, 0, 20, 0, 120);
+    assert(left.width > 88);
+    assert(20 + left.width + 8 == (screen_width - time.width) / 2);
+  }
+  screen_width = 480;
+  apply_clock_bar_fixed_layout(&left, &time, nullptr, true, true, false,
+                              20, 0, 20, 0, 60);
   auto refresh = [&](bool visible, bool temperature, float value) {
     refresh_clock_bar_temperature_label_values(nullptr, visible, temperature, false, value, NAN);
   };
