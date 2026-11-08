@@ -501,7 +501,7 @@ inline void format_clock_bar_temperature_list(char *buf, size_t size,
   for (size_t i = 0; i < values.size(); i++) {
     char value_buf[16];
     if (std::isnan(values[i])) snprintf(value_buf, sizeof(value_buf), "-");
-    else format_fixed_decimal(value_buf, sizeof(value_buf), values[i], 0);
+    else format_fixed_decimal(value_buf, sizeof(value_buf), values[i], 1);
     int written = snprintf(buf + used, size - used, "%s%s%s",
                            i == 0 ? "" : " / ", value_buf, suffix);
     if (written < 0) break;
@@ -574,7 +574,7 @@ inline void refresh_clock_bar_temperature_label_values(
       if (!label) return;
       char value_buf[16];
       if (std::isnan(value)) snprintf(value_buf, sizeof(value_buf), "-");
-      else format_fixed_decimal(value_buf, sizeof(value_buf), value, 0);
+      else format_fixed_decimal(value_buf, sizeof(value_buf), value, 1);
       char buf[24];
       format_clock_bar_temperature_single(buf, sizeof(buf), value_buf);
       lv_label_set_display_text(label, buf);
@@ -603,7 +603,7 @@ inline void refresh_clock_bar_temperature_label_values(
     }
     char value_buf[16];
     if (std::isnan(values[i])) snprintf(value_buf, sizeof(value_buf), "-");
-    else format_fixed_decimal(value_buf, sizeof(value_buf), values[i], 0);
+    else format_fixed_decimal(value_buf, sizeof(value_buf), values[i], 1);
     char buf[24];
     format_clock_bar_temperature_single(buf, sizeof(buf), value_buf);
     lv_label_set_display_text(label, buf);

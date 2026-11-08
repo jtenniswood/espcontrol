@@ -83,7 +83,7 @@ To change individual items, open **Layout** and select them in the preview:
 - **Temperature > Edit** selects the Home Assistant sensor and degree-symbol display.
 - **Clock** or **Connectivity > Hide / Show** changes visibility.
 
-Hidden items stay greyed in the preview so you can show them again. Only one temperature reading is displayed. Set [time and timezone](/settings/system#time) and [temperature units](/settings/system#temperature) under **System > Preferences**.
+Hidden items stay greyed in the preview so you can show them again. Only one temperature reading is displayed, rounded to one decimal place (for example, 21.5°). Set [time and timezone](/settings/system#time) and [temperature units](/settings/system#temperature) under **System > Preferences**.
 
 ### Open Device Information
 
