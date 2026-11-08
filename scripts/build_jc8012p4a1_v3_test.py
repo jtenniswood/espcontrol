@@ -40,7 +40,10 @@ def main(*, slug: str = SLUG, name: str = "espctl-v3-test",
                "-v", f"{cache}:/idf-cache", "-e", "ESPHOME_ESP_IDF_PREFIX=/idf-cache"]
 
     def run(args: list[str], log_name: str, *, python: bool = False) -> str:
-        command = docker + (["--entrypoint", "python"] if python else []) + [image] + args
+        # Invoke the CLI directly: the image's shell entrypoint overwrites the
+        # explicit ESPHOME_ESP_IDF_PREFIX with its own default cache location.
+        command = docker + ["--entrypoint", "python", image]
+        command += args if python else ["-m", "esphome", *args]
         with (output / log_name).open("w") as log:
             result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, text=True)
         content = (output / log_name).read_text()
