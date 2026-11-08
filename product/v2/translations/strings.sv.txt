@@ -305,3 +305,4 @@ wind_north_west=Nordväst
 ha_disconnected_title=Home Assistant frånkopplad
 ha_disconnected_instructions=Kontrollera denna enhet i Home Assistant\nför en krypteringsnyckel eller anslutningsvarning
 ha_disconnected_path=Inställningar > Enheter och tjänster\n> ESPHome
+temperature=Just nu

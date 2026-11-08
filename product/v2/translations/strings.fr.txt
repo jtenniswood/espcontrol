@@ -305,3 +305,4 @@ wind_north_west=Nord-ouest
 ha_disconnected_title=Home Assistant déconnecté
 ha_disconnected_instructions=Vérifiez cet appareil dans Home Assistant\npour une clé de chiffrement ou une alerte de connexion
 ha_disconnected_path=Paramètres > Appareils et services\n> ESPHome
+temperature=Actuellement

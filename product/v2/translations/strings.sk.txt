@@ -305,3 +305,4 @@ wind_north_west=Severozápad
 ha_disconnected_title=Home Assistant odpojený
 ha_disconnected_instructions=Skontrolujte toto zariadenie v Home Assistant\npre šifrovací kľúč alebo upozornenie na pripojenie
 ha_disconnected_path=Nastavenia > Zariadenia a služby\n> ESPHome
+temperature=Aktuálne

@@ -22,6 +22,7 @@ Show current conditions or daily forecasts from a Home Assistant weather entity.
    - **Forecast** — choose **Period**: **Today**, **Tomorrow**, or **Week**. Today and Tomorrow show one day's icon and high/low temperatures; Week shows up to eight days in a row or grid, depending on card size and provider data.
    - **Humidity** — relative humidity from a weather entity or sensor.
    - **Rainfall** — a rain icon, label and measured or predicted rainfall amount.
+   - **Temperature** — current temperature from a weather entity or sensor.
    - **Visibility** — visibility from a weather entity, with no source tabs.
    - **Wind** — a direction arrow, direction name, and current wind speed below.
 4. Resize the card in the preview, optionally choose **Custom Colours**, then press **Save**.
@@ -95,11 +96,11 @@ Choose **Weather → Rainfall**, then choose **Rainfall Source**:
 
 Both sources use the same small secondary text and 70% alpha as forecast temperatures, on home cards and subpages. Amounts show up to three decimal places without trailing zeros. Zero remains **0**; missing, invalid or unavailable sensor readings show **--**. Forecast refreshes, missing dates and stale data follow the existing forecast behavior. A provider's precipitation total can include snow or other precipitation, not only rain.
 
-## Air Pressure, Humidity and Visibility
+## Temperature, Air Pressure, Humidity and Visibility
 
-Choose **Weather → Air Pressure** or **Humidity**, then use the **Forecast / Sensor** tabs to select a weather entity or a numeric sensor. **Visibility** uses only a weather entity and has no source tabs.
+Choose **Weather → Temperature**, **Air Pressure** or **Humidity**, then use the **Forecast / Sensor** tabs to select a weather entity or a numeric sensor. **Visibility** uses only a weather entity and has no source tabs.
 
-Like Wind, the **Forecast** source reads the weather provider's current attributes; these cards do not request daily forecasts or need Home Assistant actions permission. The provider must expose the selected reading. Pressure and visibility retain the provider's units (such as hPa or km); weather humidity uses %. Sensors use their `unit_of_measurement`.
+Like Wind, the **Forecast** source reads the weather provider's current attributes; these cards do not request daily forecasts or need Home Assistant actions permission. The provider must expose the selected reading. Pressure and visibility retain the provider's units (such as hPa or km); weather humidity uses %. Sensors use their `unit_of_measurement`. Temperature retains the source’s °C or °F units and supports readings below zero.
 
 Each card uses the Rainfall layout: an icon, a fixed label, and a smaller reading underneath. They work on the home screen and subpages. Missing, invalid or unavailable readings show **--**, while zero remains visible. Values show up to three decimal places without trailing zeros. These cards do not open forecast details.
 

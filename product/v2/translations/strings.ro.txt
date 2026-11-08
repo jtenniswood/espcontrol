@@ -305,3 +305,4 @@ wind_north_west=Nord-vest
 ha_disconnected_title=Home Assistant deconectat
 ha_disconnected_instructions=Verificați acest dispozitiv în Home Assistant\npentru o cheie de criptare sau o alertă de conexiune
 ha_disconnected_path=Setări > Dispozitive și servicii\n> ESPHome
+temperature=Acum

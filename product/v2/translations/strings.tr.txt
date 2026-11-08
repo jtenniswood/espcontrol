@@ -305,3 +305,4 @@ wind_north_west=Kuzeybatı
 ha_disconnected_title=Home Assistant bağlantısı kesildi
 ha_disconnected_instructions=Home Assistant'ta bu cihazı şifreleme anahtarı\nveya bağlantı uyarısı için kontrol edin
 ha_disconnected_path=Ayarlar > Cihazlar ve hizmetler\n> ESPHome
+temperature=Şu anda
