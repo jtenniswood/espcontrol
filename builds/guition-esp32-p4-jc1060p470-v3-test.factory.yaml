@@ -1,0 +1,33 @@
+# Experimental USB factory image; deliberately outside the public device matrix.
+packages:
+  api_encryption: !include ../common/addon/api_encryption_dynamic.yaml
+  v3: !include ../devices/guition-esp32-p4-jc1060p470-v3-test/test-package.yaml
+
+substitutions:
+  name: "espctl-7v3-test"
+  friendly_name: "EspControl 7inch V3 Test"
+  firmware_version: "dev-7v3-test"
+  espcontrol_component_url: "file:///config"
+  espcontrol_component_ref: "HEAD"
+  cover_art_placeholder_file: "../common/assets/cover_art_placeholder.svg"
+  mdi_font_file: "/config/common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
+
+web_server:
+  ota: false
+  js_url: ""
+  js_include: "../docs/public/webserver/embedded/www.js"
+
+dashboard_import:
+  package_import_url: github://jtenniswood/espcontrol/devices/guition-esp32-p4-jc1060p470-v3-test/esphome.yaml@test-jc1060p470-v3
+
+esp32:
+  partitions: "../common/device/partitions_16mb_card_images.csv"
+
+esphome:
+  name_add_mac_suffix: true
+
+wifi:
+  ap:
+    ssid: "${friendly_name}"
+
+captive_portal:

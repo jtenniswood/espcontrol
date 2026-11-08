@@ -11,21 +11,22 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 SLUG = "guition-esp32-p4-jc8012p4a1-v3-test"
-CONFIG = f"/config/builds/{SLUG}.factory.yaml"
 
 
 def git(*args: str) -> str:
     return subprocess.check_output(["git", "-C", str(ROOT), *args], text=True).strip()
 
 
-def main() -> None:
+def main(*, slug: str = SLUG, name: str = "espctl-v3-test",
+         version_prefix: str = "dev-v3", updates_disabled: bool = False) -> None:
     if git("status", "--porcelain", "--untracked-files=normal"):
         raise SystemExit("Commit the test sources first so the binary matches its recorded commit.")
     revision = git("rev-parse", "HEAD")
-    version = f"dev-v3-{revision[:12]}"
+    version = f"{version_prefix}-{revision[:12]}"
+    config = f"/config/builds/{slug}.factory.yaml"
     pinned = (ROOT / ".github/esphome.env").read_text().strip().removeprefix("ESPHOME_VERSION=")
     image = f"ghcr.io/esphome/esphome:{pinned}"
-    output = ROOT / "build" / "v3-test" / revision
+    output = ROOT / "build" / "v3-test" / slug / revision
     output.mkdir(parents=True, exist_ok=True)
     # A worktree's .git points outside /config; preserve that path in the container.
     git_dir = git("rev-parse", "--path-format=absolute", "--git-common-dir")
@@ -49,11 +50,11 @@ def main() -> None:
                      "print(json.dumps({'esp_idf':str(r)}))"], "toolchain.json", python=True)
     options = ["-s", "firmware_version", version]
     print(f"Building {version}; logs: {output}", flush=True)
-    run(options + ["config", CONFIG], "config.log")
-    run(options + ["clean", CONFIG], "clean.log")
-    run(options + ["compile", CONFIG], "compile.log")
+    run(options + ["config", config], "config.log")
+    run(options + ["clean", config], "clean.log")
+    run(options + ["compile", config], "compile.log")
 
-    build = ROOT / "builds/.esphome/build/espctl-v3-test"
+    build = ROOT / "builds/.esphome/build" / name
     sdk_files = list(build.rglob("sdkconfig*"))
     sdk = next((p for p in sdk_files if p.is_file() and "CONFIG_IDF_TARGET=" in p.read_text()), None)
     if sdk is None:
@@ -74,10 +75,18 @@ def main() -> None:
     generated = (build / "src/main.cpp").read_text()
     assert "esphome::ESPHomeOTAComponent" in generated
     assert "->set_port(3232)" in generated
-    for switch_id in ("auto_update_switch", "c6_auto_update_switch"):
-        assert f"{switch_id}->set_restore_mode(switch_::SWITCH_ALWAYS_OFF);" not in generated
-    assert f"/firmware/{SLUG}/manifest.json" in generated
-    assert "/firmware/guition-esp32-p4-jc8012p4a1-v2/manifest.json" not in generated
+    if updates_disabled:
+        # Verify the merged configuration really omitted both updater packages;
+        # an OFF switch alone would still allow a saved setting or API to enable it.
+        for updater_id in ("auto_update_switch", "c6_auto_update_switch", "esp32_c6_update"):
+            assert updater_id not in generated, updater_id
+        assert "/firmware/" not in generated
+        assert "esp32_hosted::ESP32HostedComponent" in generated
+    else:
+        for switch_id in ("auto_update_switch", "c6_auto_update_switch"):
+            assert f"{switch_id}->set_restore_mode(switch_::SWITCH_ALWAYS_OFF);" not in generated
+        assert f"/firmware/{slug}/manifest.json" in generated
+        assert "/firmware/guition-esp32-p4-jc8012p4a1-v2/manifest.json" not in generated
 
     # Use the native IDF flash plan to identify the actual app and bootloader.
     flash_plan_path = build / "build/flasher_args.json"
@@ -93,7 +102,7 @@ def main() -> None:
         payload = (image_dir / relative_path).read_bytes()
         start = int(offset, 0)
         assert factory_bytes[start:start + len(payload)] == payload, relative_path
-    shutil.copy2(application, output / f"{SLUG}.ota.bin")
+    shutil.copy2(application, output / f"{slug}.ota.bin")
     shutil.copy2(application.with_suffix(".elf"), output / "firmware.elf")
     shutil.copy2(flash_plan_path, output / "flasher_args.json")
     for role, binary in (("bootloader", bootloader), ("application", application)):
@@ -106,7 +115,7 @@ def main() -> None:
              "'max_revision':i.max_rev_full}))", container_path], f"{role}-header.json", python=True)
         run(["-m", "esptool", "--chip", "esp32p4", "image-info", container_path],
             f"{role}-image-info.txt", python=True)
-    factory = output / f"{SLUG}.factory.bin"
+    factory = output / f"{slug}.factory.bin"
     shutil.copy2(factories[0], factory)
     checksum = hashlib.sha256(factory.read_bytes()).hexdigest()
     (output / "SHA256SUMS").write_text(f"{checksum}  {factory.name}\n")
@@ -114,7 +123,8 @@ def main() -> None:
     (output / "build-info.json").write_text(json.dumps({
         "source_revision": revision, "firmware_version": version, "esphome": pinned,
         **json.loads(toolchain), "factory_image": factory.name, "sha256": checksum,
-        "chip_target": "ESP32-P4 v3.x", "physical_device_tested": False,
+        "device": slug, "chip_target": "ESP32-P4 v3.x",
+        "updaters_omitted": updates_disabled, "physical_device_tested": False,
     }, indent=2) + "\n")
     print(f"Factory image: {factory}\nSHA-256: {checksum}")
 

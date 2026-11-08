@@ -28,7 +28,7 @@ python3 scripts/build_jc8012p4a1_v3_test.py
 The script requires a clean committed checkout, uses `.github/esphome.env`,
 checks that ESP-IDF resolves to 5.5.5 or newer in the 5.5 series, then validates
 and clean-builds the complete factory image. No Wi-Fi credentials are embedded.
-Output is under `build/v3-test/<full-commit>/`, including the factory binary,
+Output is under `build/v3-test/guition-esp32-p4-jc8012p4a1-v3-test/<full-commit>/`, including the factory binary,
 `SHA256SUMS`, `build-info.json`, resolved configuration, SDK configuration and
 build log. The firmware version is `dev-v3-<12-character-commit>`.
 
