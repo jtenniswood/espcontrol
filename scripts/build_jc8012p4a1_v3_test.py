@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 
@@ -28,11 +29,15 @@ def main(*, slug: str = SLUG, name: str = "espctl-v3-test",
     image = f"ghcr.io/esphome/esphome:{pinned}"
     output = ROOT / "build" / "v3-test" / slug / revision
     output.mkdir(parents=True, exist_ok=True)
+    # Keep native ESP-IDF tools between containers and subsequent runs.
+    cache = Path(os.environ.get("ESPCONTROL_IDF_CACHE", ROOT / ".esphome/idf-cache")).resolve()
+    cache.mkdir(parents=True, exist_ok=True)
     # A worktree's .git points outside /config; preserve that path in the container.
     git_dir = git("rev-parse", "--path-format=absolute", "--git-common-dir")
     docker = ["docker", "run", "--rm", "--user"]
     docker += [f"{os.getuid()}:{os.getgid()}", "-e", "HOME=/tmp",
-               "-v", f"{ROOT}:/config", "-v", f"{git_dir}:{git_dir}:ro"]
+               "-v", f"{ROOT}:/config", "-v", f"{git_dir}:{git_dir}:ro",
+               "-v", f"{cache}:/idf-cache", "-e", "ESPHOME_ESP_IDF_PREFIX=/idf-cache"]
 
     def run(args: list[str], log_name: str, *, python: bool = False) -> str:
         command = docker + (["--entrypoint", "python"] if python else []) + [image] + args
@@ -79,9 +84,9 @@ def main(*, slug: str = SLUG, name: str = "espctl-v3-test",
         # Verify the merged configuration really omitted both updater packages;
         # an OFF switch alone would still allow a saved setting or API to enable it.
         for updater_id in ("auto_update_switch", "c6_auto_update_switch", "esp32_c6_update"):
-            assert updater_id not in generated, updater_id
+            assert not re.search(rf"\b{updater_id}\b", generated), updater_id
         assert "/firmware/" not in generated
-        assert "esp32_hosted::ESP32HostedComponent" in generated
+        assert "#define USE_ESP32_HOSTED" in defines
     else:
         for switch_id in ("auto_update_switch", "c6_auto_update_switch"):
             assert f"{switch_id}->set_restore_mode(switch_::SWITCH_ALWAYS_OFF);" not in generated

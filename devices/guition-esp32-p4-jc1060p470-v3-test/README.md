@@ -35,6 +35,8 @@ The builder requires a clean committed checkout. It uses `.github/esphome.env`
 validates the configuration and performs a clean compile. It checks production
 chip image headers, the factory-image flash offsets, the vendored display driver,
 the browser-upload guard, native OTA and the absence of both updaters.
+The downloaded toolchain is retained in `.esphome/idf-cache/`; optionally set
+`ESPCONTROL_IDF_CACHE` to an absolute directory to reuse another local cache.
 
 Output is under
 `build/v3-test/guition-esp32-p4-jc1060p470-v3-test/<full-commit>/`:
