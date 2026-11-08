@@ -136,6 +136,36 @@
       "codepoint": "F035B",
       "mdi": "memory",
       "comment": "Build information card"
+    },
+    {
+      "name": "Wind arrow-top-right",
+      "codepoint": "F005C",
+      "mdi": "arrow-top-right"
+    },
+    {
+      "name": "Wind arrow-right",
+      "codepoint": "F0054",
+      "mdi": "arrow-right"
+    },
+    {
+      "name": "Wind arrow-bottom-right",
+      "codepoint": "F0043",
+      "mdi": "arrow-bottom-right"
+    },
+    {
+      "name": "Wind arrow-bottom-left",
+      "codepoint": "F0042",
+      "mdi": "arrow-bottom-left"
+    },
+    {
+      "name": "Wind arrow-left",
+      "codepoint": "F004D",
+      "mdi": "arrow-left"
+    },
+    {
+      "name": "Wind arrow-top-left",
+      "codepoint": "F005B",
+      "mdi": "arrow-top-left"
     }
   ],
   "icons": [
@@ -393,6 +423,11 @@
       "name": "Broom",
       "codepoint": "F00E2",
       "mdi": "broom"
+    },
+    {
+      "name": "Bunk Bed",
+      "codepoint": "F1302",
+      "mdi": "bunk-bed"
     },
     {
       "name": "Bus",
@@ -785,6 +820,11 @@
       "mdi": "gauge-low"
     },
     {
+      "name": "Gift",
+      "codepoint": "F0E44",
+      "mdi": "gift"
+    },
+    {
       "name": "Grid Export",
       "codepoint": "F192C",
       "mdi": "transmission-tower-export"
@@ -1065,6 +1105,11 @@
       "mdi": "mailbox"
     },
     {
+      "name": "Menu",
+      "codepoint": "F035C",
+      "mdi": "menu"
+    },
+    {
       "name": "Message Video",
       "codepoint": "F036B",
       "mdi": "message-video"
@@ -1160,6 +1205,11 @@
       "mdi": "nintendo-switch"
     },
     {
+      "name": "Ornament",
+      "codepoint": "F03CF",
+      "mdi": "ornament"
+    },
+    {
       "name": "Outdoor Lamp",
       "codepoint": "F1054",
       "mdi": "outdoor-lamp"
@@ -1193,6 +1243,11 @@
       "name": "Pill Multiple",
       "codepoint": "F1B4C",
       "mdi": "pill-multiple"
+    },
+    {
+      "name": "Pine Tree",
+      "codepoint": "F0405",
+      "mdi": "pine-tree"
     },
     {
       "name": "Plus",
@@ -1513,6 +1568,16 @@
       "name": "Sprinkler Variant",
       "codepoint": "F1060",
       "mdi": "sprinkler-variant"
+    },
+    {
+      "name": "Stairs",
+      "codepoint": "F04CD",
+      "mdi": "stairs"
+    },
+    {
+      "name": "Stocking",
+      "codepoint": "F04DA",
+      "mdi": "stocking"
     },
     {
       "name": "Stop",

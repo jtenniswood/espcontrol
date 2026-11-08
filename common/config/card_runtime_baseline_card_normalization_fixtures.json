@@ -1260,6 +1260,171 @@
     }
   },
   {
+    "name": "weather: wind",
+    "input": "~weather.example,,Auto,Auto,,,weather,wind,",
+    "expected": {
+      "entity": "weather.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "wind",
+      "options": ""
+    }
+  },
+  {
+    "name": "weather: wind_sensors",
+    "input": "~sensor.wind_direction,,Auto,Auto,sensor.wind_speed,,weather,wind,wind_source%3Dsensors",
+    "expected": {
+      "entity": "sensor.wind_direction",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.wind_speed",
+      "unit": "",
+      "type": "weather",
+      "precision": "wind",
+      "options": "wind_source=sensors"
+    }
+  },
+  {
+    "name": "weather: rainfall_sensor",
+    "input": "~sensor.rainfall_today,,Auto,Auto,,,weather,rainfall,",
+    "expected": {
+      "entity": "sensor.rainfall_today",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "rainfall",
+      "options": ""
+    }
+  },
+  {
+    "name": "weather: rainfall_forecast",
+    "input": "~weather.example,,Auto,Auto,,,weather,rainfall,rainfall_source%3Dforecast",
+    "expected": {
+      "entity": "weather.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "rainfall",
+      "options": "rainfall_source=forecast"
+    }
+  },
+  {
+    "name": "weather: pressure_sensor",
+    "input": "~sensor.pressure,,Auto,Auto,,,weather,pressure,",
+    "expected": {
+      "entity": "sensor.pressure",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "pressure",
+      "options": ""
+    }
+  },
+  {
+    "name": "weather: pressure_forecast",
+    "input": "~weather.example,,Auto,Auto,,,weather,pressure,pressure_source%3Dforecast",
+    "expected": {
+      "entity": "weather.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "pressure",
+      "options": "pressure_source=forecast"
+    }
+  },
+  {
+    "name": "weather: humidity_sensor",
+    "input": "~sensor.humidity,,Auto,Auto,,,weather,humidity,",
+    "expected": {
+      "entity": "sensor.humidity",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "humidity",
+      "options": ""
+    }
+  },
+  {
+    "name": "weather: temperature_sensor",
+    "input": "~sensor.temperature,,Auto,Auto,,,weather,temperature,",
+    "expected": {
+      "entity": "sensor.temperature",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "temperature",
+      "options": ""
+    }
+  },
+  {
+    "name": "weather: humidity_forecast",
+    "input": "~weather.example,,Auto,Auto,,,weather,humidity,humidity_source%3Dforecast",
+    "expected": {
+      "entity": "weather.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "humidity",
+      "options": "humidity_source=forecast"
+    }
+  },
+  {
+    "name": "weather: temperature_forecast",
+    "input": "~weather.example,,Auto,Auto,,,weather,temperature,temperature_source%3Dforecast",
+    "expected": {
+      "entity": "weather.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "temperature",
+      "options": "temperature_source=forecast"
+    }
+  },
+  {
+    "name": "weather: visibility_forecast",
+    "input": "~weather.example,,Auto,Auto,,,weather,visibility,",
+    "expected": {
+      "entity": "weather.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "visibility",
+      "options": ""
+    }
+  },
+  {
     "name": "weather: today",
     "input": "~weather.example,,Auto,Auto,,,weather,today,",
     "expected": {

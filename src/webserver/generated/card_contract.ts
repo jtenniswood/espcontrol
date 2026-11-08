@@ -3740,7 +3740,9 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "label": "Weather",
     "allowInSubpage": true,
     "domains": [
-      "weather"
+      "weather",
+      "sensor",
+      "input_number"
     ],
     "options": [
       {
@@ -3751,11 +3753,137 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "",
           "today",
           "tomorrow",
-          "daily"
+          "daily",
+          "wind",
+          "rainfall",
+          "pressure",
+          "humidity",
+          "visibility",
+          "temperature"
         ],
         "defaultValue": "",
         "storageField": "precision",
         "omitDefault": true
+      },
+      {
+        "name": "wind_source",
+        "label": "Wind Source",
+        "kind": "choice",
+        "values": [
+          "weather",
+          "sensors"
+        ],
+        "defaultValue": "weather",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "precision",
+            "operator": "equals",
+            "value": "wind"
+          }
+        ],
+        "supportedWhen": {
+          "precision": [
+            "wind"
+          ]
+        }
+      },
+      {
+        "name": "rainfall_source",
+        "label": "Rainfall Source",
+        "kind": "choice",
+        "values": [
+          "sensor",
+          "forecast"
+        ],
+        "defaultValue": "sensor",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "precision",
+            "operator": "equals",
+            "value": "rainfall"
+          }
+        ],
+        "supportedWhen": {
+          "precision": [
+            "rainfall"
+          ]
+        }
+      },
+      {
+        "name": "pressure_source",
+        "label": "Air Pressure Source",
+        "kind": "choice",
+        "values": [
+          "sensor",
+          "forecast"
+        ],
+        "defaultValue": "sensor",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "precision",
+            "operator": "equals",
+            "value": "pressure"
+          }
+        ],
+        "supportedWhen": {
+          "precision": [
+            "pressure"
+          ]
+        }
+      },
+      {
+        "name": "humidity_source",
+        "label": "Humidity Source",
+        "kind": "choice",
+        "values": [
+          "sensor",
+          "forecast"
+        ],
+        "defaultValue": "sensor",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "precision",
+            "operator": "equals",
+            "value": "humidity"
+          }
+        ],
+        "supportedWhen": {
+          "precision": [
+            "humidity"
+          ]
+        }
+      },
+      {
+        "name": "temperature_source",
+        "label": "Temperature Source",
+        "kind": "choice",
+        "values": [
+          "sensor",
+          "forecast"
+        ],
+        "defaultValue": "sensor",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "precision",
+            "operator": "equals",
+            "value": "temperature"
+          }
+        ],
+        "supportedWhen": {
+          "precision": [
+            "temperature"
+          ]
+        }
       }
     ],
     "normalization": {
@@ -3774,7 +3902,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "policy": "keep"
         },
         "sensor": {
-          "policy": "clear"
+          "policy": "hook",
+          "hook": "normalize_weather_fields"
         },
         "unit": {
           "policy": "keep"
@@ -3793,7 +3922,13 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         }
       },
       "unknownOptions": "drop",
-      "canonicalOptionOrder": [],
+      "canonicalOptionOrder": [
+        "wind_source",
+        "rainfall_source",
+        "pressure_source",
+        "humidity_source",
+        "temperature_source"
+      ],
       "migrationActions": [
         "legacy_weather_forecast"
       ],
@@ -4872,6 +5007,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "garage_mode": "garage_mode",
   "gate_mode": "gate_mode",
   "hidden": "hidden",
+  "humidity_source": "humidity_source",
   "icon_display": "icon_display",
   "image_icon": "image_icon",
   "image_label": "image_label",
@@ -4899,6 +5035,8 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "playlist_content_type": "playlist_content_type",
   "playlist_player_source": "playlist_player_source",
   "power_entity": "power_entity",
+  "pressure_source": "pressure_source",
+  "rainfall_source": "rainfall_source",
   "screensaver_on_lock": "screensaver_on_lock",
   "script_fields": "script_fields",
   "security": "security",
@@ -4915,13 +5053,15 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "state_precision": "state_precision",
   "state_unit": "state_unit",
   "subpage_kind": "subpage_kind",
+  "temperature_source": "temperature_source",
   "temperature_step": "temperature_step",
   "time_unit": "time_unit",
   "vacuum_mode": "vacuum_mode",
   "volume_max": "volume_max",
   "weather_mode": "weather_mode",
   "webhook_headers": "webhook_headers",
-  "wifi_tabs": "wifi_tabs"
+  "wifi_tabs": "wifi_tabs",
+  "wind_source": "wind_source"
 };
 
 function cardContractListContains(list: readonly string[] | undefined, value: string): boolean {

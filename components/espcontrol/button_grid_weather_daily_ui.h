@@ -1,10 +1,11 @@
 #pragma once
 
 #include <cstdint>
+#include "rainfall_display.h"
 
 // Forecast widgets exist only on configured forecast cards. The modal allocates
 // only visible forecast columns and a stale-status label, sharing the owner's source.
-enum class WeatherForecastView : uint8_t { DAILY, TODAY, TOMORROW };
+enum class WeatherForecastView : uint8_t { DAILY, TODAY, TOMORROW, RAINFALL };
 struct WeatherDailyColumn { lv_obj_t *icon, *day, *high; };
 struct WeatherDailyCard {
   lv_obj_t *owner = nullptr, *root = nullptr, *caption = nullptr, *placeholder_icon = nullptr;
@@ -30,7 +31,7 @@ inline std::string weather_daily_temperature_range(const espcontrol::weather::Da
   return weather_daily_temperature(day.high, unit) + "\u00B0/" + weather_daily_temperature(day.low, unit) + "\u00B0";
 }
 inline std::string weather_daily_weekday_label(const espcontrol::weather::Day &day) {
-  static const char *const weekdays[] = {"Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"};
+  static const char *const weekdays[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
   const int index = espcontrol::weather::weekday(day.date);
   if (index < 0 || index >= 7) return "";
   return espcontrol_i18n(std::string(weekdays[index]));
@@ -44,7 +45,7 @@ inline std::string weather_daily_date_label(const espcontrol::weather::Day &day,
 inline size_t weather_daily_selected_day(const WeatherDailyCard &card) {
   const auto &forecast = card.source->forecast;
   if (card.view == WeatherForecastView::DAILY) return 0;
-  const char *date = card.view == WeatherForecastView::TODAY ? forecast.today : forecast.tomorrow;
+  const char *date = (card.view == WeatherForecastView::TODAY || card.view == WeatherForecastView::RAINFALL) ? forecast.today : forecast.tomorrow;
   for (size_t i = 0; i < forecast.count; ++i)
     if (std::strcmp(forecast.days[i].date, date) == 0) return i;
   return forecast.count;
@@ -63,7 +64,7 @@ inline int weather_daily_minimum_width(const lv_font_t *font, const lv_font_t *i
   lv_point_t measured;
   lv_text_get_size(&measured, "-188\u00B0", font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
   int width = std::max(static_cast<int>(measured.x), static_cast<int>(lv_font_get_line_height(icon_font)));
-  static const char *const labels[] = {"Today", "Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"};
+  static const char *const labels[] = {"Today", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
   for (const char *key : labels) {
     if (!include_today && std::strcmp(key, "Today") == 0) continue;
     const auto text = espcontrol_i18n(std::string(key));
@@ -119,21 +120,13 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   const size_t available_days = card->view == WeatherForecastView::DAILY ? forecast.count : 1;
   const int minimum_day_width = weather_daily_forecast_minimum_width(card->font, card->icon_font,
     card->temperature_font, forecast, first, available_days);
-  const int caption_height = card->source->stale ? font_height + 2 : 0;
-  const int content_height = std::max(1, height - caption_height);
-  const int row_gap = std::max(8, font_height / 2), list_gap = std::max(8, font_height / 3);
+  // Stale status belongs in the details modal; it must not change card geometry.
+  const int content_height = height;
+  const int row_gap = std::max(8, font_height / 2);
   const int minimum_height = icon_height + font_height + temperature_height + 4;
-  int list_text_width = 0;
-  for (size_t i = first; i < first + available_days; ++i) {
-    lv_point_t measured;
-    const auto text = weather_daily_temperature_range(forecast.days[i], forecast.temperature_unit);
-    lv_text_get_size(&measured, text.c_str(), card->temperature_font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-    list_text_width = std::max(list_text_width, static_cast<int>(measured.x));
-  }
   const auto layout = espcontrol::weather::card_layout(width, content_height, minimum_day_width,
-    minimum_height, icon_height + list_gap + list_text_width,
-    std::max(icon_height, font_height + temperature_height + 2), day_gap, row_gap, available_days);
-  const bool grid = !layout.list && layout.rows > 1;
+    minimum_height, day_gap, row_gap, available_days);
+  const bool grid = layout.rows > 1;
   const int icon_gap = grid ? std::min(std::max(6, font_height / 3),
     (content_height - row_gap * static_cast<int>(layout.rows - 1)) / static_cast<int>(layout.rows)
       - icon_height - font_height - temperature_height - 2) : 2;
@@ -143,7 +136,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     (content_height - group_height * static_cast<int>(layout.rows)) / static_cast<int>(layout.rows - 1)) : row_gap;
   // Keep widgets stable on refresh; rebuild only when the geometry or layout changes.
   if (card->width != width || card->height != height || card->columns.size() != layout.count ||
-      card->layout.columns != layout.columns || card->layout.rows != layout.rows || card->layout.list != layout.list) {
+      card->layout.columns != layout.columns || card->layout.rows != layout.rows) {
     lv_obj_clean(card->root); card->columns.clear();
     card->width = width; card->height = height;
     card->layout = layout;
@@ -160,9 +153,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
       card->columns.push_back(col);
     }
   }
-  std::string caption;
-  if (card->source->stale) caption = espcontrol_i18n(std::string("Last forecast"));
-  lv_label_set_display_text(card->caption, caption.c_str());
+  lv_label_set_display_text(card->caption, "");
   for (size_t i = 0; i < card->columns.size(); ++i) {
     const auto &col = card->columns[i];
     const auto &day = forecast.days[first + i];
@@ -175,32 +166,26 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     const int cell_height = base_height + (row < remainder_height ? 1 : 0);
     const int x = column * (base_width + day_gap) + std::min(column, remainder_width);
     const int y = row * (base_height + grid_row_gap) + std::min(row, remainder_height);
-    const int icon_y = y + (layout.list ? (cell_height - icon_height) / 2
-      : grid ? (cell_height - group_height) / 2 : 0);
-    const int text_x = x + (layout.list ? icon_height + list_gap : 0);
-    const int text_width = cell_width - (text_x - x);
-    const int text_top = layout.list ? y + (cell_height - font_height - temperature_height - 2) / 2
-      : grid ? icon_y + icon_height + icon_gap
+    const int icon_y = y + (grid ? (cell_height - group_height) / 2 : 0);
+    const int text_top = grid ? icon_y + icon_height + icon_gap
       : y + std::max(icon_height + 2, cell_height - temperature_height - font_height - 2);
-    lv_obj_set_width(col.icon, layout.list ? icon_height : cell_width);
+    lv_obj_set_width(col.icon, cell_width);
     lv_obj_set_pos(col.icon, x, icon_y);
-    lv_obj_set_width(col.day, text_width); lv_obj_set_width(col.high, text_width);
-    lv_obj_set_pos(col.day, text_x, text_top);
-    lv_obj_set_pos(col.high, text_x, text_top + font_height + 2);
+    lv_obj_set_width(col.day, cell_width); lv_obj_set_width(col.high, cell_width);
+    lv_obj_set_pos(col.day, x, text_top);
+    lv_obj_set_pos(col.high, x, text_top + font_height + 2);
     std::string date = card->view == WeatherForecastView::TOMORROW
       ? espcontrol_i18n(std::string("Tomorrow")) : weather_daily_date_label(day, forecast);
-    if (layout.list) {
-      lv_point_t measured;
-      lv_text_get_size(&measured, date.c_str(), card->font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-      if (measured.x > text_width) date = weather_daily_weekday_label(day);
-    }
     // Columns may be created after the card foreground was synchronized.
     const auto foreground = lv_obj_get_style_text_color(card->owner, LV_PART_MAIN);
     lv_obj_set_style_text_color(col.day, foreground, LV_PART_MAIN);
     lv_obj_set_style_text_color(col.icon, foreground, LV_PART_MAIN);
+    if (card->view == WeatherForecastView::RAINFALL) date = espcontrol_i18n("Rainfall");
     lv_label_set_display_text(col.day, date.c_str());
-    lv_label_set_display_text(col.icon, weather_icon_for_state(day.condition));
-    const auto high = weather_daily_temperature_range(day, forecast.temperature_unit);
+    lv_label_set_display_text(col.icon, card->view == WeatherForecastView::RAINFALL ? find_icon("Weather Rainy") : weather_icon_for_state(day.condition));
+    const auto high = card->view == WeatherForecastView::RAINFALL
+      ? espcontrol::rainfall::amount(day.precipitation, forecast.precipitation_unit)
+      : weather_daily_temperature_range(day, forecast.temperature_unit);
     // Blend secondary text with the card surface instead of painting opaque grey.
     lv_obj_set_style_text_color(col.high, foreground, LV_PART_MAIN);
     lv_obj_set_style_text_opa(col.high, LV_OPA_70, LV_PART_MAIN);
@@ -254,7 +239,8 @@ inline void weather_daily_setup(BtnSlot &slot, const ParsedCfg &config,
   auto *card = new (std::nothrow) WeatherDailyCard;
   if (!card) { weather_daily_release_source(source); weather_daily_unavailable_slot(slot); return; }
   card->owner = slot.btn; card->source = source; card->caption = slot.text_lbl;
-  card->view = config.precision == "today" ? WeatherForecastView::TODAY
+  card->view = config.precision == "rainfall" ? WeatherForecastView::RAINFALL
+    : config.precision == "today" ? WeatherForecastView::TODAY
     : config.precision == "tomorrow" || config.type == "weather_forecast"
       ? WeatherForecastView::TOMORROW : WeatherForecastView::DAILY;
   card->placeholder_icon = slot.icon_lbl;

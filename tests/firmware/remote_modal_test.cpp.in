@@ -16,7 +16,7 @@ struct ParsedCfg {
 };
 using SubpageBtn = ParsedCfg;
 struct lv_obj_t;
-enum class WeatherForecastView { DAILY, TODAY, TOMORROW };
+enum class WeatherForecastView { DAILY, TODAY, TOMORROW, RAINFALL };
 struct ForecastSource { struct { size_t count = 2; } forecast; } forecast_source;
 struct Runtime {
   lv_obj_t *btn = nullptr;
@@ -208,9 +208,11 @@ int main() {
     configs["daily"].precision = "today";
     assert(!espcontrol_can_open_modal("weather.home", true));
     runtime.source = &forecast_source;
-    for (const auto *mode : {"today", "tomorrow"}) {
+    for (const auto *mode : {"today", "tomorrow", "rainfall"}) {
       configs["daily"].precision = mode;
-      runtime.view = std::string(mode)=="today" ? WeatherForecastView::TODAY : WeatherForecastView::TOMORROW;
+      configs["daily"].options = std::string(mode)=="rainfall" ? "rainfall_source=forecast" : "";
+      runtime.view = std::string(mode)=="today" ? WeatherForecastView::TODAY :
+        std::string(mode)=="rainfall" ? WeatherForecastView::RAINFALL : WeatherForecastView::TOMORROW;
       runtime.selected_day = forecast_source.forecast.count;
       const int before_closes = closes, before_opens = opens;
       assert(!espcontrol_can_open_modal("weather.home", true));

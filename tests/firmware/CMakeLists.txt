@@ -5,6 +5,10 @@ enable_testing()
 include(CheckCXXSourceCompiles)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+add_test(NAME navigation_touch_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/navigation_touch_test.py)
+
 add_executable(dpi_timing_test dpi_timing_test.cpp)
 target_compile_features(dpi_timing_test PRIVATE cxx_std_17)
 target_compile_options(dpi_timing_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
@@ -20,6 +24,10 @@ add_test(NAME mipi_dsi_draw_failure_test COMMAND
 add_test(NAME gsl3680_startup_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/gsl3680_startup_test.py)
+
+add_test(NAME world_clock_psram_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/world_clock_psram_test.py)
 
 add_executable(foundation_test foundation_test.cpp)
 target_compile_features(foundation_test PRIVATE cxx_std_17)
@@ -110,6 +118,10 @@ target_include_directories(button_grid_foundations_test PRIVATE
   ../../components/espcontrol
 )
 add_test(NAME button_grid_foundations_test COMMAND button_grid_foundations_test)
+add_test(NAME subpage_names_psram_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/subpage_names_psram_test.py)
+
 add_test(NAME local_sensor_lifetime_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/local_sensor_lifetime_test.py)
@@ -707,6 +719,10 @@ add_test(NAME screensaver_pin_ui_test COMMAND
 add_test(NAME screensaver_pin_cover_art_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/screensaver_pin_cover_art_test.py ${CMAKE_CXX_COMPILER})
 
+add_test(NAME date_time_psram_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/date_time_psram_test.py)
+
 add_executable(weather_daily_forecast_test weather_daily_forecast_test.cpp)
 target_compile_features(weather_daily_forecast_test PRIVATE cxx_std_17)
 target_compile_options(weather_daily_forecast_test PRIVATE -Wall -Wextra -Werror)
@@ -734,3 +750,36 @@ add_test(NAME restart_primary_core_test COMMAND
 
 add_test(NAME discovery_shutdown_order_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/discovery_shutdown_order_test.py)
+
+add_executable(weather_wind_test weather_wind_test.cpp)
+target_compile_features(weather_wind_test PRIVATE cxx_std_17)
+target_compile_options(weather_wind_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(weather_wind_test PRIVATE ../../components/espcontrol)
+add_test(NAME weather_wind_test COMMAND weather_wind_test)
+add_executable(rainfall_card_test rainfall_card_test.cpp)
+target_compile_features(rainfall_card_test PRIVATE cxx_std_17)
+target_compile_options(rainfall_card_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(rainfall_card_test PRIVATE ../../components/espcontrol)
+add_test(NAME rainfall_card_test COMMAND rainfall_card_test)
+
+add_executable(ha_connection_warning_test ha_connection_warning_test.cpp)
+target_compile_features(ha_connection_warning_test PRIVATE cxx_std_17)
+target_compile_options(ha_connection_warning_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(ha_connection_warning_test PRIVATE ../../components/espcontrol)
+add_test(NAME ha_connection_warning_test COMMAND ha_connection_warning_test)
+
+add_executable(panel_backup_test panel_backup_test.cpp)
+target_compile_features(panel_backup_test PRIVATE cxx_std_17)
+target_compile_options(panel_backup_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+add_test(NAME panel_backup_test COMMAND panel_backup_test)
+add_test(NAME panel_backup_bindings_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/panel_backup_bindings_test.py)
+add_test(NAME panel_backup_endpoint_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/panel_backup_endpoint_test.py)
+
+add_executable(weather_metric_test weather_metric_test.cpp)
+target_compile_features(weather_metric_test PRIVATE cxx_std_17)
+target_compile_options(weather_metric_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(weather_metric_test PRIVATE ../../components/espcontrol)
+add_test(NAME weather_metric_test COMMAND weather_metric_test)

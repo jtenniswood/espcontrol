@@ -155,15 +155,14 @@ lv_obj_t *control_modal_create_scroll_list(lv_obj_t *parent,int,int,int){++scrol
 #define ESP_LOGW(...) ((void)0)
 #include "button_grid_weather_daily_ui.h"
 void check_card_fit(const WeatherDailyCard *card){
-  const int height=card->height-(card->source->stale?lv_font_get_line_height(card->font)+2:0);
+  const int height=card->height;
   assert(card->columns.size()<=8 && card->layout.count==card->columns.size());
   for(const auto &column:card->columns){
     for(const auto *label:{column.icon,column.day,column.high}){
       assert(label->x>=0 && label->y>=0 && label->x+label->width<=card->width && label->y+label->height<=height);
     }
     assert(column.day->y+column.day->height<=column.high->y);
-    if(card->layout.list)assert(column.icon->x+column.icon->width<=column.day->x);
-    else {
+    {
       assert(column.icon->y+column.icon->height<=column.day->y);
       if(card->layout.rows>1){
         const int gap=column.day->y-column.icon->y-column.icon->height;
@@ -260,6 +259,20 @@ int main(){
     assert(placeholder_icon->flags & LV_OBJ_FLAG_HIDDEN);
     assert(!(card->root->flags & LV_OBJ_FLAG_HIDDEN));
     assert(card->columns.front().day->text=="Today" && card->columns.front().high->text=="19°/10°");
+    card->view=WeatherForecastView::RAINFALL;
+    weather_daily_render_card(card);
+    assert(card->columns.size()==1 && card->columns.front().day->text=="Rainfall");
+    assert(card->columns.front().high->text=="0 mm");
+    assert(card->columns.front().icon->text==find_icon("Weather Rainy"));
+    f.days[0].precipitation=2.4f; weather_daily_render_card(card);
+    assert(card->columns.front().high->text=="2.4 mm");
+    f.days[0].precipitation=NAN; weather_daily_render_card(card);
+    assert(card->columns.front().high->text=="--");
+    card->source->loading=false;
+    std::strcpy(f.days[0].date,"2026-10-12"); weather_daily_render_card(card);
+    assert(caption->text=="Forecast unavailable"); // Do not substitute tomorrow's rain.
+    card->view=WeatherForecastView::DAILY;
+
     assert(espcontrol::weather::parse("WF1|2026-10-11|2026-10-12|°C|mm|km/h\n2026-10-11|sunny|18|10|0|0|10|75\n2026-10-12|rainy|17|11|80|2|20|80\n2026-10-13|cloudy|16|9||||\n2026-10-14|sunny|18|10||||\n",f));
     weather_daily_render_card(card);assert(card->columns.size()==4);
     assert(card->columns.front().day->width==103);
@@ -284,8 +297,8 @@ int main(){
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
     assert(lv_obj_t::live==live); // Refreshes do not grow the widget tree.
     weather_daily_set_unavailable("weather.home");weather_daily_render_card(card);
-    assert(card->columns.size()==4 && caption->text=="Last forecast" && lv_obj_t::live==live);
-    assert(card->columns.front().high->y==130); // Keep stale status below the temperatures.
+    assert(card->columns.size()==4 && caption->text.empty() && lv_obj_t::live==live);
+    assert(card->columns.front().high->y==148); // Stale data keeps the normal geometry.
     card->source->stale=false;
     lv_obj_set_size(owner,460,240);
     assert(card->layout.columns==2 && card->layout.rows==2);check_card_fit(card);
@@ -367,17 +380,17 @@ int main(){
   }
   // S3's native 3x3 grid, using conservative line heights and measured glyphs.
   font.line_height=26;small_font.line_height=22;icons.line_height=44;measured_font_pixels=22;
-  const int spans[][5]={{1,1,1,1,0},{2,1,2,1,0},{3,1,4,1,0},
-    {1,2,1,2,0},{2,2,2,2,0},{3,2,4,2,0},
-    {1,3,1,3,0},{2,3,2,3,0},{3,3,3,3,0}};
+  const int spans[][4]={{1,1,1,1},{2,1,2,1},{3,1,4,1},
+    {1,2,1,2},{2,2,2,2},{3,2,4,2},
+    {1,3,1,3},{2,3,2,3},{3,3,3,3}};
   for(const auto &span:spans){
     const int width=150*span[0]+10*(span[0]-1)-28;
     const int height=138*span[1]+10*(span[1]-1)-28;
     lv_obj_set_size(wide_owner,width,height);
-    assert(wide_card->layout.columns==static_cast<size_t>(span[2]) && wide_card->layout.rows==static_cast<size_t>(span[3]) && wide_card->layout.list==static_cast<bool>(span[4]));
+    assert(wide_card->layout.columns==static_cast<size_t>(span[2]) && wide_card->layout.rows==static_cast<size_t>(span[3]));
     const auto expected=std::min(8,span[2]*span[3]);
     assert(wide_card->columns.size()==static_cast<size_t>(expected));check_card_fit(wide_card);
-    if(!wide_card->layout.list && wide_card->layout.rows>1)
+    if(wide_card->layout.rows>1)
       assert(wide_card->columns.front().day->y-wide_card->columns.front().icon->y-icons.line_height==8);
     for(size_t i=0;i<wide_card->columns.size();++i){
       assert(wide_card->columns[i].icon->text==weather_icon_for_state(wide_card->source->forecast.days[i].condition));
@@ -386,8 +399,26 @@ int main(){
     const int widgets=lv_obj_t::live;
     for(int i=0;i<20;++i)weather_daily_refresh_visuals();
     assert(lv_obj_t::live==widgets);
-    wide_card->source->stale=true;weather_daily_refresh_visuals();check_card_fit(wide_card);
-    wide_card->source->stale=false;weather_daily_refresh_visuals();check_card_fit(wide_card);
+    // Reproduce a failed refresh on every card size and forecast view.
+    // Positions, visible days and widget ownership must survive stale/recovery transitions.
+    for(auto view:{WeatherForecastView::DAILY,WeatherForecastView::TODAY,WeatherForecastView::TOMORROW}) {
+      wide_card->view=view;weather_daily_render_card(wide_card);
+      const auto columns=wide_card->columns;
+      std::vector<int> geometry;
+      for(const auto &col:columns)for(const auto *label:{col.icon,col.day,col.high})
+        for(int value:{label->x,label->y,label->width,label->height})geometry.push_back(value);
+      weather_daily_set_unavailable("weather.week");weather_daily_refresh_visuals();
+      assert(wide_card->caption->text.empty() && wide_card->columns.size()==columns.size());
+      size_t position=0;
+      for(size_t i=0;i<columns.size();++i) {
+        assert(wide_card->columns[i].icon==columns[i].icon);
+        for(const auto *label:{wide_card->columns[i].icon,wide_card->columns[i].day,wide_card->columns[i].high})
+          for(int value:{label->x,label->y,label->width,label->height})assert(value==geometry[position++]);
+      }
+      check_card_fit(wide_card);
+      wide_card->source->stale=false;weather_daily_refresh_visuals();check_card_fit(wide_card);
+    }
+    wide_card->view=WeatherForecastView::DAILY;weather_daily_render_card(wide_card);
   }
   // Fewer provider days rebalance the grid without creating empty widgets.
   wide_card->source->forecast.count=6;lv_obj_set_size(wide_owner,442,258);

@@ -347,7 +347,7 @@ int main() {
     true, true, true,
     12, 17, 20, 10, 80);
   assert(lv_obj_move_background_calls == 2);
-  assert(lv_obj_get_width(&temperature_1) == 72);
+  assert(lv_obj_get_width(&temperature_1) == 180);
   set_clock_bar_temperature_labels(temperature_labels, 1);
   // Match clock_bar_apply: refresh values and visibility before opening a title.
   clock_bar_temperature_values()[0] = 21.0f;
@@ -360,7 +360,7 @@ int main() {
   set_clock_bar_subpage_label("");
   assert(temperature_1.text == "21°");
   assert(!lv_obj_has_flag(&temperature_1, LV_OBJ_FLAG_HIDDEN));
-  assert(lv_obj_get_width(&temperature_1) == 72);
+  assert(lv_obj_get_width(&temperature_1) == 180);
   hide_clock_bar_top_layer_widgets(
     temperature_labels, 1, &display_time, &network_status_button);
   assert(lv_obj_has_flag(&temperature_1, LV_OBJ_FLAG_HIDDEN));
@@ -1075,6 +1075,7 @@ def main() -> int:
     with TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         shutil.copy2(PARSER_HEADER, tmp_path / "button_grid_config_parser.h")
+        shutil.copy2(PARSER_HEADER.parent / "config_field_decode.h", tmp_path / "config_field_decode.h")
         shutil.copy2(PARSER_HEADER.with_name("i18n_generated.h"), tmp_path / "i18n_generated.h")
         shutil.copy2(DISPLAY_COLOR_HEADER, tmp_path / "display_color.h")
         shutil.copy2(MEDIA_CONFIG_HEADER, tmp_path / "button_grid_media_config.h")

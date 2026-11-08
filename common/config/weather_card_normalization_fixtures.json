@@ -58,5 +58,230 @@
       "precision": "tomorrow",
       "options": ""
     }
+  },
+  {
+    "name": "wind mode survives saved configuration normalization",
+    "input": "weather.home;Weather;Auto;Auto;ignored;unit;weather;wind;large_numbers,ignored=1",
+    "expected": {
+      "entity": "weather.home",
+      "label": "Weather",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "unit",
+      "type": "weather",
+      "precision": "wind",
+      "options": ""
+    }
+  },
+  {
+    "name": "separate wind sensors survive normalization",
+    "input": "sensor.wind_direction;;Auto;Auto;sensor.wind_speed;;weather;wind;ignored=1,wind_source=sensors",
+    "expected": {
+      "entity": "sensor.wind_direction",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.wind_speed",
+      "unit": "",
+      "type": "weather",
+      "precision": "wind",
+      "options": "wind_source=sensors"
+    }
+  },
+  {
+    "name": "wind weather entity clears leftover speed sensor",
+    "input": "weather.home;;Auto;Auto;sensor.wind_speed;;weather;wind;wind_source=weather",
+    "expected": {
+      "entity": "weather.home",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "wind",
+      "options": ""
+    }
+  },
+  {
+    "name": "forecast clears wind-only sensor settings",
+    "input": "weather.home;;Auto;Auto;sensor.wind_speed;;weather;today;wind_source=sensors",
+    "expected": {
+      "entity": "weather.home",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "today",
+      "options": ""
+    }
+  },
+  {
+    "name": "rainfall sensor mode is retained",
+    "input": "sensor.rainfall_today;;Auto;Auto;ignored;;weather;rainfall;ignored=1",
+    "expected": {
+      "entity": "sensor.rainfall_today",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "rainfall",
+      "options": ""
+    }
+  },
+  {
+    "name": "rainfall sensor unit override is retained",
+    "input": "sensor.rainfall_today;;Auto;Auto;;in;weather;rainfall;",
+    "expected": {
+      "entity": "sensor.rainfall_today",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "in",
+      "type": "weather",
+      "precision": "rainfall",
+      "options": ""
+    }
+  },
+  {
+    "name": "rainfall forecast source is retained",
+    "input": "weather.home;;Auto;Auto;;;weather;rainfall;ignored=1,rainfall_source=forecast",
+    "expected": {
+      "entity": "weather.home",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "rainfall",
+      "options": "rainfall_source=forecast"
+    }
+  },
+  {
+    "name": "other weather modes drop rainfall source",
+    "input": "weather.home;;Auto;Auto;;;weather;today;rainfall_source=forecast",
+    "expected": {
+      "entity": "weather.home",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "today",
+      "options": ""
+    }
+  },
+  {
+    "name": "pressure sensor source is retained",
+    "input": "sensor.pressure;;Auto;Auto;ignored;;weather;pressure;ignored=1,rainfall_source=forecast,visibility_source=sensor",
+    "expected": {
+      "entity": "sensor.pressure",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "pressure",
+      "options": ""
+    }
+  },
+  {
+    "name": "pressure weather source is retained",
+    "input": "weather.home;;Auto;Auto;ignored;;weather;pressure;ignored=1,rainfall_source=forecast,visibility_source=sensor,pressure_source=forecast",
+    "expected": {
+      "entity": "weather.home",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "pressure",
+      "options": "pressure_source=forecast"
+    }
+  },
+  {
+    "name": "humidity sensor source is retained",
+    "input": "sensor.humidity;;Auto;Auto;ignored;;weather;humidity;ignored=1,rainfall_source=forecast,visibility_source=sensor",
+    "expected": {
+      "entity": "sensor.humidity",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "humidity",
+      "options": ""
+    }
+  },
+  {
+    "name": "humidity weather source is retained",
+    "input": "weather.home;;Auto;Auto;ignored;;weather;humidity;ignored=1,rainfall_source=forecast,visibility_source=sensor,humidity_source=forecast",
+    "expected": {
+      "entity": "weather.home",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "humidity",
+      "options": "humidity_source=forecast"
+    }
+  },
+  {
+    "name": "visibility weather source is retained",
+    "input": "weather.home;;Auto;Auto;ignored;;weather;visibility;ignored=1,rainfall_source=forecast,visibility_source=sensor",
+    "expected": {
+      "entity": "weather.home",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "visibility",
+      "options": ""
+    }
+  },
+  {
+    "name": "temperature sensor source is retained",
+    "input": "sensor.temperature;;Auto;Auto;ignored;;weather;temperature;ignored=1,rainfall_source=forecast,visibility_source=sensor",
+    "expected": {
+      "entity": "sensor.temperature",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "temperature",
+      "options": ""
+    }
+  },
+  {
+    "name": "temperature weather source is retained",
+    "input": "weather.home;;Auto;Auto;ignored;;weather;temperature;ignored=1,rainfall_source=forecast,visibility_source=sensor,temperature_source=forecast",
+    "expected": {
+      "entity": "weather.home",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "temperature",
+      "options": "temperature_source=forecast"
+    }
   }
 ]

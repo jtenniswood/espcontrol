@@ -146,11 +146,11 @@ inline bool climate_control_driver_bind_subpage(
   ClimateControlCtx *climate = climate_control_driver_bind_data(
     slot, config, context, environment);
   if (!climate) return true;
-  lv_obj_add_event_cb(slot.btn, [](lv_event_t *event) {
+  bind_navigation_button_action(slot.btn, [](lv_event_t *event) {
     ClimateControlCtx *context = static_cast<ClimateControlCtx *>(
       lv_event_get_user_data(event));
     if (context) climate_control_open_modal(context);
-  }, LV_EVENT_CLICKED, climate);
+  }, climate);
   return true;
 }
 

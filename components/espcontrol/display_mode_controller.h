@@ -27,6 +27,7 @@ enum class DisplayRequestSource : uint8_t {
   MEDIA_PLAYBACK,
   SETUP_TIMEOUT,
   USER_WAKE,
+  HA_CONNECTION,
 };
 
 enum class DisplayTakeoverKind : uint8_t {
@@ -136,6 +137,9 @@ class DisplayModeController {
     if (request_active(DisplayRequestSource::ONBOARDING)) {
       if (apply_source(DisplayRequestSource::ONBOARDING, result)) return result;
     }
+
+    // Connection repair must remain visible even with a saved sleep policy.
+    if (apply_source(DisplayRequestSource::HA_CONNECTION, result)) return result;
 
     if (apply_source(DisplayRequestSource::MANUAL_SLEEP, result)) return result;
     if (apply_source(DisplayRequestSource::USER_WAKE, result)) return result;
@@ -312,6 +316,7 @@ class DisplayModeController {
         return mode == DisplayMode::ACTIVE;
       case DisplayRequestSource::MEDIA_PLAYBACK:
         return mode == DisplayMode::COVER_ART;
+      case DisplayRequestSource::HA_CONNECTION:
       case DisplayRequestSource::SETUP_TIMEOUT:
         return mode == DisplayMode::SETUP_DIMMED;
       case DisplayRequestSource::SCREEN_SCHEDULE:
@@ -338,7 +343,7 @@ class DisplayModeController {
     bool active{false};
   };
 
-  static constexpr std::size_t kRequestCount = 9;
+  static constexpr std::size_t kRequestCount = 10;
   static constexpr std::size_t kTakeoverCount = 2;
 
   static constexpr std::size_t source_index(DisplayRequestSource source) {
@@ -421,6 +426,7 @@ inline const char *display_request_source_name(
     case DisplayRequestSource::MEDIA_PLAYBACK: return "media_playback";
     case DisplayRequestSource::SETUP_TIMEOUT: return "setup_timeout";
     case DisplayRequestSource::USER_WAKE: return "user_wake";
+    case DisplayRequestSource::HA_CONNECTION: return "ha_connection";
   }
   return "unknown";
 }
