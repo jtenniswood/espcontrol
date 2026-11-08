@@ -5114,63 +5114,13 @@ async function assertCardTransferSmoke(page, posts, label) {
     await page.locator(".sp-ctx-menu").getByText("Copy Code", { exact: true }).isVisible(),
     `${label}: card context menu exposes transfer-code copying`,
   );
-  await page.locator(".sp-ctx-menu").getByText("Copy Code", { exact: true }).click();
-  const copyDialog = page.locator(".sp-transfer-dialog");
-  await copyDialog.waitFor({ state: "visible" });
-  assert.strictEqual(
-    await copyDialog.getByRole("heading", { name: "Copy Code", exact: true }).count(),
-    1,
-    `${label}: copy dialog uses the concise title`,
-  );
-  const code = await copyDialog.locator("textarea").inputValue();
-  const envelope = JSON.parse(code);
-  assert.strictEqual(envelope.format, "espcontrol.cards", `${label}: copied card code has the format marker`);
-  assert.strictEqual(envelope.version, 1, `${label}: copied card code uses version 1`);
-  assert.strictEqual(envelope.cards.length, 1, `${label}: single-card code contains one card`);
-  assert(
-    String(envelope.cards[0].entity || "").includes("."),
-    `${label}: copied code preserves the configured entity`,
-  );
-  assert.strictEqual(
-    await copyDialog.getByText("Copy this code to another controller.", { exact: true }).count(),
-    1,
-    `${label}: copy dialog uses concise guidance`,
-  );
-  const copyButton = copyDialog.getByRole("button", { name: "Copy", exact: true });
-  assert.strictEqual(await copyButton.count(), 1, `${label}: copy dialog exposes a clipboard copy button`);
-  assert(
-    await copyButton.evaluate((button) =>
-      button.classList.contains("sp-action-btn") &&
-      button.classList.contains("sp-transfer-copy-btn") &&
-      button.querySelector(".mdi-content-copy"),
-    ),
-    `${label}: copy button uses the copy icon and transfer button style`,
-  );
-  assert.strictEqual(
-    await copyDialog.locator(".sp-transfer-actions").count(),
-    1,
-    `${label}: copy dialog shows footer actions`,
-  );
-  assert.strictEqual(
-    await copyDialog.getByText(/Press (Command|Ctrl)\+C to copy\./).count(),
-    0,
-    `${label}: copy dialog does not show a clipboard shortcut instruction`,
-  );
-  const copySelection = await copyDialog.locator("textarea").evaluate((textarea) => ({
-    start: textarea.selectionStart,
-    end: textarea.selectionEnd,
-    length: textarea.value.length,
-  }));
-  assert.deepStrictEqual(
-    copySelection,
-    { start: 0, end: copySelection.length, length: copySelection.length },
-    `${label}: card code is selected for manual copying`,
-  );
+  let code;
   for (const mode of ["modern", "http", "denied", "blocked"]) {
     await page.evaluate((mode) => {
       window.__copyTestOriginalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
       window.__copyTestOriginalExec = document.execCommand;
       window.__copiedCode = null;
+      document.querySelector(".sp-banner").className = "sp-banner";
       Object.defineProperty(navigator, "clipboard", { configurable: true, value: mode === "http" ? undefined : {
         writeText: async (value) => {
           if (mode !== "modern") throw new Error("Clipboard permission denied");
@@ -5179,32 +5129,29 @@ async function assertCardTransferSmoke(page, posts, label) {
       } });
       document.execCommand = (command) => {
         if (command !== "copy" || mode === "blocked") return false;
-        const textarea = document.querySelector(".sp-transfer-code");
+        const textarea = document.activeElement;
         window.__copiedCode = textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
         return true;
       };
     }, mode);
-    await copyDialog.getByRole("button", { name: "Copy", exact: true }).click();
-    await page.waitForFunction(() => !document.querySelector(".sp-transfer-actions .sp-transfer-copy-btn").disabled);
-    assert.strictEqual(await copyDialog.getByRole("status").textContent(), mode === "blocked"
-      ? "Could not copy automatically. Copy the selected code manually."
-      : "", `${label}: copying only shows a message when it fails`);
-    assert.strictEqual(await page.evaluate(() => window.__copiedCode), mode === "blocked" ? null : code,
-      `${label}: ${mode} clipboard path copies the exact code or reports failure`);
-    if (mode === "blocked") {
-      assert.strictEqual(await copyDialog.getByRole("button", { name: "Copy", exact: true }).count(), 1,
-        `${label}: failed copying keeps the default button state`);
-    } else {
-      const copiedButton = copyDialog.getByRole("button", { name: "Copied", exact: true });
-      assert.strictEqual(await copiedButton.count(), 1, `${label}: successful copying shows the copied state`);
-      assert(
-        await copiedButton.evaluate((button) =>
-          button.classList.contains("sp-copied") && button.querySelector(".mdi-check"),
-        ),
-        `${label}: successful copying uses the check icon and accent state`,
-      );
-      await copyDialog.getByRole("button", { name: "Copy", exact: true }).waitFor({ state: "visible" });
+    if (mode !== "modern") {
+      await page.locator('.sp-main [data-slot="1"]').click({ button: "right", force: true });
+      await page.locator(".sp-ctx-menu").waitFor({ state: "visible" });
     }
+    const textareaCount = await page.locator("textarea").count();
+    await page.locator(".sp-ctx-menu").getByText("Copy Code", { exact: true }).click();
+    await page.locator(mode === "blocked" ? ".sp-banner.sp-error" : ".sp-banner.sp-success").waitFor({ state: "visible" });
+    assert.strictEqual(await page.locator(".sp-transfer-dialog").count(), 0,
+      `${label}: copying code does not open a modal`);
+    assert.strictEqual(await page.locator("textarea").count(), textareaCount,
+      `${label}: copying cleans up the fallback textarea`);
+    assert.strictEqual(await page.locator(".sp-banner").textContent(), mode === "blocked"
+      ? "Could not copy card code. Check your browser clipboard permissions and try again."
+      : "Card code copied to clipboard.", `${label}: copying reports success only when it succeeds`);
+    const copiedCode = await page.evaluate(() => window.__copiedCode);
+    if (mode === "modern") code = copiedCode;
+    assert.strictEqual(copiedCode, mode === "blocked" ? null : code,
+      `${label}: ${mode} clipboard path copies the exact code or reports failure`);
     await page.evaluate(() => {
       if (window.__copyTestOriginalClipboard) Object.defineProperty(navigator, "clipboard", window.__copyTestOriginalClipboard);
       else delete navigator.clipboard;
@@ -5214,27 +5161,12 @@ async function assertCardTransferSmoke(page, posts, label) {
       delete window.__copiedCode;
     });
   }
-  const dialogFont = await copyDialog.evaluate((element) => getComputedStyle(element).fontFamily);
-  assert(/Inter|Segoe UI|Roboto|sans-serif/i.test(dialogFont), `${label}: copy dialog uses the web UI font stack`);
-  const codeFont = await copyDialog.locator("textarea").evaluate((element) => getComputedStyle(element).fontFamily);
-  assert(/ui-monospace|SFMono|Menlo|Consolas|monospace/i.test(codeFont), `${label}: transfer code uses a monospace font`);
-  const closeControl = await copyDialog.locator(".sp-transfer-close").evaluate((button) => {
-    const rect = button.getBoundingClientRect();
-    const icon = button.querySelector(".sp-transfer-close-icon path");
-    return {
-      buttonType: button.type,
-      hasInlineIcon: !!icon,
-      width: rect.width,
-      height: rect.height,
-      touchAction: getComputedStyle(button).touchAction,
-    };
-  });
-  assert.strictEqual(closeControl.buttonType, "button", `${label}: close control cannot submit another form`);
-  assert(closeControl.hasInlineIcon, `${label}: close control uses a self-contained icon`);
-  assert(closeControl.width >= 36 && closeControl.height >= 36, `${label}: close control has a usable target size`);
-  assert.strictEqual(closeControl.touchAction, "manipulation", `${label}: close control responds promptly to touch`);
-  await copyDialog.locator(".sp-transfer-close").click();
-  await copyDialog.waitFor({ state: "detached" });
+  const envelope = JSON.parse(code);
+  assert.strictEqual(envelope.format, "espcontrol.cards", `${label}: copied card code has the format marker`);
+  assert.strictEqual(envelope.version, 1, `${label}: copied card code uses version 1`);
+  assert.strictEqual(envelope.cards.length, 1, `${label}: single-card code contains one card`);
+  assert(String(envelope.cards[0].entity || "").includes("."),
+    `${label}: copied code preserves the configured entity`);
 
   const beforePaste = posts.length;
   const destination = await openPasteCardCodeDialog(page);

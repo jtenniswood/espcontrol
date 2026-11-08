@@ -90,7 +90,7 @@ You can cut, copy, and paste cards between the home screen and subpages. Right-c
 To copy a card to another EspControl panel:
 
 1. Right-click the card and choose **Copy Code**. If you selected several cards, choose **Copy Cards as Code**.
-2. The code is selected automatically. Copy it with **Ctrl+C** or **Command+C**.
+2. The code is copied to your clipboard and a confirmation appears.
 3. Open the setup page for the other controller, right-click an empty position, and choose **Paste Code**.
 4. Paste the code into the box and choose **Paste**.
 
