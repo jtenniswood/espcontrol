@@ -19,6 +19,7 @@ export function createConfigWeatherOptionsFeature(
             ["forecast", "Forecast"],
             ["humidity", "Humidity"],
             ["rainfall", "Rainfall"],
+            ["temperature", "Temperature"],
             ["visibility", "Visibility"],
             ["wind", "Wind"],
         ];
@@ -27,7 +28,7 @@ export function createConfigWeatherOptionsFeature(
 
     function weatherModeOptionValues(this: any) {
         const spec: any = cardContractOptionSpec("weather", "weather_mode");
-        const values: any = spec && spec.values ? spec.values.slice() : ["", "today", "tomorrow", "daily", "wind", "rainfall", "pressure", "humidity", "visibility"];
+        const values: any = spec && spec.values ? spec.values.slice() : ["", "today", "tomorrow", "daily", "wind", "rainfall", "pressure", "humidity", "visibility", "temperature"];
         return weatherForecastCardsSupported() ? values : values.filter(function (value: any) {
             return value === "" || value === "wind" || value === "rainfall" || weatherMetricMode(value);
         });
@@ -54,7 +55,7 @@ export function createConfigWeatherOptionsFeature(
         return weatherForecastCardsSupported() && !!button && button.precision === "rainfall" && configOptionValue(button.options, "rainfall_source") === "forecast";
     }
     function weatherMetricMode(mode?: string): boolean {
-        return ["pressure", "humidity", "visibility"].includes(mode || "");
+        return ["pressure", "humidity", "visibility", "temperature"].includes(mode || "");
     }
     function weatherMetricUsesForecast(button?: any): boolean {
         return !!button && weatherMetricMode(button.precision) &&
