@@ -6,6 +6,9 @@ production ESP32-P4 v3.x silicon. **This has not been tested on a physical V3.**
 Before installing, obtain the chip revision from esptool or the USB boot log and
 confirm **v3.x**, plus the exact rear-label model. Do not infer silicon revision
 from a date code. Keep the seller's original firmware and recovery instructions.
+The pinned toolchain currently produces images supporting **v3.1 through v3.99**;
+check the generated bootloader/application header files against the actual chip
+revision before flashing. A v3.0 chip is outside this build's revision range.
 
 The package inherits the complete 7-inch V2 configuration: 1024 x 600 JD9165
 initialization and timings, GPIO0 panel reset, GT911 touch, backlight and 10MHz
