@@ -216,6 +216,30 @@
       "rotation": true,
       "ethernetManualInstall": false,
       "subpages": true
+    },
+    {
+      "slug": "guition-esp32-p4-jc1060p470-v3",
+      "installSlug": "guition-esp32-p4-jc1060p470-v3",
+      "name": "Guition JC1060P470 V3 (production silicon)",
+      "docsPath": "/screens/jc1060p470-v3",
+      "screenSize": "7 inches",
+      "resolution": "1024 x 600",
+      "orientation": "Landscape",
+      "slots": 15,
+      "imageSlots": 6,
+      "imageCardTypes": [
+        "image",
+        "media_cover_art"
+      ],
+      "grid": {
+        "rows": 3,
+        "cols": 5
+      },
+      "chipFamily": "ESP32-P4",
+      "relays": 0,
+      "rotation": true,
+      "ethernetManualInstall": true,
+      "subpages": true
     }
   ]
 }
