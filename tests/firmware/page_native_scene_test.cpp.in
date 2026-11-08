@@ -428,15 +428,24 @@ void navigation_and_state() {
   assert(sends==sent+1 && sent_entity=="switch.one");
   for(int i=0;i<1000;++i) {
     const auto before = h.scene->binding(0);
-    click(h.widgets[1].button);
+    lv_obj_send_event(h.widgets[1].button, LV_EVENT_PRESSED, nullptr);
     // A display refresh between touch dispatch and the scene loop must still
     // see the complete old page, rather than new content with old colours.
     assert(h.scene->active_page()==0 && h.scene->binding(0).binding==before.binding);
     h.scene->loop();
     assert(h.scene->active_page()==1 && objects(h.root)==count);
     assert(lv_obj_has_state(h.widgets[1].button,LV_STATE_CHECKED));
-    click(h.widgets[0].button); h.scene->loop();
+    // Release lands on a reused shell on the destination page. It must not
+    // invoke that card or cause a second navigation.
+    lv_obj_send_event(h.widgets[1].button, LV_EVENT_CLICKED, nullptr);
+    h.scene->loop();
+    assert(h.scene->active_page()==1 && sends==sent+1);
+    lv_obj_send_event(h.widgets[0].button, LV_EVENT_PRESSED, nullptr);
+    h.scene->loop();
     assert(h.scene->active_page()==0 && objects(h.root)==count);
+    lv_obj_send_event(h.widgets[0].button, LV_EVENT_CLICKED, nullptr);
+    h.scene->loop();
+    assert(h.scene->active_page()==0 && sends==sent+1);
   }
   busy=true; const auto epoch=h.scene->chrome_origin(); click(h.widgets[1].button);
   busy=false; h.scene->loop();

@@ -2739,6 +2739,14 @@ class PageBasicLvglPort final:public PageRendererPort {
         !port->actions_.valid(port->actions_.owner, shell->token))
       return;
     shell->pressed = shell->token;
+    if (shell->token.back ||
+        (shell->definition && shell->definition->definition.kind == BasicCardKind::FOLDER)) {
+      // Queue navigation on touch-down. Waiting for CLICKED first renders the
+      // pressed old page and then waits for release before preparing the new one.
+      // click() consumes the captured token, so release cannot navigate twice.
+      port->click(*shell);
+      return;
+    }
     if (shell->definition && shell->definition->definition.ha_input &&
         !timer_card(*shell))
       shell->button_press_connection = port->state_.connection_generation();
