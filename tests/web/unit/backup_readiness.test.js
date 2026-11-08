@@ -59,7 +59,7 @@ test("strict backup reads accept absent older-firmware fields but reject busy, d
 
 test("application export waits for readiness before reading or downloading a backup", async () => {
   const { createAppBackupFeature } = loadTypescriptTest("src/webserver/application/app_backup.ts");
-  const gate = deferred(); let reads = 0, downloads = 0;
+  const gate = deferred(), save = deferred(); let reads = 0, downloads = 0, flushes = 0;
   const controllers = Object.fromEntries([
     "settingsHelpers", "preview", "buttonSettings", "configPersistence", "backupContract", "entityState",
     "shell", "requestApi", "statusPreview", "grid", "artworkPostApi", "schedulePostApi", "clockBarPostApi",
@@ -67,12 +67,23 @@ test("application export waits for readiness before reading or downloading a bac
   ].map(name => [name, {}]));
   controllers.runtime = { els: {} };
   controllers.waitForInitialState = () => gate.promise;
+  controllers.grid.flushMainGridSave = () => {
+    flushes++;
+    controllers.requestApi.postQueue = save.promise;
+  };
   controllers.nativePanelConfig = { async readForBackup() { reads++; throw new Error("Stop after readiness"); } };
   controllers.backupFile = { download() { downloads++; } };
   const application = createAppBackupFeature(controllers);
   const exporting = application.exportConfig(); await tick();
   assert.equal(reads, 0); assert.equal(downloads, 0);
-  gate.resolve(); await exporting; assert.equal(reads, 1); assert.equal(downloads, 0);
+  assert.equal(flushes, 0);
+  gate.resolve(); await tick();
+  assert.equal(flushes, 1); assert.equal(reads, 0); assert.equal(downloads, 0);
+  save.resolve(); await exporting; assert.equal(reads, 1); assert.equal(downloads, 0);
+
+  controllers.requestApi.postQueueError = true;
+  await application.exportConfig();
+  assert.equal(reads, 1); assert.equal(downloads, 0);
 });
 
 test("an obsolete failed read does not cancel backup readiness after reconnect", async t => {

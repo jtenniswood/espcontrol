@@ -256,6 +256,10 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
         let nativeDocument: PanelConfigDocument | undefined;
         try {
             await controllers.waitForInitialState();
+            // Publish a debounced layout move before reading the saved snapshot.
+            controllers.grid.flushMainGridSave();
+            await requestApi.postQueue;
+            if (requestApi.postQueueError) throw new Error("Pending changes did not save.");
             nativeDocumentBytes = await controllers.nativePanelConfig?.readForBackup() ?? undefined;
             if (nativeDocumentBytes) nativeDocument = decodeNativeConfigDocument(nativeDocumentBytes);
         } catch {
