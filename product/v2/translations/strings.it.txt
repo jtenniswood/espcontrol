@@ -305,3 +305,4 @@ wind_north_west=Nord-ovest
 ha_disconnected_title=Home Assistant disconnesso
 ha_disconnected_instructions=Controlla questo dispositivo in Home Assistant\nper una chiave di crittografia o un avviso di connessione
 ha_disconnected_path=Impostazioni > Dispositivi e servizi\n> ESPHome
+temperature=Attualmente

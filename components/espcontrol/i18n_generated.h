@@ -301,6 +301,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant odpojen";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Zkontrolujte toto zařízení v Home Assistant\nkvůli šifrovacímu klíči nebo upozornění na připojení";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Nastavení > Zařízení a služby\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Aktuálně";
   return text;
 }
 
@@ -584,6 +585,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant afbrudt";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Kontrollér denne enhed i Home Assistant\nfor en krypteringsnøgle eller forbindelsesadvarsel";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Indstillinger > Enheder og tjenester\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Lige nu";
   return text;
 }
 
@@ -862,6 +864,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant getrennt";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Dieses Gerät in Home Assistant auf einen\nVerschlüsselungsschlüssel oder Verbindungshinweis prüfen";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Einstellungen > Geräte & Dienste\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Aktuell";
   return text;
 }
 
@@ -1150,6 +1153,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant desconectado";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Revisa este dispositivo en Home Assistant\npor una clave de cifrado o alerta de conexión";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Ajustes > Dispositivos y servicios\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Ahora";
   return text;
 }
 
@@ -1441,6 +1445,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistantin yhteys katkennut";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Tarkista tämä laite Home Assistantissa\nsalausavaimen tai yhteysilmoituksen varalta";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Asetukset > Laitteet ja palvelut\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Nyt";
   return text;
 }
 
@@ -1722,6 +1727,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant déconnecté";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Vérifiez cet appareil dans Home Assistant\npour une clé de chiffrement ou une alerte de connexion";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Paramètres > Appareils et services\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Actuellement";
   return text;
 }
 
@@ -2015,6 +2021,7 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "החיבור ל-Home Assistant נותק";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "בדקו את המכשיר ב-Home Assistant\nלאיתור מפתח הצפנה או התראת חיבור";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "הגדרות > מכשירים ושירותים\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "כעת";
   return text;
 }
 
@@ -2306,6 +2313,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant leválasztva";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Ellenőrizze ezt az eszközt a Home Assistantban:\ntitkosítási kulcs vagy kapcsolati figyelmeztetés";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Beállítások > Eszközök és szolgáltatások\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Jelenleg";
   return text;
 }
 
@@ -2590,6 +2598,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant disconnesso";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Controlla questo dispositivo in Home Assistant\nper una chiave di crittografia o un avviso di connessione";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Impostazioni > Dispositivi e servizi\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Attualmente";
   return text;
 }
 
@@ -2876,6 +2885,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant frakoblet";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Sjekk denne enheten i Home Assistant\nfor en krypteringsnøkkel eller et tilkoblingsvarsel";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Innstillinger > Enheter og tjenester\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Nå";
   return text;
 }
 
@@ -3160,6 +3170,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant niet verbonden";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Controleer dit apparaat in Home Assistant\nop een encryptiesleutel of verbindingsmelding";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Instellingen > Apparaten & diensten\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Momenteel";
   return text;
 }
 
@@ -3447,6 +3458,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant rozłączony";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Sprawdź to urządzenie w Home Assistant:\nklucz szyfrowania lub alert połączenia";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Ustawienia > Urządzenia i usługi\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Obecnie";
   return text;
 }
 
@@ -3735,6 +3747,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant desconectado";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Verifique este dispositivo no Home Assistant\nquanto a uma chave de criptografia ou alerta de conexão";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Configurações > Dispositivos e serviços\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Agora";
   return text;
 }
 
@@ -4024,6 +4037,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant desligado";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Verifique este dispositivo no Home Assistant\nquanto a uma chave de encriptação ou alerta de ligação";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Definições > Dispositivos e serviços\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Atualmente";
   return text;
 }
 
@@ -4315,6 +4329,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant deconectat";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Verificați acest dispozitiv în Home Assistant\npentru o cheie de criptare sau o alertă de conexiune";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Setări > Dispozitive și servicii\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Acum";
   return text;
 }
 
@@ -4607,6 +4622,7 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant отключён";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Проверьте это устройство в Home Assistant:\nключ шифрования или предупреждение о подключении";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Настройки > Устройства и службы\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Сейчас";
   return text;
 }
 
@@ -4897,6 +4913,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant odpojený";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Skontrolujte toto zariadenie v Home Assistant\npre šifrovací kľúč alebo upozornenie na pripojenie";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Nastavenia > Zariadenia a služby\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Aktuálne";
   return text;
 }
 
@@ -5184,6 +5201,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant ni povezan";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Preverite to napravo v Home Assistant\nza šifrirni ključ ali opozorilo o povezavi";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Nastavitve > Naprave in storitve\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Trenutno";
   return text;
 }
 
@@ -5470,6 +5488,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant frånkopplad";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Kontrollera denna enhet i Home Assistant\nför en krypteringsnyckel eller anslutningsvarning";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Inställningar > Enheter och tjänster\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Just nu";
   return text;
 }
 
@@ -5761,6 +5780,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant bağlantısı kesildi";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Home Assistant'ta bu cihazı şifreleme anahtarı\nveya bağlantı uyarısı için kontrol edin";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Ayarlar > Cihazlar ve hizmetler\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Şu anda";
   return text;
 }
 
@@ -6054,6 +6074,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Home Assistant disconnected") == 0) return "Home Assistant відключено";
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Перевірте цей пристрій у Home Assistant:\nключ шифрування або попередження про з’єднання";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Налаштування > Пристрої та служби\n> ESPHome";
+  if (std::strcmp(text, "Currently") == 0) return "Зараз";
   return text;
 }
 
@@ -6356,6 +6377,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant disconnected";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Check this device in Home Assistant\nfor an encryption key or connection alert";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Settings > Devices & Services\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Currently";
   return key;
 }
 
@@ -6653,6 +6675,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant odpojen";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Zkontrolujte toto zařízení v Home Assistant\nkvůli šifrovacímu klíči nebo upozornění na připojení";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Nastavení > Zařízení a služby\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Aktuálně";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6942,6 +6965,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant afbrudt";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Kontrollér denne enhed i Home Assistant\nfor en krypteringsnøgle eller forbindelsesadvarsel";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Indstillinger > Enheder og tjenester\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Lige nu";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7226,6 +7250,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant getrennt";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Dieses Gerät in Home Assistant auf einen\nVerschlüsselungsschlüssel oder Verbindungshinweis prüfen";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Einstellungen > Geräte & Dienste\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Aktuell";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7521,6 +7546,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant desconectado";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Revisa este dispositivo en Home Assistant\npor una clave de cifrado o alerta de conexión";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Ajustes > Dispositivos y servicios\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Ahora";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7820,6 +7846,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistantin yhteys katkennut";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Tarkista tämä laite Home Assistantissa\nsalausavaimen tai yhteysilmoituksen varalta";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Asetukset > Laitteet ja palvelut\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Nyt";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8108,6 +8135,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant déconnecté";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Vérifiez cet appareil dans Home Assistant\npour une clé de chiffrement ou une alerte de connexion";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Paramètres > Appareils et services\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Actuellement";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8409,6 +8437,7 @@ inline const char *espcontrol_i18n_key_he(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "החיבור ל-Home Assistant נותק";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "בדקו את המכשיר ב-Home Assistant\nלאיתור מפתח הצפנה או התראת חיבור";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "הגדרות > מכשירים ושירותים\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "כעת";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8708,6 +8737,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant leválasztva";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Ellenőrizze ezt az eszközt a Home Assistantban:\ntitkosítási kulcs vagy kapcsolati figyelmeztetés";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Beállítások > Eszközök és szolgáltatások\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Jelenleg";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8999,6 +9029,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant disconnesso";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Controlla questo dispositivo in Home Assistant\nper una chiave di crittografia o un avviso di connessione";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Impostazioni > Dispositivi e servizi\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Attualmente";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9292,6 +9323,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant frakoblet";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Sjekk denne enheten i Home Assistant\nfor en krypteringsnøkkel eller et tilkoblingsvarsel";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Innstillinger > Enheter og tjenester\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Nå";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9580,6 +9612,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant niet verbonden";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Controleer dit apparaat in Home Assistant\nop een encryptiesleutel of verbindingsmelding";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Instellingen > Apparaten & diensten\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Momenteel";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9875,6 +9908,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant rozłączony";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Sprawdź to urządzenie w Home Assistant:\nklucz szyfrowania lub alert połączenia";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Ustawienia > Urządzenia i usługi\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Obecnie";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10170,6 +10204,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant desconectado";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Verifique este dispositivo no Home Assistant\nquanto a uma chave de criptografia ou alerta de conexão";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Configurações > Dispositivos e serviços\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Agora";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10466,6 +10501,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant desligado";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Verifique este dispositivo no Home Assistant\nquanto a uma chave de encriptação ou alerta de ligação";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Definições > Dispositivos e serviços\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Atualmente";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10765,6 +10801,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant deconectat";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Verificați acest dispozitiv în Home Assistant\npentru o cheie de criptare sau o alertă de conexiune";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Setări > Dispozitive și servicii\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Acum";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -11065,6 +11102,7 @@ inline const char *espcontrol_i18n_key_ru(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant отключён";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Проверьте это устройство в Home Assistant:\nключ шифрования или предупреждение о подключении";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Настройки > Устройства и службы\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Сейчас";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -11363,6 +11401,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant odpojený";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Skontrolujte toto zariadenie v Home Assistant\npre šifrovací kľúč alebo upozornenie na pripojenie";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Nastavenia > Zariadenia a služby\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Aktuálne";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -11658,6 +11697,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant ni povezan";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Preverite to napravo v Home Assistant\nza šifrirni ključ ali opozorilo o povezavi";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Nastavitve > Naprave in storitve\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Trenutno";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -11950,6 +11990,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant frånkopplad";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Kontrollera denna enhet i Home Assistant\nför en krypteringsnyckel eller anslutningsvarning";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Inställningar > Enheter och tjänster\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Just nu";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -12249,6 +12290,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant bağlantısı kesildi";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Home Assistant'ta bu cihazı şifreleme anahtarı\nveya bağlantı uyarısı için kontrol edin";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Ayarlar > Cihazlar ve hizmetler\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Şu anda";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -12550,6 +12592,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "ha_disconnected_title") == 0) return "Home Assistant відключено";
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Перевірте цей пристрій у Home Assistant:\nключ шифрування або попередження про з’єднання";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Налаштування > Пристрої та служби\n> ESPHome";
+  if (std::strcmp(key, "temperature") == 0) return "Зараз";
   return espcontrol_i18n_key_en(key);
 }
 

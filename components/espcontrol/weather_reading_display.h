@@ -14,8 +14,8 @@ inline double value(const std::string &text) {
   while (*end && std::isspace(static_cast<unsigned char>(*end))) ++end;
   return *end == '\0' ? result : NAN;
 }
-inline std::string amount(double value, const std::string &unit) {
-  if (!std::isfinite(value) || value < 0 || value > 1e12) return "--";
+inline std::string amount(double value, const std::string &unit, bool allow_negative = false) {
+  if (!std::isfinite(value) || (!allow_negative && value < 0) || std::fabs(value) > 1e12) return "--";
   char buffer[40];
   std::snprintf(buffer, sizeof(buffer), "%.3f", value);
   std::string number(buffer);

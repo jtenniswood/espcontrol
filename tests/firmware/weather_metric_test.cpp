@@ -51,4 +51,36 @@ int main() {
     assert(reading.text == (mode == "pressure" ? "0 inHg" : "0 %"));
     emit("sensor.reading:unit_of_measurement", "unknown"); assert(reading.text == "0");
   }
+
+  for (bool forecast : {false, true}) {
+    channels.clear();
+    weather_metric_setup(slot, "temperature", {});
+    assert(label.text == "Currently" && icon.text == "Thermometer");
+    const std::string entity = forecast ? "weather.home" : "sensor.temperature";
+    const std::string value_channel = entity + (forecast ? ":temperature" : "");
+    const std::string unit_channel = entity + (forecast ? ":temperature_unit" : ":unit_of_measurement");
+    subscribe_weather_metric(slot, entity, "temperature", forecast);
+    assert(channels.size() == (forecast ? 3 : 2));
+    emit(value_channel, "-5.250"); assert(reading.text == "-5.25");
+    emit(unit_channel, "°C"); assert(reading.text == "-5.25 °C");
+    emit(value_channel, "0"); assert(reading.text == "0 °C");
+    emit(unit_channel, "°F"); assert(reading.text == "0 °F");
+    emit(value_channel, "-0.0001"); assert(reading.text == "0 °F");
+    for (const auto bad : {"", "unknown", "unavailable", "nan", "inf", "-inf", "2C", "1e20", "-1e20"}) {
+      emit(value_channel, bad); assert(reading.text == "--");
+    }
+    emit(value_channel, "18.5"); assert(reading.text == "18.5 °F");
+    if (forecast) {
+      emit(entity, "unavailable"); assert(reading.text == "--");
+      emit(value_channel, "-8.5"); assert(reading.text == "--");
+      emit(entity, "sunny"); assert(reading.text == "-8.5 °F");
+    }
+    const auto before = reading.text;
+    ++generation;
+    emit(value_channel, "1"); assert(reading.text == before);
+    --generation;
+    reading.valid = false;
+    emit(value_channel, "1"); assert(reading.text == before);
+    reading.valid = true;
+  }
 }

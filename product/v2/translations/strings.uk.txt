@@ -305,3 +305,4 @@ wind_north_west=Північний захід
 ha_disconnected_title=Home Assistant відключено
 ha_disconnected_instructions=Перевірте цей пристрій у Home Assistant:\nключ шифрування або попередження про з’єднання
 ha_disconnected_path=Налаштування > Пристрої та служби\n> ESPHome
+temperature=Зараз

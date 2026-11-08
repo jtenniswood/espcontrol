@@ -305,3 +305,4 @@ wind_north_west=Északnyugat
 ha_disconnected_title=Home Assistant leválasztva
 ha_disconnected_instructions=Ellenőrizze ezt az eszközt a Home Assistantban:\ntitkosítási kulcs vagy kapcsolati figyelmeztetés
 ha_disconnected_path=Beállítások > Eszközök és szolgáltatások\n> ESPHome
+temperature=Jelenleg

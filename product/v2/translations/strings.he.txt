@@ -306,3 +306,4 @@ wind_north_west=צפון מערב
 ha_disconnected_title=החיבור ל-Home Assistant נותק
 ha_disconnected_instructions=בדקו את המכשיר ב-Home Assistant\nלאיתור מפתח הצפנה או התראת חיבור
 ha_disconnected_path=הגדרות > מכשירים ושירותים\n> ESPHome
+temperature=כעת

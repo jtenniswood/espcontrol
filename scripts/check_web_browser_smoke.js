@@ -7786,7 +7786,7 @@ async function assertS3ForecastEditorLayout(browser) {
     await page.waitForSelector(".sp-settings-overlay.sp-visible");
     const modeSelect = page.locator('[id$="weather-display"]');
     assert.deepStrictEqual(await modeSelect.locator('option').allTextContents(),
-      ["Air Pressure", "Current Conditions", "Forecast", "Humidity", "Rainfall", "Visibility", "Wind"]);
+      ["Air Pressure", "Current Conditions", "Forecast", "Humidity", "Rainfall", "Temperature", "Visibility", "Wind"]);
     assert.strictEqual(await modeSelect.inputValue(), "forecast");
     assert.strictEqual(await page.locator('[id$="weather-period"]').inputValue(), "daily");
     assert.deepStrictEqual(await page.locator('[id$="weather-period"] option').allTextContents(), ["Today", "Tomorrow", "Week"]);
@@ -8092,7 +8092,7 @@ async function assertRainfallEditor(browser) {
 
 async function assertWeatherReadingEditors(browser) {
   const slug = "guition-esp32-p4-jc1060p470";
-  for (const mode of ["pressure", "humidity", "visibility"]) {
+  for (const mode of ["pressure", "humidity", "visibility", "temperature"]) {
     const nativeState = nativeConfigState(slug);
     const sensor = "sensor." + mode;
     nativeState.document.buttons[1] = (mode === "visibility" ? "weather.home" : sensor) + ";;Auto;Auto;;;weather;" + mode;
@@ -8144,7 +8144,7 @@ async function assertWeatherReadingEditors(browser) {
       });
       assert.deepStrictEqual(styles.reading, styles.rain, mode + " matches Rainfall text styling");
       assert(styles.left >= 10 && styles.bottom >= 10, mode + " retains card padding");
-      assert.strictEqual(styles.text, mode === "pressure" ? "1013 hPa" : mode === "humidity" ? "65 %" : "10 km");
+      assert.strictEqual(styles.text, mode === "temperature" ? "18.5 °C" : mode === "pressure" ? "1013 hPa" : mode === "humidity" ? "65 %" : "10 km");
       await page.reload();
       await page.waitForSelector('#sp-app');
       await seedNativeDocument(page, nativeState);
