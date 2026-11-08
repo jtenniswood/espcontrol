@@ -25,6 +25,7 @@
 #include "panel_config_storage_backend.h"
 #include "panel_config_endpoint_policy.h"
 #include "panel_config_storage_selection.h"
+#include "panel_config_storage_migration.h"
 #include "panel_config_write_endpoint.h"
 #include "panel_config_http_context.h"
 #include "panel_identity_endpoint.h"
@@ -318,8 +319,31 @@ void EspControlApp::initialize_native_configuration() {
         heap_caps_malloc(panel_config_memory_size,
                          MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
 #endif
-    if (runtime.memory == nullptr ||
-        !runtime.backend.begin(runtime.memory,
+    if (runtime.memory == nullptr) {
+      ESP_LOGE(TAG, "Native configuration memory is unavailable");
+      native_configuration_initialized_ = true;
+      register_panel_config_endpoints();
+      return;
+    }
+    if (panel_config_card_images_storage_ && !storage.used_nvs_fallback) {
+      configuration::EspIdfPanelConfigBlobStorage original;
+      // If NVS cannot open, its reads fail and migration stops unless the
+      // destination already has a valid document. Never import stale text.
+      original.begin_read_only();
+      const configuration::StoreStatus migrated =
+          configuration::migrate_panel_config_storage<PANEL_CONFIG_STORAGE_SLOT_CAPACITY>(
+              original, runtime.blobs, runtime.slot_capacity, runtime.memory,
+              runtime.slot_capacity * 5);
+      if (migrated != configuration::StoreStatus::OK &&
+          migrated != configuration::StoreStatus::EMPTY) {
+        ESP_LOGE(TAG, "Native storage migration failed (%u); preserving NVS configuration",
+                 static_cast<unsigned>(migrated));
+        native_configuration_initialized_ = true;
+        register_panel_config_endpoints();
+        return;
+      }
+    }
+    if (!runtime.backend.begin(runtime.memory,
                                runtime.slot_capacity * 2,
                                runtime.slot_capacity)) {
       ESP_LOGE(TAG, "Native configuration memory is unavailable");
