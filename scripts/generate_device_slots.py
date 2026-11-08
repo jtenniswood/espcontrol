@@ -262,7 +262,7 @@ def package_file_text(device: dict) -> str:
             "",
         ]
     )
-    if device["slug"] == "guition-esp32-p4-jc8012p4a1-v3":
+    if device["slug"] in {"guition-esp32-p4-jc8012p4a1-v3", "guition-esp32-p4-jc1060p470-v3"}:
         lines.extend(
             [
                 "# V3 production-silicon settings. Keep these outside the generated",

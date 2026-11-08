@@ -119,6 +119,14 @@ const screenProducts: Record<string, Record<string, string>> = {
     resolution: '1024 x 600',
     processor: 'ESP32-P4',
   },
+  'screens/jc1060p470-v3.md': {
+    name: 'Guition JC1060P470 V3',
+    brand: 'Guition',
+    model: 'JC1060P470 V3',
+    size: '7 inches',
+    resolution: '1024 x 600',
+    processor: 'ESP32-P4',
+  },
   'screens/jc4880p443.md': {
     name: 'Guition JC4880P443',
     model: 'JC4880P443',
@@ -354,6 +362,7 @@ export default defineConfig({
             link: '/screens/jc1060p470',
             collapsed: true,
             items: [
+              { text: 'V3', link: '/screens/jc1060p470-v3' },
               { text: 'V2', link: '/screens/jc1060p470-v2' },
               { text: 'V1', link: '/screens/jc1060p470-v1' },
             ],
