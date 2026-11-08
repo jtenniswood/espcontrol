@@ -38,7 +38,7 @@ export function registerWeatherCardTypes(
     } = weatherOptions;
     const readings: Record<string, { label: string; icon: string; sample: string; sensor: string }> = {
         rainfall: { label: "Rainfall", icon: "weather-rainy", sample: "2.4 mm", sensor: "sensor.rainfall_today" },
-        temperature: { label: "Temperature", icon: "thermometer", sample: "18.5 °C", sensor: "sensor.temperature" },
+        temperature: { label: "Temp", icon: "thermometer", sample: "18.5 °C", sensor: "sensor.temperature" },
         pressure: { label: "Air Pressure", icon: "gauge", sample: "1013 hPa", sensor: "sensor.air_pressure" },
         humidity: { label: "Humidity", icon: "water-percent", sample: "65 %", sensor: "sensor.humidity" },
         visibility: { label: "Visibility", icon: "weather-hazy", sample: "10 km", sensor: "" },

@@ -55,7 +55,7 @@ int main() {
   for (bool forecast : {false, true}) {
     channels.clear();
     weather_metric_setup(slot, "temperature", {});
-    assert(label.text == "Temperature" && icon.text == "Thermometer");
+    assert(label.text == "Temp" && icon.text == "Thermometer");
     const std::string entity = forecast ? "weather.home" : "sensor.temperature";
     const std::string value_channel = entity + (forecast ? ":temperature" : "");
     const std::string unit_channel = entity + (forecast ? ":temperature_unit" : ":unit_of_measurement");

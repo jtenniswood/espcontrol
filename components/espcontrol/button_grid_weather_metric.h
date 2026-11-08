@@ -6,7 +6,7 @@
 
 inline void weather_metric_setup(BtnSlot &slot, const std::string &mode,
                                  const DisplayProfile &display) {
-  const char *label = mode == "temperature" ? "Temperature" : mode == "pressure" ? "Air Pressure" : mode == "humidity" ? "Humidity" : "Visibility";
+  const char *label = mode == "temperature" ? "Temp" : mode == "pressure" ? "Air Pressure" : mode == "humidity" ? "Humidity" : "Visibility";
   const char *icon = mode == "temperature" ? "Thermometer" : mode == "pressure" ? "Gauge" : mode == "humidity" ? "Water Percent" : "Weather Hazy";
   lv_obj_clear_flag(slot.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN);
