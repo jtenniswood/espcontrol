@@ -174,7 +174,8 @@ int main() {
   auto seven_v2 = cover_art_layout("guition-esp32-p4-jc1060p470-v2", "0", 1024, 600, 600, 260);
   assert(seven_v2.split && seven_v2.art_size == 600 && seven_v2.panel_x == 615);
   // The 7-inch font has 89px lines with -8px spacing: four lines use 332px.
-  for (const auto &slug : {"guition-esp32-p4-jc1060p470", "guition-esp32-p4-jc1060p470-v2"}) {
+  for (const auto &slug : {"guition-esp32-p4-jc1060p470", "guition-esp32-p4-jc1060p470-v2",
+                           "guition-esp32-p4-jc1060p470-v3"}) {
     for (const auto &rotation : {"0", "180"}) {
       const auto layout = cover_art_layout(slug, rotation, 1024, 600, 600, 260);
       const auto button = playback_button_layout(layout, 89, -8);

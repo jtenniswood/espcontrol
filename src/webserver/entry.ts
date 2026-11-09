@@ -538,6 +538,7 @@ function composeApplicationContext(): ApplicationContext {
     postText: (name, value) => requestApi.postText(name, value),
     updateTemperaturePreview: () => statusPreview.updateTempPreview(),
     updateItemUi: () => statusPreview.updateClockBarItemUi(),
+    postTemperaturePrecision: (value) => clockBarPostApi.postClockBarTemperaturePrecision(value),
     postTemperatureDegreeSymbol: (value) => clockBarPostApi.postTemperatureDegreeSymbol(value),
     isTemperatureItem: (item) => statusPreview.isClockBarTemperatureItem(item),
     postTime: (value) => clockBarPostApi.postClockBarTime(value),

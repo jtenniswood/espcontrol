@@ -17,6 +17,7 @@ export const SSE_ALIAS_GROUPS = {
   alarmDelayExitAnnouncement: ["text-alarm_delay__exit_announcement", "text-alarm_delay_exit_announcement"],
   alarmDelayBeepVolume: ["number-alarm_delay__beep_volume", "number-alarm_delay_beep_volume"],
   alarmDelayFinalCountdown: ["number-alarm_delay__final_countdown", "number-alarm_delay_final_countdown", "number-alarm_delay_final_countdown_seconds"],
+  clockBarTemperaturePrecision: ["number-clock_bar__temperature_precision", "number-clock_bar_temperature_precision", "number-clock_bar_temperature_precision_setting"],
   temperatureDegreeSymbol: ["switch-screen__temperature_degree_symbol", "switch-screen_temperature_degree_symbol", "switch-temperature_degree_symbol_enabled"],
   subpageChevron: ["switch-screen__subpage_chevron", "switch-screen_subpage_chevron", "switch-subpage_chevrons_enabled"],
   screensaverTimeout: ["number-screensaver_timeout", "number-screen_saver__timeout", "number-screen_saver_timeout"],
@@ -78,6 +79,7 @@ export function applySseHandlerAliases(handlers: SseHandlers): void {
   addSseAliases(handlers, SSE_ALIAS_GROUPS.alarmDelayExitAnnouncement, "text-alarm_delay__exit_announcement");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.alarmDelayBeepVolume, "number-alarm_delay__beep_volume");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.alarmDelayFinalCountdown, "number-alarm_delay__final_countdown");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.clockBarTemperaturePrecision, "number-clock_bar__temperature_precision");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.temperatureDegreeSymbol, "switch-screen__temperature_degree_symbol");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.subpageChevron, "switch-screen__subpage_chevron");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.screensaverTimeout, "number-screensaver_timeout");

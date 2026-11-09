@@ -5,6 +5,10 @@ enable_testing()
 include(CheckCXXSourceCompiles)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+add_test(NAME navigation_touch_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/navigation_touch_test.py)
+
 add_executable(dpi_timing_test dpi_timing_test.cpp)
 target_compile_features(dpi_timing_test PRIVATE cxx_std_17)
 target_compile_options(dpi_timing_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)

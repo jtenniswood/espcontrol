@@ -77,7 +77,7 @@ inline bool weather_driver_attach_interaction(
   if (weather_driver_shows_forecast(config) && weather_daily_card_for(slot.btn)) {
     lv_obj_add_flag(slot.btn, LV_OBJ_FLAG_CLICKABLE);
     if (context.surface == Surface::SUBPAGE)
-      lv_obj_add_event_cb(slot.btn, weather_daily_card_clicked, LV_EVENT_CLICKED, nullptr);
+      bind_navigation_button_action(slot.btn, weather_daily_card_clicked, nullptr);
   }
   else lv_obj_clear_flag(slot.btn, LV_OBJ_FLAG_CLICKABLE);
   return true;

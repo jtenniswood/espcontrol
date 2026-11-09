@@ -7,6 +7,7 @@ import {
     normalizeAlarmDelayAnnouncement,
     normalizeAlarmDelayBeepVolume,
     normalizeAlarmDelayFinalCountdown,
+    normalizeClockBarTemperaturePrecision,
     normalizeBrightnessMode,
     normalizeClockBrightness,
     normalizeCoverArtDelay,
@@ -205,6 +206,10 @@ export function createAppStateEventHandlersFeature(
             "number-alarm_delay__final_countdown": function (this: any, val?: any) {
                 state.alarmDelayFinalCountdown = normalizeAlarmDelayFinalCountdown(val);
                 syncAlarmDelayAudioUi();
+            },
+            "number-clock_bar__temperature_precision": function (this: any, val?: any) {
+                state.clockBarTemperaturePrecision = normalizeClockBarTemperaturePrecision(val);
+                syncClockBarUi();
             },
             "switch-screen__temperature_degree_symbol": function (this: any, val?: any, d?: any) {
                 state.temperatureDegreeSymbolOn = d.value === true || val === "ON";

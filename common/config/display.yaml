@@ -106,6 +106,8 @@ esphome:
             set_display_temperature_unit(id(temperature_unit_select).current_option(),
                                          id(timezone_select).current_option());
             set_display_temperature_degree_symbol(id(temperature_degree_symbol_enabled).state);
+            set_clock_bar_temperature_precision(
+                static_cast<int>(id(clock_bar_temperature_precision_setting).state));
         - script.execute: clock_bar_hide
         - script.execute: clock_bar_apply
 
@@ -980,6 +982,35 @@ text:
         - script.execute: cover_art_resubscribe
 
 number:
+  - platform: template
+    name: "${entity_clock_bar_temperature_precision}"
+    internal: true
+    id: clock_bar_temperature_precision_setting
+    min_value: 0
+    max_value: 2
+    step: 1
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+    entity_category: config
+    icon: "mdi:decimal"
+    web_server:
+      sorting_group_id: sg_display
+    on_value:
+      then:
+        - lambda: |-
+            set_clock_bar_temperature_precision(static_cast<int>(x));
+            refresh_clock_bar_temperature_label_values(
+              id(main_page)->obj,
+              clock_bar_should_show(
+                id(clock_bar_enabled).state,
+                id(main_page)->obj,
+                id(espcontrol_app).display().current_mode(),
+                id(espcontrol_app).display().target_schedule_inactive()),
+              id(indoor_temp_enable).state,
+              id(outdoor_temp_enable).state,
+              id(indoor_temp), id(outdoor_temp));
+
   - platform: template
     name: "${entity_screen_saver_camera_dimming}"
     internal: true

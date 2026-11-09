@@ -10,6 +10,8 @@ description:
 
 A Subpage card works like a folder. Tapping it on the panel opens a new page with its own set of cards. This is useful for grouping related controls together, such as all the lights in one room, without filling up the home screen.
 
+Pages and control popups open as soon as your finger touches their card. Back and popup Close buttons also respond on touch-down. Hold or lift your finger without activating anything on the destination screen.
+
 Opening any named subpage shows its label on the left of the clock bar, both on the panel and in the web editor preview, replacing the usual item there. Returning home restores that item.
 
 A subpage has one fewer usable slot than the home screen because it includes a **Back** card. Subpage cards on the home screen can show a small chevron marker so you can spot them easily. You can turn this marker on or off with **Screen: Subpage Chevron** in **Screen > Appearance > Clock Bar**.
@@ -88,7 +90,7 @@ You can cut, copy, and paste cards between the home screen and subpages. Right-c
 To copy a card to another EspControl panel:
 
 1. Right-click the card and choose **Copy Code**. If you selected several cards, choose **Copy Cards as Code**.
-2. The code is selected automatically. Copy it with **Ctrl+C** or **Command+C**.
+2. The code is copied to your clipboard and a confirmation appears.
 3. Open the setup page for the other controller, right-click an empty position, and choose **Paste Code**.
 4. Paste the code into the box and choose **Paste**.
 

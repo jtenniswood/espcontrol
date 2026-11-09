@@ -169,11 +169,11 @@ inline bool alarm_driver_bind_subpage(
   if (environment.add_parent_indicator) {
     environment.add_parent_indicator(alarm->entity_id);
   }
-  lv_obj_add_event_cb(slot.btn, [](lv_event_t *event) {
+  bind_navigation_button_action(slot.btn, [](lv_event_t *event) {
     AlarmCardCtx *context = static_cast<AlarmCardCtx *>(
       lv_event_get_user_data(event));
     if (alarm_card_context_valid(context)) alarm_card_open_page(context);
-  }, LV_EVENT_CLICKED, alarm);
+  }, alarm);
   return true;
 }
 
