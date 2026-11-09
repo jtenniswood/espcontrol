@@ -13,6 +13,7 @@ BACKUP_FIELDS = (
     ('settings', 'clock_bar_night_mode', 'screen_clock_bar_night_mode', 'switch', 'Screen: Clock Bar Night Mode Icon'),
     ('settings', 'clock_bar_temperature_entities', 'clock_bar_temperature_entities', 'text', 'Clock Bar: Temperature Entities'),
     ('settings', 'network_status_icon', 'screen_network_status_icon', 'switch', 'Screen: Network Status Icon'),
+    ('settings', 'clock_bar_temperature_precision', 'clock_bar_temperature_precision', 'number', 'Clock Bar: Temperature Precision'),
     ('settings', 'temperature_degree_symbol', 'screen_temperature_degree_symbol', 'switch', 'Screen: Temperature Degree Symbol'),
     ('settings', 'subpage_chevron', 'screen_subpage_chevron', 'switch', 'Screen: Subpage Chevron'),
     ('settings', 'temperature_unit', 'screen_temperature_unit', 'select', 'Screen: Temperature Unit'),

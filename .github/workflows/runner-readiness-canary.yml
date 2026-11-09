@@ -1,0 +1,37 @@
+name: RUNNER Readiness Canary
+
+# Explicit manual diagnostic only. No production deployment or Docker mutation.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runner-readiness-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  readiness:
+    if: github.repository == 'jtenniswood/espcontrol'
+    name: Readiness (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [github-runner-espcontrol-1, github-runner-espcontrol-2]
+    runs-on: [self-hosted, Linux, X64, espcontrol, runner, '${{ matrix.runner }}']
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Test readiness checker locally
+        run: python3 tests/runner_readiness_tests.py
+      - name: Verify current RUNNER contract
+        # Context values go through quoted environment arguments, not shell interpolation.
+        env:
+          ACTUAL_RUNNER_NAME: ${{ runner.name }}
+          ACTUAL_RUNNER_OS: ${{ runner.os }}
+          ACTUAL_RUNNER_ARCH: ${{ runner.arch }}
+          EXPECTED_RUNNER: ${{ matrix.runner }}
+        run: python3 scripts/check_runner_readiness.py --repository jtenniswood/espcontrol --runner "$EXPECTED_RUNNER"

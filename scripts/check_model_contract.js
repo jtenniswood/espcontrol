@@ -697,6 +697,13 @@ const metadataSettingsCurrent = {
 assert.strictEqual(model.normalizeBackupPanelSettings({
   screensaver_metadata_entity: "sensor.current_photo_caption", metadata_overlay: false,
 }, metadataSettingsCurrent).metadataOverlay, false, "explicitly disabled metadata stays off when restoring a saved entity");
+assert.strictEqual(model.normalizeBackupPanelSettings({}, metadataSettingsCurrent).clockBarTemperaturePrecision, 0, "older backups keep whole-number temperatures");
+for (const precision of [0, 1, 2]) {
+  assert.strictEqual(model.normalizeBackupPanelSettings({clock_bar_temperature_precision: precision}, metadataSettingsCurrent).clockBarTemperaturePrecision, precision);
+}
+for (const precision of [-1, 3, 1.5, "invalid"]) {
+  assert.strictEqual(model.normalizeBackupPanelSettings({clock_bar_temperature_precision: precision}, metadataSettingsCurrent).clockBarTemperaturePrecision, 0);
+}
 assert.strictEqual(model.normalizeBackupPanelSettings({}, metadataSettingsCurrent).clockDate, false, "older backups default date off");
 assert.strictEqual(model.normalizeBackupPanelSettings({}, metadataSettingsCurrent).metadataOverlay, false, "metadata defaults off without a saved entity");
 assert.strictEqual(model.normalizeScreensaverCameraImageMode("unexpected"), "Fit", "invalid camera image mode defaults to Fit");

@@ -123,6 +123,8 @@ Check the [release list](https://github.com/jtenniswood/espcontrol/releases) and
 
 Built-in updates install released binaries. For custom ESPHome YAML, turn **Auto Update** off and use [manual ESPHome updates](/getting-started/manual-esphome-setup). Ethernet builds with `disable_updates: "true"` also use ESPHome OTA or USB.
 
+**JC1060P470 V3** also rejects browser OTA uploads; use its [native ESPHome OTA instructions](/screens/jc1060p470-v3).
+
 **JC8012P4A1 V3** rejects browser OTA uploads; follow the [V3 native ESPHome OTA instructions](/screens/jc8012p4a1-v3).
 
 ### Installing an Older Version

@@ -23,7 +23,7 @@ export interface ButtonSettingsSelectionFeature {
 
 export interface ButtonSettingsSelectionDependencies {
     readonly document: Document;
-    readonly fields: Pick<ControlsFieldsFeature, "fieldLabel" | "toggleRow">;
+    readonly fields: Pick<ControlsFieldsFeature, "fieldLabel" | "toggleRow" | "selectField">;
     readonly renderPreview: () => void;
     readonly renderButtonSettings: (force?: boolean) => void;
     readonly showSelectionMenu: (event?: any) => void;
@@ -32,7 +32,7 @@ export interface ButtonSettingsSelectionDependencies {
 }
 
 export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, clockBar: ClockBarFeature, entityState: Pick<EntityStateFeature, "entityInput">, shell: Pick<ControlsShellFeature, "isConfigLocked" | "createActionButton">, statusPreview: Pick<AppStatusPreviewFeature, "clockBarItemActive" | "clockBarItemLabel" | "clockBarItems" | "isClockBarTemperatureItem" | "updateClockBarItemUi">, grid: Pick<GridFeature, "ctx">, renderQueue: ButtonSettingsRenderQueueFeature, dependencies: ButtonSettingsSelectionDependencies): ButtonSettingsSelectionFeature {
-    const { document, fields: { fieldLabel, toggleRow }, renderPreview, renderButtonSettings, showSelectionMenu, openVoiceServicesSettings } = dependencies;
+    const { document, fields: { fieldLabel, toggleRow, selectField }, renderPreview, renderButtonSettings, showSelectionMenu, openVoiceServicesSettings } = dependencies;
     const { entityInput } = entityState;
     const { isConfigLocked, createActionButton } = shell;
     const els = runtime.els;
@@ -231,6 +231,12 @@ export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, cl
         var entityInp: any = entityInput("sp-clockbar-temperature-entity", primaryClockBarTemperatureEntity(), "sensor.outdoor_temperature", ["sensor"]);
         entityField.appendChild(entityInp);
         panel.appendChild(entityField);
+        var precisionField = selectField("Unit Precision", "sp-clockbar-temperature-precision", [
+            ["0", "10"],
+            ["1", "10.2"],
+            ["2", "10.21"],
+        ], state.clockBarTemperaturePrecision);
+        panel.appendChild(precisionField.field);
         var degreeToggle: any = toggleRow("Show Degree Symbol", "sp-clockbar-temperature-degree-symbol", state.temperatureDegreeSymbolOn);
         panel.appendChild(degreeToggle.row);
         var saveRow: any = document.createElement("div");
@@ -244,7 +250,7 @@ export function createButtonSettingsSelectionFeature(runtime: UiRuntimeState, cl
         saveRow.appendChild(hideBtn);
         var saveBtn: any = createActionButton("sp-action-btn sp-save-btn", "Save");
         saveBtn.addEventListener("click", function (this: any) {
-            saveClockBarTemperatureSettings(entityInp.value, degreeToggle.input.checked);
+            saveClockBarTemperatureSettings(entityInp.value, degreeToggle.input.checked, precisionField.select.value);
             closeSettings();
         });
         saveRow.appendChild(saveBtn);

@@ -26,20 +26,20 @@ function setup(disabledCardTypes = []) {
 test("weather readings are available without daily forecast support and normalize only their own source", () => {
     for (const disabled of [[], ["weather_forecast"]]) {
         const { options, card } = setup(disabled);
-        for (const mode of ["pressure", "humidity", "visibility"]) {
+        for (const mode of ["pressure", "humidity", "visibility", "temperature"]) {
             assert.equal(options.normalizeWeatherCardMode(mode), mode);
             assert(options.weatherModeOptions().some(([value]) => value === mode));
             assert.equal(options.weatherCardIsForecastMode({ precision: mode }), false);
             assert.equal(options.normalizeWeatherOptions("rainfall_source=forecast,wind_source=sensors,visibility_source=sensor," + mode + "_source=forecast", { precision: mode }), mode === "visibility" ? "" : mode + "_source=forecast");
             const preview = card.renderPreview({ precision: mode });
             assert.equal(preview.labelEditable, false);
-            assert.match(preview.iconHtml, new RegExp(mode === "pressure" ? "gauge" : mode === "humidity" ? "water-percent" : "weather-hazy"));
-            assert.match(preview.labelHtml, new RegExp(mode === "pressure" ? "Air Pressure.*1013 hPa" : mode === "humidity" ? "Humidity.*65 %" : "Visibility.*10 km"));
+            assert.match(preview.iconHtml, new RegExp(mode === "temperature" ? "thermometer" : mode === "pressure" ? "gauge" : mode === "humidity" ? "water-percent" : "weather-hazy"));
+            assert.match(preview.labelHtml, new RegExp(mode === "temperature" ? "Currently.*18.5 °C" : mode === "pressure" ? "Air Pressure.*1013 hPa" : mode === "humidity" ? "Humidity.*65 %" : "Visibility.*10 km"));
         }
     }
 });
-test("pressure and humidity switch sources, clear incompatible entities and preserve the active source", () => {
-    for (const mode of ["pressure", "humidity"]) {
+test("temperature, pressure and humidity switch sources, clear incompatible entities and preserve the active source", () => {
+    for (const mode of ["pressure", "humidity", "temperature"]) {
         const { card, helpers, controls, fields, options } = setup();
         const config = { precision: mode, entity: "sensor.reading", options: "" };
         const panel = { appendChild() {} };
@@ -67,7 +67,7 @@ test("visibility has only a weather entity field and never renders source tabs",
     assert.deepEqual(fields[0].domains, ["weather"]);
 });
 test("changing from a sensor reading to visibility clears the sensor entity and source option", () => {
-    for (const mode of ["pressure", "humidity", "rainfall"]) {
+    for (const mode of ["pressure", "humidity", "rainfall", "temperature"]) {
         const { card, helpers } = setup();
         const config = { precision: mode, options: "", entity: "sensor.reading" };
         card.cardMetadata.mode.onChange.call({ value: "visibility" }, config, helpers);

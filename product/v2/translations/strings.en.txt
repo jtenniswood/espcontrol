@@ -306,3 +306,4 @@ wind_north_west=North West
 ha_disconnected_title=Home Assistant disconnected
 ha_disconnected_instructions=Check this device in Home Assistant\nfor an encryption key or connection alert
 ha_disconnected_path=Settings > Devices & Services\n> ESPHome
+temperature=Currently
