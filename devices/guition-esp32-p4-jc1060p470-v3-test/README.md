@@ -77,10 +77,11 @@ Use the **merged factory image** at `0x0`; the OTA application is not a substitu
 Do not use a V1/V2 factory or C6 recovery image on this experiment. Release BOOT,
 reset, then disconnect and reconnect power. Capture the full USB startup log.
 
-Find the `ESP_xxxxxx` Wi-Fi setup hotspot (`xxxxxx` is the last six MAC-address
-characters), open `http://192.168.4.1`, and enter Wi-Fi credentials. This can be
-done even if the screen is blank. Once connected, open the device's web interface
-and pair with Home Assistant. Allow Home Assistant actions for a control test.
+Connect to the `EspControl_XXXX` Wi-Fi setup hotspot, where `XXXX` is the last
+four characters of the device's MAC address. Open `http://192.168.4.1` and enter
+Wi-Fi credentials. This can be done even if the screen is blank. Once connected,
+open the device's web interface and pair with Home Assistant. Allow Home
+Assistant actions for a control test.
 
 If it cannot boot, recover over USB using the seller's firmware for this exact
 board and chip revision. Returning to the public 7-inch V2 image is not a
