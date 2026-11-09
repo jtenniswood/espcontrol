@@ -772,10 +772,15 @@ def firmware_media_modal_playback_mode_errors(root: Path) -> list[str]:
         "lv_obj_t *mode_buttons[2]",
         "transport_layout.second_row_start_x",
         "transport_layout.row_gap",
+        "if (media_control_previous_supported(ctx))",
+        "if (media_control_play_pause_supported(ctx))",
+        "if (media_control_next_supported(ctx))",
+        "media_control_transport_count(ctx)",
+        "previous_transport_mask != media_control_transport_mask(ctx)",
     )
     if any(needle not in text for needle in required):
         return [
-            "components/espcontrol/button_grid_media.h: keep conditional, state-synchronised Shuffle and Repeat controls with dynamic three/four/five-button layouts and cleanup"
+            "components/espcontrol/button_grid_media.h: keep conditional, state-synchronised transport, Shuffle and Repeat controls with dynamic layouts and cleanup"
         ]
     return []
 
@@ -1468,6 +1473,9 @@ def valid_media_modal_playback_mode_text() -> str:
         "  lv_obj_t *repeat_icon_lbl = nullptr;\n"
         "};\n"
         "inline void media_control_create_controls_tab_content(MediaControlCtx *ctx) {\n"
+        "  if (media_control_previous_supported(ctx)) find_icon(\"Skip Previous\");\n"
+        "  if (media_control_play_pause_supported(ctx)) find_icon(\"Play\");\n"
+        "  if (media_control_next_supported(ctx)) find_icon(\"Skip Next\");\n"
         "  if (media_control_shuffle_supported(ctx)) find_icon(\"Shuffle\");\n"
         "  if (media_control_repeat_supported(ctx)) find_icon(\"Repeat Once\");\n"
         "}\n"
@@ -1478,7 +1486,8 @@ def valid_media_modal_playback_mode_text() -> str:
         "}\n"
         "inline void media_playback_apply_state_to_control() {\n"
         "  bool changed = previous_shuffle_supported != shuffle_supported ||\n"
-        "    previous_repeat_supported != repeat_supported;\n"
+        "    previous_repeat_supported != repeat_supported ||\n"
+        "    previous_transport_mask != media_control_transport_mask(ctx);\n"
         "  media_control_clear_tab_content();\n"
         "}\n"
         "inline void media_control_clear_tab_content() {\n"
@@ -1490,7 +1499,7 @@ def valid_media_modal_playback_mode_text() -> str:
         "  media_control_refresh_playback_modes(ctx);\n"
         "}\n"
         "inline void media_control_layout_modal() {\n"
-        "  media_transport_layout(content_w, short_side, show_shuffle, show_repeat,\n"
+        "  media_transport_layout(content_w, short_side, media_control_transport_count(ctx), show_shuffle, show_repeat,\n"
         "    control_modal_uses_compact_portrait_tuning(layout) && layout.sh > layout.sw);\n"
         "  lv_obj_t *buttons[5] = {\n"
         "    ui.shuffle_btn, ui.previous_btn, ui.play_btn, ui.next_btn, ui.repeat_btn};\n"
@@ -2303,7 +2312,7 @@ def run_self_test() -> int:
     expect_media_modal_playback_mode_errors(
         "media playback-mode cleanup removed",
         valid_playback_modes.replace("  ui.repeat_btn = nullptr;\n", ""),
-        ("three/four/five-button layouts and cleanup",),
+        ("dynamic layouts and cleanup",),
     )
     expect_media_modal_playback_mode_errors(
         "media playback-mode capability relayout removed",
