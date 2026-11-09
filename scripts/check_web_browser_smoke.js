@@ -1505,11 +1505,13 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
       true,
       `${label}: WiFi automatic updates should be enabled by default`,
     );
-    assert.strictEqual(
-      await firmwareCard
-        .locator(".sp-fw-overview .sp-fw-actions")
-        .evaluate((node) => getComputedStyle(node).justifyContent),
-      "flex-end",
+    assert(
+      await firmwareCard.locator(".sp-fw-overview").evaluate((overview) => {
+        const actionRight = overview.querySelector(".sp-fw-btn").getBoundingClientRect().right;
+        return Array.from(overview.querySelectorAll(".sp-fw-version")).every(
+          (version) => Math.abs(version.getBoundingClientRect().right - actionRight) < 1,
+        );
+      }),
       `${label}: firmware actions should align with the version values`,
     );
     await page.evaluate(() => window.__seedEspState([{
