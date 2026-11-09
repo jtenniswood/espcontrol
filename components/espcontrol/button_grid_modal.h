@@ -58,6 +58,7 @@ inline ControlModalDefinition control_modal_definition(ControlModalKind kind) {
               ControlModalDismissPolicy::DISMISS};
     case ControlModalKind::WEATHER_FORECAST:
     case ControlModalKind::NETWORK_STATUS:
+    case ControlModalKind::NOTIFICATION:
       return {ControlModalPresentation::STATUS, ControlModalChrome::CLOSE,
               ControlModalDismissPolicy::DISMISS};
     case ControlModalKind::ALARM_PIN:

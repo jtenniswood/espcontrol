@@ -306,3 +306,11 @@ ha_disconnected_title=Home Assistant déconnecté
 ha_disconnected_instructions=Vérifiez cet appareil dans Home Assistant\npour une clé de chiffrement ou une alerte de connexion
 ha_disconnected_path=Paramètres > Appareils et services\n> ESPHome
 temperature=Actuellement
+
+# Notification card
+notification=Notification
+information=Information
+warning=Avertissement
+alert=Alerte
+acknowledge=Acquitter
+no_notifications=Aucune notification

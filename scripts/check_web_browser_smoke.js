@@ -3119,7 +3119,7 @@ async function assertContextColourPicker(browser, testCase) {
       assert.deepStrictEqual(await Promise.all([1, 2].map(slot => card(slot).evaluate(el => el.style.backgroundColor))), originalBackgrounds,
         `${label}: oversized bulk recolouring leaves every selected card unchanged`);
       await page.locator(".sp-brand").click();
-      for (const type of ["image", "wifi_qr_card"]) {
+      for (const type of ["image", "wifi_qr_card", "notification"]) {
         await page.evaluate(type => window.__seedEspState([
           { id: "text-button_1_config", state: `camera.garden;Fixed Background;Auto;Auto;;;${type}` },
         ]), type);
@@ -3331,6 +3331,27 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
         `${label}: Wifi Name should immediately follow Type`,
       );
 
+    }
+
+    if (cardOption.value === "notification") {
+      const name = page.locator('.sp-settings-modal .sp-panel > [data-sp-card-primary="name"]');
+      assert(await name.isVisible(), `${label}: Notification Name should be outside Card Settings`);
+      assert.strictEqual(await name.locator("label").textContent(), "Name");
+      assert.strictEqual(
+        await name.evaluate((field) => field.previousElementSibling.getAttribute("data-sp-card-primary")),
+        "entity",
+        `${label}: Notification Name should immediately follow Entity`,
+      );
+      assert.strictEqual(
+        await page.locator(".sp-settings-modal .sp-icon-picker").count(),
+        0,
+        `${label}: Notification icon follows the level, so there is no icon picker`,
+      );
+      assert.strictEqual(
+        await page.locator('.sp-settings-modal .sp-disclosure-button[id$="card-colours"]').count(),
+        0,
+        `${label}: Notification colours follow the level, so there are no Custom Colours`,
+      );
     }
 
     if (cardOption.value === "screen_lock") {

@@ -306,3 +306,11 @@ ha_disconnected_title=Home Assistantin yhteys katkennut
 ha_disconnected_instructions=Tarkista tämä laite Home Assistantissa\nsalausavaimen tai yhteysilmoituksen varalta
 ha_disconnected_path=Asetukset > Laitteet ja palvelut\n> ESPHome
 temperature=Nyt
+
+# Notification card
+notification=Ilmoitus
+information=Tiedote
+warning=Varoitus
+alert=Hälytys
+acknowledge=Kuittaa
+no_notifications=Ei ilmoituksia

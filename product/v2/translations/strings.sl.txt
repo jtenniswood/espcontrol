@@ -306,3 +306,11 @@ ha_disconnected_title=Home Assistant ni povezan
 ha_disconnected_instructions=Preverite to napravo v Home Assistant\nza šifrirni ključ ali opozorilo o povezavi
 ha_disconnected_path=Nastavitve > Naprave in storitve\n> ESPHome
 temperature=Trenutno
+
+# Notification card
+notification=Obvestilo
+information=Informacija
+warning=Opozorilo
+alert=Alarm
+acknowledge=Potrdi
+no_notifications=Ni obvestil

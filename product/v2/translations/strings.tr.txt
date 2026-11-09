@@ -306,3 +306,11 @@ ha_disconnected_title=Home Assistant bağlantısı kesildi
 ha_disconnected_instructions=Home Assistant'ta bu cihazı şifreleme anahtarı\nveya bağlantı uyarısı için kontrol edin
 ha_disconnected_path=Ayarlar > Cihazlar ve hizmetler\n> ESPHome
 temperature=Şu anda
+
+# Notification card
+notification=Bildirim
+information=Bilgi
+warning=Uyarı
+alert=Alarm
+acknowledge=Onayla
+no_notifications=Bildirim yok
