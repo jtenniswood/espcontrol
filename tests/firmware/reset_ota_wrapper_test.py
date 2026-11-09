@@ -77,7 +77,7 @@ int main() {
   assert(begin_calls == calls_before_reset);
 }
 '''
-hosted_wrappers = source[end + len("#ifdef USE_ESP32_HOSTED"):source.index("#endif", end)]
+hosted_wrappers = source[end:source.index("\nnamespace {", end)]
 hook_start = hosted_wrappers.index('extern "C" void espcontrol_hosted_ota_failed()')
 hook_end = hosted_wrappers.index("\n}", hook_start) + 2
 hosted_hook = hosted_wrappers[hook_start:hook_end]
@@ -91,12 +91,19 @@ hosted_harness = r'''
 #include <cstring>
 #include "reset_interlock.h"
 using esp_err_t = int;
-constexpr int ESP_OK = 0, ESP_ERR_INVALID_STATE = 1, ESP_ERR_NOT_FOUND = 2, ESP_ERR_INVALID_ARG = 3;
+constexpr int ESP_OK = 0, ESP_ERR_INVALID_STATE = 1, ESP_ERR_INVALID_ARG = 3;
 namespace espcontrol::reset { OperationInterlock interlock; }
 using namespace espcontrol::reset;
 int failure = 0;
 extern "C" void espcontrol_hosted_ota_failed() __attribute__((weak));
-extern "C" int __real_esp_hosted_slave_ota_begin() { return failure == 1 ? ESP_ERR_INVALID_ARG : ESP_OK; }
+#ifdef ESPCONTROL_HOSTED_OTA_V3
+#define REAL_HOSTED_OTA_BEGIN __real_eh_host_cp_ota_begin
+#define WRAPPED_HOSTED_OTA_BEGIN __wrap_eh_host_cp_ota_begin
+#else
+#define REAL_HOSTED_OTA_BEGIN __real_esp_hosted_slave_ota_begin
+#define WRAPPED_HOSTED_OTA_BEGIN __wrap_esp_hosted_slave_ota_begin
+#endif
+extern "C" int REAL_HOSTED_OTA_BEGIN() { return failure == 1 ? ESP_ERR_INVALID_ARG : ESP_OK; }
 int esp_hosted_slave_ota_write(uint8_t *, uint32_t) {
   assert(interlock.busy());
   return failure == 2 ? ESP_ERR_INVALID_ARG : ESP_OK;
@@ -125,7 +132,7 @@ struct C6RecoveryComponent {
 };
 }}
 ''' + hosted_wrappers + r'''
-#define esp_hosted_slave_ota_begin __wrap_esp_hosted_slave_ota_begin
+#define esp_hosted_slave_ota_begin WRAPPED_HOSTED_OTA_BEGIN
 namespace esphome::c6_recovery {
 ''' + recovery + r'''
 }
@@ -150,12 +157,16 @@ int main() {
 '''
 with tempfile.TemporaryDirectory() as temporary:
     directory = Path(temporary)
-    for name, code in (("native", harness), ("hosted", hosted_harness)):
+    for name, code, flags in (
+        ("native", harness, []),
+        ("hosted_v2", hosted_harness, ["-DUSE_ESP32_HOSTED"]),
+        ("hosted_v3", hosted_harness, ["-DUSE_ESP32_HOSTED", "-DESPCONTROL_HOSTED_OTA_V3"]),
+    ):
         test_source = directory / (name + ".cpp")
         test_source.write_text(code)
         executable = directory / name
         extra_sources = []
-        if name == "hosted":
+        if name != "native":
             # Match firmware translation units: the weak consumer must not see
             # the optional callback's definition at compile time.
             hook_source = directory / "hook.cpp"
@@ -164,8 +175,8 @@ with tempfile.TemporaryDirectory() as temporary:
                                    + hosted_hook)
             extra_sources.append(str(hook_source))
         subprocess.run(shlex.split(os.environ.get("CXX", "c++")) + [
-            "-std=c++17", "-Wall", "-Wextra", "-Werror", "-pthread",
+            "-std=c++17", "-Wall", "-Wextra", "-Werror", "-pthread", *flags,
             "-I", str(ROOT / "components/espcontrol"), str(test_source),
             "-o", str(executable), *extra_sources], check=True)
         subprocess.run([str(executable)], check=True)
-print("Native OTA and direct C6 recovery lifecycle checks passed.")
+print("Native OTA and direct C6 recovery lifecycle checks passed for ESP-Hosted 2 and 3.")

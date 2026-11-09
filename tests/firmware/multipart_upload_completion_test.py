@@ -160,14 +160,20 @@ with tempfile.TemporaryDirectory(prefix="multipart-completion-") as directory:
         str(cpp), "-o", str(exe),
     ], check=True)
     subprocess.run([str(exe)], check=True)
-    # OTA-disabled profiles must compile without the upstream OTA platform's
-    # header being copied into the generated source tree.
+    # Neither an OTA-disabled profile nor the beta's upstream OTA handler
+    # should pull the legacy implementation's dependencies into this file.
     defines = directory / "esphome/core/defines.h"
     defines.parent.mkdir(parents=True)
-    defines.write_text("")
-    subprocess.run([
-        os.environ.get("CXX", "c++"), "-std=c++20", "-Wall", "-Wextra", "-Werror",
-        "-I" + str(directory), "-c", str(ROOT / "components/web_server_idf/ota_web_server.cpp"),
-        "-o", str(directory / "ota-disabled.o"),
-    ], check=True)
+    version = defines.with_name("version.h")
+    for minor, ota_enabled in ((10, False), (11, True)):
+        defines.write_text("#define USE_WEBSERVER_OTA\n" if ota_enabled else "")
+        version.write_text(
+            "#define VERSION_CODE(major, minor, patch) ((major) * 10000 + (minor) * 100 + (patch))\n"
+            f"#define ESPHOME_VERSION_CODE VERSION_CODE(2026, {minor}, 0)\n"
+        )
+        subprocess.run([
+            os.environ.get("CXX", "c++"), "-std=c++20", "-Wall", "-Wextra", "-Werror",
+            "-I" + str(directory), "-c", str(ROOT / "components/web_server_idf/ota_web_server.cpp"),
+            "-o", str(directory / "ota-skipped.o"),
+        ], check=True)
 print("Multipart upload completion regression passed.")
