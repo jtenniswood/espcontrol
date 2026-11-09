@@ -25,10 +25,22 @@ With Git, Python 3 and Docker installed, check out `test-jc8012p4a1-v3` and run:
 python3 scripts/build_jc8012p4a1_v3_test.py
 ```
 
+On Windows, install Git for Windows, Python 3 and Docker Desktop. Start Docker
+Desktop with **Linux containers**, then run from PowerShell or Command Prompt:
+
+```powershell
+python scripts/build_jc8012p4a1_v3_test.py
+```
+
+Use `py -3` instead of `python` if that is how Python is installed. Keep the
+checkout and any custom `ESPCONTROL_IDF_CACHE` directory accessible to Docker
+Desktop. Paths containing spaces are supported. Windows uses Docker's default
+container user; macOS/Linux builds retain the host user's file ownership.
+
 The script requires a clean committed checkout, uses `.github/esphome.env`,
 checks that ESP-IDF resolves to 5.5.5 or newer in the 5.5 series, then validates
 and clean-builds the complete factory image. No Wi-Fi credentials are embedded.
-Output is under `build/v3-test/<full-commit>/`, including the factory binary,
+Output is under `build/v3-test/guition-esp32-p4-jc8012p4a1-v3-test/<full-commit>/`, including the factory binary,
 `SHA256SUMS`, `build-info.json`, resolved configuration, SDK configuration and
 build log. The firmware version is `dev-v3-<12-character-commit>`.
 
