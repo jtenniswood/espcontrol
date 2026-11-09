@@ -17,10 +17,16 @@ namespace espcontrol::configuration {
 // a partition-table migration during the compatibility releases.
 class EspIdfPanelConfigBlobStorage final : public BlobStorage {
  public:
+  EspIdfPanelConfigBlobStorage() = default;
+  EspIdfPanelConfigBlobStorage(const EspIdfPanelConfigBlobStorage &) = delete;
+  EspIdfPanelConfigBlobStorage &operator=(const EspIdfPanelConfigBlobStorage &) = delete;
+  ~EspIdfPanelConfigBlobStorage() override;
   // Existing profiles keep their compact NVS backing. Profiles with a large
   // fixed-capacity document can opt into the reserved beginning of the
   // already-deployed card_images partition without changing its layout.
   bool begin();
+  // Used only as a migration source; an absent namespace reads as empty.
+  bool begin_read_only();
   bool begin_card_images_partition(size_t slot_capacity);
   BlobLoadResult load_blob(uint8_t slot, uint8_t *output,
                            size_t capacity) override;
@@ -38,7 +44,7 @@ class EspIdfPanelConfigBlobStorage final : public BlobStorage {
 
   size_t partition_slot_stride() const;
   size_t partition_slot_offset(uint8_t slot) const;
-  bool load_partition_blob(uint8_t slot, uint8_t *output, size_t capacity);
+  BlobLoadResult load_partition_blob(uint8_t slot, uint8_t *output, size_t capacity);
   bool save_partition_blob(uint8_t slot, const uint8_t *data, size_t size);
   bool erase_partition_slot(uint8_t slot);
 
@@ -46,6 +52,7 @@ class EspIdfPanelConfigBlobStorage final : public BlobStorage {
   const esp_partition_t *partition_{nullptr};
   size_t partition_slot_capacity_{0};
   bool partition_backed_{false};
+  bool read_only_{false};
 #endif
   bool ready_{false};
 };

@@ -14,6 +14,7 @@ from device_profiles import load_device_profiles, web_config
 BUTTON_RADII = {
     "guition-esp32-p4-jc1060p470": 10,
     "guition-esp32-p4-jc1060p470-v2": 10,
+    "guition-esp32-p4-jc1060p470-v3": 10,
     "guition-esp32-p4-jc4880p443": 10,
     "guition-esp32-p4-jc4880p443-v3": 10,
     "guition-esp32-p4-jc8012p4a1": 11,
@@ -44,4 +45,4 @@ for slug, profile in profiles.items():
 s3 = profiles["guition-esp32-s3-4848s040"]
 assert web_config(s3)["cardRadiusPixels"] == 26
 assert web_config(s3)["cardCurveRadii"] == {"Small": 16, "Medium": 21}
-print("Ordinary button radii stay independent of card curves on all nine profiles.")
+print(f"Ordinary button radii stay independent of card curves on all {len(profiles)} profiles.")

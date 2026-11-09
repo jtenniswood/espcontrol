@@ -81,6 +81,8 @@ espcontrol:
   # The legacy entities remain live during the compatibility releases.
   panel_config:
     device_profile: ${device_slug}
+    # Large seven-inch dashboards need the existing dedicated flash partition.
+    storage: card_images
     button_order: button_order
     button_on_color: button_on_color
     buttons:

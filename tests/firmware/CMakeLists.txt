@@ -384,6 +384,19 @@ target_compile_options(panel_config_storage_backend_test PRIVATE -Wall -Wextra -
 target_include_directories(panel_config_storage_backend_test PRIVATE ../../components/espcontrol)
 add_test(NAME panel_config_storage_backend_test COMMAND panel_config_storage_backend_test)
 
+add_executable(panel_config_storage_migration_test
+  panel_config_storage_migration_test.cpp
+  ../../components/espcontrol/panel_config_espidf_storage.cpp
+  ../../components/espcontrol/configuration_store.cpp
+  ../../components/espcontrol/configuration_service.cpp
+)
+target_compile_features(panel_config_storage_migration_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_storage_migration_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_compile_definitions(panel_config_storage_migration_test PRIVATE USE_ESP32)
+target_include_directories(panel_config_storage_migration_test PRIVATE
+  panel_config_storage_stubs ../../components/espcontrol)
+add_test(NAME panel_config_storage_migration_test COMMAND panel_config_storage_migration_test)
+
 add_executable(panel_config_storage_selection_test
   panel_config_storage_selection_test.cpp)
 target_compile_features(panel_config_storage_selection_test PRIVATE cxx_std_17)
