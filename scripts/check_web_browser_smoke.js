@@ -3356,9 +3356,8 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
       );
     }
 
-    const typeSelect = page.locator(
-      '.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select',
-    );
+    const primaryType = page.locator('.sp-settings-modal .sp-panel > [data-sp-card-primary="type"]');
+    const typeSelect = primaryType.locator(cardOption.value === "weather" ? "#sp-inp-weather-display" : "select");
     if ((await typeSelect.count()) > 0) {
       if (cardOption.value === "fan_speed") {
         assert.deepStrictEqual(
