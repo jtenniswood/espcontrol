@@ -63,7 +63,7 @@ struct Script {
   void stop() { actions.stop(); }
   bool is_running() { return actions.is_running(); }
 };
-struct CallbackAction : Action {
+struct CallbackAction final : Action {
   std::function<void()> callback;
   explicit CallbackAction(std::function<void()> fn) : callback(std::move(fn)) {}
   void play_complex() override {
@@ -74,6 +74,7 @@ struct CallbackAction : Action {
   void play() override { callback(); }
 };
 struct Delay : Action {
+  virtual ~Delay() = default;
   uint32_t delay;
   explicit Delay(uint32_t delay) : delay(delay) {}
   void play_complex() override {
@@ -83,7 +84,7 @@ struct Delay : Action {
   void play() override {}
   void stop() override { cancel(this); }
 };
-struct Wait : Delay {
+struct Wait final : Delay {
   Script &target;
   explicit Wait(Script &target) : Delay(1), target(target) {}
   void poll() {
@@ -92,7 +93,7 @@ struct Wait : Delay {
   }
   void play_complex() override { ++this->num_running_; poll(); }
 };
-struct Branch : Action {
+struct Branch final : Action {
   std::function<bool()> condition;
   ActionList yes, no;
   CallbackAction continuation{[this] { this->play_next_(); }};
@@ -104,20 +105,22 @@ struct Branch : Action {
   void play() override {}
   void stop() override { yes.stop(); no.stop(); }
 };
-std::vector<std::unique_ptr<Action>> owned;
+// The SDK Action base has no virtual destructor. Preserve the concrete deleter
+// when storing heterogeneous fixture nodes through their Action interface.
+std::vector<std::shared_ptr<Action>> owned;
 Action *make_action(Script &, std::function<void()> callback) {
-  owned.push_back(std::make_unique<CallbackAction>(std::move(callback)));
+  owned.push_back(std::make_shared<CallbackAction>(std::move(callback)));
   return owned.back().get();
 }
 Action *make_delay(Script &, uint32_t delay) {
-  owned.push_back(std::make_unique<Delay>(delay)); return owned.back().get();
+  owned.push_back(std::make_shared<Delay>(delay)); return owned.back().get();
 }
 Action *make_wait(Script &, Script &target) {
-  owned.push_back(std::make_unique<Wait>(target)); return owned.back().get();
+  owned.push_back(std::make_shared<Wait>(target)); return owned.back().get();
 }
 Action *make_if(Script &, std::function<bool()> condition,
                 std::initializer_list<Action *> yes, std::initializer_list<Action *> no) {
-  auto node = std::make_unique<Branch>(std::move(condition));
+  auto node = std::make_shared<Branch>(std::move(condition));
   node->yes.add_actions(yes); node->yes.add_action(&node->continuation);
   node->no.add_actions(no); node->no.add_action(&node->continuation);
   owned.push_back(std::move(node)); return owned.back().get();

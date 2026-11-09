@@ -188,12 +188,18 @@ BlobLoadResult EspIdfPanelConfigBlobStorage::load_blob(uint8_t slot,
 bool EspIdfPanelConfigBlobStorage::save_blob(uint8_t slot, const uint8_t *data,
                                               size_t size) {
 #ifdef USE_ESP32
+  sync_failure_ = StoreStatus::SYNC_FAILED;
   if (read_only_) return false;
   const char *key = slot_key(slot);
   if (partition_backed_)
     return ready_ && save_partition_blob(slot, data, size);
-  return ready_ && key != nullptr && (size == 0 || data != nullptr) &&
-         nvs_set_blob(handle_, key, data, size) == ESP_OK;
+  if (!ready_ || key == nullptr || (size > 0 && data == nullptr))
+    return false;
+  const auto result = nvs_set_blob(handle_, key, data, size);
+  if (result == ESP_ERR_NVS_NOT_ENOUGH_SPACE ||
+      result == ESP_ERR_NVS_VALUE_TOO_LONG)
+    sync_failure_ = StoreStatus::STORAGE_FULL;
+  return result == ESP_OK;
 #else
   (void) slot;
   (void) data;
@@ -206,8 +212,89 @@ bool EspIdfPanelConfigBlobStorage::sync() {
 #ifdef USE_ESP32
   if (read_only_) return false;
   if (partition_backed_) return ready_;
+  // A rejected set_blob leaves its old value intact. A failed commit does
+  // not prove that publication was rejected, so retain the generic error even
+  // if a backend reports a capacity code here. The store still rolls back.
+  sync_failure_ = StoreStatus::SYNC_FAILED;
   return ready_ && nvs_commit(handle_) == ESP_OK;
 #else
+  return false;
+#endif
+}
+
+bool EspIdfPanelConfigBlobStorage::supports_range_io() const {
+#ifdef USE_ESP32
+  return ready_ && partition_backed_;
+#else
+  return false;
+#endif
+}
+
+bool EspIdfPanelConfigBlobStorage::read_range(uint8_t slot, size_t offset,
+                                              uint8_t *output, size_t size) {
+#ifdef USE_ESP32
+  if (!supports_range_io() || slot >= CONFIGURATION_SLOT_COUNT ||
+      offset > partition_slot_capacity_ ||
+      size > partition_slot_capacity_ - offset ||
+      (size > 0 && output == nullptr))
+    return false;
+  uint32_t marker = 0;
+  const size_t base = partition_slot_offset(slot);
+  if (esp_partition_read(partition_, base, &marker, sizeof(marker)) != ESP_OK)
+    return false;
+  if (size == 0)
+    return true;
+  if (marker != PARTITION_COMMIT_MARKER) {
+    std::memset(output, 0xFF, size);
+    return true;
+  }
+  return esp_partition_read(partition_,
+                            base + PARTITION_SLOT_HEADER_SIZE + offset, output,
+                            size) == ESP_OK;
+#else
+  (void)slot;
+  (void)offset;
+  (void)output;
+  (void)size;
+  return false;
+#endif
+}
+
+bool EspIdfPanelConfigBlobStorage::write_range(uint8_t slot, size_t offset,
+                                               const uint8_t *data,
+                                               size_t size) {
+#ifdef USE_ESP32
+  if (!supports_range_io() || slot >= CONFIGURATION_SLOT_COUNT ||
+      offset > partition_slot_capacity_ ||
+      size > partition_slot_capacity_ - offset || (size > 0 && data == nullptr))
+    return false;
+  if (size == 0)
+    return true;
+  const size_t base = partition_slot_offset(slot);
+  if (offset == 0) {
+    if (size != sizeof(uint32_t))
+      return false;
+    if (std::all_of(data, data + size,
+                    [](uint8_t value) { return value == 0; }))
+      return erase_partition_slot(slot);
+    // Match the deployed full-blob writer: publish the outer marker only
+    // after the complete inner envelope and payload have reached flash.
+    if (esp_partition_write(partition_, base + PARTITION_SLOT_HEADER_SIZE, data,
+                            size) != ESP_OK)
+      return false;
+    return esp_partition_write(partition_, base, &PARTITION_COMMIT_MARKER,
+                               sizeof(PARTITION_COMMIT_MARKER)) == ESP_OK;
+  }
+  if (offset < sizeof(uint32_t))
+    return false;
+  return esp_partition_write(partition_,
+                             base + PARTITION_SLOT_HEADER_SIZE + offset, data,
+                             size) == ESP_OK;
+#else
+  (void)slot;
+  (void)offset;
+  (void)data;
+  (void)size;
   return false;
 #endif
 }

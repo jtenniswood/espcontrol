@@ -1220,6 +1220,11 @@ def self_test() -> None:
     if product_order.index("device-slots") > product_order.index("device-profiles"):
         raise AssertionError("device slot outputs are not checked before device profiles consume them")
 
+    ci_order = [item.id for item in plan("ci")]
+    for prerequisite in ("firmware-tests", "web-unit"):
+        if ci_order.index(prerequisite) > ci_order.index("native-document-projection"):
+            raise AssertionError("native document projection runs before its C++ binary and browser checks")
+
     web_order = [item.id for item in plan("ci", "web")]
     for consumer in ("web-smoke",):
         if web_order.index("device-manifest-output") > web_order.index(consumer):

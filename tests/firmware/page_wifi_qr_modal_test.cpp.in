@@ -1,0 +1,829 @@
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <functional>
+#include <string>
+#include <vector>
+
+#include "button_grid_subpage_parser.h"
+#include "lvgl.h"
+#include "modal_test_router.h"
+#include "page_card_dependencies.h"
+#include "page_entity_observer_set.h"
+#include "panel_config_document.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+static size_t lv_live_bytes = 0, lv_allocation_calls = 0, cpp_allocation_calls = 0, cpp_live_bytes = 0;
+struct alignas(16) CppAllocation {
+  size_t bytes;
+};
+void* operator new(size_t bytes) {
+  ++cpp_allocation_calls;
+  auto* header = static_cast<CppAllocation*>(std::malloc(sizeof(CppAllocation) + (bytes ? bytes : 1)));
+  assert(header);
+  header->bytes = bytes;
+  cpp_live_bytes += bytes;
+  return header + 1;
+}
+void* operator new[](size_t bytes) {
+  return ::operator new(bytes);
+}
+void operator delete(void* pointer) noexcept {
+  if (pointer) {
+    auto* header = static_cast<CppAllocation*>(pointer) - 1;
+    cpp_live_bytes -= header->bytes;
+    std::free(header);
+  }
+}
+void operator delete[](void* pointer) noexcept {
+  ::operator delete(pointer);
+}
+void operator delete(void* pointer, std::size_t) noexcept {
+  ::operator delete(pointer);
+}
+void operator delete[](void* pointer, std::size_t) noexcept {
+  ::operator delete(pointer);
+}
+struct alignas(16) Allocation {
+  size_t bytes;
+};
+extern "C" {
+void lv_mem_init() {}
+void lv_mem_deinit() {}
+lv_mem_pool_t lv_mem_add_pool(void*, size_t) {
+  return nullptr;
+}
+void lv_mem_remove_pool(lv_mem_pool_t) {}
+void* lv_malloc_core(size_t size) {
+  ++lv_allocation_calls;
+  auto* p = static_cast<Allocation*>(std::malloc(size + sizeof(Allocation)));
+  assert(p);
+  p->bytes = size;
+  lv_live_bytes += size;
+  return p + 1;
+}
+void lv_free_core(void* ptr) {
+  if (!ptr) return;
+  auto* p = static_cast<Allocation*>(ptr) - 1;
+  lv_live_bytes -= p->bytes;
+  std::free(p);
+}
+void* lv_realloc_core(void* ptr, size_t size) {
+  void* p = lv_malloc_core(size);
+  if (ptr) {
+    std::memcpy(p, ptr, std::min(size, (static_cast<Allocation*>(ptr) - 1)->bytes));
+    lv_free_core(ptr);
+  }
+  return p;
+}
+void lv_mem_monitor_core(lv_mem_monitor_t* out) {
+  *out = {};
+}
+lv_result_t lv_mem_test_core() {
+  return LV_RESULT_OK;
+}
+}
+
+void lv_label_set_display_text(lv_obj_t* label, const char* text) {
+  lv_label_set_text(label, text);
+}
+
+#include "button_grid_modal_layout.h"
+#include "page_lvgl_qr_encoder.h"
+#include "page_modal_runtime.h"
+using DisplayModalProfile = espcontrol::modal::DeviceProfile;
+constexpr int CONTROL_MODAL_INSET_REF_PX = 18, CONTROL_MODAL_BACK_BUTTON_REF_PX = 46,
+              CONTROL_MODAL_BUTTON_REF_PX = 80, CONTROL_MODAL_ARC_STROKE_REF_PX = 17,
+              CONTROL_MODAL_CONTROLS_GAP_REF_PX = 24, CONTROL_MODAL_TITLE_GAP_REF_PX = 10;
+DisplayModalProfile active_profile;
+DisplayModalProfile display_active_modal_profile() {
+  return active_profile;
+}
+struct TestTheme {
+  uint32_t surface_primary{0x212121}, surface_secondary{0x101010}, overlay{0x101010}, border{0x424242},
+      text_primary{0xFFFFFF}, text_muted{0x808080};
+} theme;
+const auto& current_theme() {
+  return theme;
+}
+uint32_t theme_display_color(uint32_t c) {
+  return c;
+}
+std::string clock_label;
+void set_clock_bar_modal_label(const std::string& s) {
+  clock_label = s;
+}
+struct Coordinator {
+  bool busy{false};
+  bool dispatching() const {
+    return busy;
+  }
+} coordinator;
+auto& ha_read_coordinator() {
+  return coordinator;
+}
+bool online = true, enough_heap = true, style_ok = true, shell_ok = true;
+bool ha_api_state_connected() {
+  return online;
+}
+bool ha_internal_heap_available(const char*) {
+  return enough_heap;
+}
+void apply_icon_width_compensation(lv_obj_t*) {}
+void apply_width_compensation(lv_obj_t*, int) {}
+bool width_compensation_vertical_axis() {
+  return false;
+}
+int compensated_width(int width, int percent) {
+  return width * percent / 100;
+}
+void light_control_center_icon_label(lv_obj_t* label) {
+  if (label) lv_obj_center(label);
+}
+const char* find_icon(const char* name) {
+  return !std::strcmp(name, "Wifi QR Tab")         ? "Q"
+         : !std::strcmp(name, "Wifi Password Tab") ? "D"
+         : !std::strcmp(name, "Wifi")              ? "W"
+                                                   : "O";
+}
+ControlModalStateService<lv_obj_t> service;
+auto& control_modal_active() {
+  return service.active();
+}
+auto& control_modal_service() {
+  return service;
+}
+// @common-structs
+struct ControlModalGridMetrics {
+  lv_obj_t *page{nullptr}, *first_card{nullptr};
+  int cols{3}, rows{3};
+} metrics;
+auto& control_modal_grid_metrics() {
+  return metrics;
+}
+void control_modal_apply_pressed_fill(lv_obj_t*) {}
+// @common-geometry
+// @common-power
+int control_modal_card_radius(lv_obj_t*) {
+  return 12;
+}
+int control_modal_scaled_px(int px, int side) {
+  return px * side / 480;
+}
+void control_modal_style_translucent_chrome_button(lv_obj_t* button) {
+  lv_obj_set_style_bg_opa(button, LV_OPA_70, LV_PART_MAIN);
+}
+void control_modal_block_close_for(uint32_t ms) {
+  service.block_close_for(lv_tick_get(), ms);
+}
+ControlModalShell control_modal_open_shell(ControlModalKind kind, lv_obj_t*, int compensation,
+                                           const lv_font_t* font, void (*close)()) {
+  ControlModalShell shell;
+  if (!shell_ok) return shell;
+  shell.layout = control_modal_calc_layout(compensation);
+  shell.overlay = lv_obj_create(lv_layer_top());
+  lv_obj_set_size(shell.overlay, lv_pct(100), lv_pct(100));
+  lv_obj_set_style_pad_all(shell.overlay, 0, LV_PART_MAIN);
+  lv_obj_set_style_border_width(shell.overlay, 0, LV_PART_MAIN);
+  shell.panel = lv_obj_create(shell.overlay);
+  lv_obj_set_style_pad_all(shell.panel, 0, LV_PART_MAIN);
+  lv_obj_set_style_border_width(shell.panel, 0, LV_PART_MAIN);
+  control_modal_apply_panel_layout(shell.overlay, shell.panel, shell.layout, 12);
+  shell.close_btn = lv_button_create(shell.panel);
+  control_modal_apply_back_button_layout(shell.close_btn, shell.layout);
+  auto* back_icon = lv_label_create(shell.close_btn);
+  lv_label_set_text(back_icon, "<");
+  lv_obj_set_style_text_font(back_icon, font, LV_PART_MAIN);
+  lv_obj_add_event_cb(
+      shell.close_btn,
+      [](lv_event_t*) {
+        ControlModalKind closing;
+        ControlModalCloseCallback callback = nullptr;
+        if (service.begin_active_close(lv_tick_get(), true, &closing, &callback) && callback) callback();
+      },
+      LV_EVENT_CLICKED, nullptr);
+  service.set_active(kind, shell.overlay, close, ControlModalDismissPolicy::DISMISS);
+  return shell;
+}
+#include "page_wifi_qr_modal.h"
+struct Arena : PageArenaAllocator {
+  size_t live{0}, bytes{0}, calls{0}, fail_at{0};
+  void* allocate(size_t n) override {
+    if (++calls == fail_at) return nullptr;
+    void* p = std::malloc(n);
+    assert(p);
+    ++live;
+    bytes += n;
+    return p;
+  }
+  void release(void* p, size_t n) override {
+    assert(live && bytes >= n);
+    --live;
+    bytes -= n;
+    std::free(p);
+  }
+};
+struct Transport : PageEntitySubscriptions {
+  struct Entry {
+    const char* entity;
+    const char* attr;
+    void* owner;
+    uint32_t revision, channel;
+    Deliver deliver;
+  };
+  std::vector<Entry> entries;
+  uint32_t connection{1};
+  bool subscribe(const char* e, const char* a, void* o, uint32_t r, uint32_t c, Deliver d) override {
+    entries.push_back({e, a, o, r, c, d});
+    return true;
+  }
+  void release(void* owner) override {
+    entries.erase(std::remove_if(entries.begin(), entries.end(), [&](auto x) { return x.owner == owner; }),
+                  entries.end());
+  }
+  uint32_t connection_generation() const override {
+    return connection;
+  }
+  void report(std::string_view value) {
+    const auto calls = cpp_allocation_calls;
+    for (auto e : entries)
+      if (!std::strcmp(e.entity, "switch.guest") && !e.attr[0])
+        e.deliver(e.owner, e.revision, e.channel, value);
+    assert(calls == cpp_allocation_calls);
+  }
+};
+struct Document {
+  std::array<uint8_t, 8192> bytes{};
+  alignas(std::max_align_t) std::array<uint8_t, 32768> memory{};
+  PageStore store;
+  size_t size{0};
+  Document(const DeviceUiLimits& limits, std::string options = "wifi_tabs=qr|credentials|guest",
+           uint32_t generation = 17, std::string credentials = "ssid64=R3Vlc3Q,security=open") {
+    PanelConfigWriter writer(bytes.data(), bytes.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {"switch.guest;Connect;Auto;Auto;;;wifi_qr;;" + credentials + "," + options,
+                                 ";Rooms;;;indicator;;subpage;;"};
+    for (size_t i = 0; i < 2; ++i)
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(cards[i].data()),
+                                  cards[i].size()) == PanelConfigStatus::OK);
+    const std::string child =
+        "~B,1|wifi_qr_card,switch.guest,Child,Auto,Auto,,,,ssid64%3DR3Vlc3Q%2Csecurity%3Dopen%2Cwifi_tabs%"
+        "3Dguest";
+    assert(writer.append_subpage(2, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(bytes.data(), size, limits, generation, memory.data(), memory.size(),
+                               &store) == PageStoreStatus::OK);
+  }
+};
+struct GuestPort final : PageGuestWifiPort {
+  PageModalRuntime* modal{nullptr};
+  Transport& transport;
+  size_t sends{0};
+  bool available{true}, accepted{true}, ack{true}, target{false};
+  std::function<void()> on_send;
+  explicit GuestPort(Transport& t) : transport(t) {}
+  bool valid(PageModalToken token) const override {
+    return modal && modal->valid(token);
+  }
+  bool connected() const override {
+    return online;
+  }
+  bool service_available() const override {
+    return available;
+  }
+  bool ready() const override {
+    return !page_lvgl_dispatching() && !coordinator.busy && !modal_callback_dispatching();
+  }
+  bool send(std::string_view entity, bool on) override {
+    assert(entity == "switch.guest");
+    ++sends;
+    target = on;
+    if (on_send) on_send();
+    if (ack) transport.report(on ? "on" : "off");
+    return accepted;
+  }
+};
+uint32_t now() {
+  return lv_tick_get();
+}
+struct Harness {
+  Document document;
+  Arena arena;
+  Transport transport;
+  PageCardDependencies deps;
+  PageEntityStateRuntime graph;
+  struct Encoder : PageQrEncoder {
+    PageLvglQrEncoder real;
+    size_t calls{0};
+    bool encode(std::string_view text, int side, bool compact, PageQrMatrix& matrix) override {
+      ++calls;
+      return real.encode(text, side, compact, matrix);
+    }
+  } encoder;
+  GuestPort guest_port;
+  PageGuestWifiRuntime guest;
+  PageWifiQrModalPort port;
+  PageModalRouter<1> router{modal_test_router<ControlModalKind::WIFI_QR>(port)};
+  PageModalRuntime modal;
+  std::function<void()> on_style;
+  PageModalToken styled_token{};
+  size_t style_calls{0};
+  const lv_font_t *label_font{LV_FONT_DEFAULT}, *heading_font{LV_FONT_DEFAULT}, *icon_font{LV_FONT_DEFAULT};
+  const lv_font_t* child_font{nullptr};
+  int compensation{100};
+  Harness(const DeviceUiLimits& limits, std::string options = "wifi_tabs=qr|credentials|guest",
+          std::string credentials = "ssid64=R3Vlc3Q,security=open", uint64_t first_opening = 1)
+      : document(limits, options, 17, credentials),
+        graph(deps, arena, transport, {64, 64, 8192}),
+        guest_port(transport),
+        guest(graph, guest_port, now),
+        port(arena, graph, encoder, guest, style(this), this,
+             [](void*, PageBindingToken t) { return t.binding != 0; }),
+        modal(router, first_opening) {
+    guest_port.modal = &modal;
+    assert(port.install(modal, true));
+    assert(graph.prepare(document.store) && modal.prepare(document.store));
+    graph.activate_prepared(document.store);
+    modal.activate_prepared(document.store);
+    transport.report("off");
+  }
+  ~Harness() {
+    modal.retire_active();
+    modal.loop();
+    graph.retire_active();
+    assert(!modal.memory().retired_contexts);
+  }
+  static PageWifiQrModalStyle style(Harness* h) {
+    PageWifiQrModalStyle s;
+    s.owner = h;
+    s.resolve = [](void* owner, PageModalToken token, const ParsedCfg& c, PageWifiQrModalEnvironment& e) {
+      auto& h = *static_cast<Harness*>(owner);
+      ++h.style_calls;
+      h.styled_token = token;
+      assert(c.entity == "switch.guest");
+      e.label_font = h.label_font;
+      e.heading_font = h.heading_font;
+      e.icon_font = h.icon_font;
+      e.width_compensation_percent = h.compensation;
+      if (h.child_font && token.card >= h.document.store.page(0)->card_count)
+        e.label_font = e.heading_font = e.icon_font = h.child_font;
+      if (h.on_style) h.on_style();
+      return style_ok;
+    };
+    return s;
+  }
+  PageModalToken open(CardId card = 0) {
+    const auto cpp = cpp_allocation_calls, lv = lv_allocation_calls;
+    assert(modal.request_card({document.store.generation(), card}));
+    assert(cpp == cpp_allocation_calls && lv == lv_allocation_calls);
+    modal.loop();
+    return modal.token();
+  }
+  void close() {
+    modal.dismiss();
+    modal.loop();
+    assert(!modal.memory().active_contexts && !modal.memory().retired_contexts);
+  }
+  lv_obj_t* panel() {
+    return lv_obj_get_child(service.active().overlay, 0);
+  }
+  lv_obj_t* back() {
+    auto* p = panel();
+    for (uint32_t i = 0; i < lv_obj_get_child_count(p); ++i) {
+      auto* c = lv_obj_get_child(p, i);
+      if (lv_obj_check_type(c, &lv_button_class)) return c;
+    }
+    std::abort();
+  }
+  lv_obj_t* tab_row() {
+    auto* p = panel();
+    for (uint32_t i = 0; i < lv_obj_get_child_count(p); ++i) {
+      auto* c = lv_obj_get_child(p, i);
+      if (lv_obj_get_child_count(c) && lv_obj_check_type(lv_obj_get_child(c, 0), &lv_button_class)) return c;
+    }
+    std::abort();
+  }
+  lv_obj_t* qr_view() {
+    auto* p = panel();
+    for (uint32_t i = 0; i < lv_obj_get_child_count(p); ++i) {
+      auto* c = lv_obj_get_child(p, i);
+      if (lv_obj_get_child_count(c) == 2 && !lv_obj_check_type(lv_obj_get_child(c, 0), &lv_button_class) &&
+          lv_obj_check_type(lv_obj_get_child(c, 1), &lv_label_class))
+        return c;
+    }
+    std::abort();
+  }
+  lv_obj_t* details() {
+    auto* p = panel();
+    for (uint32_t i = 0; i < lv_obj_get_child_count(p); ++i) {
+      auto* c = lv_obj_get_child(p, i);
+      if (lv_obj_get_child_count(c) == 5 && lv_obj_check_type(lv_obj_get_child(c, 0), &lv_label_class))
+        return c;
+    }
+    std::abort();
+  }
+  lv_obj_t* group() {
+    auto* p = panel();
+    for (uint32_t i = 0; i < lv_obj_get_child_count(p); ++i) {
+      auto* c = lv_obj_get_child(p, i);
+      if (lv_obj_get_child_count(c) == 1 && !lv_obj_check_type(lv_obj_get_child(c, 0), &lv_label_class))
+        return lv_obj_get_child(c, 0);
+    }
+    std::abort();
+  }
+  void select(size_t index) {
+    auto* button = lv_obj_get_child(tab_row(), index);
+    lv_obj_send_event(button, LV_EVENT_PRESSED, nullptr);
+    lv_obj_send_event(button, LV_EVENT_CLICKED, nullptr);
+    modal.loop();
+  }
+};
+void click(lv_obj_t* object) {
+  lv_obj_send_event(object, LV_EVENT_PRESSED, nullptr);
+  lv_obj_send_event(object, LV_EVENT_CLICKED, nullptr);
+}
+void basic(const DeviceUiLimits& limits) {
+  Harness h(limits);
+  auto token = h.open();
+  assert(token.opening && h.modal.interactive(token));
+  assert(clock_label == espcontrol_i18n_key("label_connect"));
+  auto* qr = h.qr_view();
+  assert(!lv_obj_has_flag(qr, LV_OBJ_FLAG_HIDDEN));
+  lv_obj_invalidate(qr);
+  lv_refr_now(lv_display_get_default());
+  h.select(1);
+  assert(lv_obj_has_flag(qr, LV_OBJ_FLAG_HIDDEN) && !lv_obj_has_flag(h.details(), LV_OBJ_FLAG_HIDDEN));
+  assert(!std::strcmp(lv_label_get_text(lv_obj_get_child(h.details(), 1)), "Guest"));
+  assert(!std::strcmp(lv_label_get_text(lv_obj_get_child(h.details(), 4)), espcontrol_i18n_key("none")));
+  h.select(2);
+  auto* group = h.group();
+  assert(!lv_obj_has_state(group, LV_STATE_DISABLED));
+  lv_obj_send_event(group, LV_EVENT_CLICKED, nullptr);
+  h.modal.loop();
+  assert(h.guest_port.sends == 0);
+  click(group);
+  assert(h.guest_port.sends == 0);
+  h.modal.loop();
+  assert(h.guest_port.sends == 1 && h.guest_port.target);
+  h.close();
+  const auto cycle = [&] {
+    const auto t = h.open();
+    assert(t.opening && h.modal.interactive(t));
+    h.select(1);
+    h.select(2);
+    const auto calls = cpp_allocation_calls, lv_calls = lv_allocation_calls;
+    click(h.group());
+    assert(cpp_allocation_calls == calls && lv_allocation_calls == lv_calls);
+    const auto sends = h.guest_port.sends;
+    h.modal.loop();
+    assert(h.guest_port.sends == sends + 1);
+    h.close();
+  };
+  for (unsigned i = 0; i < 10; ++i) cycle();
+  const auto cpp = cpp_live_bytes, lv = lv_live_bytes, blocks = h.arena.live, bytes = h.arena.bytes,
+             channels = h.transport.entries.size();
+  const char* override_count = std::getenv("ESPCONTROL_TEST_CYCLES");
+  const unsigned cycles = override_count ? std::strtoul(override_count, nullptr, 10) : 1000;
+  for (unsigned i = 0; i < cycles; ++i) {
+    cycle();
+    assert(cpp_live_bytes == cpp && lv_live_bytes == lv && h.arena.live == blocks && h.arena.bytes == bytes &&
+           h.transport.entries.size() == channels);
+  }
+  std::printf("%s: demanded QR/details/guest: %u stable open/tab/send/ack/close cycles\n",
+              limits.device_profile, cycles);
+}
+void options_and_offline(const DeviceUiLimits& limits) {
+  {
+    Harness h(limits, "wifi_tabs=qr|credentials|guest", "ssid64=R3Vlc3Q,security=open", UINT64_MAX);
+    const auto token = h.open();
+    assert(token.opening == UINT64_MAX);
+    h.close();
+    assert(!h.modal.request_card({17, 0}));
+  }
+  {
+    Harness h(limits);
+    assert(!h.modal.request_card({17, 0}, ControlModalKind::ALARM_CONTROL));
+    lv_font_t child_font = *LV_FONT_DEFAULT;
+    child_font.line_height += 6;
+    h.child_font = &child_font;
+    const auto child = h.document.store.card(1)->target;
+    assert(child != NO_PAGE);
+    const auto token = h.open(h.document.store.page(child)->first_card);
+    assert(token.opening && clock_label == "Child");
+    assert(h.styled_token.card == token.card && h.styled_token.configuration == token.configuration &&
+           h.styled_token.opening == token.opening);
+    assert(lv_obj_get_child_count(h.tab_row()) == 1);
+    assert(lv_obj_get_style_text_font(lv_obj_get_child(lv_obj_get_child(h.group(), 0), 0), LV_PART_MAIN) ==
+           &child_font);
+    const auto sends = h.guest_port.sends;
+    click(h.group());
+    h.close();
+    assert(h.guest_port.sends == sends);
+  }
+
+  {
+    Harness h(limits);
+    auto token = h.open();
+    click(h.back());
+    h.modal.loop();
+    assert(h.modal.interactive(token));
+    lv_tick_inc(351);
+    lv_obj_send_event(h.back(), LV_EVENT_CLICKED, nullptr);
+    h.modal.loop();
+    assert(h.modal.interactive(token));
+    click(h.back());
+    h.modal.loop();
+    assert(!h.modal.memory().active_contexts && !h.modal.memory().retired_contexts);
+  }
+
+  for (const auto& item :
+       std::array<std::pair<const char*, size_t>, 5>{{{"", 2},
+                                                      {"wifi_tabs=guest", 1},
+                                                      {"wifi_tabs=credentials", 1},
+                                                      {"wifi_tabs=guest|qr|guest|credentials", 3},
+                                                      {"wifi_tabs=bogus", 1}}}) {
+    Harness h(limits, item.first);
+    const auto blocks = h.arena.live;
+    const auto t = h.open();
+    assert(t.opening);
+    assert(lv_obj_get_child_count(h.tab_row()) == item.second);
+    const bool has_qr =
+        std::strcmp(item.first, "wifi_tabs=guest") && std::strcmp(item.first, "wifi_tabs=credentials");
+    assert(h.arena.live == blocks + (has_qr ? 4 : 2));
+    if (!std::strcmp(item.first, "wifi_tabs=guest|qr|guest|credentials")) {
+      assert(h.encoder.calls == 0);
+      h.select(1);
+      assert(h.encoder.calls == 1);
+    }
+    h.close();
+    assert(h.arena.live == blocks);
+  }
+  {
+    Harness h(limits, "wifi_tabs=credentials", "ssid64=R3Vlc3Q,security=wpa,pass64=UGFzc3dvcmQ,hidden");
+    assert(h.open().opening);
+    assert(!std::strcmp(lv_label_get_text(lv_obj_get_child(h.details(), 4)), "Password"));
+    h.close();
+  }
+  {
+    Harness h(limits);
+    online = false;
+    auto t = h.open();
+    assert(h.modal.interactive(t));
+    h.select(1);
+    assert(!std::strcmp(lv_label_get_text(lv_obj_get_child(h.details(), 1)), "Guest"));
+    h.select(2);
+    auto* group = h.group();
+    assert(lv_obj_has_state(group, LV_STATE_DISABLED));
+    click(group);
+    h.modal.loop();
+    assert(!h.guest_port.sends);
+    ++h.transport.connection;
+    online = true;
+    h.modal.loop();
+    assert(h.modal.interactive(t) && lv_obj_has_state(group, LV_STATE_DISABLED));
+    h.transport.report("off");
+    h.modal.loop();
+    assert(!lv_obj_has_state(group, LV_STATE_DISABLED));
+    lv_obj_send_event(group, LV_EVENT_PRESSED, nullptr);
+    online = false;
+    ++h.transport.connection;
+    h.modal.loop();
+    online = true;
+    ++h.transport.connection;
+    h.modal.loop();
+    h.transport.report("off");
+    h.modal.loop();
+    lv_obj_send_event(group, LV_EVENT_CLICKED, nullptr);
+    h.modal.loop();
+    assert(!h.guest_port.sends && h.modal.interactive(t));
+    click(group);
+    h.modal.loop();
+    assert(h.guest_port.sends == 1);
+    h.close();
+  }
+  {
+    Harness h(limits);
+    h.graph.retire_active();
+    assert(h.open().opening);
+    h.select(2);
+    assert(lv_obj_has_state(h.group(), LV_STATE_DISABLED));
+    click(h.group());
+    h.modal.loop();
+    assert(!h.guest_port.sends);
+    h.close();
+  }
+}
+void idle_geometry_and_failures(const DeviceUiLimits& limits, lv_display_t* display) {
+  {
+    Harness h(limits);
+    assert(h.open().opening);
+    lv_refr_now(display);
+    size_t draws = 0;
+    auto* surface = lv_obj_get_child(h.qr_view(), 0);
+    lv_obj_add_event_cb(
+        surface, [](lv_event_t* e) { ++*static_cast<size_t*>(lv_event_get_user_data(e)); },
+        LV_EVENT_DRAW_MAIN, &draws);
+    const auto cpp = cpp_allocation_calls, lv = lv_allocation_calls;
+    for (unsigned n = 0; n < 1000; ++n) {
+      h.modal.loop();
+      lv_refr_now(display);
+    }
+    assert(cpp_allocation_calls == cpp && lv_allocation_calls == lv && draws == 0);
+    h.select(1);
+    lv_font_t heading = *LV_FONT_DEFAULT;
+    heading.line_height += 4;
+    h.heading_font = &heading;
+    h.icon_font = &heading;
+    h.modal.loop();
+    assert(lv_obj_get_style_text_font(lv_obj_get_child(h.details(), 1), LV_PART_MAIN) == &heading);
+    assert(lv_obj_get_style_text_font(lv_obj_get_child(h.back(), 0), LV_PART_MAIN) == &heading);
+    const auto previous = theme;
+    theme.surface_secondary = 0x445566;
+    theme.text_primary = 0xAABBCC;
+    h.modal.loop();
+    assert((lv_color_to_u32(lv_obj_get_style_bg_color(h.panel(), LV_PART_MAIN)) & 0xFFFFFF) ==
+           theme.surface_secondary);
+    h.close();
+    theme = previous;
+  }
+  for (const auto& shape : std::array<std::pair<int, int>, 7>{
+           {{320, 480}, {480, 480}, {480, 800}, {600, 1024}, {800, 480}, {1024, 600}, {1280, 800}}}) {
+    lv_display_set_resolution(display, shape.first, shape.second);
+    active_profile.layout_family =
+        shape.second > shape.first    ? espcontrol::modal::LayoutFamily::COMPACT_PORTRAIT
+        : shape.second == shape.first ? espcontrol::modal::LayoutFamily::COMPACT_SQUARE
+                                      : espcontrol::modal::LayoutFamily::WIDE_LANDSCAPE;
+    Harness h(limits, "wifi_tabs=qr");
+    assert(h.open().opening);
+    lv_obj_update_layout(h.panel());
+    const auto layout = control_modal_calc_layout(100);
+    auto* surface = lv_obj_get_child(h.qr_view(), 0);
+    lv_area_t box;
+    lv_obj_get_coords(surface, &box);
+    assert(box.y1 >= layout.panel_y + layout.back_inset_y + layout.back_size);
+    assert(box.x1 >= layout.panel_x && box.x2 < layout.panel_x + layout.panel_w);
+    lv_refr_now(display);
+    h.close();
+  }
+  lv_display_set_resolution(display, 480, 480);
+  active_profile = {};
+  {
+    Harness h(limits);
+    const auto blocks = h.arena.live, cpp = cpp_live_bytes, lv = lv_live_bytes;
+    for (size_t offset : {1u, 2u, 3u, 4u}) {
+      h.arena.fail_at = h.arena.calls + offset;
+      assert(!h.open().opening);
+      h.arena.fail_at = 0;
+      assert(h.arena.live == blocks && cpp_live_bytes == cpp && lv_live_bytes == lv);
+    }
+    enough_heap = false;
+    assert(!h.open().opening);
+    enough_heap = true;
+    style_ok = false;
+    assert(!h.open().opening);
+    style_ok = true;
+    shell_ok = false;
+    assert(!h.open().opening);
+    shell_ok = true;
+    assert(h.arena.live == blocks && cpp_live_bytes == cpp && lv_live_bytes == lv);
+    assert(h.open().opening);
+    style_ok = false;
+    h.modal.loop();
+    style_ok = true;
+    assert(!h.modal.memory().active_contexts);
+    const auto t = h.open();
+    h.on_style = [&] {
+      assert(h.modal.notify_closed(t));
+      h.modal.loop();
+      assert(h.modal.memory().retired_contexts == 1);
+    };
+    h.modal.loop();
+    h.on_style = {};
+    assert(!h.modal.memory().active_contexts && !h.modal.memory().retired_contexts);
+  }
+  {
+    Harness h(limits, "wifi_tabs=qr", "ssid64=bad,security=wpa");
+    assert(!h.open().opening);
+  }
+}
+struct QrDrawCapture {
+  Harness* harness{nullptr};
+  const void* source{nullptr};
+  bool close{false}, fired{false};
+};
+void capture_draw(lv_event_t* event) {
+  auto& capture = *static_cast<QrDrawCapture*>(lv_event_get_user_data(event));
+  auto* task = lv_event_get_draw_task(event);
+  if (lv_draw_task_get_type(task) != LV_DRAW_TASK_TYPE_IMAGE) return;
+  capture.source = lv_draw_task_get_image_dsc(task)->src;
+  if (capture.close && !capture.fired) {
+    capture.fired = true;
+    capture.harness->modal.dismiss(PageModalClose::REPLACED);
+    capture.harness->modal.loop();
+    assert(capture.harness->modal.memory().retired_contexts == 1);
+  }
+}
+void draw_and_replacement(const DeviceUiLimits& limits, lv_display_t* display) {
+  Document next(limits, "wifi_tabs=qr|credentials|guest", UINT32_MAX);
+  alignas(std::max_align_t) std::array<uint8_t, 32768> published_memory{};
+  PageStore published;
+  Harness h(limits);
+  auto token = h.open();
+  auto* surface = lv_obj_get_child(h.qr_view(), 0);
+  QrDrawCapture capture{&h};
+  lv_obj_add_flag(surface, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
+  lv_obj_add_event_cb(surface, capture_draw, LV_EVENT_DRAW_TASK_ADDED, &capture);
+  lv_obj_invalidate(surface);
+  lv_refr_now(display);
+  assert(capture.source);
+  lv_image_decoder_dsc_t held{};
+  assert(lv_image_decoder_open(&held, capture.source, nullptr) == LV_RESULT_OK);
+  h.modal.dismiss();
+  h.modal.loop();
+  assert(!h.modal.valid(token) && h.modal.memory().retired_contexts == 1);
+  assert(h.modal.request_card({17, 0}));
+  h.modal.loop();
+  assert(h.modal.memory().retired_contexts == 1);
+  lv_image_decoder_close(&held);
+  h.modal.loop();
+  assert(h.modal.interactive(h.modal.token()) && h.modal.token().opening != token.opening);
+  h.close();
+  token = h.open();
+  surface = lv_obj_get_child(h.qr_view(), 0);
+  capture = {&h, nullptr, true, false};
+  lv_obj_add_flag(surface, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
+  lv_obj_add_event_cb(surface, capture_draw, LV_EVENT_DRAW_TASK_ADDED, &capture);
+  lv_obj_invalidate(surface);
+  lv_refr_now(display);
+  assert(capture.fired && !h.modal.valid(token));
+  h.modal.loop();
+  assert(!h.modal.memory().retired_contexts);
+  token = h.open();
+  h.select(2);
+  h.guest_port.on_send = [&] {
+    assert(h.modal.notify_closed(token));
+    h.modal.loop();
+    assert(h.modal.memory().retired_contexts == 1);
+  };
+  click(h.group());
+  h.modal.loop();
+  h.guest_port.on_send = {};
+  assert(!h.modal.memory().active_contexts && !h.modal.memory().retired_contexts);
+
+  assert(PageStore::stage_v1(next.bytes.data(), next.size, limits, 0, published_memory.data(),
+                             published_memory.size(), &published) == PageStoreStatus::OK);
+  token = h.open();
+  h.select(2);
+  auto* retired_group = h.group();
+  lv_obj_send_event(retired_group, LV_EVENT_PRESSED, nullptr);
+  assert(h.graph.prepare(next.store) && h.modal.prepare(next.store));
+  h.graph.discard_prepared();
+  h.modal.discard_prepared();
+  assert(h.modal.valid(token));
+  assert(h.graph.prepare(next.store) && h.modal.prepare(next.store));
+  coordinator.busy = true;
+  h.modal.activate_prepared(published);
+  h.graph.activate_prepared(published);
+  h.document.memory.fill(0xDA);
+  next.memory.fill(0xDE);
+  const auto sends = h.guest_port.sends;
+  lv_obj_send_event(retired_group, LV_EVENT_CLICKED, nullptr);
+  assert(h.guest_port.sends == sends);
+  assert(h.modal.memory().retired_contexts == 1);
+  coordinator.busy = false;
+  h.modal.loop();
+  assert(!h.modal.memory().retired_contexts);
+  h.document.store = published;
+  h.transport.report("off");
+  assert(h.open().configuration == 0);
+  h.close();
+}
+
+int main() {
+  std::setvbuf(stdout, nullptr, _IOLBF, 0);
+  lv_init();
+  auto* display = lv_display_create(480, 480);
+  lv_timer_pause(lv_display_get_refr_timer(display));
+  static std::array<uint16_t, 480 * 32> buffer{};
+  lv_display_set_buffers(display, buffer.data(), nullptr, sizeof(buffer), LV_DISPLAY_RENDER_MODE_PARTIAL);
+  lv_display_set_flush_cb(display,
+                          [](lv_display_t* d, const lv_area_t*, uint8_t*) { lv_display_flush_ready(d); });
+  for (const auto& profile : DEVICE_UI_PROFILES) {
+    const auto* filter = std::getenv("ESPCONTROL_TEST_DEVICE");
+    if (!filter || !std::strcmp(filter, profile.device_profile)) basic(profile);
+  }
+  options_and_offline(DEVICE_UI_PROFILES[8]);
+  idle_geometry_and_failures(DEVICE_UI_PROFILES[8], display);
+  draw_and_replacement(DEVICE_UI_PROFILES[8], display);
+  lv_display_delete(display);
+  lv_deinit();
+  assert(lv_live_bytes == 0);
+  std::puts("QR modal basic native PASS");
+}

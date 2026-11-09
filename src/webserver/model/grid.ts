@@ -137,23 +137,24 @@ export function applySpans(
   sizes: SlotSizeMap,
   maxSlots: number,
   gridCols: number,
+  maxCardId: number = maxSlots,
 ): void {
   let entries = grid.slice(0, maxSlots);
   const unavailablePositions: number[] = [];
   for (let i = 0; i < entries.length; i += 1) {
-    if (entries[i]! > maxSlots) unavailablePositions.push(i);
+    if (entries[i]! > maxCardId) unavailablePositions.push(i);
   }
   const preservedEntries = unavailablePositions.length > 0
-    ? grid.filter((slot) => slot > maxSlots)
+    ? grid.filter((slot) => slot > maxCardId)
     : [];
   const trailingCapacity = Math.max(0, grid.length - maxSlots);
   if (preservedEntries.length > trailingCapacity) return;
   if (unavailablePositions.length > 0) {
     const visibleEntries = entries.filter(
-      (slot) => slot === -2 || (slot > 0 && slot <= maxSlots),
+      (slot) => slot === -2 || (slot > 0 && slot <= maxCardId),
     );
     const trailingVisibleEntries = grid.slice(maxSlots).filter(
-      (slot) => slot === -2 || (slot > 0 && slot <= maxSlots),
+      (slot) => slot === -2 || (slot > 0 && slot <= maxCardId),
     );
     if (visibleEntries.length + trailingVisibleEntries.length > maxSlots) return;
     visibleEntries.push(...trailingVisibleEntries);
@@ -170,7 +171,7 @@ export function applySpans(
   const items: GridEntry[] = [];
   for (let i = 0; i < maxSlots; i += 1) {
     const slot = entries[i] ?? 0;
-    if (!(slot > 0 && slot <= maxSlots || slot === -2)) continue;
+    if (!(slot > 0 && slot <= maxCardId || slot === -2)) continue;
     const size = sizes[String(slot)] || 1;
     const candidates: number[] = [];
     for (let offset = 0; offset < maxSlots; offset += 1) {

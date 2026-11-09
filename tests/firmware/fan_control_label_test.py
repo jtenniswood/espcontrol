@@ -24,6 +24,7 @@ source = r'''
 #include <cstdio>
 #include <string>
 #include <vector>
+#include "fan_control_modal_lifetime.h"
 struct lv_obj_t { std::string text; bool checked = false; };
 struct lv_timer_t {};
 void lv_label_set_display_text(lv_obj_t *label, const char *text) { label->text = text; }

@@ -115,13 +115,13 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
   lv_obj_clear_flag(card->root, LV_OBJ_FLAG_HIDDEN);
   const int font_height = lv_font_get_line_height(card->font);
   const int temperature_height = lv_font_get_line_height(card->temperature_font);
-  const int day_gap = weather_daily_day_gap(card->font);
   const int icon_height = lv_font_get_line_height(card->icon_font);
   const size_t available_days = card->view == WeatherForecastView::DAILY ? forecast.count : 1;
   const int minimum_day_width = weather_daily_forecast_minimum_width(card->font, card->icon_font,
     card->temperature_font, forecast, first, available_days);
   // Stale status belongs in the details modal; it must not change card geometry.
   const int content_height = height;
+  const int day_gap = weather_daily_day_gap(card->font);
   const int row_gap = std::max(8, font_height / 2);
   const int minimum_height = icon_height + font_height + temperature_height + 4;
   const auto layout = espcontrol::weather::card_layout(width, content_height, minimum_day_width,
@@ -228,7 +228,7 @@ inline void weather_daily_unavailable_slot(BtnSlot &slot) {
 }
 inline void weather_daily_setup(BtnSlot &slot, const ParsedCfg &config,
                                 const DisplayProfile &display) {
-  if (!espcontrol::weather::entity_id_safe(config.entity) || weather_daily_cards().size() >= 16) {
+  if (!espcontrol::weather::entity_id_safe(config.entity) || weather_daily_cards().size() >= espcontrol::weather::MAX_CARDS) {
     weather_daily_unavailable_slot(slot); return;
   }
   auto *source = weather_daily_acquire_source(config.entity);

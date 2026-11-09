@@ -27,10 +27,10 @@ export function createGridMigrationFeature(
   }
 
   function schedule(): void {
-    if (runtime.orderReceived || hasConfiguredGrid()) return;
+    if (state.nativeConfigLoading || state.nativeTransferActive || state.nativeHasNestedPages || runtime.orderReceived || hasConfiguredGrid()) return;
     clearTimeout(runtime.migrationTimer as any);
     runtime.migrationTimer = setTimeout(() => {
-      if (runtime.orderReceived || hasConfiguredGrid()) return;
+      if (state.nativeConfigLoading || state.nativeTransferActive || state.nativeHasNestedPages || runtime.orderReceived || hasConfiguredGrid()) return;
       let position = 0;
       for (let index = 0; index < layout.numSlots; index++) {
         if (state.buttons[index]?.entity && position < layout.numSlots) {

@@ -36,7 +36,7 @@ function fail(message: string): never { throw new PanelConfigError(message); }
 
 const BASE64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-function encodeBase64(input: Uint8Array): string {
+export function encodeBase64(input: Uint8Array): string {
   let output = "";
   for (let offset = 0; offset < input.length; offset += 3) {
     const first = input[offset]!;
@@ -50,7 +50,7 @@ function encodeBase64(input: Uint8Array): string {
   return output;
 }
 
-function decodeBase64(value: unknown): Uint8Array {
+export function decodeBase64(value: unknown): Uint8Array {
   if (typeof value !== "string" || value.length === 0 || value.length % 4 !== 0 ||
       !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
     fail("PanelConfig backup payload is not valid base64");
@@ -75,6 +75,9 @@ function encodeString(value: string, label: string, maxLength: number, allowEmpt
     fail(`${label} must be ${allowEmpty ? "a string" : "a non-empty string"}`);
   }
   const encoded = new TextEncoder().encode(value);
+  if (new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(encoded) !== value) {
+    fail(`${label} contains an unpaired Unicode surrogate`);
+  }
   if ((!allowEmpty && encoded.length === 0) || encoded.length > maxLength) {
     fail(`${label} exceeds its supported byte length`);
   }
@@ -168,7 +171,7 @@ export function encodePanelConfig(document: PanelConfigDocument): Uint8Array {
 
 function decodeString(bytes: Uint8Array, label: string, allowEmpty = true): string {
   if (!allowEmpty && bytes.length === 0) fail(`${label} must not be empty`);
-  try { return new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch { return fail(`${label} is not valid UTF-8`); }
+  try { return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes); } catch { return fail(`${label} is not valid UTF-8`); }
 }
 
 export function decodePanelConfig(input: Uint8Array): PanelConfigDocument {

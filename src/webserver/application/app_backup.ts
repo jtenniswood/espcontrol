@@ -3,6 +3,7 @@ import { resetAwareFetch } from "../api/reset_session";
 import type { PanelIdentityBackup } from "../model/panel_identity";
 import type { PanelIdentityFeature } from "./panel_identity";
 import { state } from "../state/app_instance";
+import { WEB_UI_COLORS } from "../state/ui_tokens";
 import * as EspControlModel from "../model";
 import {
     normalizeBrightnessMode,
@@ -64,9 +65,13 @@ import type { PreviewRenderFeature } from "./preview_render";
 import type { ButtonSettingsFeature } from "./button_settings";
 import { legacyRestoreFailureMessage, restoreLegacyLayoutDocument } from "../features/legacy_layout_restore";
 import { panelConfigDocumentContainsWifiSharing } from "../features/wifi_sharing_config";
+import { NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE, nativeBackupHasInactiveRecords } from "../features/native_panel_config";
+import { decodeNativeConfigBackupPayload, decodeNativeConfigDocument } from "../model/native_config_backup";
+import { panelPageDocumentDepth } from "../model/panel_config_conversion";
 
 export interface AppBackupControllers {
     readonly identity?: PanelIdentityFeature;
+    readonly waitForInitialState: () => Promise<void>;
     readonly layout: ApplicationLayoutState;
     readonly backupExport: BackupExportController;
     readonly backupImport: BackupImportController<any, any, any>;
@@ -88,7 +93,7 @@ export interface AppBackupControllers {
     readonly shell: Pick<ControlsShellFeature, "switchTab"> & Partial<Pick<ControlsShellFeature, "showBanner">>;
     readonly requestApi: ApplicationApiFeature;
     readonly statusPreview: Pick<AppStatusPreviewFeature, "syncInput" | "updateTempPreview">;
-    readonly grid: Pick<GridFeature, "applyImportedButtonOrder" | "cancelMainGridSave" | "serializeGrid">;
+    readonly grid: Pick<GridFeature, "applyImportedButtonOrder" | "cancelMainGridSave" | "flushMainGridSave" | "serializeGrid">;
     readonly artworkPostApi: ArtworkPostApiFeature;
     readonly schedulePostApi: ScreenSchedulePostApiFeature;
     readonly clockBarPostApi: ClockBarPostApiFeature;
@@ -101,7 +106,7 @@ export interface AppBackupFeature {
     backupExportFileName(value?: unknown): string;
     normalizeImportedPanelSettings(settings?: unknown): unknown;
     gridColsForImportedSettings(settings?: unknown): number;
-    exportConfig(): void;
+    exportConfig(): Promise<void>;
     importConfig(): void;
 }
 
@@ -230,13 +235,14 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
         if (identity) data.identity = identity;
         backupFileController.download(data, backupExportController.fileName(controllers.layout.config.screenSize, undefined, identity));
     }
-    function addNativeConfigToBackup(this: any, data?: any) {
+    function addNativeConfigToBackup(this: any, data: any, nativeDocumentBytes?: Uint8Array) {
         return backupExportController.addNativeConfig(data, {
             "deviceProfile": controllers.layout.deviceId,
             "buttons": state.buttons,
             "subpages": state.subpages,
             "buttonOrder": data.button_order,
             "buttonOnColor": data.button_on_color,
+            ...(nativeDocumentBytes ? { nativeDocumentBytes } : {}),
         });
     }
     async function exportConfig(this: any) {
@@ -246,16 +252,38 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
             await controllers.identity?.load();
             identity = controllers.identity?.backup();
         } catch { identityUnavailable = true; }
+        let nativeDocumentBytes: Uint8Array | undefined;
+        let nativeDocument: PanelConfigDocument | undefined;
+        try {
+            await controllers.waitForInitialState();
+            // Publish a debounced layout move before reading the saved snapshot.
+            controllers.grid.flushMainGridSave();
+            await requestApi.postQueue;
+            if (requestApi.postQueueError) throw new Error("Pending changes did not save.");
+            nativeDocumentBytes = await controllers.nativePanelConfig?.readForBackup() ?? undefined;
+            if (nativeDocumentBytes) nativeDocument = decodeNativeConfigDocument(nativeDocumentBytes);
+        } catch {
+            controllers.shell.showBanner?.("Could not export the backup. Check that changes have saved and the panel is connected, then try again.", "error");
+            return;
+        }
+        // Project the same saved layout into the portable part of the backup.
+        // SSE state can still be arriving or can lag another browser's edits.
+        const nativeGrid = nativeDocument ? EspControlModel.parseGridOrder(
+            nativeDocument.settings.button_order, controllers.layout.numSlots, controllers.layout.gridCols,
+        ) : undefined;
         var data: any = createBackupConfig({
             device: controllers.layout.deviceId,
             slots: controllers.layout.numSlots,
             exported_at: new Date().toISOString(),
-            grid: state.grid,
-            sizes: state.sizes,
-            button_order: serializeGrid(state.grid),
-            button_on_color: state.onColor,
-            buttons: state.buttons,
-            subpages: state.subpages,
+            grid: nativeGrid?.grid ?? state.grid,
+            sizes: nativeGrid?.sizes ?? state.sizes,
+            button_order: nativeDocument ? nativeDocument.settings.button_order || "" : serializeGrid(state.grid),
+            button_on_color: nativeDocument ? nativeDocument.settings.button_on_color || "" : state.onColor,
+            buttons: nativeDocument ? Array.from({ length: controllers.layout.numSlots }, (_, index) =>
+                parseButtonConfig(nativeDocument.buttons[index + 1] || "")) : state.buttons,
+            subpages: nativeDocument ? Object.fromEntries(Object.entries(nativeDocument.subpages).map(
+                ([slot, value]) => [slot, parseSubpageConfig(value)],
+            )) : state.subpages,
             settings: {
                 indoor_temp_enable: state._indoorOn,
                 outdoor_temp_enable: state._outdoorOn,
@@ -351,7 +379,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 schedule_clock_text_color: normalizeHexColor(state.scheduleClockTextColor, "FFFFFF"),
             },
         } as any);
-        downloadBackupConfig(addNativeConfigToBackup(data), identity);
+        downloadBackupConfig(addNativeConfigToBackup(data, nativeDocumentBytes), identity);
         if (identityUnavailable) controllers.shell.showBanner?.(
             "Backup exported without the panel name because naming is unavailable.", "warning");
     }
@@ -391,21 +419,24 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                         nativeDocument.subpages[Number(nativeSubpageKey)] = nativeSubpageValue;
                 }
                 var backedUpNativeConfig: any = backupPlan.config.native_config;
+                const exactGraph = backedUpNativeConfig?.document_version === 2 &&
+                    backedUpNativeConfig.device_profile === controllers.layout.deviceId;
                 if (backedUpNativeConfig &&
                     backedUpNativeConfig.device_profile === controllers.layout.deviceId) {
-                    nativeDocument = EspControlModel.decodePanelConfig(
-                        EspControlModel.decodePanelConfigBackupPayload(backedUpNativeConfig));
+                    nativeDocument = decodeNativeConfigDocument(decodeNativeConfigBackupPayload(backedUpNativeConfig));
                 }
-                nativeDocument.settings.button_order = String(nativeDocument.settings.button_order || backupPlan.button_order || "");
-                nativeDocument.settings.button_on_color = String(nativeDocument.settings.button_on_color || backupPlan.config.button_on_color || "");
-                var parsedButtonOrder: any = EspControlModel.parseGridOrder(
-                    nativeDocument.settings.button_order,
-                    controllers.layout.numSlots,
-                    importedGridCols,
-                    {});
-                nativeDocument.settings.button_order = EspControlModel.serializeGridOrder(
-                    parsedButtonOrder.grid,
-                    parsedButtonOrder.sizes);
+                if (!exactGraph) {
+                    nativeDocument.settings.button_order = String(nativeDocument.settings.button_order || backupPlan.button_order || "");
+                    nativeDocument.settings.button_on_color = String(nativeDocument.settings.button_on_color || backupPlan.config.button_on_color || "");
+                    var parsedButtonOrder: any = EspControlModel.parseGridOrder(
+                        nativeDocument.settings.button_order,
+                        controllers.layout.numSlots,
+                        importedGridCols,
+                        {});
+                    nativeDocument.settings.button_order = EspControlModel.serializeGridOrder(
+                        parsedButtonOrder.grid,
+                        parsedButtonOrder.sizes);
+                }
 
                 function readLegacyText(name: string) {
                     return requestApi.getJsonFirst(requestApi.entityDetailPaths("text", [name], "state"));
@@ -437,6 +468,9 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                         return "legacy-fallback";
                     });
                 }
+                // Finish a pending grid move before the replacement so its
+                // debounce cannot publish the old order after the restore.
+                controllers.grid.flushMainGridSave();
                 await requestApi.postQueue;
                 var nativeController: any = controllers.nativePanelConfig;
                 var nativeAvailability: any = nativeController && nativeController.client
@@ -444,6 +478,15 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     : "legacy-fallback";
                 if (nativeAvailability === "failed") {
                     rejectBackup("Could not confirm that this device can safely restore the layout. Check the connection and try again.");
+                }
+                if (panelPageDocumentDepth(nativeDocument) > 1 &&
+                    (nativeAvailability !== true || nativeController.writableNavigationDepth() < 2))
+                    rejectBackup(NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE);
+                if ((nativeBackupHasInactiveRecords(nativeDocument, controllers.layout.numSlots) &&
+                     nativeController?.client?.preservesInactiveRecords() !== true) ||
+                    (nativeAvailability === "legacy-fallback" && Object.keys(nativeDocument.settings)
+                      .some(key => key !== "button_order" && key !== "button_on_color"))) {
+                    rejectBackup(NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE);
                 }
                 var layoutRestoreResult: any;
                 if (nativeAvailability === "legacy-fallback") {
@@ -454,6 +497,9 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     layoutRestoreResult = nativeRestore ? await nativeRestore : "failed";
                     if (layoutRestoreResult === "legacy-fallback") {
                         layoutRestoreResult = await queueLegacyLayoutRestore();
+                    }
+                    else if (layoutRestoreResult === "firmware-update-required") {
+                        rejectBackup(NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE);
                     }
                     else if (layoutRestoreResult === "mirror-failed") {
                         // The native document is durable, but the controller has
@@ -481,13 +527,18 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                         buildSubpageGrid(canonicalSubpage);
                         state.subpages[canonicalSubpageKey] = canonicalSubpage;
                     }
-                    nativeDocument.settings.button_order = applyImportedButtonOrder(
-                        nativeDocument.settings.button_order, {});
+                    const displayOrder = applyImportedButtonOrder(nativeDocument.settings.button_order || "", {});
+                    if (!exactGraph) nativeDocument.settings.button_order = displayOrder;
                 }
                 finally {
                     controllers.layout.gridCols = activeGridCols;
                 }
-                state.onColor = nativeDocument.settings.button_on_color;
+                state.nativePanelDocument = { ...nativeDocument, buttons: { ...nativeDocument.buttons }, subpages: { ...nativeDocument.subpages }, settings: { ...nativeDocument.settings } };
+                state.nativeHasNestedPages = panelPageDocumentDepth(nativeDocument) > 1;
+                state.nativeConfigReadOnly = false;
+                state.subpageSavePending = {};
+                state.pendingButtonOrderRaw = nativeDocument.settings.button_order || "";
+                state.onColor = nativeDocument.settings.button_on_color || backupPlan.config.button_on_color || WEB_UI_COLORS.primary;
                 if (els.setOnColor && els.setOnColor._syncColor)
                     els.setOnColor._syncColor(state.onColor);
                 if (backupPlan.settings) {

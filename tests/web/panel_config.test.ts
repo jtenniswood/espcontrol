@@ -34,6 +34,16 @@ export function runPanelConfigTests(fixture: PanelConfigFixture): void {
   const encoded = encodePanelConfig(document);
   equal(hex(encoded), fixture.encoded_hex, "the browser encoder produces the shared codec fixture");
   deepEqual(decodePanelConfig(encoded), document, "document round-trips");
+  const unicodeDocument: PanelConfigDocument = {
+    deviceProfile: "\ufeffpanel", buttons: { 1: "\ufefflight.kitchen\0😀" },
+    subpages: { 1: "\ufeff1|sensor,,," }, settings: { "\ufeffname": "\ufeffvalue" },
+  };
+  deepEqual(decodePanelConfig(encodePanelConfig(unicodeDocument)), unicodeDocument,
+    "leading BOM, embedded NUL and astral text are preserved in every v1 record");
+  for (const invalid of ["\ud800", "\udc00"]) {
+    expectPanelConfigError(() => encodePanelConfig({ ...document, buttons: { 1: invalid } }),
+      "unpaired surrogates must fail instead of being replaced during encoding");
+  }
   const duplicateSlot = encoded.slice();
   duplicateSlot[55] = 2;
   duplicateSlot[58] = 1;

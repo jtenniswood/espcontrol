@@ -253,6 +253,24 @@ bool failed_publication_sync_preserves_previous() {
          payload_equals(output, stable, loaded);
 }
 
+bool verified_prefix_preserves_payload_selection() {
+  MemoryBackend backend(4096);ConfigurationStore store(backend);
+  std::vector<uint8_t> first(3000,0x11),second(3000,0x22);
+  if(!store.commit(first.data(),first.size()).ok() || !store.commit(second.data(),second.size()).ok())return false;
+  std::array<uint8_t,10> prefix{};prefix.fill(0xAA);
+  auto loaded=store.load_prefix(prefix.data(),8);
+  if(!loaded.ok() || loaded.payload_size!=second.size() || loaded.generation!=2 ||
+     prefix[0]!=0x22 || prefix[7]!=0x22 || prefix[8]!=0xAA)return false;
+  // Corruption outside the requested prefix still disqualifies the newest slot.
+  backend.corrupt(loaded.slot,CONFIGURATION_ENVELOPE_HEADER_SIZE+2000);
+  loaded=store.load_prefix(prefix.data(),8);
+  if(!loaded.ok() || loaded.generation!=1 || prefix[0]!=0x11)return false;
+  if(store.load_prefix(nullptr,8).status!=StoreStatus::INVALID_ARGUMENT)return false;
+  if(!store.load_prefix(nullptr,0).ok())return false;
+  backend.fail_reads(true);
+  return store.load_prefix(prefix.data(),8).status==StoreStatus::READ_FAILED;
+}
+
 bool size_and_argument_errors_are_explicit() {
   MemoryBackend backend(48);
   ConfigurationStore store(backend);
@@ -290,7 +308,7 @@ bool io_and_sync_errors_are_explicit() {
 
 int main() {
   const bool passed =
-      empty_store_is_reported() && commit_and_load_round_trip() &&
+      verified_prefix_preserves_payload_selection() && empty_store_is_reported() && commit_and_load_round_trip() &&
       newest_generation_wins() && conditional_commit_rejects_a_stale_generation() &&
       corrupt_newest_falls_back() &&
       corrupt_stale_generation_cannot_promote_old_payload() &&

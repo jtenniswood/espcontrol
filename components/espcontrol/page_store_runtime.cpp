@@ -1,0 +1,211 @@
+#include "page_store_runtime.h"
+
+#include <algorithm>
+#include <cstring>
+
+#include "panel_config_document.h"
+#include "panel_config_document_v2.h"
+
+namespace espcontrol::pages {
+
+PageStoreRuntime::~PageStoreRuntime() {
+  discard_prepared();
+  if (resources_ != nullptr) resources_->retire_active();
+  if (active_arena_ != nullptr)
+    allocator_.release(active_arena_, memory_.active_reserved_bytes);
+}
+
+bool PageStoreRuntime::prepared_within_limits() const {
+  const auto *root = staged_.page(0);
+  if (!root || root->runtime_card_count > limits_.slot_count) return false;
+  size_t first_level_pages = 0;
+  for (PageId id = 1; id < staged_.page_count(); ++id) {
+    const auto *page = staged_.page(id);
+    if (!page->navigable) continue;
+    const auto depth = staged_.page_depth(id);
+    const auto *parent = staged_.page(page->parent);
+    if (depth == NO_PAGE || depth > limits_.max_navigation_depth || !parent || !parent->navigable ||
+        (depth == 1 && ++first_level_pages > limits_.max_first_level_subpages) ||
+        page->runtime_card_count > limits_.cards_per_subpage) return false;
+    if (page->card_count > limits_.cards_per_subpage) {
+      // Extra stored records are inactive preservation data only when their
+      // requested layout still fits this grid, including the Back position.
+      const auto order = staged_.string(page->order);
+      const size_t cells = order.empty() ? 0 :
+          1 + static_cast<size_t>(std::count(order.begin(), order.end(), ','));
+      if (cells > limits_.slot_count) return false;
+    }
+    for (const auto id : page->runtime_cards()) {
+      const auto *card = staged_.card(id);
+      const auto type = staged_.field(*card, CardField::TYPE);
+      if (type == "subpage" && card->target == NO_PAGE) return false;
+      for (size_t support = 0; support < limits_.card_type_count; ++support)
+        if (type == limits_.card_types[support].type && !limits_.card_types[support].allow_in_subpage) return false;
+    }
+  }
+  return true;
+}
+
+bool PageStoreRuntime::prepare(uint16_t version, const uint8_t *document, size_t size) {
+  return prepare_impl(version, document, size, false);
+}
+bool PageStoreRuntime::prepare_write(uint16_t version, const uint8_t *document, size_t size) {
+  return prepare_impl(version, document, size, true);
+}
+bool PageStoreRuntime::prepare_impl(uint16_t version, const uint8_t *document, size_t size, bool write) {
+  preparation_allocation_failed_ = false;
+  discard_prepared();
+  const auto allocation_failures = allocator_.allocation_failure_count();
+  last_stage_status_ = PageStoreStatus::INVALID_ARGUMENT;
+  if ((version != configuration::PANEL_CONFIG_DOCUMENT_VERSION &&
+       version != configuration::PANEL_CONFIG_DOCUMENT_VERSION_2) ||
+      document == nullptr || arena_capacity_ == 0 || arena_capacity_ > UINT32_MAX) {
+    ++memory_.preparation_failures;
+    return false;
+  }
+  struct Scratch {
+    PageArenaAllocator &allocator;
+    PageRuntimeMemory &memory;
+    void *data{nullptr};
+    void release() {
+      if (data) allocator.release(data, memory.preparation_scratch_bytes);
+      data = nullptr;
+      memory.preparation_scratch_bytes = 0;
+    }
+    ~Scratch() { release(); }
+  } scratch{allocator_, memory_};
+  size_t scratch_bytes = 0;
+  if (version == configuration::PANEL_CONFIG_DOCUMENT_VERSION_2) {
+    last_stage_status_ = PageStore::v2_workspace_bytes(document, size, &scratch_bytes);
+    if (last_stage_status_ != PageStoreStatus::OK || scratch_bytes > arena_capacity_) {
+      if (last_stage_status_ == PageStoreStatus::OK)
+        last_stage_status_ = write ? PageStoreStatus::CAPACITY_EXCEEDED : PageStoreStatus::BUFFER_TOO_SMALL;
+      ++memory_.preparation_failures;
+      return false;
+    }
+    scratch.data = allocator_.allocate(scratch_bytes);
+    if (!scratch.data) {
+      preparation_allocation_failed_ = true;
+      last_stage_status_ = PageStoreStatus::BUFFER_TOO_SMALL;
+      ++memory_.preparation_failures;
+      return false;
+    }
+    memory_.preparation_scratch_bytes = scratch_bytes;
+    memory_.peak_preparation_scratch_bytes = std::max(memory_.peak_preparation_scratch_bytes, scratch_bytes);
+    memory_.peak_reserved_bytes = std::max(memory_.peak_reserved_bytes,
+        memory_.active_reserved_bytes + scratch_bytes);
+  }
+  auto stage = [&](const uint8_t *source, void *arena, size_t capacity, PageStore *store) {
+    return version == configuration::PANEL_CONFIG_DOCUMENT_VERSION
+        ? PageStore::stage_v1(source, size, limits_, UINT32_MAX, arena, capacity, store)
+        : PageStore::stage_v2(source, size, limits_, UINT32_MAX, arena, capacity,
+                              scratch.data, scratch_bytes, store);
+  };
+  // Staged state is private until the service assigns the committed generation.
+  // Small edits must not require one contiguous block as large as the profile's
+  // entire document budget. Grow private parsing storage only when necessary,
+  // releasing each unsuccessful attempt before reserving the next one. The
+  // final attempt still reaches the same admission ceiling.
+  size_t capacity = std::min(arena_capacity_, std::max(size_t{4096},
+      size > arena_capacity_ / 2 ? arena_capacity_ : size * 2));
+  while (true) {
+    staged_arena_ = allocator_.allocate(capacity);
+    if (staged_arena_ == nullptr) {
+      preparation_allocation_failed_ = true;
+      last_stage_status_ = PageStoreStatus::BUFFER_TOO_SMALL;
+      ++memory_.preparation_failures;
+      return false;
+    }
+    memory_.staged_reserved_bytes = capacity;
+    memory_.peak_reserved_bytes = std::max(memory_.peak_reserved_bytes,
+        memory_.active_reserved_bytes + capacity + scratch_bytes);
+    last_stage_status_ = stage(document, staged_arena_, capacity, &staged_);
+    if (last_stage_status_ != PageStoreStatus::BUFFER_TOO_SMALL || capacity == arena_capacity_)
+      break;
+    staged_ = {};
+    allocator_.release(staged_arena_, capacity);
+    staged_arena_ = nullptr;
+    memory_.staged_reserved_bytes = 0;
+    capacity = capacity > arena_capacity_ / 2 ? arena_capacity_ : capacity * 2;
+  }
+  if (write && last_stage_status_ == PageStoreStatus::BUFFER_TOO_SMALL)
+    last_stage_status_ = PageStoreStatus::CAPACITY_EXCEEDED;
+  if (last_stage_status_ == PageStoreStatus::OK && write && !prepared_within_limits())
+    last_stage_status_ = PageStoreStatus::CAPACITY_EXCEEDED;
+  if (last_stage_status_ == PageStoreStatus::OK) {
+    // The configured capacity is an admission ceiling, not a retained reserve.
+    // Build the final view before any resources can borrow its strings. Rebuild
+    // from the validated private source so no arena pointers need relocating.
+    const size_t used = staged_.memory().arena_bytes;
+    if (used < memory_.staged_reserved_bytes) {
+      void *compact_arena = allocator_.allocate(used);
+      if (compact_arena == nullptr) {
+        preparation_allocation_failed_ = true;
+        last_stage_status_ = PageStoreStatus::BUFFER_TOO_SMALL;
+      } else {
+        memory_.peak_reserved_bytes =
+            std::max(memory_.peak_reserved_bytes,
+                     memory_.active_reserved_bytes +
+                         memory_.staged_reserved_bytes + used + scratch_bytes);
+        PageStore compact;
+        last_stage_status_ =
+            stage(staged_.source_document(), compact_arena, used, &compact);
+        if (last_stage_status_ == PageStoreStatus::OK) {
+          allocator_.release(staged_arena_, memory_.staged_reserved_bytes);
+          staged_arena_ = compact_arena;
+          staged_ = compact;
+          memory_.staged_reserved_bytes = used;
+        } else {
+          allocator_.release(compact_arena, used);
+        }
+      }
+    }
+  }
+  // No runtime resource can retain the validation/grouping index. Release it
+  // before resource preparation and the later allocation-free activation.
+  scratch.release();
+  if (last_stage_status_ == PageStoreStatus::OK) {
+    if (resources_ == nullptr || (write ? resources_->prepare_write(staged_) : resources_->prepare(staged_))) return true;
+    preparation_allocation_failed_ =
+        allocator_.allocation_failure_count() != allocation_failures;
+    last_stage_status_ = resources_->preparation_capacity_exceeded()
+        ? PageStoreStatus::CAPACITY_EXCEEDED : PageStoreStatus::RESOURCE_UNAVAILABLE;
+    if (last_stage_status_ == PageStoreStatus::CAPACITY_EXCEEDED) preparation_allocation_failed_ = false;
+  }
+  ++memory_.preparation_failures;
+  discard_prepared();
+  return false;
+}
+
+void PageStoreRuntime::discard_prepared() {
+  if (resources_ != nullptr) resources_->discard_prepared();
+  staged_ = {};
+  if (staged_arena_ != nullptr)
+    allocator_.release(staged_arena_, memory_.staged_reserved_bytes);
+  staged_arena_ = nullptr;
+  memory_.staged_reserved_bytes = 0;
+}
+
+bool PageStoreRuntime::activate_prepared(uint32_t generation, uint16_t version,
+    const uint8_t *document, size_t size) {
+  if (version != staged_.source_version() ||
+      staged_arena_ == nullptr || document == nullptr ||
+      size != staged_.source_size() ||
+      std::memcmp(document, staged_.source_document(), size) != 0) return false;
+  void *retired = active_arena_;
+  const size_t retired_size = memory_.active_reserved_bytes;
+  active_arena_ = staged_arena_;
+  staged_arena_ = nullptr;
+  active_ = staged_;
+  active_.generation_ = generation;
+  staged_ = {};
+  memory_.active_reserved_bytes = memory_.staged_reserved_bytes;
+  memory_.staged_reserved_bytes = 0;
+  if (resources_ != nullptr) resources_->activate_prepared(active_);
+  // Resource activation unbinds the retired generation before its arena goes.
+  if (retired != nullptr)
+    allocator_.release(retired, retired_size);
+  return true;
+}
+
+}  // namespace espcontrol::pages

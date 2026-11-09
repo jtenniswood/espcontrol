@@ -38,6 +38,7 @@ source = r'''
 #include <set>
 #include "external_memory_allocator.h"
 #include "button_grid_limits.h"
+#include "page_scene_selection.h"
 #include "button_grid_weather_daily_data.h"
 template<class... T> void test_log(T...) {}
 #define ESP_LOGW(...) test_log(__VA_ARGS__)

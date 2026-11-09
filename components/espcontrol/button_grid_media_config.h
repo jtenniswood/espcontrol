@@ -2,25 +2,13 @@
 
 #include <cstdint>
 #include <string>
+#include "media_card_mode.h"
 
 // Versioned runtime view of the compact Media-card saved configuration.
 // Included by button_grid_config_parser.h after ParsedCfg and option helpers.
 namespace espcontrol::media {
 
 constexpr uint8_t CONFIG_VERSION = 1;
-
-enum class Mode : uint8_t {
-  CONTROL_MODAL,
-  SPEAKER_GROUP,
-  PLAY_PAUSE,
-  PREVIOUS,
-  NEXT,
-  VOLUME,
-  POSITION,
-  NOW_PLAYING,
-  COVER_ART,
-  PLAYLIST,
-};
 
 enum class StateDisplay : uint8_t { LABEL, STATE };
 enum class NowPlayingControl : uint8_t { NONE, PROGRESS, PLAY_PAUSE };

@@ -1,6 +1,9 @@
 #pragma once
 
 #include "external_memory_allocator.h"
+#include "calendar_state_events.h"
+#include "timezone_state_events.h"
+#include "page_scene_selection.h"
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
@@ -127,6 +130,10 @@ inline void apply_calendar_card_text(const CalendarCardRef &ref,
 }
 
 inline void refresh_calendar_cards() {
+  if (espcontrol::pooled_application_selected()) {
+    if (auto *scene = espcontrol::application_scene_navigation()) scene->refresh_content();
+    return;
+  }
   CalendarDateState &state = calendar_date_state();
   compact_calendar_card_refs();
   CalendarCardRef *refs = calendar_card_refs();
@@ -147,7 +154,9 @@ inline void update_calendar_cards(bool valid, int day, int month) {
     state.use_12h = false;
   }
 
-  refresh_calendar_cards();
+  const auto events = espcontrol::calendar_state_events();
+  if (events.date) events.date(events.owner, valid, day, month);
+  if (!espcontrol::pooled_application_selected()) refresh_calendar_cards();
 }
 
 inline void update_calendar_cards_time(bool valid, int day, int month,
@@ -167,7 +176,9 @@ inline void update_calendar_cards_time(bool valid, int day, int month,
     state.month = month;
   }
 
-  refresh_calendar_cards();
+  const auto events = espcontrol::calendar_state_events();
+  if (events.time) events.time(events.owner, valid, day, month, hour, minute, use_12h);
+  if (!espcontrol::pooled_application_selected()) refresh_calendar_cards();
 }
 
 inline bool parse_calendar_date_text(const std::string &value, int &day, int &month) {
@@ -378,6 +389,9 @@ inline void update_timezone_cards(bool valid,
   state.epoch = epoch;
   state.active_timezone = active_timezone;
   state.use_12h = use_12h;
+  const auto& events = espcontrol::timezone_state_events();
+  if (events.update) events.update(events.owner, valid, epoch, active_timezone, use_12h);
+  if (espcontrol::pooled_application_selected()) return;
   compact_timezone_card_refs();
   TimezoneCardRef *refs = timezone_card_refs();
   int count = timezone_card_count();

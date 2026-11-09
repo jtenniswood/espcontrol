@@ -1,4 +1,6 @@
 #pragma once
+#include "page_local_sensor_feed.h"
+#include "page_local_relay_runtime.h"
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
@@ -153,7 +155,7 @@ inline void local_sensor_render_numeric(lv_obj_t *label, int precision, float va
 }
 
 inline bool local_sensor_apply_value(const std::string &key, float value) {
-  bool applied = false;
+  bool applied = espcontrol::pages::page_local_sensor_feed().apply_number(key,value);
   for (const auto &control : local_sensor_registry()) {
     if (control.key != key || control.is_text || !control.sensor_lbl) continue;
     local_sensor_render_numeric(control.sensor_lbl, control.precision, value);
@@ -163,7 +165,7 @@ inline bool local_sensor_apply_value(const std::string &key, float value) {
 }
 
 inline bool local_sensor_apply_text(const std::string &key, const std::string &value) {
-  bool applied = false;
+  bool applied = espcontrol::pages::page_local_sensor_feed().apply_text(key,value);
   for (const auto &control : local_sensor_registry()) {
     if (control.key != key || !control.is_text || !control.text_lbl) continue;
     set_wrapped_button_label_text(control.text_lbl, value);
@@ -400,6 +402,7 @@ inline void apply_internal_relay_parent_indicator(InternalRelayWatcher &w, bool 
 }
 
 inline void notify_internal_relay_changed(const std::string &key, bool on) {
+  espcontrol::pages::page_local_relay_feed().notify(key,on);
   auto &watchers = internal_relay_watchers();
   for (auto &w : watchers) {
     if (w.key != key) continue;

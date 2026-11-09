@@ -162,7 +162,7 @@ current.generatedContract.requiredCards.forEach((type) => {
 });
 assertNormalizationFixtures(hooks, normalizationFixtureGroups);
 assert.strictEqual(hooks.cardContractCardLabel("media"), "Media", "generated contract exposes card labels");
-assert.strictEqual(hooks.cardContractAllowInSubpage("subpage"), false, "generated contract exposes subpage placement rules");
+assert.strictEqual(hooks.cardContractAllowInSubpage("subpage"), true, "generated contract exposes subpage placement rules");
 const subpageKindOption = Array.from(hooks.cardContractOptions("subpage"))
   .find((option) => option.name === "subpage_kind");
 assert.deepStrictEqual(Array.from(subpageKindOption.values), [

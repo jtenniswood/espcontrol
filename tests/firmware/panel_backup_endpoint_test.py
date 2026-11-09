@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import tempfile
 
@@ -23,6 +24,8 @@ PREFIX = r'''#include <algorithm>
 #include <string>
 #include <vector>
 #include "panel_backup.h"
+#include "panel_backup_document.h"
+#include "nested_page_fixture.h"
 #include "panel_config_http_context.h"
 #define USE_WEBSERVER
 #define USE_WEBSERVER_AUTH
@@ -126,15 +129,40 @@ class ConfigurationService {
  public:
   bool readable=true;
   size_t loads=0;
+  uint16_t version=1;
   std::vector<uint8_t> document;
-  struct Result { bool success; size_t document_size; bool ok() const { return success; } };
+  struct Result { bool success; size_t document_size; uint16_t document_version; bool ok() const { return success; } };
   Result load(uint8_t *out,size_t capacity) {
+    assert(on_main_loop);
     ++loads;
     assert(capacity>=document.size());
     std::copy(document.begin(),document.end(),out);
-    return {readable,document.size()};
+    return {readable,document.size(),version};
   }
 };
+enum class ConfigurationDispatchStatus { COMPLETED, BUSY };
+class ConfigurationMainLoop {
+ public:
+  ConfigurationService &service;
+  bool busy=false;
+  struct Transaction { ConfigurationDispatchStatus dispatch; ConfigurationService::Result result; };
+  Transaction load(uint8_t *out,size_t capacity) {
+    if(busy)return {ConfigurationDispatchStatus::BUSY,{false,0,1}};
+    Transaction result{ConfigurationDispatchStatus::COMPLETED,{false,0,1}};
+    std::thread worker([&]{on_main_loop=true;result.result=service.load(out,capacity);});worker.join();return result;
+  }
+};
+bool native_allocation_failed=false;
+int native_remaining=-1;
+size_t native_buffers=0;
+uint8_t *allocate_native(size_t size) {
+  if(native_allocation_failed||native_remaining==0)return nullptr;
+  if(native_remaining>0)--native_remaining;
+  auto *result=static_cast<uint8_t*>(std::malloc(size));
+  if(result)++native_buffers;
+  return result;
+}
+void release_native(uint8_t *buffer) {--native_buffers;std::free(buffer);}
 }
 '''
 SUFFIX = r'''
@@ -166,11 +194,59 @@ int main() {
   assert(writer.append_device_profile(reinterpret_cast<const uint8_t *>(profile.data()),profile.size())==PanelConfigStatus::OK);
   assert(writer.append_button(1,reinterpret_cast<const uint8_t *>(card.data()),card.size())==PanelConfigStatus::OK);
   size_t size=0; assert(writer.finish(&size)==PanelConfigStatus::OK); service.document.resize(size);
-  bind_panel_config_http_context(service,buffer,sizeof(buffer),"user","pass");
+  ConfigurationMainLoop transactions{service};
+  bind_panel_config_http_context(service,transactions,sizeof(buffer),allocate_native,release_native,"user","pass");
   int snapshots=0;
   configure("panel-test",9,[&](JsonObject,JsonObject){ assert(on_main_loop); ++snapshots; });
   request={}; request.authorized=false; handler.handleRequest(&request);
   assert(service.loads==0 && snapshots==0 && request.response.status==401);
+  native_allocation_failed=true;
+  request={};handler.handleRequest(&request);
+  assert(request.response.status==503&&service.loads==0&&native_buffers==0);
+  native_allocation_failed=false;transactions.busy=true;
+  request={};handler.handleRequest(&request);
+  assert(request.response.status==503&&service.loads==0&&native_buffers==0);
+  transactions.busy=false;service.version=2;
+  request={};handler.handleRequest(&request);
+  assert(request.response.status==500&&!request.response.complete&&snapshots==0&&native_buffers==0);
+  service.version=3;request={};handler.handleRequest(&request);
+  assert(request.response.status==422&&!request.response.complete&&snapshots==0&&native_buffers==0);
+  service.version=2;
+  const auto original_document=service.document;
+  const auto &graph_limits=DEVICE_UI_PROFILES[8];
+  service.document=pages::test::wire(pages::test::authored_nested(graph_limits));
+  configure(graph_limits.device_profile,graph_limits.slot_count,[&](JsonObject,JsonObject){assert(on_main_loop);++snapshots;});
+  request={};handler.handleRequest(&request);
+  assert(request.response.status==200&&request.response.complete&&snapshots==1&&native_buffers==0);
+  assert(request.response.body.find("\"version\":3")!=std::string::npos);
+  assert(request.response.body.find("\"document_version\":2")!=std::string::npos);
+  const int graph_chunks=request.response.chunks;
+  for(int fail_after=0;fail_after<graph_chunks;++fail_after) {
+    request={};request.response.fail_after=fail_after;handler.handleRequest(&request);
+    assert(!request.response.complete&&native_buffers==0);
+  }
+  const int graph_snapshots=snapshots;
+  for(int allowance:{0,1}) {
+    native_remaining=allowance;
+    request={};handler.handleRequest(&request);
+    assert(request.response.status==503&&!request.response.complete&&native_buffers==0&&snapshots==graph_snapshots);
+  }
+  native_remaining=-1;
+  configure("wrong-device",9,[&](JsonObject,JsonObject){++snapshots;});
+  request={};handler.handleRequest(&request);
+  assert(request.response.status==500&&!request.response.complete&&native_buffers==0&&snapshots==graph_snapshots);
+  configure(graph_limits.device_profile,graph_limits.slot_count,[&](JsonObject,JsonObject){assert(on_main_loop);++snapshots;});
+  esphome::App.scheduler.delay=true;
+  { AsyncWebServerRequest timed_out;handler.handleRequest(&timed_out);
+    assert(timed_out.response.status==503&&!timed_out.response.complete&&native_buffers==0); }
+  assert(esphome::App.scheduler.pending&&snapshots==graph_snapshots);
+  esphome::App.scheduler.pending();esphome::App.scheduler.pending={};
+  assert(snapshots==graph_snapshots&&native_buffers==0);
+  esphome::App.scheduler.delay=false;
+  service.document=original_document;
+  configure("panel-test",9,[&](JsonObject,JsonObject){assert(on_main_loop);++snapshots;});
+  snapshots=0;
+  service.version=1;
   service.readable=false;
   request={}; handler.handleRequest(&request);
   assert(request.response.status==503 && snapshots==0);
@@ -211,6 +287,7 @@ int main() {
   esphome::web_server_idf::AsyncWebServer server;
   register_panel_backup_endpoint(server); register_panel_backup_endpoint(server);
   assert(server.handlers.size()==1);
+  assert(native_buffers==0);
 }
 '''
 
@@ -222,7 +299,7 @@ with tempfile.TemporaryDirectory(prefix="backup-endpoint-") as temporary:
     source = folder / "test.cpp"
     source.write_text(PREFIX + header + SUFFIX)
     binary = folder / "test"
-    subprocess.run([os.environ.get("CXX", "c++"), "-std=c++17", "-Wall", "-Wextra", "-Werror", "-UNDEBUG", "-pthread",
-                    "-I", str(ROOT / "components/espcontrol"), str(source), "-o", str(binary)], check=True)
+    subprocess.run([os.environ.get("CXX", "c++")] + shlex.split(os.environ.get("CXXFLAGS", "")) + ["-std=c++17", "-Wall", "-Wextra", "-Werror", "-UNDEBUG", "-pthread",
+                    "-I", str(ROOT / "components/espcontrol"), "-I", str(ROOT / "tests/firmware"), str(source), "-o", str(binary)], check=True)
     subprocess.run([str(binary)], check=True)
 print("Backup HTTP authorization, errors, headers and streaming checks passed.")

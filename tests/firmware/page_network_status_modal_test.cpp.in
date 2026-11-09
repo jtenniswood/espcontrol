@@ -1,0 +1,580 @@
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <functional>
+#include <string>
+#include <vector>
+
+#include "button_grid_subpage_parser.h"
+#include "lvgl.h"
+#include "modal_test_router.h"
+#include "page_card_dependencies.h"
+#include "page_modal_runtime.h"
+#include "panel_config_document.h"
+using namespace espcontrol;
+using namespace espcontrol::pages;
+using namespace espcontrol::configuration;
+static size_t lv_live_bytes = 0, lv_allocation_calls = 0, cpp_allocation_calls = 0, cpp_live_bytes = 0;
+struct alignas(16) CppAllocation {
+  size_t bytes;
+};
+void* operator new(size_t bytes) {
+  ++cpp_allocation_calls;
+  auto* header = static_cast<CppAllocation*>(std::malloc(sizeof(CppAllocation) + (bytes ? bytes : 1)));
+  assert(header);
+  header->bytes = bytes;
+  cpp_live_bytes += bytes;
+  return header + 1;
+}
+void* operator new[](size_t bytes) {
+  return ::operator new(bytes);
+}
+void operator delete(void* pointer) noexcept {
+  if (pointer) {
+    auto* header = static_cast<CppAllocation*>(pointer) - 1;
+    cpp_live_bytes -= header->bytes;
+    std::free(header);
+  }
+}
+void operator delete[](void* pointer) noexcept {
+  ::operator delete(pointer);
+}
+void operator delete(void* pointer, std::size_t) noexcept {
+  ::operator delete(pointer);
+}
+void operator delete[](void* pointer, std::size_t) noexcept {
+  ::operator delete(pointer);
+}
+struct alignas(16) Allocation {
+  size_t bytes;
+};
+extern "C" {
+void lv_mem_init() {}
+void lv_mem_deinit() {}
+lv_mem_pool_t lv_mem_add_pool(void*, size_t) {
+  return nullptr;
+}
+void lv_mem_remove_pool(lv_mem_pool_t) {}
+void* lv_malloc_core(size_t size) {
+  ++lv_allocation_calls;
+  auto* p = static_cast<Allocation*>(std::malloc(size + sizeof(Allocation)));
+  assert(p);
+  p->bytes = size;
+  lv_live_bytes += size;
+  return p + 1;
+}
+void lv_free_core(void* ptr) {
+  if (!ptr) return;
+  auto* p = static_cast<Allocation*>(ptr) - 1;
+  lv_live_bytes -= p->bytes;
+  std::free(p);
+}
+void* lv_realloc_core(void* ptr, size_t size) {
+  void* p = lv_malloc_core(size);
+  if (ptr) {
+    std::memcpy(p, ptr, std::min(size, (static_cast<Allocation*>(ptr) - 1)->bytes));
+    lv_free_core(ptr);
+  }
+  return p;
+}
+void lv_mem_monitor_core(lv_mem_monitor_t* out) {
+  *out = {};
+}
+lv_result_t lv_mem_test_core() {
+  return LV_RESULT_OK;
+}
+}
+
+void lv_label_set_display_text(lv_obj_t* label, const char* text) {
+  lv_label_set_text(label, text);
+}
+
+using lv_coord_t = int32_t;
+struct TestTheme {
+  uint32_t background{0x101010}, surface_card{0x212121}, text_primary{0xFFFFFF};
+} theme;
+const auto& current_theme() {
+  return theme;
+}
+uint32_t theme_display_color(uint32_t value) {
+  return value;
+}
+bool enough_heap = true;
+bool ha_internal_heap_available(const char*) {
+  return enough_heap;
+}
+struct Coordinator {
+  bool busy{false};
+  bool dispatching() const {
+    return busy;
+  }
+} coordinator;
+auto& ha_read_coordinator() {
+  return coordinator;
+}
+void apply_width_compensation(lv_obj_t*, int) {}
+const char* find_icon(const char*) {
+  return "L";
+}
+void apply_grid_card_corners(lv_obj_t* card, int radius, bool continuous) {
+  lv_obj_set_style_radius(card, radius, LV_PART_MAIN);
+  // The dedicated corner suite exercises the production continuous mask owner.
+  lv_obj_set_user_data(card, reinterpret_cast<void*>(static_cast<uintptr_t>(continuous)));
+}
+// @card-factory
+// @label-wrap
+ControlModalStateService<lv_obj_t> service;
+auto& control_modal_active() {
+  return service.active();
+}
+auto& control_modal_service() {
+  return service;
+}
+#include "page_network_status_modal.h"
+// @device-geometries
+struct Arena : PageArenaAllocator {
+  size_t live{0}, bytes{0}, calls{0}, fail_at{0};
+  void* allocate(size_t n) override {
+    if (++calls == fail_at) return nullptr;
+    void* p = std::malloc(n);
+    assert(p);
+    ++live;
+    bytes += n;
+    return p;
+  }
+  void release(void* p, size_t n) override {
+    assert(live && bytes >= n);
+    --live;
+    bytes -= n;
+    std::free(p);
+  }
+};
+struct Document {
+  std::array<uint8_t, 8192> bytes{};
+  alignas(std::max_align_t) std::array<uint8_t, 32768> memory{};
+  PageStore store;
+  size_t size{0};
+  Document(const DeviceUiLimits& limits, uint32_t generation = 17) {
+    PanelConfigWriter writer(bytes.data(), bytes.size());
+    assert(writer.begin() == PanelConfigStatus::OK);
+    assert(writer.append_device_profile(reinterpret_cast<const uint8_t*>(limits.device_profile),
+                                        std::strlen(limits.device_profile)) == PanelConfigStatus::OK);
+    const std::string cards[] = {"sensor.test;Temperature;;;;;sensor;;", ";Rooms;;;indicator;;subpage;;"};
+    for (size_t i = 0; i < 2; ++i)
+      assert(writer.append_button(i + 1, reinterpret_cast<const uint8_t*>(cards[i].data()),
+                                  cards[i].size()) == PanelConfigStatus::OK);
+    const std::string child = "~B,1|sensor,sensor.child,Child,,,,,";
+    assert(writer.append_subpage(2, reinterpret_cast<const uint8_t*>(child.data()), child.size()) ==
+           PanelConfigStatus::OK);
+    assert(writer.finish(&size) == PanelConfigStatus::OK);
+    assert(PageStore::stage_v1(bytes.data(), size, limits, generation, memory.data(), memory.size(),
+                               &store) == PageStoreStatus::OK);
+  }
+};
+struct Source : PageNetworkStatusSource {
+  std::string name = std::string(140, 'n'), version = " v1.2.3-beta.1 ";
+  bool wifi{true}, pin{true};
+  size_t samples{0}, locks{0};
+  PageNetworkStatusSample reading{};
+  std::function<void()> on_sample, on_lock;
+  Source() {
+    std::strcpy(reading.ip.data(), "192.168.1.22");
+    reading.wifi_percent = 62.6f;
+  }
+  std::string_view device_name() const override {
+    return name;
+  }
+  std::string_view firmware_version() const override {
+    return version;
+  }
+  bool wifi_available() const override {
+    return wifi;
+  }
+  bool has_pin() const override {
+    return pin;
+  }
+  void sample(PageNetworkStatusSample& out) override {
+    ++samples;
+    out = reading;
+    if (on_sample) on_sample();
+  }
+  void activate_lock() override {
+    ++locks;
+    if (on_lock) on_lock();
+  }
+};
+struct Harness {
+  Document document;
+  Arena arena;
+  Source source;
+  PageNetworkStatusEnvironment environment;
+  uint64_t chrome{1};
+  PageId page{0};
+  bool settings{false}, style_ok{true};
+  size_t settings_changes{0};
+  std::function<void()> on_style, on_settings;
+  PageLocalModalOrigin styled_origin{};
+  PageModalToken styled_token{};
+  PageNetworkStatusModalPort port;
+  PageModalRouter<1> router{modal_test_router<ControlModalKind::NETWORK_STATUS>(port)};
+  PageModalRuntime modal;
+  Harness(const DeviceUiLimits& limits, bool wifi = true, uint64_t first_opening = 1)
+      : document(limits),
+        port(arena, source, limits.slot_count, style(this), this,
+             [](void* owner, PageLocalModalOrigin o) {
+               const auto& h = *static_cast<Harness*>(owner);
+               return o.configuration == h.document.store.generation() && o.binding == h.chrome &&
+                      o.page == h.page;
+             }),
+        modal(router, first_opening) {
+    source.wifi = wifi;
+    environment.label_font = LV_FONT_DEFAULT;
+    environment.icon_font = LV_FONT_DEFAULT;
+    environment.width = 480;
+    environment.height = 480;
+    environment.top = 48;
+    environment.pad_left = environment.pad_right = environment.pad_bottom = 8;
+    environment.gap_row = environment.gap_column = 8;
+    environment.columns = limits.grid_columns;
+    environment.rows = limits.grid_rows;
+    assert(port.install(modal, true));
+    assert(modal.prepare(document.store));
+    modal.activate_prepared(document.store);
+  }
+  ~Harness() {
+    modal.retire_active();
+    modal.loop();
+    assert(!arena.live && !arena.bytes);
+  }
+  static PageNetworkStatusStyle style(Harness* h) {
+    return {
+        h,
+        [](void* owner, PageLocalModalOrigin origin, PageModalToken token, PageNetworkStatusEnvironment& e) {
+          auto& h = *static_cast<Harness*>(owner);
+          h.styled_origin = origin;
+          h.styled_token = token;
+          e = h.environment;
+          if (h.on_style) h.on_style();
+          return h.style_ok;
+        },
+        [](void* owner, bool value) {
+          auto& h = *static_cast<Harness*>(owner);
+          h.settings = value;
+          ++h.settings_changes;
+          if (h.on_settings) h.on_settings();
+        }};
+  }
+  PageLocalModalOrigin origin() const {
+    return {document.store.generation(), chrome, page};
+  }
+  bool request() {
+    const auto cpp = cpp_allocation_calls, lv = lv_allocation_calls, meta = arena.calls;
+    const bool accepted = modal.request_local(origin(), ControlModalKind::NETWORK_STATUS);
+    assert(cpp == cpp_allocation_calls && lv == lv_allocation_calls && meta == arena.calls);
+    return accepted;
+  }
+  PageModalToken open() {
+    assert(request());
+    modal.loop();
+    const auto t = modal.token();
+    assert(t.opening && modal.interactive(t) && t.card == NO_CARD && settings);
+    return t;
+  }
+  void close() {
+    modal.dismiss();
+    modal.loop();
+    assert(!settings && !modal.memory().retired_contexts && !modal.memory().active_contexts && !arena.live);
+  }
+  lv_obj_t* card(int semantic) {
+    if (semantic == NETWORK_STATUS_WIFI_CARD_INDEX && !source.wifi) return nullptr;
+    const int actual = semantic - (!source.wifi && semantic > NETWORK_STATUS_WIFI_CARD_INDEX ? 1 : 0);
+    return lv_obj_get_child(service.active().overlay, actual);
+  }
+  const char* label(int semantic) {
+    return lv_label_get_text(lv_obj_get_child(card(semantic), 1));
+  }
+};
+void click(lv_obj_t* object) {
+  lv_obj_send_event(object, LV_EVENT_PRESSED, nullptr);
+  lv_obj_send_event(object, LV_EVENT_CLICKED, nullptr);
+}
+void basic(const DeviceUiLimits& limits, bool wifi) {
+  Harness h(limits, wifi);
+  for (const auto& geometry : geometries)
+    if (!std::strcmp(geometry.name, limits.device_profile)) {
+      h.environment.width = geometry.width;
+      h.environment.height = geometry.height;
+      lv_display_set_resolution(lv_display_get_default(), geometry.width, geometry.height);
+    }
+  auto token = h.open();
+  lv_obj_update_layout(service.active().overlay);
+  for (int i = 0; i < 6; ++i)
+    if (auto* card = h.card(i)) assert(lv_obj_get_width(card) > 0 && lv_obj_get_height(card) > 0);
+  assert(h.styled_origin.binding == 1 && h.styled_origin.page == 0 &&
+         h.styled_token.opening == token.opening);
+  assert(lv_obj_get_child_count(service.active().overlay) == (wifi ? 6u : 5u));
+  for (uint32_t i = 0; i < lv_obj_get_child_count(service.active().overlay); ++i)
+    assert(lv_obj_get_child_count(lv_obj_get_child(service.active().overlay, i)) == 2);
+  assert(!std::strcmp(h.label(NETWORK_STATUS_BUILD_CARD_INDEX), "v1.2.3-beta.1"));
+  assert(h.source.name == h.label(NETWORK_STATUS_NAME_CARD_INDEX));
+  assert(!std::strcmp(h.label(NETWORK_STATUS_IP_CARD_INDEX), "192.168.1.22"));
+  if (wifi) assert(!std::strcmp(h.label(NETWORK_STATUS_WIFI_CARD_INDEX), "63%"));
+  auto* lock = h.card(NETWORK_STATUS_LOCK_CARD_INDEX);
+  lv_obj_send_event(lock, LV_EVENT_CLICKED, nullptr);
+  h.modal.loop();
+  assert(h.source.locks == 0);
+  const auto calls = cpp_allocation_calls, lv_calls = lv_allocation_calls;
+  click(lock);
+  assert(h.source.locks == 0 && calls == cpp_allocation_calls && lv_calls == lv_allocation_calls);
+  h.modal.loop();
+  assert(h.source.locks == 1);
+  // Losing the PIN between press and maintenance cancels the queued lock.
+  click(lock);
+  h.source.pin = false;
+  h.modal.loop();
+  assert(h.source.locks == 1);
+  assert(lv_obj_has_flag(lock, LV_OBJ_FLAG_HIDDEN));
+  h.source.pin = true;
+  h.modal.loop();
+  assert(!lv_obj_has_flag(lock, LV_OBJ_FLAG_HIDDEN));
+  ++h.chrome;
+  h.page = 1;
+  assert(h.modal.valid(token));  // admitted opening owns its identity
+  assert(!h.modal.request_local({17, 1, 0}, ControlModalKind::NETWORK_STATUS));
+  h.close();
+  token = h.open();
+  assert(h.styled_origin.page == 1 && h.styled_origin.binding == 2);
+  auto* back = h.card(NETWORK_STATUS_BACK_CARD_INDEX);
+  lv_obj_send_event(back, LV_EVENT_CLICKED, nullptr);
+  h.modal.loop();
+  assert(h.modal.valid(token));
+  click(back);
+  assert(!h.modal.valid(token));
+  h.modal.loop();
+  assert(!h.arena.live);
+  const auto cpp_before = cpp_live_bytes, lv_before = lv_live_bytes;
+  const auto* setting = std::getenv("ESPCONTROL_TEST_CYCLES");
+  const int cycles = setting ? std::atoi(setting) : 1000;
+  for (int i = 0; i < cycles; ++i) {
+    token = h.open();
+    h.modal.loop();
+    assert(h.arena.live == 3);
+    click(h.card(NETWORK_STATUS_LOCK_CARD_INDEX));
+    h.modal.loop();
+    h.close();
+    assert(cpp_before == cpp_live_bytes && lv_before == lv_live_bytes);
+  }
+  std::printf("Settings %s %s: %d cycles, stable C++/LVGL/arena memory\n", limits.device_profile,
+              wifi ? "Wi-Fi" : "Ethernet", cycles);
+}
+void polling_and_layout(const DeviceUiLimits& limits, lv_display_t* display) {
+  lv_display_set_resolution(display, 480, 480);
+  Harness h(limits);
+  h.open();
+  lv_refr_now(display);
+  size_t draws = 0;
+  lv_obj_add_event_cb(
+      service.active().overlay,
+      [](lv_event_t* event) { ++*static_cast<size_t*>(lv_event_get_user_data(event)); }, LV_EVENT_DRAW_MAIN,
+      &draws);
+  lv_refr_now(display);
+  const auto before = draws, cpp_calls = cpp_allocation_calls, lv_calls = lv_allocation_calls;
+  const auto samples = h.source.samples;
+  for (int i = 0; i < 1000; ++i) {
+    h.modal.loop();
+    lv_refr_now(display);
+  }
+  assert(before == draws && cpp_calls == cpp_allocation_calls && lv_calls == lv_allocation_calls &&
+         samples == h.source.samples);
+  lv_tick_inc(1000);
+  h.modal.loop();
+  assert(h.source.samples == samples + 1);
+  h.source.reading.wifi_percent = 101;
+  lv_tick_inc(1000);
+  h.modal.loop();
+  assert(!std::strcmp(h.label(2), "100%"));
+  h.source.reading.wifi_percent = -5;
+  lv_tick_inc(1000);
+  h.modal.loop();
+  assert(!std::strcmp(h.label(2), "0%"));
+  h.source.reading.wifi_percent = NAN;
+  h.source.reading.ip.fill(0);
+  lv_tick_inc(1000);
+  h.modal.loop();
+  assert(!std::strcmp(h.label(2), espcontrol_i18n_key("disconnected")));
+  assert(!std::strcmp(h.label(1), espcontrol_i18n("Not available")));
+  h.source.reading.ip.fill('a');
+  lv_tick_inc(1000);
+  h.modal.loop();
+  assert(std::strlen(h.label(1)) == 63);
+  h.environment.columns = 1;
+  h.environment.rows = limits.slot_count;
+  h.modal.loop();
+  lv_obj_update_layout(service.active().overlay);
+  assert(lv_obj_get_y(service.active().overlay) == 48 && lv_obj_get_height(service.active().overlay) == 432);
+  for (int i = 0; i < 6; ++i) {
+    auto* c = h.card(i);
+    assert(lv_obj_get_style_grid_cell_column_pos(c, LV_PART_MAIN) == 0 &&
+           lv_obj_get_style_grid_cell_row_pos(c, LV_PART_MAIN) == i);
+  }
+  h.source.pin = false;
+  h.modal.loop();
+  assert(lv_obj_has_flag(h.card(5), LV_OBJ_FLAG_HIDDEN));
+  theme.background = 0xEEEEEE;
+  theme.surface_card = 0xDDDDDD;
+  theme.text_primary = 0x111111;
+  lv_font_t alternate = *LV_FONT_DEFAULT;
+  h.environment.label_font = &alternate;
+  h.environment.radius = 18;
+  h.environment.continuous_corners = true;
+  h.modal.loop();
+  assert(
+      lv_color_eq(lv_obj_get_style_bg_color(service.active().overlay, LV_PART_MAIN), lv_color_hex(0xEEEEEE)));
+  assert(lv_obj_get_style_text_font(lv_obj_get_child(h.card(0), 1), LV_PART_MAIN) == &alternate);
+  assert(lv_obj_get_style_radius(h.card(0), LV_PART_MAIN) == 18 && lv_obj_get_user_data(h.card(0)));
+  h.close();
+  for (const auto& version :
+       std::array<std::pair<const char*, const char*>, 5>{{{"", "Version unknown"},
+                                                           {"Version unknown", "Version unknown"},
+                                                           {"feature/abc", "Dev build"},
+                                                           {"v1.2.3", "v1.2.3"},
+                                                           {"v1.2.3-", "Dev build"}}}) {
+    h.source.version = version.first;
+    h.open();
+    assert(!std::strcmp(h.label(3), version.second));
+    h.close();
+  }
+  // Polling keeps the same wrap-safe cadence across the tick counter boundary.
+  lv_tick_set_cb(nullptr);
+  lv_tick_inc(UINT32_MAX - lv_tick_get() - 100);
+  h.open();
+  const auto wrap_samples = h.source.samples;
+  lv_tick_inc(999);
+  h.modal.loop();
+  assert(h.source.samples == wrap_samples);
+  lv_tick_inc(1);
+  h.modal.loop();
+  assert(h.source.samples == wrap_samples + 1);
+  h.close();
+}
+void failures_and_lifetimes(const DeviceUiLimits& limits, lv_display_t* display) {
+  Harness h(limits);
+  assert(!h.modal.request_card({17, 0}) && !h.modal.request_local(h.origin(), ControlModalKind::WIFI_QR));
+  enough_heap = false;
+  assert(h.request());
+  h.modal.loop();
+  assert(!h.arena.live);
+  enough_heap = true;
+  for (size_t offset = 1; offset <= 3; ++offset) {
+    h.arena.fail_at = h.arena.calls + offset;
+    assert(h.request());
+    h.modal.loop();
+    assert(!h.arena.live && !h.modal.token().opening);
+    h.arena.fail_at = 0;
+  }
+  h.style_ok = false;
+  assert(h.request());
+  h.modal.loop();
+  assert(!h.arena.live);
+  h.style_ok = true;
+  h.on_style = [&] { h.modal.display_takeover(false); };
+  assert(h.request());
+  h.modal.loop();
+  assert(!h.arena.live && !h.settings);
+  h.on_style = {};
+  h.on_settings = [&] {
+    if (h.settings) h.modal.display_takeover(false);
+  };
+  assert(h.request());
+  h.modal.loop();
+  assert(!h.arena.live && !h.settings);
+  h.on_settings = {};
+  h.source.on_sample = [&] {
+    h.modal.dismiss();
+    h.modal.loop();
+  };
+  assert(h.request());
+  h.modal.loop();
+  assert(!h.arena.live && !h.settings);
+  h.source.on_sample = {};
+  auto token = h.open();
+  click(h.card(5));
+  h.source.on_lock = [&] {
+    h.modal.display_takeover(false);
+    h.modal.loop();
+  };
+  h.modal.loop();
+  assert(!h.modal.valid(token) && !h.arena.live);
+  h.source.on_lock = {};
+  token = h.open();
+  auto* overlay = service.active().overlay;
+  lv_obj_add_event_cb(
+      overlay,
+      [](lv_event_t* event) {
+        auto& h = *static_cast<Harness*>(lv_event_get_user_data(event));
+        h.modal.dismiss();
+        h.modal.loop();
+        assert(h.modal.memory().retired_contexts == 1);
+      },
+      LV_EVENT_DRAW_MAIN, &h);
+  lv_obj_invalidate(overlay);
+  lv_refr_now(display);
+  assert(!h.modal.valid(token));
+  h.modal.loop();
+  assert(!h.arena.live);
+  token = h.open();
+  auto* retired_lock = h.card(5);
+  lv_obj_send_event(retired_lock, LV_EVENT_PRESSED, nullptr);
+  click(retired_lock);
+  Document staged(limits, UINT32_MAX);
+  alignas(std::max_align_t) std::array<uint8_t, 32768> published_memory{};
+  PageStore published;
+  assert(PageStore::stage_v1(staged.bytes.data(), staged.size, limits, 0, published_memory.data(),
+                             published_memory.size(), &published) == PageStoreStatus::OK);
+  assert(h.modal.prepare(staged.store));
+  h.modal.discard_prepared();
+  assert(h.modal.valid(token));
+  assert(h.modal.prepare(staged.store));
+  coordinator.busy = true;
+  h.modal.activate_prepared(published);
+  h.document.memory.fill(0xDA);
+  staged.memory.fill(0xDE);
+  const auto locks = h.source.locks;
+  lv_obj_send_event(retired_lock, LV_EVENT_CLICKED, nullptr);
+  assert(h.source.locks == locks && !h.modal.valid(token) && h.modal.memory().retired_contexts == 1);
+  coordinator.busy = false;
+  h.modal.loop();
+  assert(!h.arena.live && h.source.locks == locks);
+  h.document.store = published;
+  assert(h.open().configuration == 0);
+  h.close();
+}
+int main() {
+  std::setvbuf(stdout, nullptr, _IOLBF, 0);
+  lv_init();
+  auto* display = lv_display_create(480, 480);
+  lv_timer_pause(lv_display_get_refr_timer(display));
+  static std::array<uint16_t, 480 * 32> buffer{};
+  lv_display_set_buffers(display, buffer.data(), nullptr, sizeof(buffer), LV_DISPLAY_RENDER_MODE_PARTIAL);
+  lv_display_set_flush_cb(display,
+                          [](lv_display_t* d, const lv_area_t*, uint8_t*) { lv_display_flush_ready(d); });
+  for (const auto& profile : DEVICE_UI_PROFILES) {
+    basic(profile, true);
+    basic(profile, false);
+  }
+  polling_and_layout(DEVICE_UI_PROFILES[8], display);
+  failures_and_lifetimes(DEVICE_UI_PROFILES[8], display);
+  {
+    Harness h(DEVICE_UI_PROFILES[8], true, UINT64_MAX);
+    assert(h.open().opening == UINT64_MAX);
+    h.close();
+    assert(!h.request());
+  }
+  lv_display_delete(display);
+  lv_deinit();
+  assert(lv_live_bytes == 0);
+  std::puts("Network Settings native PASS");
+}

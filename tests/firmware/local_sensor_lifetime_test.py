@@ -12,7 +12,8 @@ def definition(name):
     match = re.search(r"^inline [^\n]*\b" + name + r"\([^;{]*\)\s*\{.*?^}", driver, re.M | re.S)
     assert match, name
     return match[0]
-source = r'''#include <cassert>
+source = r'''#include "page_local_sensor_feed.h"
+#include <cassert>
 #include <cmath>
 #include <cstdio>
 #include <string>
@@ -63,6 +64,6 @@ int main(){
 '''
 with tempfile.TemporaryDirectory() as temp:
     cpp=Path(temp)/"test.cpp";exe=Path(temp)/"test";cpp.write_text(source)
-    subprocess.run([os.environ.get("CXX","c++"),"-std=c++17","-Wall","-Wextra","-Werror","-fsanitize=address",str(cpp),"-o",str(exe)],check=True)
+    subprocess.run([os.environ.get("CXX","c++"),"-std=c++17","-I"+str(ROOT/"components/espcontrol"),"-Wall","-Wextra","-Werror","-fsanitize=address",str(cpp),"-o",str(exe)],check=True)
     subprocess.run([str(exe)],check=True)
 print("Local sensor lifetime regression passed (AddressSanitizer).")

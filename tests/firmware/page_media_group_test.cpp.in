@@ -1,0 +1,111 @@
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <vector>
+
+#include "media_group_discovery.h"
+#include "page_media_group.h"
+static size_t allocations = 0;
+void* operator new(size_t bytes) {
+  ++allocations;
+  if (auto* p = std::malloc(bytes ? bytes : 1)) return p;
+  std::abort();
+}
+void* operator new[](size_t bytes) {
+  return ::operator new(bytes);
+}
+void operator delete(void* p) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p) noexcept {
+  std::free(p);
+}
+void operator delete(void* p, std::size_t) noexcept {
+  std::free(p);
+}
+void operator delete[](void* p, std::size_t) noexcept {
+  std::free(p);
+}
+// @legacy-group-parser
+void compare(std::string_view primary, std::string_view raw) {
+  std::vector<std::string> members;
+  media_group_append_unique(members, std::string(primary));
+  for (const auto& entity : media_group_parse_entity_list(raw.data(), raw.size()))
+    media_group_append_unique(members, entity);
+  const auto before = allocations;
+  const bool grouped = espcontrol::pages::media_group_has_multiple(primary, raw);
+  assert(allocations == before);
+  if (grouped != (members.size() > 1)) {
+    std::fprintf(stderr, "group mismatch primary=%.*s raw=%.*s\n", int(primary.size()), primary.data(),
+                 int(raw.size()), raw.data());
+    std::abort();
+  }
+}
+int main() {
+  for (const auto value : {"", "  ", "unknown", " UNKNOWN ", "unavailable", "UnAvAiLaBlE"})
+    assert(!espcontrol::pages::media_group_source_available(value));
+  for (const auto value : {"playing", "paused", "off", "stopped"})
+    assert(espcontrol::pages::media_group_source_available(value));
+  const std::vector<std::string> primaries = {
+      "media_player.room", "media_player.other",    "",
+      "switch.room",       " 'media_player.room' ", "media_player.bad-id"};
+  const std::vector<std::string> corpus = {"",
+                                           "[]",
+                                           "['media_player.room']",
+                                           "['media_player.room','media_player.room']",
+                                           "['media_player.other']",
+                                           "media_player.room,media_player.other",
+                                           "  [  'media_player.room' ,  \"media_player.other\"  ]  ",
+                                           "['switch.room','sensor.room']",
+                                           "['media_player.','media_player.bad-id']",
+                                           "media_\"player\".other",
+                                           "\"'media_player.other'\"",
+                                           "'media_player.oth\\er'",
+                                           "'media_player.other",
+                                           "['media_player.room','media_player.other'",
+                                           "['media_player.room',\"media_player.other\"]",
+                                           "media_player.room\v",
+                                           "['media_player.room','media_player.other','media_player.room']"};
+  for (const auto& primary : primaries)
+    for (const auto& raw : corpus) compare(primary, raw);
+  uint32_t random = 1234567;
+  const auto next = [&]() {
+    random = random * 1664525U + 1013904223U;
+    return random;
+  };
+  const std::vector<std::string> fragments = {"media_player.room",
+                                              "media_player.other",
+                                              "media_player.third",
+                                              "'",
+                                              "\"",
+                                              "\\",
+                                              "[",
+                                              "]",
+                                              ",",
+                                              " ",
+                                              "\t",
+                                              "\n",
+                                              "bad",
+                                              "media_player.",
+                                              "media_player.bad-id"};
+  for (int n = 0; n < 10000; ++n) {
+    std::string raw;
+    for (size_t i = 0, count = next() % 10; i < count; ++i) raw += fragments[next() % fragments.size()];
+    compare(primaries[next() % primaries.size()], raw);
+  }
+  const std::string large = "media_player." + std::string(16000, 'x');
+  compare("", large);
+  compare("invalid", large + "," + large);
+  compare("media_player.room", large);
+  compare("media_player.room", std::string(10000, ' ') + "'media_player.other'");
+  const auto before = allocations;
+  for (int n = 0; n < 1000; ++n)
+    assert(espcontrol::pages::media_group_has_multiple("media_player.room",
+                                                       "['media_player.room','media_player.other']"));
+  assert(allocations == before);
+}

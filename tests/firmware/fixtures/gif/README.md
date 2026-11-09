@@ -3,6 +3,8 @@ with Pillow 12.3.0. They contain no external image assets.
 
 - `disposal.gif`: four transparent frames, local palettes, disposal methods
   1/2/3, individual delays, and one repeat after the initial playthrough.
+- `disposal-no-restore.gif`: the same compressed rectangles with disposal three
+  changed to keep; independent compositing checks animation with one canvas.
 - `interlaced.gif`: seeded random pixels and a 256-colour palette, exercising
   interlace passes, LZW dictionary growth and dictionary resets.
 - `static87.gif`: a small GIF87a image without animation extensions.

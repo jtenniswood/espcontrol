@@ -1,4 +1,5 @@
 import { resetAwareFetch } from "./api/reset_session";
+import type { CardConfig } from "./contracts/types";
 import * as DeviceConfig from "./device_config";
 import * as Model from "./model";
 import { createDeviceApi } from "./api/device_api";
@@ -68,6 +69,9 @@ import { createButtonSettingsFeature, type ButtonSettingsFeature } from "./appli
 import { createPreviewGridPlacementFeature } from "./application/preview_grid_placement";
 import { createPreviewContextMenuFeature, type PreviewContextMenuFeature } from "./application/preview_context_menu";
 import { createPreviewClipboardFeature } from "./application/preview_clipboard";
+import { createNativePageTransfersFeature, validatePageTransferCards } from "./application/native_page_transfers";
+import { pageDepth } from "./model/page_keys";
+import { panelPageDocumentDepth } from "./model/panel_config_conversion";
 import { createPreviewInteractionsFeature, type PreviewInteractionsFeature } from "./application/preview_interactions";
 import { createCardEditorDraftController } from "./features/card_editor_draft_controller";
 import { createCardEditorValidationController } from "./features/card_editor_validation_controller";
@@ -96,6 +100,7 @@ import { createAppStateEventHandlersFeature } from "./application/app_state_even
 import { createAppEventsFeature, type AppEventsFeature } from "./application/app_events";
 import { createAppFeature, type AppFeature } from "./application/app";
 import { startApp } from "./application/app_start";
+import { createNativePageEditorFeature } from "./application/native_page_editor";
 import { createReconnectController } from "./features/reconnect";
 import { registerActionCardTypes } from "./cards/action";
 import { registerAlarmCardTypes } from "./cards/alarm";
@@ -380,6 +385,10 @@ function composeApplicationContext(): ApplicationContext {
     normalizeHexColor: (value, fallback) => Model.normalizeHexColor(value, fallback),
     showBanner: shell.showBanner,
     delay: (callback, milliseconds) => dom.schedule(callback, milliseconds),
+    saved: document => {
+      state.nativeHasNestedPages = panelPageDocumentDepth(document) > 1;
+      state.nativePanelDocument = { ...document, buttons: { ...document.buttons }, subpages: { ...document.subpages }, settings: { ...document.settings } };
+    },
   }, dom.fetch);
   const configurationPersistence = createConfigPersistenceFeature(nativePanelConfig, runtime, layout, entityState, shell);
   const cards = createCardRegistry();
@@ -499,7 +508,7 @@ function composeApplicationContext(): ApplicationContext {
   const clockBarPostApi = createClockBarPostApiFeature(entityState, requestApi);
   configurationPersistence.connectRequestApi(requestApi);
   configurationCodec.connectRequestApi(requestApi);
-  const grid = createGridFeature(configurationCodec, runtime, layout, entityState, requestApi, renderQueue);
+  const grid = createGridFeature(configurationCodec, runtime, layout, entityState, requestApi, renderQueue, () => nativePanelConfig.markLocalEdit());
   fields = createControlsFieldsFeature(cards, configurationOptions, shell, requestApi);
   const placement = createPreviewGridPlacementFeature({
     controller: previewPlacement,
@@ -622,7 +631,23 @@ function composeApplicationContext(): ApplicationContext {
     grid,
     selection,
   });
+  const nativeTransfers = createNativePageTransfersFeature({
+    native: nativePanelConfig, editor: () => nativePages, layout, api: requestApi, grid, shell,
+    validate: (entries, target, moving) => {
+      let images = 0;
+      const checkCard = (button: CardConfig, inSubpage: boolean) => {
+        const definition = cards.definitions[button.type || ""];
+        if (!definition || preview.configDisabled(button) || (inSubpage && !preview.registryValue(definition, "allowInSubpage", false)))
+          throw new Error("A copied card is not supported on this page.");
+        if (imageConfigurationOptions.isImageCard(button)) ++images;
+      };
+      validatePageTransferCards(entries, target, configurationCodec, checkCard);
+      if (!moving && !imageConfigurationOptions.canAddImageCards(images))
+        throw new Error(imageConfigurationOptions.imageSlotCapacityMessage());
+    },
+  });
   const clipboard = createPreviewClipboardFeature({
+    nativeTransfers,
     configPersistence: configurationPersistence,
     document: dom.document,
     layout,
@@ -666,6 +691,7 @@ function composeApplicationContext(): ApplicationContext {
     deleteButtons: (slots) => interactions.deleteButtons(slots),
   });
   interactions = createPreviewInteractionsFeature({
+    nativeTransfers,
     cardEditorDraft,
     configPersistence: configurationPersistence,
     layout,
@@ -690,6 +716,12 @@ function composeApplicationContext(): ApplicationContext {
     shell, requestApi, grid, iconPicker, selection, preview, interactions, fields,
   );
   const configEvents = createAppConfigEventsFeature(configurationPersistence, configurationCodec, layout, renderQueue);
+  const nativePages = createNativePageEditorFeature({ native: nativePanelConfig, codec: configurationCodec, layout, runtime,
+    document: dom.document, shell, closeSettings: selection.closeSettings,
+    render: () => { preview.render(); buttonSettings.render(); appearance.syncColorUi(); },
+    canApply: () => !grid.hasPendingMainGridSave(),
+  });
+  configurationCodec.connectNativePageRefresh(() => nativePages.refresh());
   const stateEventHandlers = createAppStateEventHandlersFeature(
     runtime,
     core,
@@ -815,6 +847,7 @@ function composeApplicationContext(): ApplicationContext {
   });
   const backupApplication = createAppBackupFeature({
     identity,
+    waitForInitialState: () => stateLoader.waitForInitialState(),
     layout,
     backupExport,
     backupImport,
@@ -866,6 +899,7 @@ function composeApplicationContext(): ApplicationContext {
     shell,
     stateLoader,
     gridMigration,
+    nativePages,
   );
   publicFirmwareInstall = createPublicFirmwareInstallFeature(
     deviceApi,
@@ -1006,7 +1040,10 @@ function startEspControl(): void {
   // session even though the API becomes available a few seconds later.
   const discoverNativeCards = () => {
     void context.configuration.native.waitForDiscovery().then((result) => {
-      if (result === true) context.controllers.buttonSettings.render();
+      if (result === true) {
+        void context.configuration.codec.refreshNativePages();
+        context.controllers.buttonSettings.render();
+      }
     });
   };
   if (context.dom.document.readyState === "loading") {

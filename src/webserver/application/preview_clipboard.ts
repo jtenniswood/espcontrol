@@ -15,7 +15,9 @@ import type { EntityStateFeature } from "./entity_state";
 import type { ControlsShellFeature } from "./controls_shell";
 import type { ApplicationApiFeature } from "./api";
 import type { GridFeature } from "./grid";
+import type { NativePageTransfersFeature } from "./native_page_transfers";
 export interface PreviewClipboardDependencies {
+    readonly nativeTransfers?: NativePageTransfersFeature;
     readonly configPersistence: ConfigPersistenceFeature;
     readonly document: Document;
     readonly layout: ApplicationLayoutState;
@@ -90,12 +92,14 @@ export function createPreviewClipboardFeature(
         return createClipboardEntry(src, c.sizes[slot] || 1, subpageConfig);
     }
     function copySlot(this: any, slot?: any) {
+        if (dependencies.nativeTransfers?.available()) { void dependencies.nativeTransfers.copy([Number(slot)]); return; }
         var entry: any = buildClipboardEntry(slot);
         if (!entry)
             return;
         state.clipboard = { buttons: [entry] };
     }
     function copyButtons(this: any, slots?: any) {
+        if (dependencies.nativeTransfers?.available()) { void dependencies.nativeTransfers.copy(slots.map(Number)); return; }
         var entries: any = [];
         slots.forEach(function (this: any, slot?: any) {
             var entry: any = buildClipboardEntry(slot);
@@ -124,18 +128,27 @@ export function createPreviewClipboardFeature(
             options: entry.options || "",
             size: entry.size || 1,
         };
-        if (entry.subpageConfig) {
+        if (entry.pageTree) transfer.page_tree = entry.pageTree;
+        else if (entry.subpageConfig) {
             transfer.subpage = EspControlModel.structuredSubpageFromParsed(parseSubpageConfig(entry.subpageConfig));
         }
         return transfer;
     }
-    function cardTransferCodeForSlots(slots: any) {
+    async function cardTransferCodeForSlots(slots: any) {
         var entries: any = [];
-        slots.forEach(function (slot: any) {
-            var entry: any = buildClipboardEntry(slot);
-            if (entry)
-                entries.push(cardTransferEntryFromClipboard(entry));
-        });
+        if (dependencies.nativeTransfers?.available()) {
+            const captured = await dependencies.nativeTransfers.capture(slots.map(Number));
+            if (!captured) throw cardTransferError("Could not read the saved cards. Try copying again.");
+            entries = captured.entries.map(entry => cardTransferEntryFromClipboard({ ...entry.button, size: entry.size,
+                pageTree: entry.subtree, subpageConfig: null }));
+        }
+        else {
+            slots.forEach(function (slot: any) {
+                var entry: any = buildClipboardEntry(slot);
+                if (entry)
+                    entries.push(cardTransferEntryFromClipboard(entry));
+            });
+        }
         return EspControlModel.createCardTransferCode({
             device: dependencies.layout.deviceId,
             firmware: String(state.firmwareVersion || ""),
@@ -156,7 +169,7 @@ export function createPreviewClipboardFeature(
             throw cardTransferError("This controller does not support the " +
                 cardTransferTypeLabel(type) + " card type.");
         }
-        if (inSubpage && type === "subpage") {
+        if (inSubpage && type === "subpage" && !dependencies.nativeTransfers?.available()) {
             throw cardTransferError("Subpage cards cannot be placed inside another subpage.");
         }
         if (inSubpage && !buttonTypeRegistryValue(typeDef, "allowInSubpage", false)) {
@@ -268,6 +281,8 @@ export function createPreviewClipboardFeature(
         return { subpage: subpage, resized: resized };
     }
     function clipboardEntriesFromCardTransfer(envelope: any, targetIsSubpage: any) {
+        if (envelope.version > 1 && !dependencies.nativeTransfers?.available())
+            throw cardTransferError("This card code requires firmware with nested-page support.");
         var entries: any = [];
         var warnings: any = { local: false, cardResized: false, subpageResized: false };
         envelope.cards.forEach(function (transfer: any) {
@@ -289,8 +304,12 @@ export function createPreviewClipboardFeature(
                 size: normalizedSize,
                 subpageConfig: null,
             };
+            if (transfer.page_tree) {
+                entry.pageTree = transfer.page_tree;
+                entry.subpageConfig = transfer.page_tree.configuration;
+            }
             if (transfer.subpage) {
-                if (targetIsSubpage) {
+                if (targetIsSubpage && !dependencies.nativeTransfers?.available()) {
                     throw cardTransferError("Subpage cards can only be pasted onto the home screen.");
                 }
                 var parsed: any = EspControlModel.parseStructuredSubpageConfig(transfer.subpage);
@@ -311,6 +330,7 @@ export function createPreviewClipboardFeature(
             return;
         if (slot < 1)
             return;
+        if (dependencies.nativeTransfers?.available()) { void dependencies.nativeTransfers.copy([Number(slot)], true); return; }
         copySlot(slot);
         deleteSlot(slot);
     }
@@ -320,6 +340,7 @@ export function createPreviewClipboardFeature(
         var cardSlots: any = slots.filter(function (this: any, slot?: any) { return slot > 0; });
         if (!cardSlots.length)
             return;
+        if (dependencies.nativeTransfers?.available()) { void dependencies.nativeTransfers.copy(cardSlots.map(Number), true); return; }
         copyButtons(cardSlots);
         deleteButtons(cardSlots);
     }
@@ -455,11 +476,19 @@ export function createPreviewClipboardFeature(
         }
         return { subpage: subpage, slots: slots, resized: resized };
     }
-    function performClipboardPaste(entries: any, pos: any, targetIsSubpage: any) {
+    async function performClipboardPaste(entries: any, pos: any, targetIsSubpage: any) {
         if (isConfigLocked())
             return { ok: false, error: "Configuration is locked." };
         if (!entries || !entries.length)
             return { ok: false, error: "No copied cards are available." };
+        if (dependencies.nativeTransfers?.available()) {
+            const target = targetIsSubpage ? state.editingSubpage ?? 0 : 0;
+            const prepared = entries.map((entry: any) => ({ button: clipboardButtonConfig(entry), size: entry.size || 1,
+                subtree: entry.pageTree ?? (entry.subpageConfig === null ? null : { configuration: entry.subpageConfig, children: {} }) }));
+            const result = await dependencies.nativeTransfers.paste(Number(pos), target, prepared);
+            return { ...result, count: result.ok ? entries.length : 0,
+                error: result.ok ? "" : "The cards could not be pasted. Check the saved pages before trying again." };
+        }
         if (!canAddImageCards(imageCardCountInClipboardEntries(entries))) {
             showImageCardLimitBanner();
             return { ok: false, error: imageSlotCapacityMessage() };
@@ -492,10 +521,12 @@ export function createPreviewClipboardFeature(
         renderPreview();
         return { ok: true, count: plan.slots.length, resized: plan.resized };
     }
-    function pasteButton(this: any, pos?: any) {
+    async function pasteButton(this: any, pos?: any) {
         if (!state.clipboard)
             return;
-        var result: any = performClipboardPaste(state.clipboard.buttons, pos, false);
+        if (dependencies.nativeTransfers?.available()) return dependencies.nativeTransfers.paste(Number(pos), 0);
+        if (state.clipboard.native) { showBanner("These copied pages require firmware with nested-page support.", "error"); return; }
+        var result: any = await performClipboardPaste(state.clipboard.buttons, pos, false);
         if (!result.ok)
             return result;
         state.clipboard = null;
@@ -503,10 +534,12 @@ export function createPreviewClipboardFeature(
             showBanner("Cards pasted. Some were resized to fit.", "warning");
         return result;
     }
-    function pasteSubpageButton(this: any, pos?: any) {
+    async function pasteSubpageButton(this: any, pos?: any) {
         if (!state.clipboard)
             return;
-        var result: any = performClipboardPaste(state.clipboard.buttons, pos, true);
+        if (dependencies.nativeTransfers?.available()) return dependencies.nativeTransfers.paste(Number(pos), state.editingSubpage ?? 0);
+        if (state.clipboard.native) { showBanner("These copied pages require firmware with nested-page support.", "error"); return; }
+        var result: any = await performClipboardPaste(state.clipboard.buttons, pos, true);
         if (!result.ok)
             return result;
         state.clipboard = null;
@@ -571,7 +604,7 @@ export function createPreviewClipboardFeature(
     async function showCopyCardCode(slots: any) {
         var code: string;
         try {
-            code = cardTransferCodeForSlots(slots);
+            code = await cardTransferCodeForSlots(slots);
         }
         catch (error: any) {
             showBanner(error.cardTransferMessage || error.message || "Could not create card code.", "error");
@@ -614,6 +647,7 @@ export function createPreviewClipboardFeature(
             copied ? "success" : "error");
     }
     function showPasteCardCode(pos: any, targetIsSubpage: any) {
+        const targetPage = targetIsSubpage ? state.editingSubpage : null;
         var dialog: any = createCardTransferDialog("Paste Code");
         var intro: any = document.createElement("p");
         intro.textContent = "Paste the code below. Nothing is changed until you choose Paste.";
@@ -633,12 +667,13 @@ export function createPreviewClipboardFeature(
         cancel.addEventListener("click", closeCardTransferDialog);
         actions.appendChild(cancel);
         var paste: any = createActionButton("sp-action-btn sp-save-btn", "Paste");
-        paste.addEventListener("click", function () {
+        paste.addEventListener("click", async function () {
             errorText.textContent = "";
             try {
+                if (state.editingSubpage !== targetPage) throw cardTransferError("The destination page changed. Open Paste Code again.");
                 var envelope: any = EspControlModel.parseCardTransferCode(textarea.value);
                 var converted: any = clipboardEntriesFromCardTransfer(envelope, targetIsSubpage);
-                var result: any = performClipboardPaste(converted.entries, pos, targetIsSubpage);
+                var result: any = await performClipboardPaste(converted.entries, pos, targetIsSubpage);
                 if (!result.ok) {
                     errorText.textContent = result.error || "The cards could not be pasted.";
                     return;

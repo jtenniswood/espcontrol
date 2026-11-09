@@ -270,17 +270,19 @@ export function createControlsShellFeature(
             support.classList.remove("sp-support-hidden");
     }
     function isConfigLocked(this: any) {
-        return !!state.configLocked;
+        return !!state.configLocked || !!state.nativeConfigReadOnly || !!state.nativeConfigLoading || !!state.nativeTransferActive;
     }
     function syncConfigLockUi(this: any) {
+        const previewLocked = !!state.configLocked || !!state.nativeConfigLoading || !!state.nativeTransferActive ||
+            (!!state.nativeConfigReadOnly && !state.nativePanelDocument);
         if (els.root) {
-            els.root.classList.toggle("sp-config-locked", isConfigLocked());
+            els.root.classList.toggle("sp-config-locked", previewLocked);
         }
         if (els.previewMain) {
-            els.previewMain.setAttribute("aria-disabled", isConfigLocked() ? "true" : "false");
+            els.previewMain.setAttribute("aria-disabled", previewLocked ? "true" : "false");
         }
         if (els.root) {
-            var text: any = "Waiting for device\u2026";
+            var text: any = state.nativeConfigReadOnly ? "Read-only configuration" : state.nativeTransferActive ? "Updating cards\u2026" : state.nativeConfigLoading ? "Loading pages\u2026" : "Waiting for device\u2026";
             if ((state.configLockReason || "").indexOf("Restarting") !== -1)
                 text = "Restarting\u2026";
             els.root.querySelectorAll(".sp-apply-btn").forEach(function (this: any, btn?: any) {

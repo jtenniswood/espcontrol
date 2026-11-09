@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 namespace espcontrol::artwork {
 
@@ -12,6 +13,38 @@ struct SourceSelection {
   std::string fallback;
   bool preferred_refreshed_remote{false};
 };
+
+// Borrowed selections also accept segmented URL views. The graph and legacy
+// owning wrapper share one policy without allocating candidate URL copies.
+template <typename Url>
+struct SourceSelectionReference {
+  Url primary{}, fallback{};
+  bool preferred_refreshed_remote{false};
+};
+template <typename Url>
+inline SourceSelectionReference<Url> select_source_candidates(Url remote, Url local, bool remote_changed,
+                                                              bool remote_matches_current,
+                                                              bool refresh_needed) {
+  // The remote attribute is authoritative. A retained local proxy must never
+  // keep cleared artwork alive by itself.
+  if (remote.empty()) return {};
+  SourceSelectionReference<Url> result{local.empty() ? remote : local, {}, false};
+  if (!local.empty() && remote != result.primary) result.fallback = remote;
+  // Stable remote station icons do not displace local artwork just because
+  // the two URLs differ; only a changed remote candidate can be promoted.
+  if (refresh_needed && remote_changed && !remote_matches_current) {
+    result.fallback = result.primary;
+    result.primary = remote;
+    result.preferred_refreshed_remote = true;
+  }
+  return result;
+}
+using SourceSelectionView = SourceSelectionReference<std::string_view>;
+inline SourceSelectionView select_source_views(std::string_view remote, std::string_view local,
+                                               bool remote_changed, std::string_view current,
+                                               bool refresh_needed) {
+  return select_source_candidates(remote, local, remote_changed, remote == current, refresh_needed);
+}
 
 enum class RemoteUpdatePolicy {
   START_NEW_GENERATION,
@@ -283,28 +316,10 @@ struct SourceCandidates {
 
   SourceSelection select(const std::string &current_url,
                          bool refresh_needed) const {
-    SourceSelection selection;
-    // entity_picture is the authoritative indication that the entity has
-    // artwork. entity_picture_local is only a transport-friendly version of
-    // that image and must never keep stale artwork alive by itself.
-    if (remote_url.empty()) return selection;
-    selection.primary = local_url.empty() ? remote_url : local_url;
-    if (!local_url.empty() && !remote_url.empty() &&
-        remote_url != selection.primary) {
-      selection.fallback = remote_url;
-    }
-
-    // A local proxy URL can remain unchanged across tracks. Promote the remote
-    // candidate only when Home Assistant actually changed that attribute in
-    // this paired refresh; merely differing from the selected local proxy does
-    // not make a stable station favicon fresh artwork.
-    if (refresh_needed && this->remote_changed && !remote_url.empty() &&
-        remote_url != current_url) {
-      selection.fallback = selection.primary;
-      selection.primary = remote_url;
-      selection.preferred_refreshed_remote = true;
-    }
-    return selection;
+    const auto selected =
+        select_source_views(remote_url, local_url, remote_changed, current_url, refresh_needed);
+    return {std::string(selected.primary), std::string(selected.fallback),
+            selected.preferred_refreshed_remote};
   }
 
   void clear() {

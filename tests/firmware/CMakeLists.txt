@@ -8,6 +8,772 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_test(NAME navigation_touch_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/navigation_touch_test.py)
+# Exercise the version-pinned native subscription bridge against the repository
+# SDK pin. A hard-coded test version can hide a broken firmware build after a
+# pin update, even when all simulated subscription lifetimes still pass.
+set(ESPCONTROL_SDK_PIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../../.github/esphome.env")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${ESPCONTROL_SDK_PIN_FILE}")
+file(STRINGS "${ESPCONTROL_SDK_PIN_FILE}" ESPCONTROL_SDK_PIN REGEX "^ESPHOME_VERSION=")
+if(NOT ESPCONTROL_SDK_PIN MATCHES "^ESPHOME_VERSION=([0-9]+)\\.([0-9]+)\\.([0-9]+)$")
+  message(FATAL_ERROR "A stable ESPHome SDK pin is required for native bridge tests")
+endif()
+set(ESPCONTROL_SDK_MAJOR "${CMAKE_MATCH_1}")
+set(ESPCONTROL_SDK_MINOR "${CMAKE_MATCH_2}")
+set(ESPCONTROL_SDK_PATCH "${CMAKE_MATCH_3}")
+configure_file(owned_ha_stubs/esphome/core/version.h.in
+  owned_ha_version/esphome/core/version.h @ONLY)
+
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/configuration_psram_allocator_test.cpp
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_configuration_psram_allocator_test.py
+          ${CMAKE_CURRENT_BINARY_DIR}/configuration_psram_allocator_test.cpp
+  DEPENDS generate_configuration_psram_allocator_test.py configuration_psram_allocator_test.cpp.in
+          ../../components/espcontrol/espcontrol_app.cpp)
+add_executable(configuration_psram_allocator_test ${CMAKE_CURRENT_BINARY_DIR}/configuration_psram_allocator_test.cpp)
+target_compile_features(configuration_psram_allocator_test PRIVATE cxx_std_17)
+target_compile_definitions(configuration_psram_allocator_test PRIVATE USE_ESP32)
+target_compile_options(configuration_psram_allocator_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(configuration_psram_allocator_test PRIVATE ../../components/espcontrol)
+add_test(NAME configuration_psram_allocator_test COMMAND configuration_psram_allocator_test)
+
+add_executable(panel_config_document_v2_reader panel_config_document_v2_reader.cpp)
+target_compile_features(panel_config_document_v2_reader PRIVATE cxx_std_17)
+target_compile_options(panel_config_document_v2_reader PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_document_v2_reader PRIVATE ../../components/espcontrol)
+add_executable(panel_config_projection_cli panel_config_projection_cli.cpp)
+target_compile_features(panel_config_projection_cli PRIVATE cxx_std_17)
+target_compile_options(panel_config_projection_cli PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_projection_cli PRIVATE ../../components/espcontrol)
+add_executable(panel_config_import_cli panel_config_import_cli.cpp)
+target_compile_features(panel_config_import_cli PRIVATE cxx_std_17)
+target_compile_options(panel_config_import_cli PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_import_cli PRIVATE ../../components/espcontrol)
+
+set(ESPCONTROL_DOCUMENT_FLAGS_SAVED "${CMAKE_REQUIRED_FLAGS}")
+set(ESPCONTROL_DOCUMENT_LINK_SAVED "${CMAKE_REQUIRED_LINK_OPTIONS}")
+set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -fsanitize=address,undefined -fno-omit-frame-pointer")
+set(CMAKE_REQUIRED_LINK_OPTIONS "${CMAKE_REQUIRED_LINK_OPTIONS};-fsanitize=address,undefined")
+check_cxx_source_compiles("int main() { return 0; }" ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+set(CMAKE_REQUIRED_FLAGS "${ESPCONTROL_DOCUMENT_FLAGS_SAVED}")
+set(CMAKE_REQUIRED_LINK_OPTIONS "${ESPCONTROL_DOCUMENT_LINK_SAVED}")
+if(ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+  foreach(target configuration_psram_allocator_test panel_config_document_v2_reader panel_config_projection_cli panel_config_import_cli)
+    target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_link_options(${target} PRIVATE -fsanitize=address,undefined)
+  endforeach()
+endif()
+
+add_test(NAME panel_config_document_v2_test
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/panel_config_document_v2_test.py
+          $<TARGET_FILE:panel_config_document_v2_reader>)
+add_test(NAME panel_config_projection_test
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/panel_config_projection_test.py
+          $<TARGET_FILE:panel_config_projection_cli>)
+add_test(NAME panel_config_import_test
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/panel_config_import_test.py
+          $<TARGET_FILE:panel_config_import_cli>)
+
+add_executable(panel_config_http_versions_test panel_config_http_versions_test.cpp
+  ../../components/espcontrol/configuration_main_loop.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp
+  ../../components/espcontrol/page_renderer_layout.cpp
+  ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/panel_config_legacy_adapter.cpp
+  ../../components/espcontrol/panel_config_text_bindings.cpp)
+target_compile_features(panel_config_http_versions_test PRIVATE cxx_std_17)
+target_compile_definitions(panel_config_http_versions_test PRIVATE USE_WEBSERVER USE_WEBSERVER_AUTH)
+target_compile_options(panel_config_http_versions_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_http_versions_test PRIVATE config_http_stubs stubs ../../components/espcontrol)
+target_link_libraries(panel_config_http_versions_test PRIVATE Threads::Threads)
+if(ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+  target_compile_options(panel_config_http_versions_test PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+  target_link_options(panel_config_http_versions_test PRIVATE -fsanitize=address,undefined)
+endif()
+add_test(NAME panel_config_http_versions_test COMMAND panel_config_http_versions_test)
+
+add_executable(page_modal_admission_test page_modal_admission_test.cpp)
+target_compile_features(page_modal_admission_test PRIVATE cxx_std_17)
+target_compile_options(page_modal_admission_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_modal_admission_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_modal_admission_test COMMAND page_modal_admission_test)
+
+add_executable(page_native_scene_state_test page_native_scene_state_test.cpp
+  ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_forecast_runtime.cpp
+  ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp
+  ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_percent_slider_runtime.cpp
+  ../../components/espcontrol/page_number_slider_runtime.cpp ../../components/espcontrol/page_light_temperature_runtime.cpp
+  ../../components/espcontrol/page_timer_runtime.cpp ../../components/espcontrol/page_cover_toggle_runtime.cpp
+  ../../components/espcontrol/page_access_state_runtime.cpp ../../components/espcontrol/page_calendar_runtime.cpp
+  ../../components/espcontrol/page_timezone_runtime.cpp ../../components/espcontrol/page_alarm_state_runtime.cpp
+  ../../components/espcontrol/page_alarm_ack_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_native_scene_state_test PRIVATE cxx_std_17)
+target_compile_options(page_native_scene_state_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_native_scene_state_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_native_scene_state_test COMMAND page_native_scene_state_test)
+
+add_executable(page_confirmation_runtime_test page_confirmation_runtime_test.cpp
+  ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp)
+target_compile_features(page_confirmation_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_confirmation_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_confirmation_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_confirmation_runtime_test COMMAND page_confirmation_runtime_test)
+
+file(GLOB PAGE_STORE_FIXTURES CONFIGURE_DEPENDS
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../common/config/*_card_normalization_fixtures.json)
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/page_store_goldens.h
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/generate_page_store_goldens.py
+    --output ${CMAKE_CURRENT_BINARY_DIR}/page_store_goldens.h
+  DEPENDS ${PAGE_STORE_FIXTURES}
+    ../../common/config/card_normalization_fixtures.json
+    ../../scripts/generate_page_store_goldens.py
+    ../../scripts/generate_saved_config_parser_test.py
+  VERBATIM)
+add_executable(page_store_test page_store_test.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/page_store_goldens.h
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_store_test PRIVATE cxx_std_17)
+target_compile_options(page_store_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_store_test PRIVATE stubs ../../components/espcontrol
+  ${CMAKE_CURRENT_BINARY_DIR})
+add_test(NAME page_store_test COMMAND page_store_test)
+
+add_executable(page_store_v2_test page_store_v2_test.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/page_store_goldens.h
+  ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(page_store_v2_test PRIVATE cxx_std_17)
+target_compile_options(page_store_v2_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_store_v2_test PRIVATE stubs ../../components/espcontrol ${CMAKE_CURRENT_BINARY_DIR})
+if(ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+  target_compile_options(page_store_v2_test PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+  target_link_options(page_store_v2_test PRIVATE -fsanitize=address,undefined)
+endif()
+add_test(NAME page_store_v2_test COMMAND page_store_v2_test)
+
+add_executable(panel_config_dual_boot_test panel_config_dual_boot_test.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp
+  ../../components/espcontrol/panel_config_legacy_adapter.cpp
+  ../../components/espcontrol/panel_config_runtime_adapter.cpp
+  ../../components/espcontrol/panel_config_text_bindings.cpp
+  ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(panel_config_dual_boot_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_dual_boot_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_dual_boot_test PRIVATE stubs ../../components/espcontrol)
+if(ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+  target_compile_options(panel_config_dual_boot_test PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+  target_link_options(panel_config_dual_boot_test PRIVATE -fsanitize=address,undefined)
+endif()
+add_test(NAME panel_config_dual_boot_test COMMAND panel_config_dual_boot_test)
+
+add_executable(panel_config_esphome_text_test panel_config_esphome_text_test.cpp)
+target_compile_features(panel_config_esphome_text_test PRIVATE cxx_std_17)
+target_compile_definitions(panel_config_esphome_text_test PRIVATE USE_ESP32)
+target_compile_options(panel_config_esphome_text_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_esphome_text_test PRIVATE text_preference_stubs ../../components/espcontrol)
+add_test(NAME panel_config_esphome_text_test COMMAND panel_config_esphome_text_test)
+
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/panel_config_text_storage_test.cpp
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_panel_config_text_storage_test.py
+          ${CMAKE_CURRENT_BINARY_DIR}/panel_config_text_storage_test.cpp
+  DEPENDS generate_panel_config_text_storage_test.py panel_config_text_storage_test.cpp.in
+          ../../components/espcontrol/espcontrol_app.h ../../components/espcontrol/espcontrol_app.cpp
+  VERBATIM)
+add_custom_target(panel_config_text_storage_test_source
+  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/panel_config_text_storage_test.cpp)
+function(add_panel_text_storage_test name slots chunks)
+  add_executable(${name} ${CMAKE_CURRENT_BINARY_DIR}/panel_config_text_storage_test.cpp
+    ../../components/espcontrol/panel_config_text_bindings.cpp)
+  add_dependencies(${name} panel_config_text_storage_test_source)
+  target_compile_features(${name} PRIVATE cxx_std_17)
+  target_compile_definitions(${name} PRIVATE USE_ESP32)
+  if(NOT "${slots}" STREQUAL "default")
+    target_compile_definitions(${name} PRIVATE
+      ESPCONTROL_PANEL_CONFIG_TEXT_SLOT_COUNT=${slots}
+      ESPCONTROL_PANEL_CONFIG_TEXT_CHUNK_COUNT=${chunks})
+  endif()
+  target_compile_options(${name} PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+  target_include_directories(${name} PRIVATE profile_text_storage_stubs
+    text_preference_stubs ../../components/espcontrol)
+  add_test(NAME ${name} COMMAND ${name})
+endfunction()
+add_panel_text_storage_test(panel_text_storage_p4_six_test 6 8)
+add_panel_text_storage_test(panel_text_storage_s3_test 9 4)
+add_panel_text_storage_test(panel_text_storage_p4_nine_test 9 8)
+add_panel_text_storage_test(panel_text_storage_p4_fifteen_test 15 8)
+add_panel_text_storage_test(panel_text_storage_p4_twenty_test 20 8)
+add_panel_text_storage_test(panel_text_storage_five_chunks_test 1 5)
+add_panel_text_storage_test(panel_text_storage_six_chunks_test 1 6)
+add_panel_text_storage_test(panel_text_storage_seven_chunks_test 1 7)
+add_panel_text_storage_test(panel_text_storage_fallback_test default default)
+
+
+add_executable(panel_config_legacy_capacity_test panel_config_legacy_capacity_test.cpp
+  ../../components/espcontrol/panel_config_text_bindings.cpp)
+target_compile_features(panel_config_legacy_capacity_test PRIVATE cxx_std_17)
+target_compile_definitions(panel_config_legacy_capacity_test PRIVATE USE_ESP32)
+target_compile_options(panel_config_legacy_capacity_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_legacy_capacity_test PRIVATE text_preference_stubs ../../components/espcontrol)
+add_test(NAME panel_config_legacy_capacity_test COMMAND panel_config_legacy_capacity_test)
+add_test(NAME panel_config_empty_defaults_codegen_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/panel_config_empty_defaults_codegen_test.py)
+add_test(NAME psram_allocation_policy_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/psram_allocation_policy_test.py)
+
+add_executable(legacy_text_preference_test legacy_text_preference_test.cpp)
+target_compile_features(legacy_text_preference_test PRIVATE cxx_std_17)
+target_compile_options(legacy_text_preference_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(legacy_text_preference_test PRIVATE ../../components/espcontrol)
+add_test(NAME legacy_text_preference_test COMMAND legacy_text_preference_test)
+
+add_executable(page_store_runtime_test page_store_runtime_test.cpp
+  ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp)
+target_compile_features(page_store_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_store_runtime_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_store_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_store_runtime_test COMMAND page_store_runtime_test)
+
+add_executable(page_entity_state_runtime_test page_entity_state_runtime_test.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(page_entity_state_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_entity_state_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_entity_state_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_entity_state_runtime_test COMMAND page_entity_state_runtime_test)
+
+set(PAGE_CLIMATE_PARITY_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_climate_parity_test.cpp)
+add_custom_command(
+  OUTPUT ${PAGE_CLIMATE_PARITY_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_climate_parity_test.py
+    --header ${CMAKE_CURRENT_SOURCE_DIR}/../../components/espcontrol/button_grid_climate.h
+    --output ${PAGE_CLIMATE_PARITY_SOURCE}
+  DEPENDS generate_page_climate_parity_test.py generate_climate_update_test.py
+    page_climate_parity_test.cpp.in ../../components/espcontrol/button_grid_climate.h
+  VERBATIM)
+add_executable(page_climate_parity_test ${PAGE_CLIMATE_PARITY_SOURCE}
+  ../../components/espcontrol/page_climate_card.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_climate_parity_test PRIVATE cxx_std_17)
+target_compile_options(page_climate_parity_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_climate_parity_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_climate_parity_test COMMAND page_climate_parity_test)
+
+add_executable(page_modal_runtime_test page_modal_runtime_test.cpp
+  ../../components/espcontrol/page_modal_runtime.cpp
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_modal_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_modal_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_modal_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_modal_runtime_test COMMAND page_modal_runtime_test)
+
+add_executable(page_modal_router_test page_modal_router_test.cpp
+  ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_modal_router_test PRIVATE cxx_std_17)
+target_compile_options(page_modal_router_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_modal_router_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_modal_router_test COMMAND page_modal_router_test)
+
+add_executable(page_card_commands_test page_card_commands_test.cpp
+  ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp)
+target_compile_features(page_card_commands_test PRIVATE cxx_std_17)
+target_compile_options(page_card_commands_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_card_commands_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_card_commands_test COMMAND page_card_commands_test)
+
+add_executable(page_card_control_router_test page_card_control_router_test.cpp
+  ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_media_state_runtime.cpp
+  ../../components/espcontrol/page_timer_runtime.cpp ../../components/espcontrol/page_percent_slider_runtime.cpp
+  ../../components/espcontrol/page_number_slider_runtime.cpp ../../components/espcontrol/page_light_temperature_runtime.cpp)
+target_compile_features(page_card_control_router_test PRIVATE cxx_std_17)
+target_compile_options(page_card_control_router_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_card_control_router_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_card_control_router_test COMMAND page_card_control_router_test)
+
+add_executable(page_media_commands_test page_media_commands_test.cpp
+  ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_media_state_runtime.cpp)
+target_compile_features(page_media_commands_test PRIVATE cxx_std_17)
+target_compile_options(page_media_commands_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_media_commands_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_media_commands_test COMMAND page_media_commands_test)
+
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/media_action_helpers_test.cpp
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_media_action_helpers_test.py
+    --output ${CMAKE_CURRENT_BINARY_DIR}/media_action_helpers_test.cpp
+  DEPENDS generate_media_action_helpers_test.py generate_climate_update_test.py media_action_helpers_test.cpp.in
+    ../../components/espcontrol/button_grid_actions.h VERBATIM)
+add_executable(media_action_helpers_test ${CMAKE_CURRENT_BINARY_DIR}/media_action_helpers_test.cpp)
+target_compile_features(media_action_helpers_test PRIVATE cxx_std_17)
+target_compile_options(media_action_helpers_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(media_action_helpers_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME media_action_helpers_test COMMAND media_action_helpers_test)
+
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/device_action_helpers_test.cpp
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_device_action_helpers_test.py
+    --output ${CMAKE_CURRENT_BINARY_DIR}/device_action_helpers_test.cpp
+  DEPENDS ../../components/espcontrol/page_device_command_policy.h ../../components/espcontrol/page_native_device_commands.h generate_device_action_helpers_test.py generate_climate_update_test.py device_action_helpers_test.cpp.in
+    ../../components/espcontrol/button_grid_actions.h VERBATIM)
+add_executable(device_action_helpers_test ${CMAKE_CURRENT_BINARY_DIR}/device_action_helpers_test.cpp)
+target_compile_features(device_action_helpers_test PRIVATE cxx_std_17)
+target_compile_options(device_action_helpers_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(device_action_helpers_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME device_action_helpers_test COMMAND device_action_helpers_test)
+
+add_executable(page_timer_commands_test page_timer_commands_test.cpp
+  ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_timer_runtime.cpp)
+target_compile_features(page_timer_commands_test PRIVATE cxx_std_17)
+target_compile_options(page_timer_commands_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_timer_commands_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_timer_commands_test COMMAND page_timer_commands_test)
+
+add_executable(page_slider_commands_test page_slider_commands_test.cpp
+  ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_percent_slider_runtime.cpp
+  ../../components/espcontrol/page_number_slider_runtime.cpp
+  ../../components/espcontrol/page_light_temperature_runtime.cpp)
+target_compile_features(page_slider_commands_test PRIVATE cxx_std_17)
+target_compile_options(page_slider_commands_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_slider_commands_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_slider_commands_test COMMAND page_slider_commands_test)
+
+add_executable(page_entity_state_benchmark EXCLUDE_FROM_ALL page_entity_state_benchmark.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_entity_state_benchmark PRIVATE cxx_std_17)
+target_compile_options(page_entity_state_benchmark PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_entity_state_benchmark PRIVATE stubs ../../components/espcontrol)
+
+add_executable(page_entity_modal_replay_test page_entity_modal_replay_test.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_entity_modal_replay_test PRIVATE cxx_std_17)
+target_compile_options(page_entity_modal_replay_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_entity_modal_replay_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_entity_modal_replay_test COMMAND page_entity_modal_replay_test)
+
+add_executable(page_card_dependencies_test page_card_dependencies_test.cpp
+  ../../components/espcontrol/page_renderer_layout.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/page_store_goldens.h
+  ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_card_dependencies_test PRIVATE cxx_std_17)
+target_compile_options(page_card_dependencies_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_card_dependencies_test PRIVATE stubs ../../components/espcontrol
+  ${CMAKE_CURRENT_BINARY_DIR})
+add_test(NAME page_card_dependencies_test COMMAND page_card_dependencies_test)
+
+add_executable(page_renderer_runtime_test page_renderer_runtime_test.cpp
+  ../../components/espcontrol/page_renderer_layout.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(page_renderer_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_renderer_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_renderer_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_renderer_runtime_test COMMAND page_renderer_runtime_test)
+
+add_executable(bounded_sensor_text_test bounded_sensor_text_test.cpp)
+target_compile_features(bounded_sensor_text_test PRIVATE cxx_std_17)
+target_compile_options(bounded_sensor_text_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(bounded_sensor_text_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME bounded_sensor_text_test COMMAND bounded_sensor_text_test)
+
+set(PAGE_MEDIA_GROUP_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_media_group_test.cpp)
+add_custom_command(OUTPUT ${PAGE_MEDIA_GROUP_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_media_group_test.py
+    --output ${PAGE_MEDIA_GROUP_SOURCE}
+  DEPENDS generate_page_media_group_test.py page_media_group_test.cpp.in
+    ../../components/espcontrol/button_grid_media_group.h
+  VERBATIM)
+add_executable(page_media_group_test ${PAGE_MEDIA_GROUP_SOURCE})
+target_compile_features(page_media_group_test PRIVATE cxx_std_17)
+target_compile_options(page_media_group_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_media_group_test PRIVATE ../../components/espcontrol)
+add_test(NAME page_media_group_test COMMAND page_media_group_test)
+
+set(PAGE_FAN_MODE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_fan_mode_test.cpp)
+add_custom_command(OUTPUT ${PAGE_FAN_MODE_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_fan_mode_test.py
+    --output ${PAGE_FAN_MODE_SOURCE}
+  DEPENDS generate_page_fan_mode_test.py page_fan_mode_test.cpp.in
+    ../../components/espcontrol/button_grid_fan.h
+  VERBATIM)
+add_executable(page_fan_mode_test ${PAGE_FAN_MODE_SOURCE})
+target_compile_features(page_fan_mode_test PRIVATE cxx_std_17)
+target_compile_options(page_fan_mode_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_fan_mode_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_fan_mode_test COMMAND page_fan_mode_test)
+
+add_executable(page_timer_runtime_test page_timer_runtime_test.cpp
+  ../../components/espcontrol/page_timer_runtime.cpp ../../components/espcontrol/page_store_runtime.cpp
+  ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp)
+target_compile_features(page_timer_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_timer_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_timer_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_timer_runtime_test COMMAND page_timer_runtime_test)
+
+set(PAGE_LIGHT_TEMPERATURE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_light_temperature_runtime_test.cpp)
+add_custom_command(OUTPUT ${PAGE_LIGHT_TEMPERATURE_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_light_temperature_test.py
+    --output ${PAGE_LIGHT_TEMPERATURE_SOURCE}
+  DEPENDS generate_page_light_temperature_test.py page_light_temperature_runtime_test.cpp.in
+    ../../components/espcontrol/button_grid_sliders.h
+  VERBATIM)
+add_executable(page_light_temperature_runtime_test ${PAGE_LIGHT_TEMPERATURE_SOURCE}
+  ../../components/espcontrol/page_light_temperature_runtime.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_light_temperature_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_light_temperature_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_light_temperature_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_light_temperature_runtime_test COMMAND page_light_temperature_runtime_test)
+
+set(PAGE_NUMBER_SLIDER_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_number_slider_runtime_test.cpp)
+add_custom_command(OUTPUT ${PAGE_NUMBER_SLIDER_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_number_slider_test.py
+    --output ${PAGE_NUMBER_SLIDER_SOURCE}
+  DEPENDS generate_page_number_slider_test.py page_number_slider_runtime_test.cpp.in
+    ../../components/espcontrol/button_grid_sliders.h
+  VERBATIM)
+add_executable(page_number_slider_runtime_test ${PAGE_NUMBER_SLIDER_SOURCE}
+  ../../components/espcontrol/page_store_runtime.cpp
+  ../../components/espcontrol/page_number_slider_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp)
+target_compile_features(page_number_slider_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_number_slider_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_number_slider_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_number_slider_runtime_test COMMAND page_number_slider_runtime_test)
+
+set(PAGE_PERCENT_SLIDER_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_percent_slider_runtime_test.cpp)
+add_custom_command(OUTPUT ${PAGE_PERCENT_SLIDER_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_percent_slider_test.py
+    --output ${PAGE_PERCENT_SLIDER_SOURCE}
+  DEPENDS generate_page_percent_slider_test.py page_percent_slider_runtime_test.cpp.in
+    ../../components/espcontrol/button_grid_sliders.h
+  VERBATIM)
+add_executable(page_percent_slider_runtime_test ${PAGE_PERCENT_SLIDER_SOURCE}
+  ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(page_percent_slider_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_percent_slider_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_percent_slider_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_percent_slider_runtime_test COMMAND page_percent_slider_runtime_test)
+
+set(ALARM_ACK_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_alarm_ack_runtime_test.cpp)
+add_custom_command(OUTPUT ${ALARM_ACK_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_alarm_ack_test.py --output ${ALARM_ACK_SOURCE}
+  DEPENDS generate_alarm_ack_test.py page_alarm_ack_runtime_test.cpp.in ../../components/espcontrol/button_grid_alarm.h
+  VERBATIM)
+add_executable(page_alarm_ack_runtime_test ${ALARM_ACK_SOURCE}
+  ../../components/espcontrol/page_alarm_ack_runtime.cpp ../../components/espcontrol/page_alarm_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_store_runtime.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp)
+target_compile_features(page_alarm_ack_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_alarm_ack_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_alarm_ack_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_alarm_ack_runtime_test COMMAND page_alarm_ack_runtime_test)
+
+set(ALARM_POLICY_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_alarm_policy_test.cpp)
+add_custom_command(OUTPUT ${ALARM_POLICY_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_alarm_policy_test.py --output ${ALARM_POLICY_SOURCE}
+  DEPENDS generate_alarm_policy_test.py page_alarm_policy_test.cpp.in ../../components/espcontrol/button_grid_alarm.h
+  VERBATIM)
+add_executable(page_alarm_policy_test ${ALARM_POLICY_SOURCE})
+target_compile_features(page_alarm_policy_test PRIVATE cxx_std_17)
+target_compile_options(page_alarm_policy_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_alarm_policy_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_alarm_policy_test COMMAND page_alarm_policy_test)
+
+set(ALARM_STATE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_alarm_state_runtime_test.cpp)
+add_custom_command(OUTPUT ${ALARM_STATE_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_alarm_state_test.py --output ${ALARM_STATE_SOURCE}
+  DEPENDS generate_page_alarm_state_test.py page_alarm_state_runtime_test.cpp.in
+    ../../components/espcontrol/button_grid_alarm.h ../../components/espcontrol/button_grid_access_cards.h
+  VERBATIM)
+add_executable(page_alarm_state_runtime_test ${ALARM_STATE_SOURCE}
+  ../../components/espcontrol/page_alarm_state_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp)
+target_compile_features(page_alarm_state_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_alarm_state_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_alarm_state_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_alarm_state_runtime_test COMMAND page_alarm_state_runtime_test)
+
+add_executable(page_alarm_presentation_test page_alarm_presentation_test.cpp
+  ../../components/espcontrol/page_alarm_presentation.cpp ../../components/espcontrol/page_modal_runtime.cpp
+  ../../components/espcontrol/page_alarm_ack_runtime.cpp ../../components/espcontrol/page_alarm_state_runtime.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_alarm_presentation_test PRIVATE cxx_std_17)
+target_compile_options(page_alarm_presentation_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_alarm_presentation_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_alarm_presentation_test COMMAND page_alarm_presentation_test)
+
+set(ALARM_COMMANDS_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_alarm_commands_test.cpp)
+add_custom_command(OUTPUT ${ALARM_COMMANDS_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_alarm_commands_test.py --output ${ALARM_COMMANDS_SOURCE}
+  DEPENDS generate_alarm_commands_test.py page_alarm_commands_test.cpp.in ../../components/espcontrol/button_grid_alarm.h
+  VERBATIM)
+add_executable(page_alarm_commands_test ${ALARM_COMMANDS_SOURCE}
+  ../../components/espcontrol/page_alarm_commands.cpp
+  ../../components/espcontrol/page_alarm_ack_runtime.cpp
+  ../../components/espcontrol/page_alarm_state_runtime.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_store_runtime.cpp
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_alarm_commands_test PRIVATE cxx_std_17)
+target_compile_options(page_alarm_commands_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_alarm_commands_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_alarm_commands_test COMMAND page_alarm_commands_test)
+
+set(ALARM_CARD_VIEW_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/alarm_card_view_test.cpp)
+add_custom_command(OUTPUT ${ALARM_CARD_VIEW_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_alarm_card_view_test.py --output ${ALARM_CARD_VIEW_SOURCE}
+  DEPENDS generate_alarm_card_view_test.py alarm_card_view_test.cpp.in ../../components/espcontrol/button_grid_alarm.h
+  VERBATIM)
+add_executable(alarm_card_view_test ${ALARM_CARD_VIEW_SOURCE})
+target_compile_features(alarm_card_view_test PRIVATE cxx_std_17)
+target_compile_options(alarm_card_view_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(alarm_card_view_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME alarm_card_view_test COMMAND alarm_card_view_test)
+
+set(NUMBER_LAYOUT_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/basic_number_layout_test.cpp)
+add_custom_command(OUTPUT ${NUMBER_LAYOUT_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_number_layout_test.py --output ${NUMBER_LAYOUT_SOURCE}
+  DEPENDS generate_number_layout_test.py basic_number_layout_test.cpp.in
+    ../../components/espcontrol/button_grid_sensor_driver.h ../../components/espcontrol/button_grid_climate_control_driver.h
+  VERBATIM)
+add_executable(basic_number_layout_test ${NUMBER_LAYOUT_SOURCE})
+target_compile_features(basic_number_layout_test PRIVATE cxx_std_17)
+target_compile_options(basic_number_layout_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(basic_number_layout_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME basic_number_layout_test COMMAND basic_number_layout_test)
+
+set(CLOCK_LAYOUT_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/clock_card_layout_test.cpp)
+add_custom_command(OUTPUT ${CLOCK_LAYOUT_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_clock_layout_test.py --output ${CLOCK_LAYOUT_SOURCE}
+  DEPENDS generate_clock_layout_test.py clock_card_layout_test.cpp.in ../../components/espcontrol/button_grid_date_time_driver.h
+  VERBATIM)
+add_executable(clock_card_layout_test ${CLOCK_LAYOUT_SOURCE})
+target_compile_features(clock_card_layout_test PRIVATE cxx_std_17)
+target_compile_options(clock_card_layout_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(clock_card_layout_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME clock_card_layout_test COMMAND clock_card_layout_test)
+
+set(PAGE_TIMEZONE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_timezone_runtime_test.cpp)
+add_custom_command(OUTPUT ${PAGE_TIMEZONE_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_timezone_test.py
+    --output ${PAGE_TIMEZONE_SOURCE}
+  DEPENDS generate_page_timezone_test.py page_timezone_runtime_test.cpp.in
+    ../../components/espcontrol/button_grid_datetime_cards.h ../../components/espcontrol/sun_calc.h
+    ../../components/espcontrol/clock_bar.h
+  VERBATIM)
+add_executable(page_timezone_runtime_test ${PAGE_TIMEZONE_SOURCE}
+  ../../components/espcontrol/page_timezone_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(page_timezone_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_timezone_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_timezone_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_timezone_runtime_test COMMAND page_timezone_runtime_test)
+
+set(CALENDAR_TEXT_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/calendar_card_text_test.cpp)
+add_custom_command(OUTPUT ${CALENDAR_TEXT_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_calendar_text_test.py
+    --output ${CALENDAR_TEXT_SOURCE}
+  DEPENDS generate_calendar_text_test.py calendar_card_text_test.cpp.in
+    ../../components/espcontrol/button_grid_datetime_cards.h ../../components/espcontrol/clock_bar.h
+  VERBATIM)
+add_executable(calendar_card_text_test ${CALENDAR_TEXT_SOURCE})
+target_compile_features(calendar_card_text_test PRIVATE cxx_std_17)
+target_compile_options(calendar_card_text_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(calendar_card_text_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME calendar_card_text_test COMMAND calendar_card_text_test)
+
+set(PAGE_CALENDAR_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_calendar_runtime_test.cpp)
+add_custom_command(OUTPUT ${PAGE_CALENDAR_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_calendar_test.py
+    --output ${PAGE_CALENDAR_SOURCE}
+  DEPENDS generate_page_calendar_test.py page_calendar_runtime_test.cpp.in
+    ../../components/espcontrol/button_grid_datetime_cards.h
+  VERBATIM)
+add_executable(page_calendar_runtime_test ${PAGE_CALENDAR_SOURCE}
+  ../../components/espcontrol/page_calendar_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp)
+target_compile_features(page_calendar_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_calendar_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_calendar_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_calendar_runtime_test COMMAND page_calendar_runtime_test)
+
+set(CLEANING_POLICY_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/cleaning_card_policy_test.cpp)
+add_custom_command(OUTPUT ${CLEANING_POLICY_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_cleaning_policy_test.py
+    --output ${CLEANING_POLICY_SOURCE}
+  DEPENDS generate_cleaning_policy_test.py cleaning_card_policy_test.cpp.in
+    ../../components/espcontrol/button_grid_vacuum.h ../../components/espcontrol/button_grid_lawn_mower.h
+  VERBATIM)
+add_executable(cleaning_card_policy_test ${CLEANING_POLICY_SOURCE})
+target_compile_features(cleaning_card_policy_test PRIVATE cxx_std_17)
+target_compile_options(cleaning_card_policy_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(cleaning_card_policy_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME cleaning_card_policy_test COMMAND cleaning_card_policy_test)
+
+set(PAGE_COVER_TOGGLE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_cover_toggle_runtime_test.cpp)
+add_custom_command(OUTPUT ${PAGE_COVER_TOGGLE_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_cover_toggle_test.py
+    --output ${PAGE_COVER_TOGGLE_SOURCE}
+  DEPENDS generate_page_cover_toggle_test.py page_cover_toggle_runtime_test.cpp.in
+    ../../components/espcontrol/button_grid_access_cards.h
+    ../../components/espcontrol/button_grid_config_parser.h ../../components/espcontrol/display_utf8_case.h
+  VERBATIM)
+add_executable(page_cover_toggle_runtime_test ${PAGE_COVER_TOGGLE_SOURCE}
+  ../../components/espcontrol/page_cover_toggle_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(page_cover_toggle_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_cover_toggle_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_cover_toggle_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_cover_toggle_runtime_test COMMAND page_cover_toggle_runtime_test)
+
+set(PAGE_ACCESS_STATE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_access_state_runtime_test.cpp)
+add_custom_command(OUTPUT ${PAGE_ACCESS_STATE_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_access_state_test.py
+    --output ${PAGE_ACCESS_STATE_SOURCE}
+  DEPENDS generate_page_access_state_test.py page_access_state_runtime_test.cpp.in
+    ../../components/espcontrol/button_grid_access_cards.h
+    ../../components/espcontrol/button_grid_config_parser.h ../../components/espcontrol/display_utf8_case.h
+  VERBATIM)
+add_executable(page_access_state_runtime_test ${PAGE_ACCESS_STATE_SOURCE}
+  ../../components/espcontrol/page_access_state_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(page_access_state_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_access_state_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_access_state_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_access_state_runtime_test COMMAND page_access_state_runtime_test)
+
+set(PAGE_FAN_STATUS_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_fan_status_runtime_test.cpp)
+add_custom_command(OUTPUT ${PAGE_FAN_STATUS_SOURCE}
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_fan_status_test.py
+    --output ${PAGE_FAN_STATUS_SOURCE}
+  DEPENDS generate_page_fan_status_test.py page_fan_status_runtime_test.cpp.in
+    ../../components/espcontrol/button_grid_fan.h ../../components/espcontrol/button_grid_access_cards.h
+  VERBATIM)
+add_executable(page_fan_status_runtime_test ${PAGE_FAN_STATUS_SOURCE}
+  ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_store_runtime.cpp)
+target_compile_features(page_fan_status_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_fan_status_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_fan_status_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_fan_status_runtime_test COMMAND page_fan_status_runtime_test)
+add_executable(page_resource_publication_test page_resource_publication_test.cpp
+  ../../components/espcontrol/page_modal_runtime.cpp
+  ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp
+  ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_forecast_runtime.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp)
+target_compile_features(page_resource_publication_test PRIVATE cxx_std_17)
+target_compile_options(page_resource_publication_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_resource_publication_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_resource_publication_test COMMAND page_resource_publication_test)
+
+add_executable(page_local_relay_runtime_test page_local_relay_runtime_test.cpp
+  ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_local_relay_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_local_relay_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_local_relay_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_local_relay_runtime_test COMMAND page_local_relay_runtime_test)
+
+add_executable(page_local_sensor_runtime_test page_local_sensor_runtime_test.cpp
+  ../../components/espcontrol/page_local_sensor_runtime.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_local_sensor_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_local_sensor_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_local_sensor_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_local_sensor_runtime_test COMMAND page_local_sensor_runtime_test)
+foreach(variant IN ITEMS "" "_empty" "_numeric" "_text")
+  add_executable(page_esphome_local_sensor_provider${variant}_test page_esphome_local_sensor_provider_test.cpp)
+  target_compile_features(page_esphome_local_sensor_provider${variant}_test PRIVATE cxx_std_17)
+  target_compile_options(page_esphome_local_sensor_provider${variant}_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_esphome_local_sensor_provider${variant}_test PRIVATE local_sensor_stubs stubs ../../components/espcontrol)
+  if(NOT variant)
+    target_compile_definitions(page_esphome_local_sensor_provider${variant}_test PRIVATE USE_SENSOR USE_TEXT_SENSOR ESPHOME_ENTITY_SENSOR_COUNT=2 ESPHOME_ENTITY_TEXT_SENSOR_COUNT=2)
+  elseif(variant STREQUAL "_numeric")
+    target_compile_definitions(page_esphome_local_sensor_provider${variant}_test PRIVATE USE_SENSOR ESPHOME_ENTITY_SENSOR_COUNT=2)
+  elseif(variant STREQUAL "_text")
+    target_compile_definitions(page_esphome_local_sensor_provider${variant}_test PRIVATE USE_TEXT_SENSOR ESPHOME_ENTITY_TEXT_SENSOR_COUNT=2)
+  endif()
+  add_test(NAME page_esphome_local_sensor_provider${variant}_test COMMAND page_esphome_local_sensor_provider${variant}_test)
+endforeach()
+
+add_executable(page_basic_card_test page_basic_card_test.cpp
+    ../../components/espcontrol/page_number_slider_runtime.cpp
+    ../../components/espcontrol/page_light_temperature_runtime.cpp
+    ../../components/espcontrol/page_timer_runtime.cpp
+  ../../components/espcontrol/page_cover_toggle_runtime.cpp
+  ../../components/espcontrol/page_access_state_runtime.cpp
+  ../../components/espcontrol/page_calendar_runtime.cpp
+  ../../components/espcontrol/page_timezone_runtime.cpp
+  ../../components/espcontrol/page_alarm_state_runtime.cpp
+  ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
+    ../../components/espcontrol/page_climate_card.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_basic_card_test PRIVATE cxx_std_17)
+target_compile_options(page_basic_card_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_basic_card_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_basic_card_test COMMAND page_basic_card_test)
+get_target_property(PAGE_BASIC_CARD_SOURCES page_basic_card_test SOURCES)
+list(REMOVE_ITEM PAGE_BASIC_CARD_SOURCES page_basic_card_test.cpp)
+add_executable(page_device_commands_test page_device_commands_test.cpp ${PAGE_BASIC_CARD_SOURCES})
+target_compile_features(page_device_commands_test PRIVATE cxx_std_17)
+target_compile_options(page_device_commands_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_device_commands_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_device_commands_test COMMAND page_device_commands_test)
+
+add_executable(page_basic_card_no_forecast_test page_basic_card_test.cpp
+    ../../components/espcontrol/page_number_slider_runtime.cpp
+    ../../components/espcontrol/page_light_temperature_runtime.cpp
+    ../../components/espcontrol/page_timer_runtime.cpp
+  ../../components/espcontrol/page_cover_toggle_runtime.cpp
+  ../../components/espcontrol/page_access_state_runtime.cpp
+  ../../components/espcontrol/page_calendar_runtime.cpp
+  ../../components/espcontrol/page_timezone_runtime.cpp
+  ../../components/espcontrol/page_alarm_state_runtime.cpp
+  ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
+    ../../components/espcontrol/page_climate_card.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_basic_card_no_forecast_test PRIVATE cxx_std_17)
+target_compile_options(page_basic_card_no_forecast_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_basic_card_no_forecast_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_basic_card_no_forecast_test COMMAND page_basic_card_no_forecast_test)
+target_compile_definitions(page_basic_card_no_forecast_test PRIVATE ESPCONTROL_DISABLE_WEATHER_FORECAST=1)
+
 
 add_executable(dpi_timing_test dpi_timing_test.cpp)
 target_compile_features(dpi_timing_test PRIVATE cxx_std_17)
@@ -20,6 +786,15 @@ add_test(NAME p4_pipeline_runtime_test COMMAND
 add_test(NAME mipi_dsi_draw_failure_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/mipi_dsi_draw_failure_test.py)
+add_test(NAME mipi_rgb_rotation_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/mipi_rgb_rotation_test.py)
+add_test(NAME mipi_rgb_bounce_buffer_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/mipi_rgb_bounce_buffer_test.py)
+
+add_test(NAME device_ui_limits_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/device_ui_limits_test.py)
 
 add_test(NAME gsl3680_startup_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
@@ -160,6 +935,15 @@ target_compile_options(control_modal_service_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(control_modal_service_test PRIVATE ../../components/espcontrol)
 add_test(NAME control_modal_service_test COMMAND control_modal_service_test)
 
+add_executable(page_guest_wifi_runtime_test page_guest_wifi_runtime_test.cpp
+  ../../components/espcontrol/page_modal_runtime.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp
+  ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_guest_wifi_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_guest_wifi_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_guest_wifi_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_guest_wifi_runtime_test COMMAND page_guest_wifi_runtime_test)
+
 add_executable(guest_wifi_state_test guest_wifi_state_test.cpp)
 target_compile_features(guest_wifi_state_test PRIVATE cxx_std_17)
 target_compile_options(guest_wifi_state_test PRIVATE -Wall -Wextra -Werror)
@@ -171,6 +955,18 @@ add_test(NAME guest_wifi_lifecycle_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/guest_wifi_lifecycle_test.py ${CMAKE_CXX_COMPILER})
 add_test(NAME webhook_log_secrets_test COMMAND ${Python3_EXECUTABLE}
   ${CMAKE_CURRENT_SOURCE_DIR}/webhook_log_secrets_test.py ${CMAKE_CXX_COMPILER})
+
+add_executable(page_qr_runtime_test page_qr_runtime_test.cpp)
+target_compile_features(page_qr_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_qr_runtime_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_qr_runtime_test PRIVATE ../../components/espcontrol)
+add_test(NAME page_qr_runtime_test COMMAND page_qr_runtime_test)
+
+add_executable(page_qr_matrix_test page_qr_matrix_test.cpp)
+target_compile_features(page_qr_matrix_test PRIVATE cxx_std_17)
+target_compile_options(page_qr_matrix_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_qr_matrix_test PRIVATE ../../components/espcontrol)
+add_test(NAME page_qr_matrix_test COMMAND page_qr_matrix_test)
 
 add_executable(wifi_qr_codec_test wifi_qr_codec_test.cpp)
 target_compile_features(wifi_qr_codec_test PRIVATE cxx_std_17)
@@ -330,6 +1126,12 @@ target_compile_features(network_status_layout_test PRIVATE cxx_std_17)
 target_compile_options(network_status_layout_test PRIVATE -Wall -Wextra -Werror)
 add_test(NAME network_status_layout_test COMMAND network_status_layout_test)
 
+add_executable(panel_config_upload_test panel_config_upload_test.cpp)
+target_compile_features(panel_config_upload_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_upload_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_upload_test PRIVATE ../../components/espcontrol ../../components/web_server_idf)
+add_test(NAME panel_config_upload_test COMMAND panel_config_upload_test)
+
 add_executable(configuration_store_test
   configuration_store_test.cpp
   ../../components/espcontrol/configuration_store.cpp
@@ -349,6 +1151,30 @@ target_compile_options(configuration_service_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(configuration_service_test PRIVATE ../../components/espcontrol)
 add_test(NAME configuration_service_test COMMAND configuration_service_test)
 
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/application_scene_runtime_test.cpp
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_application_scene_runtime_test.py
+    --output ${CMAKE_CURRENT_BINARY_DIR}/application_scene_runtime_test.cpp
+  DEPENDS generate_application_scene_runtime_test.py application_scene_runtime_test.cpp.in
+    ../../components/espcontrol/espcontrol_app.cpp VERBATIM)
+add_executable(application_scene_runtime_test ${CMAKE_CURRENT_BINARY_DIR}/application_scene_runtime_test.cpp
+  ../../components/espcontrol/configuration_main_loop.cpp
+  ../../components/espcontrol/configuration_service.cpp ../../components/espcontrol/configuration_store.cpp)
+target_compile_features(application_scene_runtime_test PRIVATE cxx_std_17)
+target_compile_options(application_scene_runtime_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(application_scene_runtime_test PRIVATE ../../components/espcontrol)
+target_link_libraries(application_scene_runtime_test PRIVATE Threads::Threads)
+add_test(NAME application_scene_runtime_test COMMAND application_scene_runtime_test)
+
+add_executable(configuration_main_loop_test configuration_main_loop_test.cpp
+  ../../components/espcontrol/configuration_main_loop.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/configuration_store.cpp)
+target_compile_features(configuration_main_loop_test PRIVATE cxx_std_17)
+target_compile_options(configuration_main_loop_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(configuration_main_loop_test PRIVATE ../../components/espcontrol)
+target_link_libraries(configuration_main_loop_test PRIVATE Threads::Threads)
+add_test(NAME configuration_main_loop_test COMMAND configuration_main_loop_test)
+
 add_executable(panel_config_document_test panel_config_document_test.cpp)
 target_compile_features(panel_config_document_test PRIVATE cxx_std_17)
 target_compile_options(panel_config_document_test PRIVATE -Wall -Wextra -Werror)
@@ -362,6 +1188,8 @@ target_compile_features(panel_config_capabilities_test PRIVATE cxx_std_17)
 target_compile_options(panel_config_capabilities_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(panel_config_capabilities_test PRIVATE ../../components/espcontrol)
 add_test(NAME panel_config_capabilities_test COMMAND panel_config_capabilities_test)
+add_test(NAME panel_config_navigation_policy_test COMMAND ${Python3_EXECUTABLE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/panel_config_navigation_policy_test.py)
 
 add_executable(panel_config_http_etag_test panel_config_http_etag_test.cpp)
 target_compile_features(panel_config_http_etag_test PRIVATE cxx_std_17)
@@ -383,6 +1211,17 @@ target_compile_features(panel_config_storage_backend_test PRIVATE cxx_std_17)
 target_compile_options(panel_config_storage_backend_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(panel_config_storage_backend_test PRIVATE ../../components/espcontrol)
 add_test(NAME panel_config_storage_backend_test COMMAND panel_config_storage_backend_test)
+
+add_executable(panel_config_transient_storage_test
+  panel_config_transient_storage_test.cpp
+  ../../components/espcontrol/configuration_store.cpp
+  ../../components/espcontrol/panel_config_espidf_storage.cpp)
+target_compile_features(panel_config_transient_storage_test PRIVATE cxx_std_17)
+target_compile_definitions(panel_config_transient_storage_test PRIVATE USE_ESP32)
+target_compile_options(panel_config_transient_storage_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_transient_storage_test PRIVATE
+  config_storage_stubs ../../components/espcontrol)
+add_test(NAME panel_config_transient_storage_test COMMAND panel_config_transient_storage_test)
 
 add_executable(panel_config_storage_migration_test
   panel_config_storage_migration_test.cpp
@@ -422,6 +1261,29 @@ target_compile_options(panel_config_legacy_adapter_test PRIVATE -Wall -Wextra -W
 target_include_directories(panel_config_legacy_adapter_test PRIVATE ../../components/espcontrol)
 add_test(NAME panel_config_legacy_adapter_test COMMAND panel_config_legacy_adapter_test)
 
+add_executable(panel_config_legacy_writer_test
+  panel_config_legacy_writer_test.cpp
+  ../../components/espcontrol/configuration_store.cpp
+  ../../components/espcontrol/configuration_service.cpp
+  ../../components/espcontrol/panel_config_legacy_adapter.cpp
+  ../../components/espcontrol/panel_config_text_bindings.cpp
+)
+target_compile_features(panel_config_legacy_writer_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_legacy_writer_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_legacy_writer_test PRIVATE ../../components/espcontrol)
+target_link_libraries(panel_config_legacy_writer_test PRIVATE Threads::Threads)
+add_test(NAME panel_config_legacy_writer_test COMMAND panel_config_legacy_writer_test)
+
+add_executable(panel_config_durable_representation_test panel_config_durable_representation_test.cpp)
+target_compile_features(panel_config_durable_representation_test PRIVATE cxx_std_17)
+target_compile_options(panel_config_durable_representation_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(panel_config_durable_representation_test PRIVATE ../../components/espcontrol)
+if(ESPCONTROL_HAS_DOCUMENT_SANITIZERS)
+  target_compile_options(panel_config_durable_representation_test PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+  target_link_options(panel_config_durable_representation_test PRIVATE -fsanitize=address,undefined)
+endif()
+add_test(NAME panel_config_durable_representation_test COMMAND panel_config_durable_representation_test)
+
 add_executable(espcontrol_app_core_test
   espcontrol_app_core_test.cpp
   ../../components/espcontrol/espcontrol_app_core.cpp
@@ -433,6 +1295,12 @@ target_compile_options(espcontrol_app_core_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(espcontrol_app_core_test PRIVATE ../../components/espcontrol)
 add_test(NAME espcontrol_app_core_test COMMAND espcontrol_app_core_test)
 
+add_executable(ha_callback_lease_test ha_callback_lease_test.cpp)
+target_compile_features(ha_callback_lease_test PRIVATE cxx_std_17)
+target_compile_options(ha_callback_lease_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(ha_callback_lease_test PRIVATE ../../components/espcontrol)
+add_test(NAME ha_callback_lease_test COMMAND ha_callback_lease_test)
+
 add_executable(ha_read_coordinator_test
   ha_read_coordinator_test.cpp
   ../../components/espcontrol/espcontrol_app_core.cpp
@@ -443,6 +1311,47 @@ target_compile_features(ha_read_coordinator_test PRIVATE cxx_std_17)
 target_compile_options(ha_read_coordinator_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(ha_read_coordinator_test PRIVATE ../../components/espcontrol)
 add_test(NAME ha_read_coordinator_test COMMAND ha_read_coordinator_test)
+
+add_executable(owned_ha_subscriptions_test owned_ha_subscriptions_test.cpp)
+target_compile_features(owned_ha_subscriptions_test PRIVATE cxx_std_17)
+target_compile_options(owned_ha_subscriptions_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(owned_ha_subscriptions_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME owned_ha_subscriptions_test COMMAND owned_ha_subscriptions_test)
+
+add_executable(native_ha_subscription_index_test native_ha_subscription_index_test.cpp)
+target_compile_features(native_ha_subscription_index_test PRIVATE cxx_std_17)
+target_compile_options(native_ha_subscription_index_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(native_ha_subscription_index_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME native_ha_subscription_index_test COMMAND native_ha_subscription_index_test)
+
+add_executable(prepared_native_ha_subscription_index_test prepared_native_ha_subscription_index_test.cpp)
+target_compile_features(prepared_native_ha_subscription_index_test PRIVATE cxx_std_17)
+target_compile_options(prepared_native_ha_subscription_index_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(prepared_native_ha_subscription_index_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME prepared_native_ha_subscription_index_test COMMAND prepared_native_ha_subscription_index_test)
+
+add_executable(native_ha_index_transport_test native_ha_index_transport_test.cpp
+  ../../components/espcontrol/home_assistant_transport_runtime.cpp
+  ../../components/espcontrol/native_ha_state_dispatch.cpp)
+target_compile_features(native_ha_index_transport_test PRIVATE cxx_std_17)
+target_compile_definitions(native_ha_index_transport_test PRIVATE USE_API_HOMEASSISTANT_STATES
+  ESPCONTROL_UI_PROFILE_GUITION_ESP32_S3_4848S040)
+target_compile_options(native_ha_index_transport_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(native_ha_index_transport_test PRIVATE
+  ${CMAKE_CURRENT_BINARY_DIR}/owned_ha_version owned_ha_stubs stubs ../../components/espcontrol)
+add_test(NAME native_ha_index_transport_test COMMAND native_ha_index_transport_test)
+
+add_executable(home_assistant_transport_runtime_test home_assistant_transport_runtime_test.cpp
+  ../../components/espcontrol/home_assistant_transport_runtime.cpp)
+target_compile_features(home_assistant_transport_runtime_test PRIVATE cxx_std_17)
+target_compile_definitions(home_assistant_transport_runtime_test PRIVATE USE_API_HOMEASSISTANT_STATES)
+target_compile_options(home_assistant_transport_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(home_assistant_transport_runtime_test PRIVATE
+  ${CMAKE_CURRENT_BINARY_DIR}/owned_ha_version owned_ha_stubs stubs ../../components/espcontrol)
+add_test(NAME home_assistant_transport_runtime_test COMMAND home_assistant_transport_runtime_test)
+add_test(NAME home_assistant_transport_sdk_guard_test
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/home_assistant_transport_sdk_guard_test.py
+          ${CMAKE_CXX_COMPILER})
 
 add_executable(artwork_controller_test artwork_controller_test.cpp)
 target_compile_features(artwork_controller_test PRIVATE cxx_std_17)
@@ -459,6 +1368,64 @@ add_test(NAME home_assistant_endpoint_policy_test COMMAND home_assistant_endpoin
 # Compile the unchanged service implementation beside the build output so its
 # quoted artwork_image.h include resolves to the hardware-free test double.
 configure_file(../../components/artwork_image/image_service.cpp image_service.cpp COPYONLY)
+add_executable(page_artwork_requests_test page_artwork_requests_test.cpp)
+target_compile_definitions(page_artwork_requests_test PRIVATE USE_LVGL)
+target_compile_features(page_artwork_requests_test PRIVATE cxx_std_17)
+target_compile_options(page_artwork_requests_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_artwork_requests_test PRIVATE stubs/owned_artwork stubs
+  ../../components/espcontrol ../../components/artwork_image)
+add_test(NAME page_artwork_requests_test COMMAND page_artwork_requests_test)
+
+add_executable(page_cover_art_runtime_test page_cover_art_runtime_test.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_cover_art_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_cover_art_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_cover_art_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_cover_art_runtime_test COMMAND page_cover_art_runtime_test)
+
+add_executable(page_modal_image_runtime_test page_modal_image_runtime_test.cpp
+  ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_modal_image_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_modal_image_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_modal_image_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_modal_image_runtime_test COMMAND page_modal_image_runtime_test)
+
+add_executable(page_image_tile_runtime_test page_image_tile_runtime_test.cpp
+  ../../components/espcontrol/page_modal_runtime.cpp
+  ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+  ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_store_runtime.cpp
+  ../../components/espcontrol/page_renderer_layout.cpp)
+target_compile_features(page_image_tile_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_image_tile_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_image_tile_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_image_tile_runtime_test COMMAND page_image_tile_runtime_test)
+
+
+add_executable(page_cover_art_policy_test page_cover_art_policy_test.cpp)
+target_compile_features(page_cover_art_policy_test PRIVATE cxx_std_17)
+target_compile_options(page_cover_art_policy_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_cover_art_policy_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_cover_art_policy_test COMMAND page_cover_art_policy_test)
+
+add_executable(page_image_tile_policy_test page_image_tile_policy_test.cpp)
+target_compile_features(page_image_tile_policy_test PRIVATE cxx_std_17)
+target_compile_options(page_image_tile_policy_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(page_image_tile_policy_test PRIVATE ../../components/espcontrol)
+add_test(NAME page_image_tile_policy_test COMMAND page_image_tile_policy_test)
+
+add_executable(page_image_runtime_test page_image_runtime_test.cpp)
+target_compile_features(page_image_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_image_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_image_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_image_runtime_test COMMAND page_image_runtime_test)
+add_test(NAME artwork_owned_result_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/artwork_owned_result_test.py ${CMAKE_CXX_COMPILER})
+add_test(NAME artwork_decoder_failure_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/artwork_decoder_failure_test.py ${CMAKE_CXX_COMPILER})
+add_test(NAME artwork_gif_admission_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/artwork_gif_admission_test.py ${CMAKE_CXX_COMPILER})
+
 add_executable(image_service_test image_service_test.cpp ${CMAKE_CURRENT_BINARY_DIR}/image_service.cpp)
 target_compile_features(image_service_test PRIVATE cxx_std_17)
 target_compile_options(image_service_test PRIVATE -Wall -Wextra -Werror)
@@ -627,6 +1594,10 @@ target_include_directories(reset_policy_test PRIVATE ../../components/espcontrol
 add_test(NAME reset_policy_test COMMAND reset_policy_test)
 add_test(NAME reset_ota_wrapper_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/reset_ota_wrapper_test.py)
+add_test(NAME p4_restart_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/p4_restart_test.py)
+add_test(NAME p4_restart_codegen_test COMMAND
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/p4_restart_codegen_test.py)
 add_test(NAME wifi_reset_override_test COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/wifi_reset_override_test.py)
 add_test(NAME wifi_reset_boot_codegen_test COMMAND
@@ -793,3 +1764,529 @@ target_compile_features(weather_metric_test PRIVATE cxx_std_17)
 target_compile_options(weather_metric_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(weather_metric_test PRIVATE ../../components/espcontrol)
 add_test(NAME weather_metric_test COMMAND weather_metric_test)
+add_executable(page_forecast_runtime_test page_forecast_runtime_test.cpp
+  ../../components/espcontrol/page_forecast_runtime.cpp ../../components/espcontrol/page_store.cpp)
+target_compile_features(page_forecast_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_forecast_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_forecast_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_forecast_runtime_test COMMAND page_forecast_runtime_test)
+
+
+foreach(FORECAST_TRANSPORT_TEST page_ha_forecast_requests_test page_ha_forecast_requests_disabled_test)
+  add_executable(${FORECAST_TRANSPORT_TEST} page_ha_forecast_requests_test.cpp)
+  target_compile_features(${FORECAST_TRANSPORT_TEST} PRIVATE cxx_std_17)
+  target_compile_options(${FORECAST_TRANSPORT_TEST} PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(${FORECAST_TRANSPORT_TEST} PRIVATE ../../components/espcontrol)
+  add_test(NAME ${FORECAST_TRANSPORT_TEST} COMMAND ${FORECAST_TRANSPORT_TEST})
+endforeach()
+target_compile_definitions(page_ha_forecast_requests_disabled_test PRIVATE ESPCONTROL_DISABLE_WEATHER_FORECAST=1)
+
+add_test(NAME media_playback_clock_parity_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/media_playback_clock_parity_test.py)
+
+add_executable(media_playback_clock_test media_playback_clock_test.cpp)
+target_compile_features(media_playback_clock_test PRIVATE cxx_std_17)
+target_compile_options(media_playback_clock_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(media_playback_clock_test PRIVATE ../../components/espcontrol)
+add_test(NAME media_playback_clock_test COMMAND media_playback_clock_test)
+
+add_executable(media_input_state_test media_input_state_test.cpp)
+target_compile_features(media_input_state_test PRIVATE cxx_std_17)
+target_compile_options(media_input_state_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(media_input_state_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME media_input_state_test COMMAND media_input_state_test)
+
+add_executable(page_media_state_runtime_test page_media_state_runtime_test.cpp
+  ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_store.cpp
+  ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp)
+target_compile_features(page_media_state_runtime_test PRIVATE cxx_std_17)
+target_compile_options(page_media_state_runtime_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+target_include_directories(page_media_state_runtime_test PRIVATE stubs ../../components/espcontrol)
+add_test(NAME page_media_state_runtime_test COMMAND page_media_state_runtime_test)
+
+add_test(NAME media_playlist_match_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/media_playlist_match_test.py)
+
+# Optional real-LVGL integration, using the exact library from an ESPHome build.
+# No network/download or machine-specific path is required by the normal suite.
+set(ESPCONTROL_LVGL_SOURCE_DIR "" CACHE PATH "LVGL 9.5 source from pinned firmware build")
+if(ESPCONTROL_LVGL_SOURCE_DIR)
+  enable_language(C)
+  set(LV_BUILD_CONF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/lvgl_native/lv_conf.h" CACHE PATH "" FORCE)
+  set(CONFIG_LV_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(CONFIG_LV_BUILD_DEMOS OFF CACHE BOOL "" FORCE)
+  set(CONFIG_LV_USE_THORVG_INTERNAL OFF CACHE BOOL "" FORCE)
+  add_subdirectory("${ESPCONTROL_LVGL_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/lvgl")
+  if(APPLE)
+    # Darwin ld has no GNU --wrap. Route only the pinned label implementation;
+    # the original display implementation remains available to the test shim.
+    set_source_files_properties("${ESPCONTROL_LVGL_SOURCE_DIR}/src/widgets/label/lv_label.c"
+      DIRECTORY "${ESPCONTROL_LVGL_SOURCE_DIR}"
+      PROPERTIES COMPILE_DEFINITIONS
+      "lv_display_add_event_cb=__wrap_lv_display_add_event_cb;lv_display_remove_event_cb_with_user_data=__wrap_lv_display_remove_event_cb_with_user_data")
+  endif()
+  add_library(page_label_refresh_test_support OBJECT ../../components/espcontrol/page_label_refresh.cpp)
+  target_compile_features(page_label_refresh_test_support PRIVATE cxx_std_17)
+  target_compile_options(page_label_refresh_test_support PRIVATE -Wall -Wextra -Werror)
+  target_compile_definitions(page_label_refresh_test_support PRIVATE USE_LVGL)
+  target_include_directories(page_label_refresh_test_support PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}/owned_ha_version owned_ha_stubs ../../components/espcontrol)
+  target_include_directories(page_label_refresh_test_support INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_link_libraries(page_label_refresh_test_support PUBLIC lvgl::lvgl)
+  if(APPLE)
+    target_compile_definitions(page_label_refresh_test_support PRIVATE ESPCONTROL_NATIVE_LABEL_REFRESH)
+  else()
+    target_link_options(page_label_refresh_test_support INTERFACE
+      -Wl,--wrap=lv_display_add_event_cb -Wl,--wrap=lv_display_remove_event_cb_with_user_data)
+  endif()
+  # All optional LVGL executables share this library, including the modal test,
+  # because the pinned label translation unit is routed through its wrappers.
+  get_directory_property(ESPCONTROL_LINK_LIBRARIES_BEFORE_LVGL LINK_LIBRARIES)
+  link_libraries(page_label_refresh_test_support)
+
+  set(NATIVE_SCENE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_native_scene_test.cpp)
+  set(NATIVE_SCENE_STYLE_INPUTS)
+  foreach(family light_cover fan_control option_select media_volume media_control weather
+      confirmation alarm expanded_image wifi_qr network_status)
+    list(APPEND NATIVE_SCENE_STYLE_INPUTS ../../components/espcontrol/page_${family}_modal.h)
+  endforeach()
+  add_custom_command(OUTPUT ${NATIVE_SCENE_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_native_scene_test.py
+      --output ${NATIVE_SCENE_SOURCE}
+    DEPENDS generate_native_scene_test.py page_native_scene_test.cpp.in
+      ../../components/espcontrol/page_native_scene.h
+      ../../components/espcontrol/page_native_device_styles.h
+      ../../components/espcontrol/page_native_device.h
+      ../../components/espcontrol/button_grid_display.h
+      ../../components/espcontrol/button_grid_grid.h
+      ../../components/espcontrol/button_grid_layout.h
+      ../../components/espcontrol/button_grid_style.h
+      ../../components/espcontrol/button_grid_climate_control_driver.h
+      ../../components/espcontrol/icons.h
+      generate_media_lifecycle_integration.py ${NATIVE_SCENE_STYLE_INPUTS}
+    VERBATIM)
+  add_executable(page_native_scene_test ${NATIVE_SCENE_SOURCE}
+    ${ESPCONTROL_LVGL_SOURCE_DIR}/src/libs/qrcode/qrcodegen.c
+    ../../components/espcontrol/page_store.cpp ../../components/espcontrol/page_store_runtime.cpp
+    ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+    ../../components/espcontrol/page_entity_state_runtime.cpp
+    ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_renderer_layout.cpp
+    ../../components/espcontrol/page_climate_card.cpp
+    ../../components/espcontrol/page_media_state_runtime.cpp ../../components/espcontrol/page_forecast_runtime.cpp
+    ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp
+    ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_percent_slider_runtime.cpp
+    ../../components/espcontrol/page_number_slider_runtime.cpp ../../components/espcontrol/page_light_temperature_runtime.cpp
+    ../../components/espcontrol/page_timer_runtime.cpp ../../components/espcontrol/page_cover_toggle_runtime.cpp
+    ../../components/espcontrol/page_access_state_runtime.cpp ../../components/espcontrol/page_calendar_runtime.cpp
+    ../../components/espcontrol/page_timezone_runtime.cpp ../../components/espcontrol/page_alarm_state_runtime.cpp
+    ../../components/espcontrol/page_alarm_ack_runtime.cpp ../../components/espcontrol/page_alarm_commands.cpp
+    ../../components/espcontrol/page_alarm_presentation.cpp)
+  target_compile_features(page_native_scene_test PRIVATE cxx_std_17)
+  target_compile_options(page_native_scene_test PRIVATE -Wall -Wextra -Werror -UNDEBUG
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
+    $<$<COMPILE_LANGUAGE:C>:-Wno-unused-function>)
+  target_compile_definitions(page_native_scene_test PRIVATE USE_LVGL LV_USE_QRCODE=1 ESPCONTROL_REAL_LVGL_TEST)
+  target_include_directories(page_native_scene_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+    stubs/owned_artwork stubs ../../components/espcontrol ../../components/artwork_image)
+  target_link_libraries(page_native_scene_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_native_scene_test COMMAND page_native_scene_test)
+  add_test(NAME page_native_nested_navigation_test COMMAND page_native_scene_test --nested)
+  add_test(NAME page_native_scene_p4_capacity_test COMMAND page_native_scene_test --maximum-p4)
+  set_tests_properties(page_native_scene_test page_native_scene_p4_capacity_test PROPERTIES TIMEOUT 180)
+
+  add_executable(page_native_card_commands_test page_native_card_commands_test.cpp)
+  target_compile_features(page_native_card_commands_test PRIVATE cxx_std_17)
+  target_compile_options(page_native_card_commands_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+  target_include_directories(page_native_card_commands_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_native_card_commands_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_native_card_commands_test COMMAND page_native_card_commands_test)
+
+  set(NATIVE_MODAL_COMMANDS_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_native_modal_commands_test.cpp)
+  add_custom_command(OUTPUT ${NATIVE_MODAL_COMMANDS_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_native_modal_commands_test.py
+      --output ${NATIVE_MODAL_COMMANDS_SOURCE}
+    DEPENDS generate_native_modal_commands_test.py generate_climate_update_test.py
+      page_native_modal_commands_test.cpp.in ../../components/espcontrol/button_grid_actions.h
+      ../../components/espcontrol/button_grid_config_parser.h
+      ../../components/espcontrol/page_native_modal_bank.h
+    VERBATIM)
+  add_executable(page_native_modal_commands_test ${NATIVE_MODAL_COMMANDS_SOURCE}
+    ../../components/espcontrol/page_alarm_commands.cpp ../../components/espcontrol/page_alarm_ack_runtime.cpp
+    ../../components/espcontrol/page_alarm_state_runtime.cpp
+    ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_store.cpp
+    ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp)
+  target_compile_features(page_native_modal_commands_test PRIVATE cxx_std_17)
+  target_compile_options(page_native_modal_commands_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+  target_include_directories(page_native_modal_commands_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_native_modal_commands_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_native_modal_commands_test COMMAND page_native_modal_commands_test)
+  set(FORECAST_REFERENCE ${CMAKE_CURRENT_BINARY_DIR}/forecast_reference.h)
+  add_custom_command(OUTPUT ${FORECAST_REFERENCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_forecast_reference.py --output ${FORECAST_REFERENCE}
+    DEPENDS generate_forecast_reference.py generate_climate_update_test.py
+      ../../components/espcontrol/button_grid_weather_daily_ui.h ../../components/espcontrol/button_grid_weather_daily_data.h
+    VERBATIM)
+  set(POSITION_REFERENCE ${CMAKE_CURRENT_BINARY_DIR}/position_reference.h)
+  add_custom_command(OUTPUT ${POSITION_REFERENCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_position_reference.py --output ${POSITION_REFERENCE}
+    DEPENDS generate_position_reference.py generate_climate_update_test.py ../../components/espcontrol/button_grid_sliders.h
+    VERBATIM)
+  set(NOW_PLAYING_REFERENCE ${CMAKE_CURRENT_BINARY_DIR}/now_playing_reference.h)
+  add_custom_command(OUTPUT ${NOW_PLAYING_REFERENCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_now_playing_reference.py --output ${NOW_PLAYING_REFERENCE}
+    DEPENDS generate_now_playing_reference.py generate_climate_update_test.py ../../components/espcontrol/button_grid_media.h
+    VERBATIM)
+  add_executable(page_basic_lvgl_port_test page_basic_lvgl_port_test.cpp ${FORECAST_REFERENCE} ${POSITION_REFERENCE} ${NOW_PLAYING_REFERENCE}
+    ../../components/espcontrol/page_number_slider_runtime.cpp
+    ../../components/espcontrol/page_light_temperature_runtime.cpp
+    ../../components/espcontrol/page_timer_runtime.cpp
+  ../../components/espcontrol/page_cover_toggle_runtime.cpp
+  ../../components/espcontrol/page_access_state_runtime.cpp
+  ../../components/espcontrol/page_calendar_runtime.cpp
+  ../../components/espcontrol/page_timezone_runtime.cpp
+  ../../components/espcontrol/page_alarm_state_runtime.cpp
+    ../../components/espcontrol/page_percent_slider_runtime.cpp ../../components/espcontrol/page_fan_status_runtime.cpp ../../components/espcontrol/page_local_relay_runtime.cpp ../../components/espcontrol/page_local_sensor_runtime.cpp ../../components/espcontrol/page_basic_card.cpp ../../components/espcontrol/page_media_state_runtime.cpp
+    ../../components/espcontrol/page_forecast_runtime.cpp
+    ../../components/espcontrol/page_climate_card.cpp
+    ../../components/espcontrol/page_card_dependencies.cpp
+    ../../components/espcontrol/page_entity_state_runtime.cpp
+    ../../components/espcontrol/page_renderer_layout.cpp
+    ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_store.cpp)
+  target_compile_features(page_basic_lvgl_port_test PRIVATE cxx_std_17)
+  target_compile_options(page_basic_lvgl_port_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_basic_lvgl_port_test PRIVATE stubs ../../components/espcontrol ${CMAKE_CURRENT_BINARY_DIR})
+  target_link_libraries(page_basic_lvgl_port_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_basic_lvgl_port_test COMMAND page_basic_lvgl_port_test)
+  add_test(NAME page_nested_folder_lvgl_test COMMAND ${CMAKE_COMMAND} -E env
+    ESPCONTROL_TEST_FAMILY=nested_folders $<TARGET_FILE:page_basic_lvgl_port_test>)
+  add_executable(page_cover_art_frame_test page_cover_art_frame_test.cpp)
+  target_compile_features(page_cover_art_frame_test PRIVATE cxx_std_17)
+  target_compile_options(page_cover_art_frame_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+  target_include_directories(page_cover_art_frame_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_cover_art_frame_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_cover_art_frame_test COMMAND page_cover_art_frame_test)
+  add_executable(page_media_label_test page_media_label_test.cpp)
+  target_compile_features(page_media_label_test PRIVATE cxx_std_17)
+  target_compile_options(page_media_label_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+  target_include_directories(page_media_label_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_media_label_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_media_label_test COMMAND page_media_label_test)
+  add_executable(page_label_refresh_test page_label_refresh_test.cpp)
+  target_compile_features(page_label_refresh_test PRIVATE cxx_std_17)
+  target_compile_options(page_label_refresh_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+  target_include_directories(page_label_refresh_test PRIVATE ../../components/espcontrol)
+  target_link_libraries(page_label_refresh_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_label_refresh_test COMMAND page_label_refresh_test)
+  set(PAGE_QR_MATRIX_NATIVE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_qr_matrix_native_test.cpp)
+  add_custom_command(OUTPUT ${PAGE_QR_MATRIX_NATIVE_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_qr_matrix_test.py --output ${PAGE_QR_MATRIX_NATIVE_SOURCE}
+    DEPENDS generate_page_qr_matrix_test.py generate_climate_update_test.py page_qr_matrix_native_test.cpp.in
+      ../../components/espcontrol/button_grid_wifi_qr_driver.h
+    VERBATIM)
+  add_executable(page_qr_matrix_native_test ${PAGE_QR_MATRIX_NATIVE_SOURCE}
+    ${ESPCONTROL_LVGL_SOURCE_DIR}/src/libs/qrcode/qrcodegen.c
+    ${ESPCONTROL_LVGL_SOURCE_DIR}/src/libs/qrcode/lv_qrcode.c)
+  target_compile_features(page_qr_matrix_native_test PRIVATE cxx_std_17)
+  target_compile_options(page_qr_matrix_native_test PRIVATE -Wall -Wextra -Werror -UNDEBUG
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>)
+  target_compile_definitions(page_qr_matrix_native_test PRIVATE LV_USE_QRCODE=1)
+  target_include_directories(page_qr_matrix_native_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_qr_matrix_native_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_qr_matrix_native_test COMMAND page_qr_matrix_native_test)
+  set_tests_properties(page_qr_matrix_native_test PROPERTIES TIMEOUT 180)
+
+  set(PAGE_WIFI_QR_MODAL_NATIVE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_wifi_qr_modal_test.cpp)
+  add_custom_command(OUTPUT ${PAGE_WIFI_QR_MODAL_NATIVE_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_wifi_qr_modal_test.py --output ${PAGE_WIFI_QR_MODAL_NATIVE_SOURCE}
+    DEPENDS generate_page_wifi_qr_modal_test.py generate_climate_update_test.py page_wifi_qr_modal_test.cpp.in
+      ../../components/espcontrol/button_grid_modal.h ../../components/espcontrol/button_grid_sliders.h
+      ../../components/espcontrol/button_grid_modal_layout.h
+    VERBATIM)
+  add_executable(page_wifi_qr_modal_test ${PAGE_WIFI_QR_MODAL_NATIVE_SOURCE}
+    ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_card_dependencies.cpp
+    ../../components/espcontrol/page_entity_state_runtime.cpp ../../components/espcontrol/page_store.cpp
+    ${ESPCONTROL_LVGL_SOURCE_DIR}/src/libs/qrcode/qrcodegen.c
+    ${ESPCONTROL_LVGL_SOURCE_DIR}/src/libs/qrcode/lv_qrcode.c)
+  target_compile_features(page_wifi_qr_modal_test PRIVATE cxx_std_17)
+  target_compile_options(page_wifi_qr_modal_test PRIVATE -Wall -Wextra -Werror -UNDEBUG
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>)
+  target_compile_definitions(page_wifi_qr_modal_test PRIVATE LV_USE_QRCODE=1)
+  target_include_directories(page_wifi_qr_modal_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_wifi_qr_modal_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_wifi_qr_modal_test COMMAND page_wifi_qr_modal_test)
+  set_tests_properties(page_wifi_qr_modal_test PROPERTIES TIMEOUT 180)
+
+  set(PAGE_NETWORK_STATUS_MODAL_NATIVE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_network_status_modal_test.cpp)
+  add_custom_command(OUTPUT ${PAGE_NETWORK_STATUS_MODAL_NATIVE_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_network_status_modal_test.py --output ${PAGE_NETWORK_STATUS_MODAL_NATIVE_SOURCE}
+    DEPENDS generate_page_network_status_modal_test.py generate_climate_update_test.py page_network_status_modal_test.cpp.in
+      ../../components/espcontrol/button_grid_subpages.h ../../components/espcontrol/button_grid_layout.h
+    VERBATIM)
+  add_executable(page_network_status_modal_test ${PAGE_NETWORK_STATUS_MODAL_NATIVE_SOURCE}
+    ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_store.cpp)
+  target_compile_features(page_network_status_modal_test PRIVATE cxx_std_17)
+  target_compile_options(page_network_status_modal_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_network_status_modal_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_network_status_modal_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_network_status_modal_test COMMAND page_network_status_modal_test)
+  set_tests_properties(page_network_status_modal_test PROPERTIES TIMEOUT 180)
+
+  set(PAGE_CONFIRMATION_MODAL_NATIVE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_confirmation_modal_test.cpp)
+  add_custom_command(OUTPUT ${PAGE_CONFIRMATION_MODAL_NATIVE_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_confirmation_modal_test.py --output ${PAGE_CONFIRMATION_MODAL_NATIVE_SOURCE}
+    DEPENDS generate_page_confirmation_modal_test.py generate_climate_update_test.py page_confirmation_modal_test.cpp.in
+      ../../components/espcontrol/button_grid_modal.h ../../components/espcontrol/button_grid_confirm.h
+      ../../components/espcontrol/button_grid_modal_layout.h
+    VERBATIM)
+  add_executable(page_confirmation_modal_test ${PAGE_CONFIRMATION_MODAL_NATIVE_SOURCE}
+    ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_store.cpp
+    ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp)
+  target_compile_features(page_confirmation_modal_test PRIVATE cxx_std_17)
+  target_compile_options(page_confirmation_modal_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_confirmation_modal_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_confirmation_modal_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_confirmation_modal_test COMMAND page_confirmation_modal_test)
+  set_tests_properties(page_confirmation_modal_test PROPERTIES TIMEOUT 180)
+
+  add_executable(page_expanded_image_modal_test page_expanded_image_modal_test.cpp
+    ../../components/espcontrol/page_modal_runtime.cpp
+    ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp
+    ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_store.cpp)
+  target_compile_features(page_expanded_image_modal_test PRIVATE cxx_std_17)
+  target_compile_options(page_expanded_image_modal_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_expanded_image_modal_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_expanded_image_modal_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_expanded_image_modal_test COMMAND page_expanded_image_modal_test)
+  set_tests_properties(page_expanded_image_modal_test PROPERTIES TIMEOUT 180)
+
+  set(PAGE_ALARM_MODAL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_alarm_modal_test.cpp)
+  add_custom_command(OUTPUT ${PAGE_ALARM_MODAL_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_alarm_modal_test.py --output ${PAGE_ALARM_MODAL_SOURCE}
+    DEPENDS generate_page_alarm_modal_test.py generate_climate_update_test.py page_alarm_modal_test.cpp.in
+      ../../components/espcontrol/button_grid_alarm.h ../../components/espcontrol/alarm_modal_lifetime.h
+      ../../components/espcontrol/page_alarm_modal.h
+    VERBATIM)
+  add_executable(page_alarm_modal_test ${PAGE_ALARM_MODAL_SOURCE}
+    ../../components/espcontrol/page_alarm_presentation.cpp
+    ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_alarm_commands.cpp
+    ../../components/espcontrol/page_alarm_ack_runtime.cpp ../../components/espcontrol/page_alarm_state_runtime.cpp
+    ../../components/espcontrol/page_card_dependencies.cpp ../../components/espcontrol/page_entity_state_runtime.cpp
+    ../../components/espcontrol/page_store_runtime.cpp ../../components/espcontrol/page_store.cpp)
+  target_compile_features(page_alarm_modal_test PRIVATE cxx_std_17)
+  target_compile_options(page_alarm_modal_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_alarm_modal_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_alarm_modal_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_alarm_modal_test COMMAND page_alarm_modal_test)
+
+  set(PAGE_CLIMATE_MODAL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_climate_modal_test.cpp)
+  add_custom_command(
+    OUTPUT ${PAGE_CLIMATE_MODAL_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_climate_modal_test.py
+      --output ${PAGE_CLIMATE_MODAL_SOURCE}
+    DEPENDS generate_page_climate_modal_test.py generate_climate_update_test.py
+      page_climate_modal_test.cpp.in ../../components/espcontrol/button_grid_climate.h
+      ../../components/espcontrol/button_grid_climate_control_driver.h
+    VERBATIM)
+  add_executable(page_climate_modal_test ${PAGE_CLIMATE_MODAL_SOURCE}
+    ../../components/espcontrol/page_modal_runtime.cpp
+    ../../components/espcontrol/page_card_dependencies.cpp
+    ../../components/espcontrol/page_entity_state_runtime.cpp
+    ../../components/espcontrol/page_store.cpp)
+  target_compile_features(page_climate_modal_test PRIVATE cxx_std_17)
+  target_compile_options(page_climate_modal_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_climate_modal_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_climate_modal_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_climate_modal_test COMMAND page_climate_modal_test)
+  set(PAGE_LIGHT_COVER_MODAL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_light_cover_modal_test.cpp)
+  add_custom_command(
+    OUTPUT ${PAGE_LIGHT_COVER_MODAL_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_light_cover_modal_test.py
+      --output ${PAGE_LIGHT_COVER_MODAL_SOURCE}
+    DEPENDS generate_page_light_cover_modal_test.py generate_climate_update_test.py
+      page_light_cover_modal_test.cpp.in ../../components/espcontrol/button_grid_sliders.h
+      ../../components/espcontrol/page_light_cover_modal.h
+    VERBATIM)
+  add_executable(page_light_cover_modal_test ${PAGE_LIGHT_COVER_MODAL_SOURCE}
+    ../../components/espcontrol/page_modal_runtime.cpp
+    ../../components/espcontrol/page_card_dependencies.cpp
+    ../../components/espcontrol/page_entity_state_runtime.cpp
+    ../../components/espcontrol/page_store.cpp)
+  target_compile_features(page_light_cover_modal_test PRIVATE cxx_std_17)
+  target_compile_options(page_light_cover_modal_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_light_cover_modal_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_light_cover_modal_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_light_cover_modal_test COMMAND page_light_cover_modal_test)
+
+  set(PAGE_MEDIA_VOLUME_MODAL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_media_volume_modal_test.cpp)
+  add_custom_command(
+    OUTPUT ${PAGE_MEDIA_VOLUME_MODAL_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_media_volume_modal_test.py
+      --output ${PAGE_MEDIA_VOLUME_MODAL_SOURCE}
+    DEPENDS generate_page_media_volume_modal_test.py generate_climate_update_test.py
+      page_media_volume_modal_test.cpp.in ../../components/espcontrol/button_grid_sliders.h
+      ../../components/espcontrol/button_grid_media.h
+      ../../components/espcontrol/page_media_volume_modal.h
+    VERBATIM)
+  add_executable(page_media_volume_modal_test ${PAGE_MEDIA_VOLUME_MODAL_SOURCE}
+    ../../components/espcontrol/page_modal_runtime.cpp
+    ../../components/espcontrol/page_card_dependencies.cpp
+    ../../components/espcontrol/page_entity_state_runtime.cpp
+    ../../components/espcontrol/page_store.cpp)
+  target_compile_features(page_media_volume_modal_test PRIVATE cxx_std_17)
+  target_compile_options(page_media_volume_modal_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_media_volume_modal_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_media_volume_modal_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_media_volume_modal_test COMMAND page_media_volume_modal_test)
+
+  set(PAGE_MEDIA_CONTROL_MODAL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_media_control_modal_test.cpp)
+  add_custom_command(
+    OUTPUT ${PAGE_MEDIA_CONTROL_MODAL_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_media_control_modal_test.py
+      --output ${PAGE_MEDIA_CONTROL_MODAL_SOURCE}
+    DEPENDS generate_page_media_control_modal_test.py generate_climate_update_test.py
+      page_media_control_modal_test.cpp.in ../../components/espcontrol/button_grid_sliders.h
+      ../../components/espcontrol/button_grid_media.h
+      ../../components/espcontrol/button_grid_media_group.h
+      ../../components/espcontrol/page_media_control_modal.h
+    VERBATIM)
+  add_executable(page_media_control_modal_test ${PAGE_MEDIA_CONTROL_MODAL_SOURCE}
+    ../../components/espcontrol/page_media_state_runtime.cpp
+    ../../components/espcontrol/page_modal_runtime.cpp
+    ../../components/espcontrol/page_card_dependencies.cpp
+    ../../components/espcontrol/page_entity_state_runtime.cpp
+    ../../components/espcontrol/page_store.cpp)
+  target_compile_features(page_media_control_modal_test PRIVATE cxx_std_17)
+  target_compile_options(page_media_control_modal_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_media_control_modal_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_media_control_modal_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_media_control_modal_test COMMAND page_media_control_modal_test)
+
+  set(PAGE_OPTION_SELECT_MODAL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_option_select_modal_test.cpp)
+  add_custom_command(OUTPUT ${PAGE_OPTION_SELECT_MODAL_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_option_select_modal_test.py
+      --output ${PAGE_OPTION_SELECT_MODAL_SOURCE}
+    DEPENDS generate_page_option_select_modal_test.py generate_climate_update_test.py
+      page_option_select_modal_test.cpp.in ../../components/espcontrol/button_grid_option_select.h
+      ../../components/espcontrol/page_option_select_modal.h
+    VERBATIM)
+  add_executable(page_option_select_modal_test ${PAGE_OPTION_SELECT_MODAL_SOURCE}
+    ../../components/espcontrol/page_modal_runtime.cpp
+    ../../components/espcontrol/page_card_dependencies.cpp
+    ../../components/espcontrol/page_entity_state_runtime.cpp
+    ../../components/espcontrol/page_store.cpp)
+  target_compile_features(page_option_select_modal_test PRIVATE cxx_std_17)
+  target_compile_options(page_option_select_modal_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_option_select_modal_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_option_select_modal_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_option_select_modal_test COMMAND page_option_select_modal_test)
+
+  set(PAGE_FAN_CONTROL_MODAL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_fan_control_modal_test.cpp)
+  add_custom_command(
+    OUTPUT ${PAGE_FAN_CONTROL_MODAL_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_fan_control_modal_test.py
+      --output ${PAGE_FAN_CONTROL_MODAL_SOURCE}
+    DEPENDS generate_page_fan_control_modal_test.py generate_climate_update_test.py
+      page_fan_control_modal_test.cpp.in ../../components/espcontrol/button_grid_fan.h
+      ../../components/espcontrol/page_fan_control_modal.h
+      ../../components/espcontrol/page_fan_preset_modal.h
+      ../../components/espcontrol/page_fan_modal_state.h
+    VERBATIM)
+  add_executable(page_fan_control_modal_test ${PAGE_FAN_CONTROL_MODAL_SOURCE}
+    ../../components/espcontrol/page_modal_runtime.cpp
+    ../../components/espcontrol/page_card_dependencies.cpp
+    ../../components/espcontrol/page_entity_state_runtime.cpp
+    ../../components/espcontrol/page_store.cpp)
+  target_compile_features(page_fan_control_modal_test PRIVATE cxx_std_17)
+  target_compile_options(page_fan_control_modal_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_fan_control_modal_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_fan_control_modal_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_fan_control_modal_test COMMAND page_fan_control_modal_test)
+
+  set(PAGE_WEATHER_MODAL_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/page_weather_modal_test.cpp)
+  add_custom_command(OUTPUT ${PAGE_WEATHER_MODAL_SOURCE}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_page_weather_modal_test.py --output ${PAGE_WEATHER_MODAL_SOURCE}
+    DEPENDS generate_page_weather_modal_test.py generate_climate_update_test.py page_weather_modal_test.cpp.in ../../components/espcontrol/temperature_unit.h
+      ../../components/espcontrol/button_grid_weather_daily_ui.h ../../components/espcontrol/button_grid_weather_modal.h
+    VERBATIM)
+  add_executable(page_weather_modal_test ${PAGE_WEATHER_MODAL_SOURCE}
+    ../../components/espcontrol/page_modal_runtime.cpp ../../components/espcontrol/page_forecast_runtime.cpp ../../components/espcontrol/page_store.cpp)
+  target_compile_features(page_weather_modal_test PRIVATE cxx_std_17)
+  target_compile_options(page_weather_modal_test PRIVATE -Wall -Wextra -Werror -fno-rtti -UNDEBUG)
+  target_include_directories(page_weather_modal_test PRIVATE stubs ../../components/espcontrol)
+  target_link_libraries(page_weather_modal_test PRIVATE lvgl::lvgl)
+  add_test(NAME page_weather_modal_test COMMAND page_weather_modal_test)
+
+endif()
+
+add_test(NAME weather_condition_parity_test COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/weather_condition_parity_test.py)
+
+# Exercise the real scene with production compile-time renderer selection.
+if(ESPCONTROL_LVGL_SOURCE_DIR)
+  get_target_property(PROTOTYPE_NATIVE_SOURCES page_native_scene_test SOURCES)
+  get_target_property(PROTOTYPE_NATIVE_OPTIONS page_native_scene_test COMPILE_OPTIONS)
+  get_target_property(PROTOTYPE_NATIVE_DEFINES page_native_scene_test COMPILE_DEFINITIONS)
+  get_target_property(PROTOTYPE_NATIVE_INCLUDES page_native_scene_test INCLUDE_DIRECTORIES)
+  foreach(mode s3 p4 six fifteen)
+    add_executable(page_native_selected_${mode}_test ${PROTOTYPE_NATIVE_SOURCES})
+    target_compile_features(page_native_selected_${mode}_test PRIVATE cxx_std_17)
+    target_compile_options(page_native_selected_${mode}_test PRIVATE ${PROTOTYPE_NATIVE_OPTIONS})
+    target_compile_definitions(page_native_selected_${mode}_test PRIVATE ${PROTOTYPE_NATIVE_DEFINES})
+    target_include_directories(page_native_selected_${mode}_test PRIVATE ${PROTOTYPE_NATIVE_INCLUDES})
+    target_link_libraries(page_native_selected_${mode}_test PRIVATE lvgl::lvgl)
+  endforeach()
+  target_compile_definitions(page_native_selected_s3_test PRIVATE ESPCONTROL_UI_PROFILE_GUITION_ESP32_S3_4848S040)
+  target_compile_definitions(page_native_selected_p4_test PRIVATE ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC8012P4A1_V3)
+  target_compile_definitions(page_native_selected_six_test PRIVATE ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC4880P443)
+  target_compile_definitions(page_native_selected_fifteen_test PRIVATE ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC1060P470)
+  add_test(NAME page_native_selected_six_test COMMAND page_native_selected_six_test --six-slot)
+  add_test(NAME page_native_selected_fifteen_test COMMAND page_native_selected_fifteen_test --fifteen-slot)
+  add_test(NAME page_native_selected_s3_test COMMAND page_native_selected_s3_test)
+  add_test(NAME page_native_selected_p4_test COMMAND page_native_selected_p4_test --maximum-p4)
+  set_tests_properties(page_native_selected_s3_test page_native_selected_p4_test page_native_selected_six_test page_native_selected_fifteen_test PROPERTIES TIMEOUT 180)
+endif()
+
+add_test(NAME pooled_producer_routing_test COMMAND
+  ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
+  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/pooled_producer_routing_test.py)
+
+# The demanded climate adapter keeps one context for every generated device
+# profile. Standalone mode above retains the historical multi-context registry.
+if(ESPCONTROL_LVGL_SOURCE_DIR)
+  get_target_property(CLIMATE_MODAL_SOURCES page_climate_modal_test SOURCES)
+  get_target_property(CLIMATE_MODAL_OPTIONS page_climate_modal_test COMPILE_OPTIONS)
+  get_target_property(CLIMATE_MODAL_INCLUDES page_climate_modal_test INCLUDE_DIRECTORIES)
+  set(CLIMATE_MODAL_PROFILES
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC1060P470
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC1060P470_V2
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC4880P443
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC4880P443_V3
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC8012P4A1
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC8012P4A1_V2
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_P4_JC8012P4A1_V3
+    ESPCONTROL_UI_PROFILE_ESP32_P4_86
+    ESPCONTROL_UI_PROFILE_GUITION_ESP32_S3_4848S040)
+  set(CLIMATE_PROFILE_INDEX 0)
+  foreach(profile IN LISTS CLIMATE_MODAL_PROFILES)
+    set(target page_climate_modal_profile_${CLIMATE_PROFILE_INDEX}_test)
+    add_executable(${target} ${CLIMATE_MODAL_SOURCES})
+    target_compile_features(${target} PRIVATE cxx_std_17)
+    target_compile_options(${target} PRIVATE ${CLIMATE_MODAL_OPTIONS})
+    target_compile_definitions(${target} PRIVATE ${profile})
+    target_include_directories(${target} PRIVATE ${CLIMATE_MODAL_INCLUDES})
+    target_link_libraries(${target} PRIVATE lvgl::lvgl)
+    add_test(NAME ${target} COMMAND ${target})
+    set_tests_properties(${target} PROPERTIES TIMEOUT 60)
+    math(EXPR CLIMATE_PROFILE_INDEX "${CLIMATE_PROFILE_INDEX}+1")
+  endforeach()
+  # Pure protocol tests below do not provide the LVGL custom allocator hooks.
+  set_property(DIRECTORY PROPERTY LINK_LIBRARIES "${ESPCONTROL_LINK_LIBRARIES_BEFORE_LVGL}")
+endif()
+foreach(backup_target panel_graph_backup_test panel_backup_document_test)
+  add_executable(${backup_target} ${backup_target}.cpp)
+  target_compile_features(${backup_target} PRIVATE cxx_std_17)
+  target_compile_options(${backup_target} PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+  target_include_directories(${backup_target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ../../components/espcontrol)
+  add_test(NAME ${backup_target} COMMAND ${backup_target})
+endforeach()

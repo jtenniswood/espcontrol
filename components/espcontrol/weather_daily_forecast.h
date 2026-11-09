@@ -9,10 +9,12 @@
 #include <cstring>
 #include <limits>
 #include <string>
+#include <string_view>
 
 namespace espcontrol::weather {
 constexpr size_t MAX_DAYS = 8;
 constexpr size_t MAX_SOURCES = 8;
+constexpr size_t MAX_CARDS = 16;
 constexpr size_t MAX_PAYLOAD_BYTES = 2048;
 constexpr float MISSING = std::numeric_limits<float>::quiet_NaN();
 struct Day {
@@ -27,7 +29,7 @@ struct Forecast {
   char today[11]{}, tomorrow[11]{};
   char temperature_unit[13]{}, precipitation_unit[13]{}, wind_unit[13]{};
 };
-inline bool entity_id_safe(const std::string &entity) {
+inline bool entity_id_safe(std::string_view entity) {
   if (entity.size() <= 8 || entity.compare(0, 8, "weather.") != 0) return false;
   for (size_t i = 8; i < entity.size(); ++i)
     if (!(std::isalnum(static_cast<unsigned char>(entity[i])) || entity[i] == '_')) return false;

@@ -146,7 +146,8 @@ ATTRIBUTE_HELPER_PATTERN = re.compile(
 )
 SUBSCRIPTION_TRACKING_PATTERN = re.compile(
     r"subscriptions_\.push_back\(\s*\{\s*callback_ref\s*,\s*scope(?:\s*,\s*owner)?"
-    r"(?:\s*,\s*channel)?(?:\s*,\s*retain_latest)?\s*\}\s*\)"
+    r"(?:\s*,\s*channel)?(?:\s*,\s*retain_latest)?"
+    r"(?:\s*,\s*false\s*,\s*retain_replay)?\s*\}\s*\)"
 )
 DEFERRED_CALLBACK_FANOUT_PATTERN = re.compile(
     r"for\s*\(\s*const\s+auto\s*&\s*callback(?:_ref)?\s*:\s*\*callback_refs\s*\)"
@@ -160,7 +161,7 @@ MEDIA_CONTROL_STATE_PATTERN = re.compile(
     re.DOTALL,
 )
 COVER_COMMAND_REQUEST_PATTERN = re.compile(
-    r"inline\s+void\s+send_cover_command_action\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+    r"inline\s+(?:void|bool)\s+send_cover_command_action\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
     re.DOTALL,
 )
 YAML_SCRIPT_PATTERN_TEMPLATE = r"(?ms)^  - id: {script_id}\n(?P<body>.*?)(?=^  - id: |\Z)"
@@ -197,6 +198,20 @@ def firmware_ha_binding_errors(firmware_dir: Path, root: Path) -> list[str]:
                     rel = path.relative_to(root)
                     errors.append(f"{rel}:{line_no}: {message}")
                     break
+    return errors
+
+
+def firmware_ha_refresh_errors(text: str, rel: Path) -> list[str]:
+    helper = re.search(
+        r"inline\s+void\s+ha_reannounce_state_subscriptions\s*\(\s*\)\s*\{(?P<body>.*?)\n\}",
+        text, re.DOTALL,
+    )
+    body = helper.group("body") if helper else ""
+    errors: list[str] = []
+    if "espcontrol::ha::request_state_refresh();" not in body:
+        errors.append(f"{rel}: schedule runtime card value refresh through the paced one-shot transport")
+    if "on_subscribe_home_assistant_states_request" in body:
+        errors.append(f"{rel}: do not replay persistent HA subscription lists for value refresh")
     return errors
 
 
@@ -253,7 +268,11 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         or 'heap_probe_.available("Home Assistant state request"' not in coordinator_text
     ):
         errors.append(f"{rel}: guard retained Home Assistant reads under low internal heap")
-    if "transport_.request(" not in coordinator_text or "request_fresh(" not in coordinator_text:
+    if (
+        "request_transport(transport_, entity_id, attribute, 0)" not in coordinator_text
+        or "return transport.request(entity, attribute);" not in coordinator_text
+        or "request_fresh(" not in coordinator_text
+    ):
         errors.append(f"{rel}: route fresh Home Assistant reads through the bounded coordinator helper")
     if accumulating_ha_read_call(read_boundary_text):
         errors.append(f"{rel}: fresh metadata reads must reuse subscriptions, not append native callbacks or borrow temporary strings")
@@ -281,12 +300,7 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         or "transport_.subscribe(" not in coordinator_text
     ):
         errors.append(f"{rel}: reuse one Home Assistant transport subscription across grid rebuilds")
-    if (
-        "inline void ha_reannounce_state_subscriptions()" not in text
-        or "client->get_name()" not in text
-        or "client->on_subscribe_home_assistant_states_request();" not in text
-    ):
-        errors.append(f"{rel}: re-announce runtime card subscriptions to the connected Home Assistant client")
+    errors.extend(firmware_ha_refresh_errors(text, rel))
     if (
         "ha_log_subscription_diagnostics" not in text
         or "get_state_subs().size()" not in text
@@ -3608,7 +3622,7 @@ def firmware_open_modal_api_errors(root: Path, package_paths: tuple[Path, ...]) 
     script_positions = [modal_script.find(value) for value in script_required]
     if (modal_script_start < 0 or -1 in api_positions or api_positions != sorted(api_positions)
             or -1 in script_positions or script_positions != sorted(script_positions)
-            or modal_script.count("grid_phase2_complete()") < 2):
+            or modal_script.count("espcontrol_navigation_ready()") < 2):
         errors.append("common/device/api_open_modal.yaml: validate, wake, revalidate, open, then reset idle timers")
     for path in package_paths:
         has_modal = package_api_open_modal_enabled(path, root)
@@ -5058,7 +5072,37 @@ def test_camera_refresh_package_mcu_errors() -> None:
 
 
 def run_self_test() -> int:
+    refresh_rel = Path("components/espcontrol/button_grid_ha.h")
+    valid_refresh = (
+        "inline void ha_reannounce_state_subscriptions() {\n"
+        "  espcontrol::ha::request_state_refresh();\n"
+        "}\n"
+    )
+    assert not firmware_ha_refresh_errors(valid_refresh, refresh_rel)
+    # A valid token elsewhere must not conceal a missing or incorrect helper.
+    assert firmware_ha_refresh_errors("// espcontrol::ha::request_state_refresh();\n", refresh_rel)
+    assert firmware_ha_refresh_errors(valid_refresh.replace("espcontrol::ha::request_state_refresh();", ""), refresh_rel)
+    old_refresh = valid_refresh.replace(
+        "espcontrol::ha::request_state_refresh();",
+        "client->on_subscribe_home_assistant_states_request();",
+    )
+    assert any("do not replay persistent" in error for error in firmware_ha_refresh_errors(old_refresh, refresh_rel))
+    # Keeping the new call alongside live enumeration must also fail.
+    mixed_refresh = valid_refresh.replace(
+        "espcontrol::ha::request_state_refresh();",
+        "espcontrol::ha::request_state_refresh();\n  client->on_subscribe_home_assistant_states_request();",
+    )
+    assert any("do not replay persistent" in error for error in firmware_ha_refresh_errors(mixed_refresh, refresh_rel))
     test_camera_refresh_package_mcu_errors()
+    assert SUBSCRIPTION_TRACKING_PATTERN.search(
+        "subscriptions_.push_back({callback_ref, scope, owner, channel, retain_latest});"
+    )
+    assert SUBSCRIPTION_TRACKING_PATTERN.search(
+        "subscriptions_.push_back({callback_ref, scope, owner, channel, retain_latest, false, retain_replay});"
+    )
+    assert not SUBSCRIPTION_TRACKING_PATTERN.search(
+        "subscriptions_.push_back({scope, owner, channel, retain_latest, false, retain_replay});"
+    )
     for call in (
         "api->get_home_assistant_state(entity, callback);",
         "api.get_home_assistant_state(entity, callback);",
@@ -6015,6 +6059,30 @@ def run_self_test() -> int:
         "}\n",
         "api:\n  on_client_connected:\n    - lambda: refresh_weather_forecast_cards();\n",
         ("cancel pending cover stop callbacks when the HA API disconnects",),
+    )
+    expect_cover_request_errors(
+        "acceptance-returning cover helper keeps cleanup coverage",
+        "inline void cover_stop_track_pending() {}\n"
+        "inline void cover_stop_clear_pending() {}\n"
+        "inline void cover_stop_cancel_pending_request() {}\n"
+        "inline bool send_cover_command_action() {\n"
+        "  bool cover_stop_tracked = true;\n"
+        "  ha_cancel_action_response_callback(req.call_id, \"send failed\");\n"
+        "  return sent;\n"
+        "}\n",
+        "api:\n  on_client_disconnected:\n    - lambda: cover_stop_cancel_pending_request();\n",
+        (),
+    )
+    expect_cover_request_errors(
+        "acceptance-returning cover helper still requires send-failure cleanup",
+        "inline void cover_stop_track_pending() {}\n"
+        "inline void cover_stop_clear_pending() {}\n"
+        "inline void cover_stop_cancel_pending_request() {}\n"
+        "inline bool send_cover_command_action() {\n"
+        "  return ha_action_send(req);\n"
+        "}\n",
+        "api:\n  on_client_disconnected:\n    - lambda: cover_stop_cancel_pending_request();\n",
+        ("cancel cover stop callbacks when sends fail",),
     )
     expect_cover_art_external_input_errors(
         "missing cover art source handling",
@@ -8226,7 +8294,7 @@ def run_self_test() -> int:
         api.write_text(original)
         assert not firmware_open_modal_api_errors(root, (package,))
         for token in ("mode: restart", "espcontrol_can_open_modal", "script.wait: screensaver_wake",
-                      "espcontrol_open_modal", "script.execute: home_screen_idle_check"):
+                      "espcontrol_open_modal", "espcontrol_navigation_ready", "script.execute: home_screen_idle_check"):
             source_path = api if token in original else scripts
             source_text = original if source_path == api else scripts.read_text(encoding="utf-8")
             source_path.write_text(source_text.replace(token, "removed"))

@@ -1,11 +1,16 @@
 import {
   createNativePanelConfigClient,
   updateNativePanelConfigDocument,
+  NativePanelConfigCompatibilityError,
+  NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE,
+  nativeBackupHasInactiveRecords,
   type NativePanelConfigClient,
   type NativePanelConfigFetch,
   type NativePanelConfigSaveResult,
+  type NativePanelConfigSnapshot,
 } from "../features/native_panel_config";
 import type { PanelConfigDocument } from "../model";
+import { pageDepth, parentPageKey } from "../model/page_keys";
 
 export type NativePanelConfigUpdate = (document: PanelConfigDocument) => PanelConfigDocument;
 export type NativePanelConfigSaveOutcome = NativePanelConfigSaveResult | "legacy-fallback";
@@ -19,12 +24,15 @@ export interface NativePanelConfigControllerDependencies {
   readonly normalizeHexColor: (value: string, fallback: string) => string;
   readonly showBanner: (message: string, level: "error") => void;
   readonly delay: (callback: () => void, milliseconds: number) => unknown;
+  readonly saved?: (document: PanelConfigDocument) => void;
 }
 
 /** Owns native configuration discovery and serialised document writes. */
 export class NativePanelConfigController {
   private client_: NativePanelConfigClient | null;
   private saveQueue_: Promise<NativePanelConfigSaveOutcome> = Promise.resolve("saved");
+  private revision_ = 0;
+  private saveAttemptId_ = 0;
   private legacyFallback_ = false;
   private retryDelayMs_ = 250;
   // P4 panels can still be completing their deferred native-configuration
@@ -43,7 +51,9 @@ export class NativePanelConfigController {
     this.legacyFallback_ = false;
   }
   get saveQueue(): Promise<NativePanelConfigSaveOutcome> { return this.saveQueue_; }
-  set saveQueue(value: Promise<NativePanelConfigSaveOutcome>) { this.saveQueue_ = value; }
+  set saveQueue(value: Promise<NativePanelConfigSaveOutcome>) { ++this.saveAttemptId_; this.saveQueue_ = value; }
+  // Snapshot/backup reads wrap the queue without creating a new write attempt.
+  get saveAttemptId(): number { return this.saveAttemptId_; }
   get legacyFallback(): boolean { return this.legacyFallback_; }
   set legacyFallback(value: boolean) { this.legacyFallback_ = value; }
   get retryDelayMs(): number { return this.retryDelayMs_; }
@@ -63,6 +73,20 @@ export class NativePanelConfigController {
     return this.client_?.supported() ?? false;
   }
 
+  markLocalEdit(): void { ++this.revision_; }
+  changeRevision(): number { return this.revision_; }
+  readNavigationDepth(): number { return this.client_?.readNavigationDepth() ?? 1; }
+  writableNavigationDepth(): number { return this.client_?.writableNavigationDepth() ?? 1; }
+
+  readSnapshot(signal?: AbortSignal): Promise<NativePanelConfigSnapshot | null> {
+    const precedingSave = this.saveQueue_, client = this.client_;
+    const read = precedingSave.then(() => client?.readSnapshot(this.dependencies.deviceProfile(), signal) ?? null);
+    // A refresh may recover visible state after a failed save, but cannot erase
+    // that failure from the queue or race with the next edit.
+    this.saveQueue_ = read.then(() => precedingSave, () => precedingSave);
+    return read;
+  }
+
   private report(result: NativePanelConfigSaveOutcome): NativePanelConfigSaveOutcome {
     if (result === "conflict") {
       this.dependencies.showBanner("Configuration changed in another browser. Reload before saving again.", "error");
@@ -71,7 +95,11 @@ export class NativePanelConfigController {
     } else if (result === "authentication-required") {
       this.dependencies.showBanner("This firmware requires web authentication for Wifi Sharing passwords. Sign in, enable web_server_auth, or update the panel firmware.", "error");
     } else if (result === "too-large") {
-      this.dependencies.showBanner("Configuration exceeds this panel's storage capacity. Update the panel firmware for more space, or reduce the saved settings.", "error");
+      this.dependencies.showBanner("Configuration exceeds this panel's storage capacity. Remove unused cards or subpages, or shorten labels.", "error");
+    } else if (result === "nested-pages-unavailable") {
+      this.dependencies.showBanner("Nested pages cannot be saved on this firmware. No settings were changed.", "error");
+    } else if (result === "firmware-update-required") {
+      this.dependencies.showBanner(NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE, "error");
     } else if (result === "failed") {
       this.dependencies.showBanner("Could not save the configuration. Check the connection and try again.", "error");
     }
@@ -97,8 +125,10 @@ export class NativePanelConfigController {
     }
     if (!this.client_?.retryable()) return "failed";
     if (attempts >= this.maxDiscoveryRetries_) {
-      // Older firmware never exposes the native endpoints. Preserve this
-      // capped decision so queued saves use their legacy paths immediately.
+      // Only a never-native, missing endpoint can identify older firmware.
+      // Busy startup/resource responses and a known-native panel restarting
+      // must not route edits into its compatibility mirror.
+      if (!this.client_?.canUseLegacyFallback()) return "failed";
       this.legacyFallback_ = true;
       return "legacy-fallback";
     }
@@ -109,6 +139,8 @@ export class NativePanelConfigController {
   schedule(update: NativePanelConfigUpdate): Promise<NativePanelConfigSaveOutcome> | null {
     const client = this.client_;
     if (!client) return null;
+    ++this.revision_;
+    ++this.saveAttemptId_;
     const save = this.saveQueue_
       .then(async () => this.supported() || await this.waitForDiscovery())
       .then(async (supported) => supported === "legacy-fallback" || supported === "failed"
@@ -120,9 +152,32 @@ export class NativePanelConfigController {
         if (supported === "legacy-fallback" || supported === "failed") return supported;
         return supported ? client.save(update) : result;
       })
-      .then((result) => this.report(result), () => this.report("failed"));
+      .then((result) => {
+        const document = client.lastDocument();
+        if ((result === "saved" || result === "mirror-failed") && document) this.dependencies.saved?.(document);
+        return this.report(result === "unsupported" ? "failed" : result);
+      }, () => this.report("failed"));
     this.saveQueue_ = save;
     return save;
+  }
+
+  readForBackup(): Promise<Uint8Array | null> {
+    const client = this.client_;
+    const precedingSave = this.saveQueue_;
+    const read = precedingSave.then(async (outcome) => {
+      if (outcome !== "saved" && outcome !== "mirror-failed" && outcome !== "legacy-fallback") {
+        throw new Error("The previous configuration change did not save.");
+      }
+      if (!client) return null;
+      const available = this.supported() || await this.waitForDiscovery();
+      if (available === "legacy-fallback") return null;
+      if (available !== true) throw new Error("Configuration discovery is unavailable.");
+      return client.readForBackup(this.dependencies.deviceProfile());
+    });
+    // Later edits wait for this snapshot too. A failed read must neither
+    // poison the save queue nor erase a preceding failed save outcome.
+    this.saveQueue_ = read.then(() => precedingSave, () => precedingSave);
+    return read;
   }
 
   writeText(name: string, value: string): Promise<NativePanelConfigSaveOutcome> | null | false {
@@ -166,12 +221,19 @@ export class NativePanelConfigController {
       if (current.deviceProfile !== document.deviceProfile) {
         throw new Error("The backup targets a different device profile.");
       }
+      if (!this.client_?.preservesInactiveRecords() &&
+          nativeBackupHasInactiveRecords(document, this.dependencies.slotCount())) {
+        throw new NativePanelConfigCompatibilityError(NATIVE_BACKUP_UPDATE_REQUIRED_MESSAGE);
+      }
       return document;
     });
   }
 
   writeSubpage(slot: number, value: string): Promise<NativePanelConfigSaveOutcome> | false | null {
-    if (!Number.isInteger(slot) || slot < 1 || slot > this.dependencies.slotCount()) return false;
+    try {
+      const depth = pageDepth(slot);
+      if (!depth || (depth === 1 ? slot : parentPageKey(slot)) > this.dependencies.slotCount()) return false;
+    } catch { return false; }
     return this.schedule((current) => updateNativePanelConfigDocument(
       current, this.dependencies.deviceProfile(), "subpages", slot, value,
     ));

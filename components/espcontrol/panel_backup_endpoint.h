@@ -13,7 +13,8 @@
 #include "esphome/core/application.h"
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #include "configuration_service.h"
-#include "panel_backup.h"
+#include "configuration_main_loop.h"
+#include "panel_backup_document.h"
 #include "panel_config_http_context.h"
 #include "panel_identity.h"
 
@@ -94,13 +95,34 @@ class PanelBackupHandler final : public esphome::web_server_idf::AsyncWebHandler
       return;
     }
     auto &config = panel_config_http_context();
-    const auto loaded = config.service->load(config.document, config.document_capacity);
+    ConfigurationBuffer buffer_owner(config.allocate, config.release);
+    auto *document = buffer_owner.allocate(config.document_capacity);
+    if (!document) {
+      send_backup_error(request, "503 Service Unavailable", "Backup memory is unavailable; retry shortly");
+      return;
+    }
+    const auto transaction = config.transactions->load(document, config.document_capacity);
+    if (transaction.dispatch != ConfigurationDispatchStatus::COMPLETED) {
+      send_backup_error(request, "503 Service Unavailable", "Saved configuration is busy; retry shortly");
+      return;
+    }
+    const auto loaded = transaction.result;
     if (!loaded.ok()) {
       // Never present a settings-only or empty-layout file as a complete backup.
       send_backup_error(request, "503 Service Unavailable", "Saved configuration is unavailable");
       return;
     }
-    if (!valid_backup_document(config.document, loaded.document_size, backup.slots)) {
+    PanelBackupDocumentView saved_document(document, loaded.document_size, config.allocate, config.release);
+    const auto prepared = saved_document.prepare(loaded.document_version, backup.slots, backup.profile);
+    if (prepared == PanelBackupDocumentStatus::UNSUPPORTED_VERSION) {
+      send_backup_error(request, "422 Unprocessable Content", "Saved configuration needs newer backup support");
+      return;
+    }
+    if (prepared == PanelBackupDocumentStatus::ALLOCATION_FAILED) {
+      send_backup_error(request, "503 Service Unavailable", "Backup validation memory is unavailable; retry shortly");
+      return;
+    }
+    if (prepared != PanelBackupDocumentStatus::OK) {
       send_backup_error(request, "500 Internal Server Error", "Saved configuration is invalid");
       return;
     }
@@ -154,8 +176,7 @@ class PanelBackupHandler final : public esphome::web_server_idf::AsyncWebHandler
       }
       return true;
     };
-    if (!write_backup(config.document, loaded.document_size, backup.slots,
-                      settings, screen, identity, exported_at, sink)) return;
+    if (!saved_document.write(settings, screen, identity, exported_at, sink)) return;
     if (!buffer.empty() && httpd_resp_send_chunk(raw, buffer.data(), buffer.size()) != ESP_OK) return;
     httpd_resp_send_chunk(raw, nullptr, 0);
   }

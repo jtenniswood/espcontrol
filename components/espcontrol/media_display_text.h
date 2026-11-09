@@ -2,7 +2,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <string>
+#include <string_view>
 
 #include "media_emoji_ranges.h"
 
@@ -15,13 +17,14 @@ struct Character {
 };
 
 // Reject malformed/partial UTF-8 without reading beyond the bounded input.
-inline Character character_at(const std::string &text, size_t offset) {
+inline Character character_at(std::string_view text, size_t offset) {
   if (offset >= text.size()) return {};
   const auto lead = static_cast<uint8_t>(text[offset]);
   if (lead < 0x80) return {lead, 1};
-  size_t bytes = lead >= 0xC2 && lead <= 0xDF ? 2
-    : lead >= 0xE0 && lead <= 0xEF ? 3
-    : lead >= 0xF0 && lead <= 0xF4 ? 4 : 0;
+  size_t bytes = lead >= 0xC2 && lead <= 0xDF   ? 2
+                 : lead >= 0xE0 && lead <= 0xEF ? 3
+                 : lead >= 0xF0 && lead <= 0xF4 ? 4
+                                                : 0;
   if (bytes == 0 || bytes > text.size() - offset) return {};
   uint32_t value = lead & (0x7F >> bytes);
   for (size_t i = 1; i < bytes; ++i) {
@@ -29,20 +32,23 @@ inline Character character_at(const std::string &text, size_t offset) {
     if ((byte & 0xC0) != 0x80) return {};
     value = (value << 6) | (byte & 0x3F);
   }
-  if ((bytes == 2 && value < 0x80) || (bytes == 3 && value < 0x800) ||
-      (bytes == 4 && value < 0x10000) || value > 0x10FFFF ||
-      (value >= 0xD800 && value <= 0xDFFF)) return {};
+  if ((bytes == 2 && value < 0x80) || (bytes == 3 && value < 0x800) || (bytes == 4 && value < 0x10000) ||
+      value > 0x10FFFF || (value >= 0xD800 && value <= 0xDFFF))
+    return {};
   return {value, bytes};
 }
 
-template<size_t N>
+template <size_t N>
 inline bool contains(const Range (&ranges)[N], uint32_t value) {
   size_t lo = 0, hi = N;
   while (lo < hi) {
     const size_t mid = lo + (hi - lo) / 2;
-    if (value < ranges[mid].first) hi = mid;
-    else if (value > ranges[mid].last) lo = mid + 1;
-    else return true;
+    if (value < ranges[mid].first)
+      hi = mid;
+    else if (value > ranges[mid].last)
+      lo = mid + 1;
+    else
+      return true;
   }
   return false;
 }
@@ -50,11 +56,10 @@ inline bool contains(const Range (&ranges)[N], uint32_t value) {
 // Return the first byte after an emoji, including its selectors, modifiers,
 // tags and joined components. Plain text symbols such as copyright and digits
 // remain text unless explicitly used in an emoji/keycap sequence.
-inline size_t emoji_end(const std::string &text, size_t start, Character ch) {
+inline size_t emoji_end(std::string_view text, size_t start, Character ch) {
   size_t end = start + ch.bytes;
   auto next = character_at(text, end);
-  if (ch.value == '#' || ch.value == '*' ||
-      (ch.value >= '0' && ch.value <= '9')) {
+  if (ch.value == '#' || ch.value == '*' || (ch.value >= '0' && ch.value <= '9')) {
     if (next.value == 0xFE0F) {
       end += next.bytes;
       next = character_at(text, end);
@@ -64,14 +69,12 @@ inline size_t emoji_end(const std::string &text, size_t start, Character ch) {
   // These dual-use symbols are part of the existing text font. Other emoji
   // (including a bare rain cloud/heart) are omitted even without VS16.
   const bool text_symbol = ch.value == 0xA9 || ch.value == 0xAE || ch.value == 0x2122;
-  if (!contains(EMOJI, ch.value) || next.value == 0xFE0E ||
-      (text_symbol && next.value != 0xFE0F)) {
+  if (!contains(EMOJI, ch.value) || next.value == 0xFE0E || (text_symbol && next.value != 0xFE0F)) {
     return start;
   }
   for (;;) {
     next = character_at(text, end);
-    if (next.value == 0xFE0F || next.value == 0xFE0E ||
-        (next.value >= 0x1F3FB && next.value <= 0x1F3FF) ||
+    if (next.value == 0xFE0F || next.value == 0xFE0E || (next.value >= 0x1F3FB && next.value <= 0x1F3FF) ||
         (next.value >= 0xE0020 && next.value <= 0xE007F)) {
       end += next.bytes;
     } else if (next.value == 0x200D) {
@@ -91,15 +94,17 @@ inline size_t emoji_end(const std::string &text, size_t start, Character ch) {
 // Display-only conversion. Never use this text for track identity, artwork
 // lookup, source selection or Home Assistant actions. max_bytes is an output
 // limit; only whole UTF-8 characters are emitted.
-inline std::string normalize_media_display_text(const std::string &text,
-                                               size_t max_bytes = std::string::npos) {
+template <class Append>
+inline size_t normalize_media_display_text_to(std::string_view text, size_t max_bytes, Append append) {
   using namespace text_detail;
-  std::string output;
-  output.reserve(text.size() < max_bytes ? text.size() : max_bytes);
+  size_t output_size = 0;
   bool pending_space = false;
   for (size_t index = 0; index < text.size();) {
     const auto ch = character_at(text, index);
-    if (!ch.bytes) { ++index; continue; }
+    if (!ch.bytes) {
+      ++index;
+      continue;
+    }
     // Emoji presentation controls have no visible glyph, even when an input
     // limit or malformed source leaves them detached from their base.
     if (ch.value == 0xFE0E || ch.value == 0xFE0F || ch.value == 0x20E3 ||
@@ -108,23 +113,33 @@ inline std::string normalize_media_display_text(const std::string &text,
       continue;
     }
     const size_t end = emoji_end(text, index, ch);
-    if (end != index) { index = end; continue; }
+    if (end != index) {
+      index = end;
+      continue;
+    }
     uint32_t value = ch.value;
     if (value >= 0xFF01 && value <= 0xFF5E) value -= 0xFEE0;
     if (value == 0x3000 || value == 0xA0) value = ' ';
     if (value == ' ' || (value >= '\t' && value <= '\r')) {
-      pending_space = !output.empty();
+      pending_space = output_size != 0;
       index += ch.bytes;
       continue;
     }
-    if (value < 0x20 || value == 0x7F) { index += ch.bytes; continue; }
+    if (value < 0x20 || value == 0x7F) {
+      index += ch.bytes;
+      continue;
+    }
     const size_t bytes = value < 0x80 ? 1 : ch.bytes;
     const size_t needed = bytes + (pending_space ? 1 : 0);
-    if (needed > max_bytes - output.size()) break;
-    if (pending_space) output.push_back(' ');
+    if (needed > max_bytes - output_size) break;
+    if (pending_space) append(" ", 1);
     pending_space = false;
-    if (value < 0x80) output.push_back(static_cast<char>(value));
-    else output.append(text, index, ch.bytes);
+    if (value < 0x80) {
+      const char ascii = static_cast<char>(value);
+      append(&ascii, 1);
+    } else
+      append(text.data() + index, ch.bytes);
+    output_size += needed;
     index += ch.bytes;
     // Text-presentation selectors are invisible, not font glyphs.
     if (contains(EMOJI, ch.value)) {
@@ -132,7 +147,31 @@ inline std::string normalize_media_display_text(const std::string &text,
       if (selector.value == 0xFE0E) index += selector.bytes;
     }
   }
+  return output_size;
+}
+
+// Existing callers retain the string API and its allocation behaviour.
+inline std::string normalize_media_display_text(const std::string& text,
+                                                size_t max_bytes = std::string::npos) {
+  std::string output;
+  output.reserve(text.size() < max_bytes ? text.size() : max_bytes);
+  normalize_media_display_text_to(text, max_bytes,
+                                  [&output](const char* bytes, size_t size) { output.append(bytes, size); });
   return output;
+}
+
+// Fixed-buffer presentation for shared runtime views. Capacity includes the NUL
+// terminator. Input may be the same buffer; normalization only shrinks it.
+inline std::string_view normalize_media_display_text_bounded(char* output, size_t capacity,
+                                                             std::string_view text) {
+  if (!output || !capacity) return {};
+  size_t used = 0;
+  normalize_media_display_text_to(text, capacity - 1, [&used, output](const char* bytes, size_t size) {
+    std::memmove(output + used, bytes, size);
+    used += size;
+  });
+  output[used] = '\0';
+  return {output, used};
 }
 
 }  // namespace espcontrol::media

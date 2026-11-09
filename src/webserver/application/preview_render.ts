@@ -3,6 +3,7 @@ import { cardContractCard } from "../generated/card_contract";
 import { WEB_UI_COLORS } from "../state/ui_tokens";
 import { PREVIEW_THEME_COLORS, defaultCardBackgroundColor, previewEffectiveTheme } from "../state/preview_theme";
 import { configOptionValue, cardActiveColor } from "../model/config_primitives";
+import { PANEL_CONFIG_MAX_SLOT_COUNT } from "../model/panel_config";
 import { escHtml } from "./ui_primitives";
 import { createWeatherDailyPreviewLayout } from "./weather_daily_preview";
 import {
@@ -169,7 +170,8 @@ export function createPreviewRenderFeature(dependencies: PreviewRenderDependenci
                 main.appendChild(backBtn);
             }
             else if (slot > 0) {
-                if (slot > c.maxSlots) {
+                if (slot > PANEL_CONFIG_MAX_SLOT_COUNT || slot > c.buttons.length ||
+                    (!c.isSub && slot > dependencies.layout.numSlots)) {
                     var unavailable: any = document.createElement("div");
                     unavailable.className = "sp-empty-cell";
                     unavailable.setAttribute("data-pos", pos);

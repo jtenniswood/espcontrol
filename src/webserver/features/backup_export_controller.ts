@@ -1,10 +1,11 @@
 import { panelHostname, type PanelIdentityBackup } from "../model/panel_identity";
 import type { CardConfig } from "../contracts/types";
 import {
-  createPanelConfigBackupPayload,
+  BACKUP_GRAPH_VERSION,
   encodePanelConfig,
   type PanelConfigBackupPayload,
 } from "../model";
+import { createNativeConfigBackupPayload, decodeNativeConfigDocument } from "../model/native_config_backup";
 
 export interface BackupNativeConfigSource {
   readonly deviceProfile: string;
@@ -12,6 +13,7 @@ export interface BackupNativeConfigSource {
   readonly subpages: Readonly<Record<string, unknown>>;
   readonly buttonOrder?: string;
   readonly buttonOnColor?: string;
+  readonly nativeDocumentBytes?: Uint8Array;
 }
 
 export interface BackupExportControllerOptions {
@@ -23,6 +25,7 @@ export interface BackupWithNativeConfig {
   readonly button_order?: string;
   readonly button_on_color?: string;
   native_config?: PanelConfigBackupPayload;
+  version?: number;
 }
 
 export interface BackupExportController {
@@ -59,6 +62,14 @@ export function createBackupExportController(
     backup: Backup,
     source: BackupNativeConfigSource,
   ): Backup & { native_config: PanelConfigBackupPayload } => {
+    if (source.nativeDocumentBytes) {
+      if (decodeNativeConfigDocument(source.nativeDocumentBytes).deviceProfile !== source.deviceProfile) {
+        throw new Error("The backup targets a different device profile.");
+      }
+      backup.native_config = createNativeConfigBackupPayload(source.nativeDocumentBytes);
+      if (backup.native_config.document_version === 2) backup.version = BACKUP_GRAPH_VERSION;
+      return backup as Backup & { native_config: PanelConfigBackupPayload };
+    }
     const buttons: Record<number, string> = {};
     const subpages: Record<number, string> = {};
     for (let index = 0; index < source.buttons.length; index += 1) {
@@ -71,7 +82,7 @@ export function createBackupExportController(
       const subpageConfig = options.serializeSubpageConfig(subpage);
       if (subpageConfig) subpages[Number(slot)] = subpageConfig;
     }
-    backup.native_config = createPanelConfigBackupPayload(encodePanelConfig({
+    backup.native_config = createNativeConfigBackupPayload(encodePanelConfig({
       deviceProfile: source.deviceProfile,
       buttons,
       subpages,

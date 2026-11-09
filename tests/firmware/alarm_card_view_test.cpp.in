@@ -1,0 +1,65 @@
+#include <cassert>
+#include <cstdio>
+#include <string>
+
+#include "alarm_card_view.h"
+#include "button_grid_subpage_parser.h"
+using namespace espcontrol::pages;
+namespace legacy {
+const char* find_icon(const char* name) {
+  return name;
+}
+// @legacy-alarm-view
+}  // namespace legacy
+int main() {
+  const std::string states[] = {"",
+                                "disarmed",
+                                "armed_home",
+                                "armed_away",
+                                "armed_custom_bypass",
+                                "armed_night",
+                                "armed_vacation",
+                                "arming",
+                                "pending",
+                                "triggered",
+                                "unknown",
+                                "unavailable",
+                                "ARMED_HOME",
+                                " armed_home ",
+                                std::string("arming\0suffix", 13)};
+  const std::string modes[] = {"",
+                               "home",
+                               "away",
+                               "night",
+                               "vacation",
+                               "disarm",
+                               "armed_home",
+                               "armed_away",
+                               "armed_night",
+                               "armed_vacation",
+                               "armed_custom_bypass",
+                               "invalid",
+                               "HOME"};
+  size_t cases = 0;
+  for (const auto& state : states)
+    for (const auto& mode : modes) {
+      assert(std::string_view(alarm_card_glyph_name(alarm_card_glyph(state, mode))) ==
+             legacy::alarm_state_icon(state, mode));
+      ++cases;
+    }
+  for (const auto* language : {"en", "de", "fr", "ru", "pt-br", "he", "tr", "uk", "cs"}) {
+    set_espcontrol_language(language);
+    for (const auto& mode : modes) {
+      assert(std::string_view(espcontrol_i18n(alarm_card_action_label(alarm::action(mode)))) ==
+             legacy::alarm_action_label(mode));
+      ++cases;
+    }
+  }
+  set_espcontrol_language("en");
+  assert(alarm_card_visible_caption(std::string("Arming\0suffix", 13)) == "Arming");
+  assert(alarm_card_on_color(true, true, 0x123456) == 0xC62828);
+  assert(alarm_card_on_color(false, true, 0x123456) == 0x123456);
+  assert(alarm_card_on_color(true, false, 0x123456) == 0x123456);
+  static_assert(sizeof(AlarmCardOptions) == 7);
+  std::printf("alarm card view: %zu actual legacy caption/glyph comparisons passed\n", cases);
+}

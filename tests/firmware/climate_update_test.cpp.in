@@ -11,6 +11,7 @@
 #include "esphome/core/string_ref.h"
 #include "climate_subscription_policy.h"
 #include "climate_state_logic.h"
+#include "climate_modal_lifetime.h"
 #include "climate_target_logic.h"
 #include "theme_palette.h"
 
