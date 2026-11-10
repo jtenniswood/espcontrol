@@ -26,8 +26,9 @@ lvgl:
       pad_all: 0
       widgets:
         - obj:
-            width: $screen_width
-            height: $screen_height
+            # Follow the page bounds when LVGL rotates the display.
+            width: 100%
+            height: 100%
             bg_opa: 0%
             border_width: 0
             pad_all: 0
@@ -50,7 +51,7 @@ lvgl:
             widgets:
               - obj:
                   align: center
-                  width: $content_width
+                  width: 92%
                   height: SIZE_CONTENT
                   bg_opa: 0%
                   border_width: 0
@@ -74,21 +75,21 @@ lvgl:
                         text: ""
                         text_font: $setup_title_font_id
                         text_color: $theme_text_primary_color
-                        width: $content_width
+                        width: 100%
                         text_align: center
                     - label:
                         id: ha_setup_instructions
                         text: ""
                         text_font: $setup_body_font_id
                         text_color: $theme_text_muted_color
-                        width: $content_width
+                        width: 100%
                         text_align: center
                     - label:
                         id: ha_setup_path
                         text: ""
                         text_font: $setup_body_font_id
                         text_color: $theme_text_primary_color
-                        width: $content_width
+                        width: 100%
                         text_align: center
 
 script:
