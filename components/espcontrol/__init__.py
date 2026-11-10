@@ -9,8 +9,8 @@ import esphome.codegen as cg
 from esphome.components.esp32 import VARIANT_ESP32P4, VARIANT_ESP32S3, get_esp32_variant
 from esphome.components import text
 import esphome.config_validation as cv
-from esphome.const import CONF_ID
-from esphome.core import CORE, CoroPriority, coroutine_with_priority
+from esphome.const import CONF_ID, __version__
+from esphome.core import CORE, CoroPriority, Version, coroutine_with_priority
 import os
 
 CODEOWNERS = ["@jtenniswood"]
@@ -94,7 +94,13 @@ async def to_code(config):
     for operation in ("begin", "end", "abort"):
         cg.add_build_flag(f"-Wl,--wrap=esp_ota_{operation}")
     if "esp32_hosted" in CORE.config:
-        cg.add_build_flag("-Wl,--wrap=esp_hosted_slave_ota_begin")
+        version = Version.parse(__version__)
+        # ESP-Hosted 3.x redirects the legacy API to the new linker symbol.
+        if (version.major, version.minor) >= (2026, 11):
+            cg.add_define("ESPCONTROL_HOSTED_OTA_V3")
+            cg.add_build_flag("-Wl,--wrap=eh_host_cp_ota_begin")
+        else:
+            cg.add_build_flag("-Wl,--wrap=esp_hosted_slave_ota_begin")
     cg.add_global(cg.RawStatement('#include "esphome/components/espcontrol/device_reset.h"'), prepend=True)
     compiled_networks = bool(CORE.config.get("wifi", {}).get("networks", []))
     # Directly configured ESPHome web authentication must protect our native

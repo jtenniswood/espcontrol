@@ -10,11 +10,11 @@
 #include "esphome/core/log.h"
 #include "esphome/core/version.h"
 
-// Reviewed against ESPHome 2026.9 and 2026.10: Application's name StringRef
+// Reviewed against ESPHome 2026.9 through 2026.11: Application's name StringRef
 // members remain mutable, with const-reference getters and the same setup order.
 // Review again at the next ESPHome minor upgrade.
 static_assert(ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 9, 0) &&
-                  ESPHOME_VERSION_CODE < VERSION_CODE(2026, 11, 0),
+                  ESPHOME_VERSION_CODE < VERSION_CODE(2026, 12, 0),
               "Review panel identity startup adapter for this ESPHome version");
 namespace espcontrol {
 PanelIdentity *panel_identity = nullptr;

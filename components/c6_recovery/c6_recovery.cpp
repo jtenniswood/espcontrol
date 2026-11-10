@@ -26,7 +26,11 @@ extern "C" void espcontrol_hosted_ota_failed() __attribute__((weak));
 namespace esphome::c6_recovery {
 
 static const char *const TAG = "c6_recovery";
+#ifdef EH_HOST_CP_OTA_CHUNK_MAX
+static constexpr size_t CHUNK_SIZE = std::min<size_t>(1500, EH_HOST_CP_OTA_CHUNK_MAX);
+#else
 static constexpr size_t CHUNK_SIZE = 1500;
+#endif
 
 static bool parse_version(const std::string &value, std::tuple<int, int, int> &version) {
   int major = 0;

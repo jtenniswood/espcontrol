@@ -1,8 +1,9 @@
 // Based on ESPHome 2026.9.1 web_server/ota/ota_web_server.cpp.
 // Replaces that source via FILTER_SOURCE_FILES to add explicit upload abort.
-// Compare against upstream when updating .github/esphome.env.
+// ESPHome 2026.11 and later use the upstream handler with request-end cleanup.
 #include "esphome/core/defines.h"
-#ifdef USE_WEBSERVER_OTA
+#include "esphome/core/version.h"
+#if defined(USE_WEBSERVER_OTA) && ESPHOME_VERSION_CODE < VERSION_CODE(2026, 11, 0)
 #include "esphome/components/web_server/ota/ota_web_server.h"
 
 #include "esphome/components/ota/ota_backend_factory.h"
@@ -273,4 +274,4 @@ void WebServerOTAComponent::dump_config() { ESP_LOGCONFIG(TAG, "Web Server OTA")
 
 }  // namespace esphome::web_server
 
-#endif  // USE_WEBSERVER_OTA
+#endif  // USE_WEBSERVER_OTA && ESPHome < 2026.11

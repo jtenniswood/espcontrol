@@ -424,6 +424,11 @@ esp_err_t AsyncWebServer::request_handler_(AsyncWebServerRequest *request) const
 }
 
 AsyncWebServerRequest::~AsyncWebServerRequest() {
+#ifdef USE_WEBSERVER_OTA
+  if (this->on_disconnect_) {
+    this->on_disconnect_();
+  }
+#endif
   delete this->rsp_;
   for (auto *param : this->params_) {
     delete param;  // NOLINT(cppcoreguidelines-owning-memory)
@@ -434,6 +439,15 @@ bool AsyncWebServerRequest::hasHeader(const char *name) const { return request_h
 
 optional<std::string> AsyncWebServerRequest::get_header(const char *name) const {
   return request_get_header(*this, name);
+}
+
+size_t AsyncWebServerRequest::get_header_to(const char *name, std::span<char> buf) const {
+  const size_t len = httpd_req_get_hdr_value_len(this->req_, name);
+  if (len == 0)
+    return 0;
+  if (len >= buf.size() || httpd_req_get_hdr_value_str(this->req_, name, buf.data(), buf.size()) != ESP_OK)
+    return SIZE_MAX;
+  return len;
 }
 
 StringRef AsyncWebServerRequest::url_to(std::span<char, URL_BUF_SIZE> buffer) const {
