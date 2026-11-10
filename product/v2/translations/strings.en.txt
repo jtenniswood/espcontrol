@@ -307,3 +307,11 @@ ha_disconnected_title=Home Assistant disconnected
 ha_disconnected_instructions=Check this device in Home Assistant\nfor an encryption key or connection alert
 ha_disconnected_path=Settings > Devices & Services\n> ESPHome
 temperature=Currently
+
+# Notification card
+notification=Notification
+information=Information
+warning=Warning
+alert=Alert
+acknowledge=Acknowledge
+no_notifications=No notifications

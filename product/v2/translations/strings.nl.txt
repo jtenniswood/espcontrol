@@ -306,3 +306,11 @@ ha_disconnected_title=Home Assistant niet verbonden
 ha_disconnected_instructions=Controleer dit apparaat in Home Assistant\nop een encryptiesleutel of verbindingsmelding
 ha_disconnected_path=Instellingen > Apparaten & diensten\n> ESPHome
 temperature=Momenteel
+
+# Notification card
+notification=Melding
+information=Informatie
+warning=Waarschuwing
+alert=Alarm
+acknowledge=Bevestigen
+no_notifications=Geen meldingen

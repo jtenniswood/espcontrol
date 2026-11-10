@@ -414,6 +414,7 @@ export default defineConfig({
           { text: 'Local Sensor', link: '/card-types/local-sensors' },
           { text: 'Lock', link: '/card-types/locks' },
           { text: 'Media', link: '/card-types/media' },
+          { text: 'Notification', link: '/card-types/notifications' },
           { text: 'Option Select', link: '/card-types/option-select' },
           { text: 'Presence', link: '/card-types/presence' },
           { text: 'Screen Lock', link: '/card-types/screen-lock' },

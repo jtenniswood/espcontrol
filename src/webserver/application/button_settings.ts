@@ -814,6 +814,7 @@ export function createButtonSettingsFeature(
             requireField: requireField,
             requireEntityDomain: requireEntityDomain,
             clearFieldError: clearFieldError,
+            showFieldError: showFieldError,
             toggleRow: toggleRow,
             cardSize: c.sizes[slot] || 1,
             idPrefix: idPrefix,
@@ -865,7 +866,7 @@ export function createButtonSettingsFeature(
             });
             panel.appendChild(patternField.field);
         }
-        if (b.type !== "image" && b.type !== "wifi_qr_card") {
+        if (b.type !== "image" && b.type !== "wifi_qr_card" && b.type !== "notification") {
             var colourControls = renderColourSettings(panel, idPrefix, () =>
                 configOptionValue(b.options, "card_off_color") || defaultCardBackgroundColor(b.type || "", state),
                 (hex: string) => {

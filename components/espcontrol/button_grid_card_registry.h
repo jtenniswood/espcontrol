@@ -26,6 +26,7 @@ enum class Family : uint8_t {
   LIGHT_TEMPERATURE,
   LOCAL_SENSOR,
   MEDIA,
+  NOTIFICATION,
   OPTION_SELECT,
   PUSH,
   SCREEN_LOCK,

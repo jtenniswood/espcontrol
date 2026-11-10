@@ -306,3 +306,11 @@ ha_disconnected_title=Home Assistant odpojen
 ha_disconnected_instructions=Zkontrolujte toto zařízení v Home Assistant\nkvůli šifrovacímu klíči nebo upozornění na připojení
 ha_disconnected_path=Nastavení > Zařízení a služby\n> ESPHome
 temperature=Aktuálně
+
+# Notification card
+notification=Oznámení
+information=Informace
+warning=Varování
+alert=Výstraha
+acknowledge=Potvrdit
+no_notifications=Žádná oznámení

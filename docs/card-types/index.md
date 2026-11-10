@@ -38,6 +38,7 @@ Use this page when you know what you want the panel to do but are not sure which
 | Show current weather or daily high/low temperatures | [Weather](/card-types/weather) | `weather` |
 | Show a still image from Home Assistant | [Camera](/card-types/cameras) | `camera` or `image` |
 | Let visitors scan guest Wifi details | [Wifi Sharing](/card-types/wifi-share) | No entity required |
+| Show a message and colour it by how urgent it is | [Notification](/card-types/notifications) | `sensor`, `binary_sensor`, or `text_sensor` |
 | Control media playback, volume, progress, or now-playing display | [Media](/card-types/media) | `media_player` |
 | Control a thermostat or HVAC entity | [Climate](/card-types/climate) | `climate` |
 | Control a built-in relay on the panel itself | [Internal Switches](/card-types/internal-relays) | Built-in relay |

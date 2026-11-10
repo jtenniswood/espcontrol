@@ -302,6 +302,12 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Zkontrolujte toto zařízení v Home Assistant\nkvůli šifrovacímu klíči nebo upozornění na připojení";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Nastavení > Zařízení a služby\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Aktuálně";
+  if (std::strcmp(text, "Notification") == 0) return "Oznámení";
+  if (std::strcmp(text, "Information") == 0) return "Informace";
+  if (std::strcmp(text, "Warning") == 0) return "Varování";
+  if (std::strcmp(text, "Alert") == 0) return "Výstraha";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Potvrdit";
+  if (std::strcmp(text, "No notifications") == 0) return "Žádná oznámení";
   return text;
 }
 
@@ -586,6 +592,11 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Kontrollér denne enhed i Home Assistant\nfor en krypteringsnøgle eller forbindelsesadvarsel";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Indstillinger > Enheder og tjenester\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Lige nu";
+  if (std::strcmp(text, "Notification") == 0) return "Notifikation";
+  if (std::strcmp(text, "Warning") == 0) return "Advarsel";
+  if (std::strcmp(text, "Alert") == 0) return "Alarm";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Kvittér";
+  if (std::strcmp(text, "No notifications") == 0) return "Ingen notifikationer";
   return text;
 }
 
@@ -865,6 +876,11 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Dieses Gerät in Home Assistant auf einen\nVerschlüsselungsschlüssel oder Verbindungshinweis prüfen";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Einstellungen > Geräte & Dienste\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Aktuell";
+  if (std::strcmp(text, "Notification") == 0) return "Benachrichtigung";
+  if (std::strcmp(text, "Warning") == 0) return "Warnung";
+  if (std::strcmp(text, "Alert") == 0) return "Alarm";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Bestätigen";
+  if (std::strcmp(text, "No notifications") == 0) return "Keine Benachrichtigungen";
   return text;
 }
 
@@ -1154,6 +1170,12 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Revisa este dispositivo en Home Assistant\npor una clave de cifrado o alerta de conexión";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Ajustes > Dispositivos y servicios\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Ahora";
+  if (std::strcmp(text, "Notification") == 0) return "Notificación";
+  if (std::strcmp(text, "Information") == 0) return "Información";
+  if (std::strcmp(text, "Warning") == 0) return "Advertencia";
+  if (std::strcmp(text, "Alert") == 0) return "Alerta";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Confirmar";
+  if (std::strcmp(text, "No notifications") == 0) return "Sin notificaciones";
   return text;
 }
 
@@ -1446,6 +1468,12 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Tarkista tämä laite Home Assistantissa\nsalausavaimen tai yhteysilmoituksen varalta";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Asetukset > Laitteet ja palvelut\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Nyt";
+  if (std::strcmp(text, "Notification") == 0) return "Ilmoitus";
+  if (std::strcmp(text, "Information") == 0) return "Tiedote";
+  if (std::strcmp(text, "Warning") == 0) return "Varoitus";
+  if (std::strcmp(text, "Alert") == 0) return "Hälytys";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Kuittaa";
+  if (std::strcmp(text, "No notifications") == 0) return "Ei ilmoituksia";
   return text;
 }
 
@@ -1728,6 +1756,10 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Vérifiez cet appareil dans Home Assistant\npour une clé de chiffrement ou une alerte de connexion";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Paramètres > Appareils et services\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Actuellement";
+  if (std::strcmp(text, "Warning") == 0) return "Avertissement";
+  if (std::strcmp(text, "Alert") == 0) return "Alerte";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Acquitter";
+  if (std::strcmp(text, "No notifications") == 0) return "Aucune notification";
   return text;
 }
 
@@ -2022,6 +2054,12 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "בדקו את המכשיר ב-Home Assistant\nלאיתור מפתח הצפנה או התראת חיבור";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "הגדרות > מכשירים ושירותים\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "כעת";
+  if (std::strcmp(text, "Notification") == 0) return "התראה";
+  if (std::strcmp(text, "Information") == 0) return "מידע";
+  if (std::strcmp(text, "Warning") == 0) return "אזהרה";
+  if (std::strcmp(text, "Alert") == 0) return "התראה";
+  if (std::strcmp(text, "Acknowledge") == 0) return "אישור";
+  if (std::strcmp(text, "No notifications") == 0) return "אין התראות";
   return text;
 }
 
@@ -2314,6 +2352,12 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Ellenőrizze ezt az eszközt a Home Assistantban:\ntitkosítási kulcs vagy kapcsolati figyelmeztetés";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Beállítások > Eszközök és szolgáltatások\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Jelenleg";
+  if (std::strcmp(text, "Notification") == 0) return "Értesítés";
+  if (std::strcmp(text, "Information") == 0) return "Információ";
+  if (std::strcmp(text, "Warning") == 0) return "Figyelmeztetés";
+  if (std::strcmp(text, "Alert") == 0) return "Riasztás";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Nyugtázás";
+  if (std::strcmp(text, "No notifications") == 0) return "Nincsenek értesítések";
   return text;
 }
 
@@ -2599,6 +2643,12 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Controlla questo dispositivo in Home Assistant\nper una chiave di crittografia o un avviso di connessione";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Impostazioni > Dispositivi e servizi\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Attualmente";
+  if (std::strcmp(text, "Notification") == 0) return "Notifica";
+  if (std::strcmp(text, "Information") == 0) return "Informazione";
+  if (std::strcmp(text, "Warning") == 0) return "Avviso";
+  if (std::strcmp(text, "Alert") == 0) return "Allarme";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Conferma";
+  if (std::strcmp(text, "No notifications") == 0) return "Nessuna notifica";
   return text;
 }
 
@@ -2886,6 +2936,12 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Sjekk denne enheten i Home Assistant\nfor en krypteringsnøkkel eller et tilkoblingsvarsel";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Innstillinger > Enheter og tjenester\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Nå";
+  if (std::strcmp(text, "Notification") == 0) return "Varsel";
+  if (std::strcmp(text, "Information") == 0) return "Informasjon";
+  if (std::strcmp(text, "Warning") == 0) return "Advarsel";
+  if (std::strcmp(text, "Alert") == 0) return "Alarm";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Kvitter";
+  if (std::strcmp(text, "No notifications") == 0) return "Ingen varsler";
   return text;
 }
 
@@ -3171,6 +3227,12 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Controleer dit apparaat in Home Assistant\nop een encryptiesleutel of verbindingsmelding";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Instellingen > Apparaten & diensten\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Momenteel";
+  if (std::strcmp(text, "Notification") == 0) return "Melding";
+  if (std::strcmp(text, "Information") == 0) return "Informatie";
+  if (std::strcmp(text, "Warning") == 0) return "Waarschuwing";
+  if (std::strcmp(text, "Alert") == 0) return "Alarm";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Bevestigen";
+  if (std::strcmp(text, "No notifications") == 0) return "Geen meldingen";
   return text;
 }
 
@@ -3459,6 +3521,12 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Sprawdź to urządzenie w Home Assistant:\nklucz szyfrowania lub alert połączenia";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Ustawienia > Urządzenia i usługi\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Obecnie";
+  if (std::strcmp(text, "Notification") == 0) return "Powiadomienie";
+  if (std::strcmp(text, "Information") == 0) return "Informacja";
+  if (std::strcmp(text, "Warning") == 0) return "Ostrzeżenie";
+  if (std::strcmp(text, "Alert") == 0) return "Alarm";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Potwierdź";
+  if (std::strcmp(text, "No notifications") == 0) return "Brak powiadomień";
   return text;
 }
 
@@ -3748,6 +3816,12 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Verifique este dispositivo no Home Assistant\nquanto a uma chave de criptografia ou alerta de conexão";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Configurações > Dispositivos e serviços\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Agora";
+  if (std::strcmp(text, "Notification") == 0) return "Notificação";
+  if (std::strcmp(text, "Information") == 0) return "Informação";
+  if (std::strcmp(text, "Warning") == 0) return "Aviso";
+  if (std::strcmp(text, "Alert") == 0) return "Alerta";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Confirmar";
+  if (std::strcmp(text, "No notifications") == 0) return "Sem notificações";
   return text;
 }
 
@@ -4038,6 +4112,12 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Verifique este dispositivo no Home Assistant\nquanto a uma chave de encriptação ou alerta de ligação";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Definições > Dispositivos e serviços\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Atualmente";
+  if (std::strcmp(text, "Notification") == 0) return "Notificação";
+  if (std::strcmp(text, "Information") == 0) return "Informação";
+  if (std::strcmp(text, "Warning") == 0) return "Aviso";
+  if (std::strcmp(text, "Alert") == 0) return "Alerta";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Confirmar";
+  if (std::strcmp(text, "No notifications") == 0) return "Sem notificações";
   return text;
 }
 
@@ -4330,6 +4410,12 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Verificați acest dispozitiv în Home Assistant\npentru o cheie de criptare sau o alertă de conexiune";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Setări > Dispozitive și servicii\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Acum";
+  if (std::strcmp(text, "Notification") == 0) return "Notificare";
+  if (std::strcmp(text, "Information") == 0) return "Informație";
+  if (std::strcmp(text, "Warning") == 0) return "Avertisment";
+  if (std::strcmp(text, "Alert") == 0) return "Alertă";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Confirmă";
+  if (std::strcmp(text, "No notifications") == 0) return "Nicio notificare";
   return text;
 }
 
@@ -4623,6 +4709,12 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Проверьте это устройство в Home Assistant:\nключ шифрования или предупреждение о подключении";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Настройки > Устройства и службы\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Сейчас";
+  if (std::strcmp(text, "Notification") == 0) return "Уведомление";
+  if (std::strcmp(text, "Information") == 0) return "Информация";
+  if (std::strcmp(text, "Warning") == 0) return "Предупреждение";
+  if (std::strcmp(text, "Alert") == 0) return "Тревога";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Подтвердить";
+  if (std::strcmp(text, "No notifications") == 0) return "Нет уведомлений";
   return text;
 }
 
@@ -4914,6 +5006,12 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Skontrolujte toto zariadenie v Home Assistant\npre šifrovací kľúč alebo upozornenie na pripojenie";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Nastavenia > Zariadenia a služby\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Aktuálne";
+  if (std::strcmp(text, "Notification") == 0) return "Oznámenie";
+  if (std::strcmp(text, "Information") == 0) return "Informácia";
+  if (std::strcmp(text, "Warning") == 0) return "Varovanie";
+  if (std::strcmp(text, "Alert") == 0) return "Výstraha";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Potvrdiť";
+  if (std::strcmp(text, "No notifications") == 0) return "Žiadne oznámenia";
   return text;
 }
 
@@ -5202,6 +5300,12 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Preverite to napravo v Home Assistant\nza šifrirni ključ ali opozorilo o povezavi";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Nastavitve > Naprave in storitve\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Trenutno";
+  if (std::strcmp(text, "Notification") == 0) return "Obvestilo";
+  if (std::strcmp(text, "Information") == 0) return "Informacija";
+  if (std::strcmp(text, "Warning") == 0) return "Opozorilo";
+  if (std::strcmp(text, "Alert") == 0) return "Alarm";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Potrdi";
+  if (std::strcmp(text, "No notifications") == 0) return "Ni obvestil";
   return text;
 }
 
@@ -5489,6 +5593,11 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Kontrollera denna enhet i Home Assistant\nför en krypteringsnyckel eller anslutningsvarning";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Inställningar > Enheter och tjänster\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Just nu";
+  if (std::strcmp(text, "Notification") == 0) return "Avisering";
+  if (std::strcmp(text, "Warning") == 0) return "Varning";
+  if (std::strcmp(text, "Alert") == 0) return "Larm";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Bekräfta";
+  if (std::strcmp(text, "No notifications") == 0) return "Inga aviseringar";
   return text;
 }
 
@@ -5781,6 +5890,12 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Home Assistant'ta bu cihazı şifreleme anahtarı\nveya bağlantı uyarısı için kontrol edin";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Ayarlar > Cihazlar ve hizmetler\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Şu anda";
+  if (std::strcmp(text, "Notification") == 0) return "Bildirim";
+  if (std::strcmp(text, "Information") == 0) return "Bilgi";
+  if (std::strcmp(text, "Warning") == 0) return "Uyarı";
+  if (std::strcmp(text, "Alert") == 0) return "Alarm";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Onayla";
+  if (std::strcmp(text, "No notifications") == 0) return "Bildirim yok";
   return text;
 }
 
@@ -6075,6 +6190,12 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Перевірте цей пристрій у Home Assistant:\nключ шифрування або попередження про з’єднання";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Налаштування > Пристрої та служби\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Зараз";
+  if (std::strcmp(text, "Notification") == 0) return "Сповіщення";
+  if (std::strcmp(text, "Information") == 0) return "Інформація";
+  if (std::strcmp(text, "Warning") == 0) return "Попередження";
+  if (std::strcmp(text, "Alert") == 0) return "Тривога";
+  if (std::strcmp(text, "Acknowledge") == 0) return "Підтвердити";
+  if (std::strcmp(text, "No notifications") == 0) return "Немає сповіщень";
   return text;
 }
 
@@ -6378,6 +6499,12 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Check this device in Home Assistant\nfor an encryption key or connection alert";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Settings > Devices & Services\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Currently";
+  if (std::strcmp(key, "notification") == 0) return "Notification";
+  if (std::strcmp(key, "information") == 0) return "Information";
+  if (std::strcmp(key, "warning") == 0) return "Warning";
+  if (std::strcmp(key, "alert") == 0) return "Alert";
+  if (std::strcmp(key, "acknowledge") == 0) return "Acknowledge";
+  if (std::strcmp(key, "no_notifications") == 0) return "No notifications";
   return key;
 }
 
@@ -6676,6 +6803,12 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Zkontrolujte toto zařízení v Home Assistant\nkvůli šifrovacímu klíči nebo upozornění na připojení";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Nastavení > Zařízení a služby\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Aktuálně";
+  if (std::strcmp(key, "notification") == 0) return "Oznámení";
+  if (std::strcmp(key, "information") == 0) return "Informace";
+  if (std::strcmp(key, "warning") == 0) return "Varování";
+  if (std::strcmp(key, "alert") == 0) return "Výstraha";
+  if (std::strcmp(key, "acknowledge") == 0) return "Potvrdit";
+  if (std::strcmp(key, "no_notifications") == 0) return "Žádná oznámení";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6966,6 +7099,11 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Kontrollér denne enhed i Home Assistant\nfor en krypteringsnøgle eller forbindelsesadvarsel";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Indstillinger > Enheder og tjenester\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Lige nu";
+  if (std::strcmp(key, "notification") == 0) return "Notifikation";
+  if (std::strcmp(key, "warning") == 0) return "Advarsel";
+  if (std::strcmp(key, "alert") == 0) return "Alarm";
+  if (std::strcmp(key, "acknowledge") == 0) return "Kvittér";
+  if (std::strcmp(key, "no_notifications") == 0) return "Ingen notifikationer";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7251,6 +7389,11 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Dieses Gerät in Home Assistant auf einen\nVerschlüsselungsschlüssel oder Verbindungshinweis prüfen";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Einstellungen > Geräte & Dienste\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Aktuell";
+  if (std::strcmp(key, "notification") == 0) return "Benachrichtigung";
+  if (std::strcmp(key, "warning") == 0) return "Warnung";
+  if (std::strcmp(key, "alert") == 0) return "Alarm";
+  if (std::strcmp(key, "acknowledge") == 0) return "Bestätigen";
+  if (std::strcmp(key, "no_notifications") == 0) return "Keine Benachrichtigungen";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7547,6 +7690,12 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Revisa este dispositivo en Home Assistant\npor una clave de cifrado o alerta de conexión";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Ajustes > Dispositivos y servicios\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Ahora";
+  if (std::strcmp(key, "notification") == 0) return "Notificación";
+  if (std::strcmp(key, "information") == 0) return "Información";
+  if (std::strcmp(key, "warning") == 0) return "Advertencia";
+  if (std::strcmp(key, "alert") == 0) return "Alerta";
+  if (std::strcmp(key, "acknowledge") == 0) return "Confirmar";
+  if (std::strcmp(key, "no_notifications") == 0) return "Sin notificaciones";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7847,6 +7996,12 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Tarkista tämä laite Home Assistantissa\nsalausavaimen tai yhteysilmoituksen varalta";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Asetukset > Laitteet ja palvelut\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Nyt";
+  if (std::strcmp(key, "notification") == 0) return "Ilmoitus";
+  if (std::strcmp(key, "information") == 0) return "Tiedote";
+  if (std::strcmp(key, "warning") == 0) return "Varoitus";
+  if (std::strcmp(key, "alert") == 0) return "Hälytys";
+  if (std::strcmp(key, "acknowledge") == 0) return "Kuittaa";
+  if (std::strcmp(key, "no_notifications") == 0) return "Ei ilmoituksia";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8136,6 +8291,10 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Vérifiez cet appareil dans Home Assistant\npour une clé de chiffrement ou une alerte de connexion";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Paramètres > Appareils et services\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Actuellement";
+  if (std::strcmp(key, "warning") == 0) return "Avertissement";
+  if (std::strcmp(key, "alert") == 0) return "Alerte";
+  if (std::strcmp(key, "acknowledge") == 0) return "Acquitter";
+  if (std::strcmp(key, "no_notifications") == 0) return "Aucune notification";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8438,6 +8597,12 @@ inline const char *espcontrol_i18n_key_he(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "בדקו את המכשיר ב-Home Assistant\nלאיתור מפתח הצפנה או התראת חיבור";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "הגדרות > מכשירים ושירותים\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "כעת";
+  if (std::strcmp(key, "notification") == 0) return "התראה";
+  if (std::strcmp(key, "information") == 0) return "מידע";
+  if (std::strcmp(key, "warning") == 0) return "אזהרה";
+  if (std::strcmp(key, "alert") == 0) return "התראה";
+  if (std::strcmp(key, "acknowledge") == 0) return "אישור";
+  if (std::strcmp(key, "no_notifications") == 0) return "אין התראות";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8738,6 +8903,12 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Ellenőrizze ezt az eszközt a Home Assistantban:\ntitkosítási kulcs vagy kapcsolati figyelmeztetés";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Beállítások > Eszközök és szolgáltatások\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Jelenleg";
+  if (std::strcmp(key, "notification") == 0) return "Értesítés";
+  if (std::strcmp(key, "information") == 0) return "Információ";
+  if (std::strcmp(key, "warning") == 0) return "Figyelmeztetés";
+  if (std::strcmp(key, "alert") == 0) return "Riasztás";
+  if (std::strcmp(key, "acknowledge") == 0) return "Nyugtázás";
+  if (std::strcmp(key, "no_notifications") == 0) return "Nincsenek értesítések";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9030,6 +9201,12 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Controlla questo dispositivo in Home Assistant\nper una chiave di crittografia o un avviso di connessione";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Impostazioni > Dispositivi e servizi\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Attualmente";
+  if (std::strcmp(key, "notification") == 0) return "Notifica";
+  if (std::strcmp(key, "information") == 0) return "Informazione";
+  if (std::strcmp(key, "warning") == 0) return "Avviso";
+  if (std::strcmp(key, "alert") == 0) return "Allarme";
+  if (std::strcmp(key, "acknowledge") == 0) return "Conferma";
+  if (std::strcmp(key, "no_notifications") == 0) return "Nessuna notifica";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9324,6 +9501,12 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Sjekk denne enheten i Home Assistant\nfor en krypteringsnøkkel eller et tilkoblingsvarsel";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Innstillinger > Enheter og tjenester\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Nå";
+  if (std::strcmp(key, "notification") == 0) return "Varsel";
+  if (std::strcmp(key, "information") == 0) return "Informasjon";
+  if (std::strcmp(key, "warning") == 0) return "Advarsel";
+  if (std::strcmp(key, "alert") == 0) return "Alarm";
+  if (std::strcmp(key, "acknowledge") == 0) return "Kvitter";
+  if (std::strcmp(key, "no_notifications") == 0) return "Ingen varsler";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9613,6 +9796,12 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Controleer dit apparaat in Home Assistant\nop een encryptiesleutel of verbindingsmelding";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Instellingen > Apparaten & diensten\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Momenteel";
+  if (std::strcmp(key, "notification") == 0) return "Melding";
+  if (std::strcmp(key, "information") == 0) return "Informatie";
+  if (std::strcmp(key, "warning") == 0) return "Waarschuwing";
+  if (std::strcmp(key, "alert") == 0) return "Alarm";
+  if (std::strcmp(key, "acknowledge") == 0) return "Bevestigen";
+  if (std::strcmp(key, "no_notifications") == 0) return "Geen meldingen";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9909,6 +10098,12 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Sprawdź to urządzenie w Home Assistant:\nklucz szyfrowania lub alert połączenia";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Ustawienia > Urządzenia i usługi\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Obecnie";
+  if (std::strcmp(key, "notification") == 0) return "Powiadomienie";
+  if (std::strcmp(key, "information") == 0) return "Informacja";
+  if (std::strcmp(key, "warning") == 0) return "Ostrzeżenie";
+  if (std::strcmp(key, "alert") == 0) return "Alarm";
+  if (std::strcmp(key, "acknowledge") == 0) return "Potwierdź";
+  if (std::strcmp(key, "no_notifications") == 0) return "Brak powiadomień";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10205,6 +10400,12 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Verifique este dispositivo no Home Assistant\nquanto a uma chave de criptografia ou alerta de conexão";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Configurações > Dispositivos e serviços\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Agora";
+  if (std::strcmp(key, "notification") == 0) return "Notificação";
+  if (std::strcmp(key, "information") == 0) return "Informação";
+  if (std::strcmp(key, "warning") == 0) return "Aviso";
+  if (std::strcmp(key, "alert") == 0) return "Alerta";
+  if (std::strcmp(key, "acknowledge") == 0) return "Confirmar";
+  if (std::strcmp(key, "no_notifications") == 0) return "Sem notificações";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10502,6 +10703,12 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Verifique este dispositivo no Home Assistant\nquanto a uma chave de encriptação ou alerta de ligação";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Definições > Dispositivos e serviços\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Atualmente";
+  if (std::strcmp(key, "notification") == 0) return "Notificação";
+  if (std::strcmp(key, "information") == 0) return "Informação";
+  if (std::strcmp(key, "warning") == 0) return "Aviso";
+  if (std::strcmp(key, "alert") == 0) return "Alerta";
+  if (std::strcmp(key, "acknowledge") == 0) return "Confirmar";
+  if (std::strcmp(key, "no_notifications") == 0) return "Sem notificações";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10802,6 +11009,12 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Verificați acest dispozitiv în Home Assistant\npentru o cheie de criptare sau o alertă de conexiune";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Setări > Dispozitive și servicii\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Acum";
+  if (std::strcmp(key, "notification") == 0) return "Notificare";
+  if (std::strcmp(key, "information") == 0) return "Informație";
+  if (std::strcmp(key, "warning") == 0) return "Avertisment";
+  if (std::strcmp(key, "alert") == 0) return "Alertă";
+  if (std::strcmp(key, "acknowledge") == 0) return "Confirmă";
+  if (std::strcmp(key, "no_notifications") == 0) return "Nicio notificare";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -11103,6 +11316,12 @@ inline const char *espcontrol_i18n_key_ru(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Проверьте это устройство в Home Assistant:\nключ шифрования или предупреждение о подключении";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Настройки > Устройства и службы\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Сейчас";
+  if (std::strcmp(key, "notification") == 0) return "Уведомление";
+  if (std::strcmp(key, "information") == 0) return "Информация";
+  if (std::strcmp(key, "warning") == 0) return "Предупреждение";
+  if (std::strcmp(key, "alert") == 0) return "Тревога";
+  if (std::strcmp(key, "acknowledge") == 0) return "Подтвердить";
+  if (std::strcmp(key, "no_notifications") == 0) return "Нет уведомлений";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -11402,6 +11621,12 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Skontrolujte toto zariadenie v Home Assistant\npre šifrovací kľúč alebo upozornenie na pripojenie";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Nastavenia > Zariadenia a služby\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Aktuálne";
+  if (std::strcmp(key, "notification") == 0) return "Oznámenie";
+  if (std::strcmp(key, "information") == 0) return "Informácia";
+  if (std::strcmp(key, "warning") == 0) return "Varovanie";
+  if (std::strcmp(key, "alert") == 0) return "Výstraha";
+  if (std::strcmp(key, "acknowledge") == 0) return "Potvrdiť";
+  if (std::strcmp(key, "no_notifications") == 0) return "Žiadne oznámenia";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -11698,6 +11923,12 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Preverite to napravo v Home Assistant\nza šifrirni ključ ali opozorilo o povezavi";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Nastavitve > Naprave in storitve\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Trenutno";
+  if (std::strcmp(key, "notification") == 0) return "Obvestilo";
+  if (std::strcmp(key, "information") == 0) return "Informacija";
+  if (std::strcmp(key, "warning") == 0) return "Opozorilo";
+  if (std::strcmp(key, "alert") == 0) return "Alarm";
+  if (std::strcmp(key, "acknowledge") == 0) return "Potrdi";
+  if (std::strcmp(key, "no_notifications") == 0) return "Ni obvestil";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -11991,6 +12222,11 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Kontrollera denna enhet i Home Assistant\nför en krypteringsnyckel eller anslutningsvarning";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Inställningar > Enheter och tjänster\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Just nu";
+  if (std::strcmp(key, "notification") == 0) return "Avisering";
+  if (std::strcmp(key, "warning") == 0) return "Varning";
+  if (std::strcmp(key, "alert") == 0) return "Larm";
+  if (std::strcmp(key, "acknowledge") == 0) return "Bekräfta";
+  if (std::strcmp(key, "no_notifications") == 0) return "Inga aviseringar";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -12291,6 +12527,12 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Home Assistant'ta bu cihazı şifreleme anahtarı\nveya bağlantı uyarısı için kontrol edin";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Ayarlar > Cihazlar ve hizmetler\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Şu anda";
+  if (std::strcmp(key, "notification") == 0) return "Bildirim";
+  if (std::strcmp(key, "information") == 0) return "Bilgi";
+  if (std::strcmp(key, "warning") == 0) return "Uyarı";
+  if (std::strcmp(key, "alert") == 0) return "Alarm";
+  if (std::strcmp(key, "acknowledge") == 0) return "Onayla";
+  if (std::strcmp(key, "no_notifications") == 0) return "Bildirim yok";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -12593,6 +12835,12 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Перевірте цей пристрій у Home Assistant:\nключ шифрування або попередження про з’єднання";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Налаштування > Пристрої та служби\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Зараз";
+  if (std::strcmp(key, "notification") == 0) return "Сповіщення";
+  if (std::strcmp(key, "information") == 0) return "Інформація";
+  if (std::strcmp(key, "warning") == 0) return "Попередження";
+  if (std::strcmp(key, "alert") == 0) return "Тривога";
+  if (std::strcmp(key, "acknowledge") == 0) return "Підтвердити";
+  if (std::strcmp(key, "no_notifications") == 0) return "Немає сповіщень";
   return espcontrol_i18n_key_en(key);
 }
 
