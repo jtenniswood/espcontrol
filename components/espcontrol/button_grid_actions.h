@@ -704,6 +704,13 @@ inline void send_media_shuffle_action(const std::string &entity_id,
     enabled ? "true" : "false");
 }
 
+inline void send_media_mute_action(const std::string &entity_id,
+                                   bool muted) {
+  send_media_player_action(
+    entity_id, "media_player.volume_mute", "is_volume_muted",
+    muted ? "true" : "false");
+}
+
 inline void send_media_repeat_action(
     const std::string &entity_id,
     espcontrol::media::RepeatMode mode) {
