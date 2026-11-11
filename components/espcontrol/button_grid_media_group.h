@@ -364,6 +364,66 @@ inline std::vector<std::string> media_group_merge_candidates(
   return out;
 }
 
+// Live readings taken straight from a grouped speaker's own Home Assistant
+// entity. Not every installation has a discovery sensor, and one that exists
+// can lag behind the player, so these readings take precedence over it.
+struct MediaGroupMemberReading {
+  std::string entity_id;
+  std::string friendly_name;
+  bool volume_reported = false;
+  bool volume_known = false;
+  int volume_pct = 0;
+  bool state_known = false;
+  bool available = true;
+};
+
+constexpr size_t MEDIA_GROUP_MEMBER_READINGS_MAX = 16;
+
+inline bool media_group_parse_volume_level(const std::string &raw, int *volume_pct) {
+  std::string value = media_group_trim(raw);
+  if (value.empty() || !volume_pct) return false;
+  char *end = nullptr;
+  float level = std::strtof(value.c_str(), &end);
+  if (!end || end == value.c_str() || !std::isfinite(level)) return false;
+  *volume_pct = std::max(0, std::min(100, (int) std::lround(level * 100.0f)));
+  return true;
+}
+
+inline bool media_group_state_available(const std::string &raw) {
+  return media_group_trim(raw) != "unavailable";
+}
+
+inline std::vector<MediaGroupDiscoveryItem> media_group_merge_member_readings(
+    std::vector<MediaGroupDiscoveryItem> items,
+    const std::vector<MediaGroupMemberReading> &readings) {
+  for (const MediaGroupMemberReading &reading : readings) {
+    if (reading.entity_id.empty()) continue;
+    if (!reading.volume_reported && !reading.state_known &&
+        reading.friendly_name.empty()) continue;
+    MediaGroupDiscoveryItem *item = nullptr;
+    for (MediaGroupDiscoveryItem &candidate : items) {
+      if (candidate.entity_id == reading.entity_id) {
+        item = &candidate;
+        break;
+      }
+    }
+    if (!item) {
+      MediaGroupDiscoveryItem added;
+      added.entity_id = reading.entity_id;
+      added.available = true;
+      items.push_back(std::move(added));
+      item = &items.back();
+    }
+    if (!reading.friendly_name.empty()) item->friendly_name = reading.friendly_name;
+    if (reading.volume_reported) {
+      item->volume_known = reading.volume_known;
+      if (reading.volume_known) item->volume_pct = reading.volume_pct;
+    }
+    if (reading.state_known) item->available = reading.available;
+  }
+  return items;
+}
+
 struct MediaGroupVolumeState {
   std::string entity_id;
   int volume_pct = 0;

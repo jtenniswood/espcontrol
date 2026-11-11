@@ -80,7 +80,9 @@ You can also use **All Controls**. When the selected player supports grouping an
 
 The main speaker is always selected. Selecting another speaker sends `media_player.join` with the complete selected group; clearing one sends `media_player.unjoin` to that speaker. A row shows a pending state while Home Assistant handles the request. If an integration rejects an incompatible request, the selection is restored and the panel shows an error.
 
-The optional **Speaker Discovery Entity** card setting can point to another compatible discovery sensor. A Home Assistant media-player Group helper can provide a manually maintained list for joining and removing speakers, but it exposes only entity IDs. Group and per-speaker volume controls therefore require the discovery sensor format above, which also supplies each member's volume.
+The optional **Speaker Discovery Entity** card setting can point to another compatible discovery sensor. A Home Assistant media-player Group helper can provide a manually maintained list for joining and removing speakers, but it exposes only entity IDs.
+
+Once speakers are grouped, the panel reads each grouped speaker's volume, name, and availability directly from its own media player. Group and per-speaker volume controls therefore work even when the discovery sensor is missing or does not include volumes. The discovery sensor is still needed to list speakers that are not yet in the group.
 
 ## Group and Individual Volume
 
@@ -94,6 +96,6 @@ For example, `10%`, `25%`, and `40%` has a group level of `25%`. Moving Group Vo
 - If a speaker does not appear, make sure it is a `media_player` from the integration named in the template. If its row is unavailable, check its state in Home Assistant.
 - If adding a speaker fails, try the same join in Home Assistant first. The speakers may not be compatible, or the integration may not support grouping.
 - If the panel can show speakers but cannot change them, check the panel's Home Assistant action permissions.
-- If volume controls are missing, join at least one other speaker and check that each group member reports a `volume_level` value.
+- If volume controls are missing or a speaker shows `--`, join at least one other speaker and check in Home Assistant that each group member reports a `volume_level` value.
 - Change membership and volume in Home Assistant and confirm the panel updates.
 - Reconnect or restart a speaker and confirm its state returns without reopening the card.
