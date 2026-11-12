@@ -112,8 +112,8 @@ def main(*, slug: str = SLUG, name: str = "espctl-v3-test",
     else:
         for switch_id in ("auto_update_switch", "c6_auto_update_switch"):
             assert f"{switch_id}->set_restore_mode(switch_::SWITCH_ALWAYS_OFF);" not in generated
-        assert f"/firmware/{slug}/manifest.json" in generated
-        assert "/firmware/guition-esp32-p4-jc8012p4a1-v2/manifest.json" not in generated
+        assert f"/firmware/{slug}/native.json" in generated
+        assert "/firmware/guition-esp32-p4-jc8012p4a1-v2/native.json" not in generated
 
     # Use the native IDF flash plan to identify the actual app and bootloader.
     flash_plan_path = build / "build/flasher_args.json"
