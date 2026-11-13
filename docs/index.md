@@ -66,7 +66,7 @@ Compare [screen sizes, image limits, and hardware revisions](/screens/) before o
 | 7-inch JC1060P470, V1 (unmarked case) and V2 (case marked `V2`) panel revisions | [AliExpress ~£40](https://s.click.aliexpress.com/e/_c335W0r5) | [Stand page](/reference/3d-printable-stands) |
 | 4.3-inch JC4880P443 | [AliExpress ~£24](https://s.click.aliexpress.com/e/_c32jr3eN) | [Stand page](/reference/3d-printable-stands) |
 | 4-inch ESP32-P4 86 Panel | [AliExpress ~£45](https://s.click.aliexpress.com/e/_c3O6ndAX) | [Stand page](/reference/3d-printable-stands) |
-| 4-inch 4848S040 | [AliExpress ~£16](https://s.click.aliexpress.com/e/_c3sIhvBv) | [Stand page](/reference/3d-printable-stands) |
+| 4-inch 4848S040 | [AliExpress US](https://s.click.aliexpress.com/e/_c4leTALh) / [AliExpress Global](https://s.click.aliexpress.com/e/_c4VWgWu3) | [Stand page](/reference/3d-printable-stands) |
 
 ## Support This Project
 
