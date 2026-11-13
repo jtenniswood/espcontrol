@@ -7,7 +7,6 @@ import esphome.codegen as cg
 from esphome.components.const import CONF_BYTE_ORDER, CONF_REQUEST_HEADERS
 from esphome.components.http_request import CONF_HTTP_REQUEST_ID, HttpRequestComponent
 from esphome.components.image import (
-    IMAGE_TYPE,
     Image_,
     get_image_type_enum,
     get_transparency_enum,
@@ -182,6 +181,17 @@ IMAGE_FORMATS.update({"JPG": IMAGE_FORMATS["JPEG"]})
 
 ArtworkImage = artwork_image_ns.class_("ArtworkImage", cg.PollingComponent, Image_)
 
+# Keep the decoder's pixel formats independent of ESPHome's static image formats.
+ARTWORK_IMAGE_TYPES = (
+    "BINARY",
+    "GRAYSCALE",
+    "RGB565",
+    "RGB",
+    "TRANSPARENT_BINARY",
+    "RGB24",
+    "RGBA",
+)
+
 # Actions
 SetUrlAction = artwork_image_ns.class_(
     "ArtworkImageSetUrlAction", automation.Action, cg.Parented.template(ArtworkImage)
@@ -194,7 +204,7 @@ ARTWORK_IMAGE_SCHEMA = (
     cv.Schema(
         {
             cv.Required(CONF_ID): cv.declare_id(ArtworkImage),
-            cv.Required(CONF_TYPE): validate_type(IMAGE_TYPE),
+            cv.Required(CONF_TYPE): validate_type(ARTWORK_IMAGE_TYPES),
             cv.Optional(CONF_RESIZE): cv.dimensions,
             cv.Optional(CONF_RESIZE_MODE, default="FIT"): cv.one_of(
                 "FIT", "COVER", upper=True
