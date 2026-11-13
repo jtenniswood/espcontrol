@@ -117,6 +117,16 @@ esphome:
     - "-DESPCONTROL_MAX_GRID_SLOTS=12"
     - "-DESPCONTROL_IMAGE_CARD_MAX_CONTEXTS=2"
     - "-DESPCONTROL_LOW_HEAP_MEDIA_CONTROL=1"
+    # LVGL passes on this 800x480 S3 panel take long enough that the default
+    # 12 ms software JPEG slice left artwork decodes starved (~28 s for a
+    # 640 px cover). Give each main-loop pass a longer decode slice; the web
+    # UI Artwork Loading setting can override it at runtime.
+    - "-DESPCONTROL_JPEG_DECODE_BUDGET_MS=150"
+    # Run the JPEG IDCT at half the target size (a 640 px cover decodes as
+    # 320 px) and let the decoder's filtered resize enlarge it once to the
+    # full card size. Cuts decode work roughly 4x; LVGL still draws an
+    # unscaled buffer (scaling in LVGL made every redraw take ~1 s).
+    - "-DESPCONTROL_JPEG_IDCT_UNDERSAMPLE=2"
     - "-DESPCONTROL_LOW_HEAP_COVER_ART=1"
     # Keep C++ literals close to their functions on the S3 firmware image;
     # the modal code is large enough to otherwise trip Xtensa l32r range limits.

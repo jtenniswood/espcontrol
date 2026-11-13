@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <climits>
+#include <cinttypes>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -32,7 +33,17 @@ static void jpeg_error_exit(j_common_ptr cinfo) {
 }
 
 static constexpr size_t MAX_JPEG_DOWNLOAD_SIZE = 2 * 1024 * 1024;  // 2 MB
-static constexpr uint32_t JPEG_DECODE_BUDGET_MS = 12;
+// Cooperative software-decode slice per main-loop pass. Panels whose LVGL
+// passes are slow (large RGB screens on the S3) can raise it with
+// -DESPCONTROL_JPEG_DECODE_BUDGET_MS so artwork is not starved of CPU time.
+#ifndef ESPCONTROL_JPEG_DECODE_BUDGET_MS
+#define ESPCONTROL_JPEG_DECODE_BUDGET_MS 12
+#endif
+static constexpr uint32_t JPEG_DECODE_BUDGET_MS = ESPCONTROL_JPEG_DECODE_BUDGET_MS;
+
+#ifndef ESPCONTROL_JPEG_IDCT_UNDERSAMPLE
+#define ESPCONTROL_JPEG_IDCT_UNDERSAMPLE 1
+#endif
 
 #if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
 static jpeg_decoder_handle_t p4_jpeg_decoder() {
@@ -330,6 +341,15 @@ int JpegDecoder::start_decode_(uint8_t *buffer, size_t size) {
   // Use IDCT scaling to downscale during decode.
   int target_w = this->image_->get_fixed_width();
   int target_h = this->image_->get_fixed_height();
+#if ESPCONTROL_JPEG_IDCT_UNDERSAMPLE > 1
+  // Slow boards may pick a smaller IDCT scale and let the filtered resize
+  // enlarge the result once. LVGL then draws the buffer without per-frame
+  // transforms, while the expensive IDCT work shrinks by up to 4x.
+  if (target_w > 0 && target_h > 0) {
+    target_w = std::max(1, (target_w + ESPCONTROL_JPEG_IDCT_UNDERSAMPLE - 1) / ESPCONTROL_JPEG_IDCT_UNDERSAMPLE);
+    target_h = std::max(1, (target_h + ESPCONTROL_JPEG_IDCT_UNDERSAMPLE - 1) / ESPCONTROL_JPEG_IDCT_UNDERSAMPLE);
+  }
+#endif
   if (target_w > 0 && target_h > 0) {
     // Keep enough pixels for the visible content in both Fit and Fill modes.
     // Picking the closest dimensions can shrink below the display size and
@@ -390,6 +410,8 @@ int JpegDecoder::start_decode_(uint8_t *buffer, size_t size) {
   this->source_size_ = size;
   this->y_ = 0;
   this->decode_started_ = true;
+  this->decode_work_us_ = 0;
+  this->decode_slices_ = 0;
   return 0;
 }
 
@@ -401,6 +423,8 @@ int JpegDecoder::decode_scanlines_() {
   }
 
   const uint32_t start = millis();
+  const uint32_t work_started_us = micros();
+  this->decode_slices_++;
   while (this->cinfo_.output_scanline < this->cinfo_.output_height) {
     uint8_t *row_ptr = this->row_buffer_;
     jpeg_read_scanlines(&this->cinfo_, &row_ptr, 1);
@@ -452,12 +476,16 @@ int JpegDecoder::decode_scanlines_() {
     }
   }
 
+  this->decode_work_us_ += micros() - work_started_us;
   if (this->cinfo_.output_scanline < this->cinfo_.output_height) {
     return 0;
   }
 
   jpeg_finish_decompress(&this->cinfo_);
-  ESP_LOGD(TAG, "JPEG decode finished: output=%dx%d", this->out_w_, this->out_h_);
+  ESP_LOGD(TAG, "JPEG decode finished: output=%dx%d work=%" PRIu32 "ms slices=%" PRIu32
+           " budget=%" PRIu32 "ms",
+           this->out_w_, this->out_h_, this->decode_work_us_ / 1000, this->decode_slices_,
+           JPEG_DECODE_BUDGET_MS);
   size_t decoded = this->source_size_;
   this->decoded_bytes_ = decoded;
   this->cleanup_();
