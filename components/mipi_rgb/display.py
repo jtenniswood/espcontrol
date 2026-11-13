@@ -72,6 +72,7 @@ from ..spi import CONF_SPI_MODE, SPI_DATA_RATE_SCHEMA, SPI_MODE_OPTIONS, SPIComp
 from . import models
 
 DEPENDENCIES = ["esp32", "psram"]
+CONF_BOUNCE_BUFFER_ROWS = "bounce_buffer_rows"
 
 mipi_rgb_ns = cg.esphome_ns.namespace("mipi_rgb")
 mipi_rgb = mipi_rgb_ns.class_("MipiRgb", display.Display, cg.Component)
@@ -164,6 +165,11 @@ def model_schema(config):
                 cv.frequency, cv.Range(min=4e6, max=100e6)
             ),
             model.option(CONF_PCLK_INVERTED, True): cv.boolean,
+            # Rows per internal-RAM DMA bounce buffer (two are allocated).
+            # Wide panels can lower this to leave internal heap for WiFi/HTTP.
+            cv.Optional(CONF_BOUNCE_BUFFER_ROWS, default=20): cv.int_range(
+                min=1, max=64
+            ),
             iseqconf: cv.ensure_list(map_sequence),
             model.option(CONF_BYTE_ORDER, BYTE_ORDER_BIG): cv.one_of(
                 BYTE_ORDER_LITTLE, BYTE_ORDER_BIG, lower=True
@@ -297,6 +303,11 @@ async def to_code(config):
     cg.add(var.set_vsync_front_porch(config[CONF_VSYNC_FRONT_PORCH]))
     cg.add(var.set_pclk_inverted(config[CONF_PCLK_INVERTED]))
     cg.add(var.set_pclk_frequency(config[CONF_PCLK_FREQUENCY]))
+    if height % config[CONF_BOUNCE_BUFFER_ROWS] != 0:
+        raise cv.Invalid(
+            f"{CONF_BOUNCE_BUFFER_ROWS} must evenly divide the panel height ({height})"
+        )
+    cg.add(var.set_bounce_buffer_rows(config[CONF_BOUNCE_BUFFER_ROWS]))
     dpins = []
     if CONF_RED in config[CONF_DATA_PINS]:
         red_pins = config[CONF_DATA_PINS][CONF_RED]

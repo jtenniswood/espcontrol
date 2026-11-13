@@ -31,7 +31,7 @@ VALID_MODAL_LAYOUT_FAMILIES = {
 VALID_MODAL_DENSITIES = {"compact", "comfortable", "spacious"}
 VALID_MODAL_MEMORY_TIERS = {"standard", "constrained"}
 IMAGE_CARD_PICKER_TYPES = ("image", "media_cover_art")
-CAMERA_SCREENSAVER_DEVICE_SLUGS = {"guition-esp32-s3-4848s040"}
+CAMERA_SCREENSAVER_DEVICE_SLUGS = {"guition-esp32-s3-4848s040", "sunton-esp32-s3-8048s043"}
 REQUIRED_FONT_ROLES = (
     "icon",
     "sensor",

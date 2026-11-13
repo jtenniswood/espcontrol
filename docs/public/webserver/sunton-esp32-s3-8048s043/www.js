@@ -1,0 +1,1 @@
+(()=>{const c=document.currentScript,u=new URL("../www.js",c.src),s=document.createElement("script");u.search=c.src.includes("?")?c.src.slice(c.src.indexOf("?")):"";u.searchParams.set("device","sunton-esp32-s3-8048s043");s.src=u.href;document.head.appendChild(s)})();

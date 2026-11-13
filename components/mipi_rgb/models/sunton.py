@@ -25,6 +25,31 @@ sunton = RgbDriverChip(
 )
 
 sunton.extend(
+    "SUNTON-ESP32-8048S043",
+    initsequence=(),
+    width=800,
+    height=480,
+    # 14MHz keeps PSRAM scan-out stable alongside WiFi and web traffic.
+    pclk_frequency="14MHz",
+    pclk_inverted=True,
+    de_pin=40,
+    hsync_pin=39,
+    vsync_pin=41,
+    pclk_pin=42,
+    hsync_back_porch=8,
+    hsync_front_porch=8,
+    hsync_pulse_width=4,
+    vsync_back_porch=8,
+    vsync_front_porch=8,
+    vsync_pulse_width=4,
+    data_pins={
+        "red": [45, 48, 47, 21, 14],
+        "green": [5, 6, 7, 15, 16, 4],
+        "blue": [8, 3, 46, 9, 1],
+    },
+)
+
+sunton.extend(
     "ESP32-8048S050",
     initsequence=(),
     width=800,
