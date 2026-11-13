@@ -37,3 +37,4 @@ to recover.
 
 - **Panel:** [AliExpress](https://s.click.aliexpress.com/e/_c335W0r5) (~£40)
 - **Desk stand** (3D printable): [MakerWorld](https://makerworld.com/en/models/2387421-guition-esp32p4-jc1060p470-7inch-screen-desk-mount#profileId-2614995)
+- **Wall mount** (3D printable): [MakerWorld](https://makerworld.com/en/models/3575248-wall-mount-for-jc1060p470c-esp32-screen#profileId-4093027)
