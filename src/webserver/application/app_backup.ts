@@ -321,6 +321,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 screensaver_dimmed_brightness_night: normalizeScreensaverDimmedBrightness(state.screensaverDimmedBrightnessNight),
                 screensaver_timeout: state.screensaverTimeout,
                 home_screen_timeout: state.homeScreenTimeout,
+                artwork_decode_slice: state.artworkDecodeSlice,
                 screen_rotation: state.screenRotation,
             },
             screen: {
@@ -596,6 +597,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     postScreensaverDimmedBrightnessNight(importedScreensaverDimmedBrightnessNight);
                     postScreensaverTimeout(importedSettings.screensaverTimeout);
                     postHomeScreenTimeout(importedSettings.homeScreenTimeout);
+                    postNumber(entityName("artwork_decode_slice"), importedSettings.artworkDecodeSlice);
                     var importedScreenRotation: any = importedSettings.screenRotation;
                     if (controllers.layout.config.features && controllers.layout.config.features.screenRotation)
                         postSelect(entityName("screen_rotation"), importedScreenRotation);
@@ -664,6 +666,8 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     state.screensaverDimmedBrightnessNight = importedScreensaverDimmedBrightnessNight;
                     state.screensaverTimeout = importedSettings.screensaverTimeout;
                     state.homeScreenTimeout = importedSettings.homeScreenTimeout;
+                    state.artworkDecodeSlice = Number(importedSettings.artworkDecodeSlice) || 0;
+                    if (els.setArtworkDecodeSlice) els.setArtworkDecodeSlice.value = String(state.artworkDecodeSlice);
                     state.screenRotation = importedScreenRotation;
                     syncTemperatureUi();
                     syncClockBarUi();

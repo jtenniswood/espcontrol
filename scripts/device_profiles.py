@@ -906,6 +906,9 @@ def web_features(profile: dict[str, Any]) -> dict[str, Any]:
         features["subpageConfigChunks"] = package["subpageConfigChunks"]
     if camera_screensaver_supported(profile):
         features["cameraScreensaver"] = True
+    if profile["firmware"]["build"].get("chip") == "ESP32-S3":
+        # S3 artwork uses cooperative software JPEG decode; P4 decodes in hardware.
+        features["artworkDecodeSpeed"] = True
     return features
 
 

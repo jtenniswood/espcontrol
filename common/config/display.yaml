@@ -1276,3 +1276,22 @@ number:
     icon: "mdi:home-clock"
     web_server:
       sorting_group_id: sg_screensaver
+
+  # Software JPEG decode slice per main-loop pass (0 = board default).
+  # Longer slices show artwork sooner but can delay touch during a decode.
+  - platform: template
+    name: "${entity_artwork_decode_slice}"
+    internal: true
+    id: artwork_decode_slice
+    min_value: 0
+    max_value: 250
+    step: 5
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "ms"
+    entity_category: config
+    icon: "mdi:image-sync"
+    on_value:
+      then:
+        - lambda: 'esphome::artwork_image::set_jpeg_decode_budget_override_ms(static_cast<uint32_t>(x));'

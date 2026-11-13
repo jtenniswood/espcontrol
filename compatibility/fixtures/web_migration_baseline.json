@@ -61,7 +61,7 @@
       "autoUpdate": true, "updateFrequency": "Weekly", "screensaverAction": "off", "clockScreensaver": false, "clockDate": false, "clockOverlay": false,
       "clockBrightnessDay": 35, "clockBrightnessNight": 35, "screensaverDimmedBrightness": 10,
       "screensaverDimmedBrightnessDay": 10, "screensaverDimmedBrightnessNight": 10,
-      "screensaverTimeout": 300, "homeScreenTimeout": 60, "screenRotation": "90"
+      "screensaverTimeout": 300, "homeScreenTimeout": 60, "artworkDecodeSlice": 0, "screenRotation": "90"
     },
     "screenInput": {
       "brightness_day": 80,

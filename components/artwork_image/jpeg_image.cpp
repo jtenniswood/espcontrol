@@ -39,7 +39,11 @@ static constexpr size_t MAX_JPEG_DOWNLOAD_SIZE = 2 * 1024 * 1024;  // 2 MB
 #ifndef ESPCONTROL_JPEG_DECODE_BUDGET_MS
 #define ESPCONTROL_JPEG_DECODE_BUDGET_MS 12
 #endif
-static constexpr uint32_t JPEG_DECODE_BUDGET_MS = ESPCONTROL_JPEG_DECODE_BUDGET_MS;
+static constexpr uint32_t JPEG_DEFAULT_DECODE_BUDGET_MS = ESPCONTROL_JPEG_DECODE_BUDGET_MS;
+static uint32_t jpeg_decode_budget_ms() {
+  const uint32_t override_ms = get_jpeg_decode_budget_override_ms();
+  return override_ms > 0 ? override_ms : JPEG_DEFAULT_DECODE_BUDGET_MS;
+}
 
 #ifndef ESPCONTROL_JPEG_IDCT_UNDERSAMPLE
 #define ESPCONTROL_JPEG_IDCT_UNDERSAMPLE 1
@@ -423,6 +427,7 @@ int JpegDecoder::decode_scanlines_() {
   }
 
   const uint32_t start = millis();
+  const uint32_t budget_ms = jpeg_decode_budget_ms();
   const uint32_t work_started_us = micros();
   this->decode_slices_++;
   while (this->cinfo_.output_scanline < this->cinfo_.output_height) {
@@ -471,7 +476,7 @@ int JpegDecoder::decode_scanlines_() {
     // Check after every row. Scaling one camera scanline may be noticeably
     // more expensive than an unscaled line, so an eight-row batch could
     // overrun the cooperative decode budget and delay LVGL input handling.
-    if (millis() - start >= JPEG_DECODE_BUDGET_MS) {
+    if (millis() - start >= budget_ms) {
       break;
     }
   }
@@ -485,7 +490,7 @@ int JpegDecoder::decode_scanlines_() {
   ESP_LOGD(TAG, "JPEG decode finished: output=%dx%d work=%" PRIu32 "ms slices=%" PRIu32
            " budget=%" PRIu32 "ms",
            this->out_w_, this->out_h_, this->decode_work_us_ / 1000, this->decode_slices_,
-           JPEG_DECODE_BUDGET_MS);
+           jpeg_decode_budget_ms());
   size_t decoded = this->source_size_;
   this->decoded_bytes_ = decoded;
   this->cleanup_();
