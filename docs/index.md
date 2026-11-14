@@ -14,6 +14,8 @@ You do not need to write YAML, build your own ESPHome configuration, or keep a t
 
 Start here: **[Choose your screen](/screens/)** or **[install EspControl](/getting-started/install)** if you already have one. For room controls, music, and cameras, browse the [practical guides](/guides/).
 
+For a 4848S040 that controls Mac apps and shortcuts, see [EspDesktop setup for Mac](https://espdesktop.com/screens/4848s040).
+
 **Source code and issues:** [github.com/jtenniswood/espcontrol](https://github.com/jtenniswood/espcontrol).
 
 ## What You Can Build
