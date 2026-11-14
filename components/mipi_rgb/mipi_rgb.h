@@ -47,6 +47,7 @@ class MipiRgb : public display::Display {
   void set_width(uint16_t width) { this->width_ = width; }
   void set_pclk_frequency(uint32_t pclk_frequency) { this->pclk_frequency_ = pclk_frequency; }
   void set_pclk_inverted(bool inverted) { this->pclk_inverted_ = inverted; }
+  void set_bounce_buffer_rows(uint8_t rows) { this->bounce_buffer_rows_ = rows; }
   void set_model(const char *model) { this->model_ = model; }
   int get_width() override;
   int get_height() override;
@@ -82,6 +83,7 @@ class MipiRgb : public display::Display {
   uint16_t vsync_front_porch_ = 10;
   uint32_t pclk_frequency_ = 16 * 1000 * 1000;
   bool pclk_inverted_{true};
+  uint8_t bounce_buffer_rows_{20};
   const char *model_{"Unknown"};
   bool invert_colors_{};
   display::ColorOrder color_mode_{display::COLOR_ORDER_BGR};

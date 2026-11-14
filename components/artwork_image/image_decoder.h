@@ -5,6 +5,11 @@
 namespace esphome {
 namespace artwork_image {
 
+/// Runtime override for the cooperative software JPEG decode slice (ms).
+/// Zero keeps the board's compile-time default.
+void set_jpeg_decode_budget_override_ms(uint32_t ms);
+uint32_t get_jpeg_decode_budget_override_ms();
+
 enum DecodeError : int {
   DECODE_ERROR_INVALID_TYPE = -1,
   DECODE_ERROR_UNSUPPORTED_FORMAT = -2,

@@ -231,6 +231,25 @@ const devices = [
         label: 'V1 — Original panel'
       }
     ]
+  },
+  {
+    slug: 'sunton-esp32-s3-8048s043',
+    name: 'Sunton 8048S043',
+    size: '4.3 inch S3',
+    resolution: '800 x 480',
+    orientation: 'Landscape',
+    slots: 12,
+    cols: 4,
+    rows: 3,
+    aspect: '800 / 480',
+    shape: 'landscape',
+    versions: [
+      {
+        slug: 'sunton-esp32-s3-8048s043',
+        number: 1,
+        label: 'V1 — Original panel'
+      }
+    ]
   }
 ].map(device => ({
   ...device,

@@ -248,6 +248,10 @@ export function createAppStateEventHandlersFeature(
             "number-screensaver_timeout": function (this: any, val?: any, d?: any) {
                 applyScreensaverTimeoutState(d);
             },
+            "number-artwork_decode_slice": function (this: any, val?: any) {
+                state.artworkDecodeSlice = parseFloat(val) || 0;
+                if (els.setArtworkDecodeSlice) els.setArtworkDecodeSlice.value = String(state.artworkDecodeSlice);
+            },
             "number-home_screen_timeout": function (this: any, val?: any) {
                 state.homeScreenTimeout = parseFloat(val) || 0;
                 syncIdleUi(runtime);

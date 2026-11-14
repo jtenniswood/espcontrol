@@ -1,0 +1,389 @@
+# =============================================================================
+# DEVICE - Sunton ESP32-8048S043 hardware definition
+# =============================================================================
+# Pin assignments, peripherals, and platform config for the 4.3" 800x480
+# landscape panel. Includes the ESP32-S3 SoC (native WiFi, 16MB flash, 8MB
+# octal PSRAM), a 16-bit parallel RGB display (no SPI init sequence), GT911
+# capacitive touchscreen, and backlight PWM on GPIO2.
+# =============================================================================
+
+substitutions:
+  espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
+  espcontrol_component_ref: "main"
+  mdi_font_file: "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf"
+
+# ---------------------------------------------------------------------------
+# ESP32-S3 platform (16MB flash, ESP-IDF framework)
+# ---------------------------------------------------------------------------
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    advanced:
+      # The clock/cover-art display controller uses a deep ESPHome action chain.
+      # Keep enough headroom for rapid presence-driven sleep/wake transitions;
+      # the 8 KiB default can overflow loopTask on the S3 profiles.
+      loop_task_stack_size: 16384
+    sdkconfig_options:
+      # The S3 display stack leaves little internal RAM for HTTPS OTA checks.
+      # Allocate mbedTLS buffers from PSRAM so firmware downloads can connect.
+      CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC: "y"
+      # Keep the ESP32 task watchdog long enough for display startup while
+      # remaining compatible with ESPHome 2026.4 and newer.
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "30"
+      # Keep WiFi startup inside the internal-RAM budget after the RGB display
+      # and LVGL buffers are initialized.
+      CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM: "8"
+      # The static RX pool of eight requires an RX BA window of at most 16.
+      CONFIG_ESP_WIFI_RX_BA_WIN: "16"
+      CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
+      # Route ordinary allocations larger than 4 KiB to PSRAM while keeping
+      # a 32 KiB internal reserve for DMA and cache-disabled operations.
+      CONFIG_SPIRAM_USE_MALLOC: "y"
+      CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "4096"
+      CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL: "32768"
+      # The 800x480 RGB panel needs the larger data cache and 64-byte cache
+      # lines to keep PSRAM scan-out bandwidth up; smaller lines cause
+      # artifacting and vertically shifted frames on these boards.
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
+      # The RGB driver already restarts after a genuine DMA underflow. Restarting
+      # on every VSYNC can instead shift the framebuffer by one bounce-buffer block.
+      CONFIG_LCD_RGB_RESTART_IN_VSYNC: "n"
+      CONFIG_LCD_RGB_ISR_IRAM_SAFE: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: "y"
+      CONFIG_SPIRAM_RODATA: "y"
+
+# ---------------------------------------------------------------------------
+# External component
+# ---------------------------------------------------------------------------
+external_components:
+  - source:
+      type: git
+      url: ${espcontrol_component_url}
+      ref: ${espcontrol_component_ref}
+      path: components
+    components: [espcontrol, captive_portal, web_server_idf, artwork_image, mipi_rgb]
+    refresh: 1s
+
+espcontrol:
+  id: espcontrol_app
+  panel_config:
+    device_profile: ${device_slug}
+    storage: card_images
+    button_order: button_order
+    button_on_color: button_on_color
+    buttons:
+      - config: button_1_config
+        subpage_chunks: [subpage_1_config, subpage_1_config_ext, subpage_1_config_ext_2, subpage_1_config_ext_3]
+      - config: button_2_config
+        subpage_chunks: [subpage_2_config, subpage_2_config_ext, subpage_2_config_ext_2, subpage_2_config_ext_3]
+      - config: button_3_config
+        subpage_chunks: [subpage_3_config, subpage_3_config_ext, subpage_3_config_ext_2, subpage_3_config_ext_3]
+      - config: button_4_config
+        subpage_chunks: [subpage_4_config, subpage_4_config_ext, subpage_4_config_ext_2, subpage_4_config_ext_3]
+      - config: button_5_config
+        subpage_chunks: [subpage_5_config, subpage_5_config_ext, subpage_5_config_ext_2, subpage_5_config_ext_3]
+      - config: button_6_config
+        subpage_chunks: [subpage_6_config, subpage_6_config_ext, subpage_6_config_ext_2, subpage_6_config_ext_3]
+      - config: button_7_config
+        subpage_chunks: [subpage_7_config, subpage_7_config_ext, subpage_7_config_ext_2, subpage_7_config_ext_3]
+      - config: button_8_config
+        subpage_chunks: [subpage_8_config, subpage_8_config_ext, subpage_8_config_ext_2, subpage_8_config_ext_3]
+      - config: button_9_config
+        subpage_chunks: [subpage_9_config, subpage_9_config_ext, subpage_9_config_ext_2, subpage_9_config_ext_3]
+      - config: button_10_config
+        subpage_chunks: [subpage_10_config, subpage_10_config_ext, subpage_10_config_ext_2, subpage_10_config_ext_3]
+      - config: button_11_config
+        subpage_chunks: [subpage_11_config, subpage_11_config_ext, subpage_11_config_ext_2, subpage_11_config_ext_3]
+      - config: button_12_config
+        subpage_chunks: [subpage_12_config, subpage_12_config_ext, subpage_12_config_ext_2, subpage_12_config_ext_3]
+
+# ---------------------------------------------------------------------------
+# ESPHome core (device name from substitutions)
+# ---------------------------------------------------------------------------
+# ESP32-S3 boards with octal PSRAM and an RGB display can fail to reinitialize
+# peripherals after a software reset. A brief deep sleep forces a full
+# hardware reset on wake, equivalent to a power cycle. The on_boot handler
+# catches USB-triggered and software-triggered resets (the latter fired by the
+# "Apply Configuration" restart button); the OTA on_end hook catches wireless
+# updates.
+# ---------------------------------------------------------------------------
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  build_flags:
+    - "-DESPCONTROL_MAX_GRID_SLOTS=12"
+    - "-DESPCONTROL_IMAGE_CARD_MAX_CONTEXTS=2"
+    - "-DESPCONTROL_LOW_HEAP_MEDIA_CONTROL=1"
+    # LVGL passes on this 800x480 S3 panel take long enough that the default
+    # 12 ms software JPEG slice left artwork decodes starved (~28 s for a
+    # 640 px cover). Give each main-loop pass a longer decode slice; the web
+    # UI Artwork Loading setting can override it at runtime.
+    - "-DESPCONTROL_JPEG_DECODE_BUDGET_MS=150"
+    # Run the JPEG IDCT at half the target size (a 640 px cover decodes as
+    # 320 px) and let the decoder's filtered resize enlarge it once to the
+    # full card size. Cuts decode work roughly 4x; LVGL still draws an
+    # unscaled buffer (scaling in LVGL made every redraw take ~1 s).
+    - "-DESPCONTROL_JPEG_IDCT_UNDERSAMPLE=2"
+    - "-DESPCONTROL_LOW_HEAP_COVER_ART=1"
+    # Keep C++ literals close to their functions on the S3 firmware image;
+    # the modal code is large enough to otherwise trip Xtensa l32r range limits.
+    - "-mtext-section-literals"
+  on_boot:
+    - priority: 800
+      then:
+        - lambda: |-
+            auto reason = esp_reset_reason();
+            if (reason == ESP_RST_SW) {
+              esp_ota_img_states_t ota_state;
+              const esp_partition_t *running = esp_ota_get_running_partition();
+              if (running != nullptr &&
+                  esp_ota_get_state_partition(running, &ota_state) == ESP_OK &&
+                  ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
+                ESP_LOGI("s3_reset", "Marking OTA image valid before hardware-reset workaround");
+                id(s3_8048s043_safe_mode).mark_successful();
+                global_preferences->sync();
+                esp_sleep_enable_timer_wakeup(100000);
+                esp_deep_sleep_start();
+                return;
+              }
+            }
+            if (reason == ESP_RST_USB || reason == ESP_RST_SW) {
+              esp_sleep_enable_timer_wakeup(100000);
+              esp_deep_sleep_start();
+            }
+    - priority: -100
+      then:
+        - lambda: 'id(screen_rotation_ready) = true;'
+        - script.execute: apply_screen_rotation
+        - script.execute: clock_bar_apply
+
+# ---------------------------------------------------------------------------
+# PSRAM (video frame buffer memory)
+# ---------------------------------------------------------------------------
+psram:
+  mode: octal
+  speed: 80MHz
+
+# ---------------------------------------------------------------------------
+# OTA updates (ESPHome native + HTTP-based)
+# ---------------------------------------------------------------------------
+ota:
+  - platform: esphome
+    on_begin:
+      then:
+        - script.execute: show_update_writing
+        - script.wait: show_update_writing
+    on_end:
+      then:
+        - globals.set:
+            id: firmware_update_complete_pending
+            value: 'true'
+        - lambda: 'global_preferences->sync();'
+        - lambda: |-
+            esp_sleep_enable_timer_wakeup(100000);
+            esp_deep_sleep_start();
+    on_error:
+      then:
+        - script.execute: show_update_failed
+  - platform: http_request
+    on_begin:
+      then:
+        - script.execute: show_update_writing
+        - script.wait: show_update_writing
+    on_end:
+      then:
+        - globals.set:
+            id: firmware_update_complete_pending
+            value: 'true'
+        - lambda: 'global_preferences->sync();'
+        - lambda: |-
+            esp_sleep_enable_timer_wakeup(100000);
+            esp_deep_sleep_start();
+    on_error:
+      then:
+        - script.execute: show_update_failed
+
+safe_mode:
+  id: s3_8048s043_safe_mode
+  boot_is_good_after: 10s
+
+# ---------------------------------------------------------------------------
+# Shared infrastructure (API, logging, web server, restart button)
+# ---------------------------------------------------------------------------
+packages:
+  core_infra: !include ../../../common/device/core_infra.yaml
+
+# The S3 panel runs close to the internal RAM limit once the RGB display,
+# LVGL, web UI, and API are all active. Keep the native API connection pool
+# modest, but allow one spare slot so Home Assistant can reconnect after an
+# abrupt OTA reset while the ESPHome dashboard/logger still has a socket open.
+api:
+  listen_backlog: 4
+  max_connections: 3
+  max_send_queue: 12
+
+# The 8048S043 USB port is exposed as UART0 through a CH340 USB-UART bridge.
+# GPIO19/20 carry the touchscreen I2C bus, so USB_SERIAL_JTAG is unavailable.
+logger:
+  hardware_uart: UART0
+
+wifi:
+  use_psram: true
+
+# ---------------------------------------------------------------------------
+# Backlight (LEDC PWM output + monochromatic light entity)
+# ---------------------------------------------------------------------------
+output:
+  - platform: ledc
+    pin: GPIO2
+    id: gpio_backlight_pwm
+    frequency: 1220Hz
+    min_power: 0.01
+    zero_means_zero: true
+
+light:
+  - platform: monochromatic
+    output: gpio_backlight_pwm
+    name: Display Backlight
+    icon: mdi:lightbulb-on
+    id: display_backlight
+    restore_mode: RESTORE_DEFAULT_ON
+    default_transition_length: 0s
+    gamma_correct: 1.0
+    on_turn_on:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+                return (id(espcontrol_app).display().target_source_is(
+                            espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
+                        id(espcontrol_app).display().target_mode_is(
+                            espcontrol::DisplayMode::DISPLAY_OFF)) ||
+                       screen_schedule_waiting_for_time(
+                         id(screen_schedule_trigger).state,
+                         id(schedule_enabled).state,
+                         now.is_valid());
+            then:
+              - script.execute: backlight_force_display_off
+            else:
+              - if:
+                  condition:
+                    lambda: |-
+                      return id(espcontrol_app).display().current_mode_is(
+                          espcontrol::DisplayMode::DISPLAY_OFF);
+                  then:
+                    - script.execute: screensaver_wake
+    on_turn_off:
+      then:
+        - script.execute: display_backlight_handle_off
+    on_state:
+      then:
+        - script.execute: display_backlight_handle_state
+
+# ---------------------------------------------------------------------------
+# I2C bus and touchscreen (GT911 capacitive, wakes screensaver on touch)
+# ---------------------------------------------------------------------------
+i2c:
+  sda: GPIO19
+  scl: GPIO20
+
+touchscreen:
+  - platform: gt911
+    id: my_touchscreen
+    display: my_display
+    address: 0x5D
+    # The board wires GT911 reset to GPIO38; resetting on boot keeps the
+    # controller's address and state predictable.
+    reset_pin: GPIO38
+    update_interval: 16ms
+    # No calibration override: the GT911 reports its own configured range,
+    # and forcing 800x480 mis-scaled taps on units configured differently.
+    on_touch:
+      - script.execute: cover_art_handle_touch
+
+# ---------------------------------------------------------------------------
+# Display (4.3" 800x480 parallel RGB panel, no controller init sequence)
+# ---------------------------------------------------------------------------
+display:
+  - platform: mipi_rgb
+    model: SUNTON-ESP32-8048S043
+    id: my_display
+    # Start WiFi before the RGB panel allocates its frame buffers; otherwise the
+    # WiFi driver can fail to claim enough internal RX buffers on fresh boots.
+    setup_priority: 240
+    # Two 800-px bounce buffers live in internal RAM. Ten rows (2 x 16 KB)
+    # instead of the driver default 20 (2 x 32 KB) leaves the internal heap
+    # the image card and cover-art pipeline require.
+    bounce_buffer_rows: 10
+    update_interval: never
+    auto_clear_enabled: False
+
+# ---------------------------------------------------------------------------
+# LVGL base (display binding, must be before any page definitions)
+# ---------------------------------------------------------------------------
+lvgl:
+  id: main_lvgl
+  # Keep LVGL after WiFi and after the display driver.
+  setup_priority: 230
+  # Keep the buffer small so WiFi and runtime display resources retain PSRAM
+  # headroom on the memory-constrained S3.
+  buffer_size: 12%
+  displays: my_display
+  touchscreens:
+    - touchscreen_id: my_touchscreen
+      long_press_time: 3s
+
+script:
+  # No rotation display offset: the panel's native landscape orientation is
+  # the user-facing "0" option, so LVGL rotation matches the selection.
+  - id: apply_screen_rotation
+    then:
+      - if:
+          condition:
+            lambda: 'return id(screen_rotation_select).current_option() == "90";'
+          then:
+            - lvgl.display.set_rotation: 90
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(screen_rotation_select).current_option() == "180";'
+                then:
+                  - lvgl.display.set_rotation: 180
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return id(screen_rotation_select).current_option() == "270";'
+                      then:
+                        - lvgl.display.set_rotation: 270
+                      else:
+                        - lvgl.display.set_rotation: 0
+      - script.execute: camera_screensaver_request_image
+
+select:
+  - platform: template
+    name: "${entity_screen_rotation}"
+    internal: true
+    disabled_by_default: true
+    id: screen_rotation_select
+    entity_category: config
+    icon: "mdi:screen-rotation"
+    optimistic: true
+    restore_value: true
+    initial_option: "0"
+    options:
+      - "0"
+      - "90"
+      - "180"
+      - "270"
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(screen_rotation_ready);'
+            then:
+              - script.execute: apply_screen_rotation
+              - script.execute: clock_bar_apply

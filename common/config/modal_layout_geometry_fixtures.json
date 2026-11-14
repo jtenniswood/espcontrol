@@ -110,6 +110,28 @@
         "tabs": {"size": 48, "selectedSize": 54, "gap": 12, "frameWidth": 306, "frameHeight": 66, "safeLeft": 73, "rowLeft": 82, "contentGap": 16, "iconZoom": 180},
         "content": {"top": 100, "bottom": 418, "width": 434, "height": 318, "centerY": 41}
       }
+    },
+    {
+      "slug": "sunton-esp32-s3-8048s043",
+      "profile": {
+        "family": "wide-landscape",
+        "density": "compact",
+        "memoryTier": "constrained",
+        "baseTouchTarget": 46
+      },
+      "viewport": {"width": 800, "height": 480},
+      "panelInsets": {"left": 5, "top": 40, "right": 5, "bottom": 4},
+      "expected": {
+        "panel": {"x": 5, "y": 40, "width": 790, "height": 436},
+        "shortSide": 480,
+        "inset": 18,
+        "back": {"size": 46, "x": 18, "y": 18},
+        "buttonSize": 80,
+        "arc": {"size": 373, "stroke": 17, "centerX": 0},
+        "controlsCenterY": 150,
+        "tabs": {"size": 54, "selectedSize": 60, "gap": 13, "frameWidth": 342, "frameHeight": 74, "safeLeft": 73, "rowLeft": 224, "contentGap": 28, "iconZoom": 180},
+        "content": {"top": 120, "bottom": 418, "width": 754, "height": 298, "centerY": 51}
+      }
     }
   ]
 }

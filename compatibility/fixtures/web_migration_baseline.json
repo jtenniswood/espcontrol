@@ -9,7 +9,8 @@
     "guition-esp32-p4-jc8012p4a1-v3",
     "esp32-p4-86",
     "guition-esp32-s3-4848s040",
-    "guition-esp32-p4-jc1060p470-v3"
+    "guition-esp32-p4-jc1060p470-v3",
+    "sunton-esp32-s3-8048s043"
   ],
   "button": {
     "input": "~media_player.kitchen,Morning%2C Mix,Music,Auto,playlist,,media,,playlist_content_id=media-source%253A//music/morning%252Cmix=50%2525%2Cplaylist_player_source=Kitchen%252C Main=Zone 50%2525",
@@ -60,7 +61,7 @@
       "autoUpdate": true, "updateFrequency": "Weekly", "screensaverAction": "off", "clockScreensaver": false, "clockDate": false, "clockOverlay": false,
       "clockBrightnessDay": 35, "clockBrightnessNight": 35, "screensaverDimmedBrightness": 10,
       "screensaverDimmedBrightnessDay": 10, "screensaverDimmedBrightnessNight": 10,
-      "screensaverTimeout": 300, "homeScreenTimeout": 60, "screenRotation": "90"
+      "screensaverTimeout": 300, "homeScreenTimeout": 60, "artworkDecodeSlice": 0, "screenRotation": "90"
     },
     "screenInput": {
       "brightness_day": 80,

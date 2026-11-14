@@ -429,6 +429,13 @@ export const ENTITY_CATALOG = {
         "home_screen_timeout"
       ]
     },
+    "artwork_decode_slice": {
+      "domain": "number",
+      "name": "Artwork Decode Slice",
+      "objectIds": [
+        "artwork_decode_slice"
+      ]
+    },
     "screen_saver_clock": {
       "domain": "switch",
       "name": "Screen Saver: Clock",
@@ -847,6 +854,7 @@ export const ENTITY_CATALOG = {
       "screen_saver_dimmed_brightness",
       "screensaver_timeout",
       "home_screen_timeout",
+      "artwork_decode_slice",
       "screen_saver_clock",
       "screen_saver_show_date",
       "screen_saver_clock_overlay",
