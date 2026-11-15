@@ -467,7 +467,7 @@ inline bool weather_wind_uses_sensors(const ParsedCfg &config) {
   return config.precision == "wind" && cfg_option_value(config.options, "wind_source") == "sensors";
 }
 inline bool weather_metric_mode(const std::string &mode) {
-  return mode == "pressure" || mode == "humidity" || mode == "visibility";
+  return mode == "pressure" || mode == "humidity" || mode == "visibility" || mode == "temperature";
 }
 inline bool weather_metric_uses_forecast(const ParsedCfg &config) {
   return weather_metric_mode(config.precision) && (config.precision == "visibility" ||
@@ -478,7 +478,7 @@ inline bool rainfall_uses_forecast(const ParsedCfg &config) {
     cfg_option_value(config.options, "rainfall_source") == "forecast";
 }
 inline std::string weather_card_options_normalized(const std::string &options, const ParsedCfg &config) {
-  if ((config.precision == "pressure" || config.precision == "humidity") &&
+  if (weather_metric_mode(config.precision) && config.precision != "visibility" &&
       cfg_option_value(options, (config.precision + "_source").c_str()) == "forecast")
     return config.precision + "_source=forecast";
   if (config.precision == "wind" && cfg_option_value(options, "wind_source") == "sensors") return "wind_source=sensors";

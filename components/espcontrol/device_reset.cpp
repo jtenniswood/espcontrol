@@ -281,13 +281,9 @@ void ResetBoot::setup() {
   // the empty/default SSID, after the generated WiFiAP has been populated.
   auto ap = wifi->get_ap();
   if (!ap.get_ssid().empty() && ap.get_ssid() != esphome::App.get_friendly_name()) return;
-  const std::string mac = esphome::get_mac_address();
-  std::string suffix;
-  for (char c : mac) {
-    if (c != ':' && c != '-') suffix.push_back(c);
-  }
-  if (suffix.size() > 4) suffix = suffix.substr(suffix.size() - 4);
-  if (suffix.empty()) suffix = "SETUP";
+  char mac[esphome::MAC_ADDRESS_BUFFER_SIZE];
+  esphome::get_mac_address_into_buffer(mac);
+  const std::string suffix(mac + sizeof(mac) - 5, 4);
   ap.set_ssid("EspControl_" + suffix);
   wifi->set_ap(ap);
 #endif
@@ -325,14 +321,25 @@ extern "C" esp_err_t __wrap_esp_ota_abort(esp_ota_handle_t handle) {
 extern "C" void espcontrol_hosted_ota_failed() {
   espcontrol::reset::interlock.set_coprocessor_busy(false);
 }
-extern "C" esp_err_t __real_esp_hosted_slave_ota_begin();
-extern "C" esp_err_t __wrap_esp_hosted_slave_ota_begin() {
+static esp_err_t begin_hosted_ota(esp_err_t (*begin)()) {
   auto &gate = espcontrol::reset::interlock;
   if (!gate.begin_installation(true)) return ESP_ERR_INVALID_STATE;
-  const auto result = __real_esp_hosted_slave_ota_begin();
+  const auto result = begin();
   gate.finish_begin(true, result == ESP_OK);
   return result;
 }
+
+#ifdef ESPCONTROL_HOSTED_OTA_V3
+extern "C" esp_err_t __real_eh_host_cp_ota_begin();
+extern "C" esp_err_t __wrap_eh_host_cp_ota_begin() {
+  return begin_hosted_ota(__real_eh_host_cp_ota_begin);
+}
+#else
+extern "C" esp_err_t __real_esp_hosted_slave_ota_begin();
+extern "C" esp_err_t __wrap_esp_hosted_slave_ota_begin() {
+  return begin_hosted_ota(__real_esp_hosted_slave_ota_begin);
+}
+#endif
 #endif
 
 namespace {

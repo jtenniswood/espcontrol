@@ -1,0 +1,9 @@
+# =============================================================================
+# STARTER NETWORK - WiFi credentials
+# =============================================================================
+# Used by the user-facing esphome.yaml starter when network_transport is "wifi".
+# =============================================================================
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password

@@ -3,6 +3,8 @@ from esphome.components.esp32 import (
     include_builtin_idf_component,
 )
 import esphome.config_validation as cv
+from esphome.const import __version__
+from esphome.core import Version
 
 CODEOWNERS = ["@dentra"]
 
@@ -24,11 +26,13 @@ def _web_ota_source_filter(previous):
 
 
 async def to_code(config):
-    from esphome.components.web_server import ota as web_server_ota
+    version = Version.parse(__version__)
+    if (version.major, version.minor) < (2026, 11):
+        from esphome.components.web_server import ota as web_server_ota
 
-    web_server_ota.FILTER_SOURCE_FILES = _web_ota_source_filter(
-        getattr(web_server_ota, "FILTER_SOURCE_FILES", None)
-    )
+        web_server_ota.FILTER_SOURCE_FILES = _web_ota_source_filter(
+            getattr(web_server_ota, "FILTER_SOURCE_FILES", None)
+        )
     # ESPHome excludes these IDF components from native builds unless a
     # component explicitly requests them. This component includes their
     # headers directly and links against their implementations.

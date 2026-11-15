@@ -3758,7 +3758,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "rainfall",
           "pressure",
           "humidity",
-          "visibility"
+          "visibility",
+          "temperature"
         ],
         "defaultValue": "",
         "storageField": "precision",
@@ -3859,6 +3860,30 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
             "humidity"
           ]
         }
+      },
+      {
+        "name": "temperature_source",
+        "label": "Temperature Source",
+        "kind": "choice",
+        "values": [
+          "sensor",
+          "forecast"
+        ],
+        "defaultValue": "sensor",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "precision",
+            "operator": "equals",
+            "value": "temperature"
+          }
+        ],
+        "supportedWhen": {
+          "precision": [
+            "temperature"
+          ]
+        }
       }
     ],
     "normalization": {
@@ -3901,7 +3926,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "wind_source",
         "rainfall_source",
         "pressure_source",
-        "humidity_source"
+        "humidity_source",
+        "temperature_source"
       ],
       "migrationActions": [
         "legacy_weather_forecast"
@@ -5027,6 +5053,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "state_precision": "state_precision",
   "state_unit": "state_unit",
   "subpage_kind": "subpage_kind",
+  "temperature_source": "temperature_source",
   "temperature_step": "temperature_step",
   "time_unit": "time_unit",
   "vacuum_mode": "vacuum_mode",

@@ -108,6 +108,11 @@ export function normalizeAlarmDelayAnnouncement(value: unknown, fallback: string
   return (text || fallback).slice(0, 120);
 }
 
+export function normalizeClockBarTemperaturePrecision(value: unknown): number {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 0 && n <= 2 ? n : 0;
+}
+
 export function normalizeAlarmDelayBeepVolume(value: unknown): number {
   const n = parseFloat(String(value));
   if (!Number.isFinite(n)) return 0.45;
@@ -388,6 +393,7 @@ export interface BackupPanelSettingsState {
   alarmDelayExitAnnouncement: string;
   alarmDelayBeepVolume: number;
   alarmDelayFinalCountdown: number;
+  clockBarTemperaturePrecision: number;
   temperatureDegreeSymbol: boolean;
   subpageChevron: boolean;
   timezone: string;
@@ -533,6 +539,7 @@ export function normalizeBackupPanelSettings(
     ),
     alarmDelayBeepVolume: normalizeAlarmDelayBeepVolume(settings.alarm_delay_beep_volume),
     alarmDelayFinalCountdown: normalizeAlarmDelayFinalCountdown(settings.alarm_delay_final_countdown),
+    clockBarTemperaturePrecision: normalizeClockBarTemperaturePrecision(settings.clock_bar_temperature_precision),
     temperatureDegreeSymbol: objectValue(settings, "temperature_degree_symbol") != null
       ? !!settings.temperature_degree_symbol
       : true,

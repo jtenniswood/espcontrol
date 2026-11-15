@@ -253,5 +253,35 @@
       "precision": "visibility",
       "options": ""
     }
+  },
+  {
+    "name": "temperature sensor source is retained",
+    "input": "sensor.temperature;;Auto;Auto;ignored;;weather;temperature;ignored=1,rainfall_source=forecast,visibility_source=sensor",
+    "expected": {
+      "entity": "sensor.temperature",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "temperature",
+      "options": ""
+    }
+  },
+  {
+    "name": "temperature weather source is retained",
+    "input": "weather.home;;Auto;Auto;ignored;;weather;temperature;ignored=1,rainfall_source=forecast,visibility_source=sensor,temperature_source=forecast",
+    "expected": {
+      "entity": "weather.home",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "temperature",
+      "options": "temperature_source=forecast"
+    }
   }
 ]

@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdio>
 #include <string>
+#include <utility>
 #include <vector>
 
 struct lv_event_t;
@@ -30,7 +31,22 @@ bool lv_obj_has_flag(lv_obj_t *obj, int) { return obj->hidden; }
 void lv_obj_add_flag(lv_obj_t *obj, int) { obj->hidden = true; }
 void lv_obj_clear_flag(lv_obj_t *obj, int) { obj->hidden = false; }
 bool clock_bar_active_on_button_grid_page(lv_obj_t *) { return true; }
-const char *display_clock_bar_temperature_suffix() { return "°C"; }
+const char *temperature_suffix = "°";
+const char *display_clock_bar_temperature_suffix() { return temperature_suffix; }
+
+constexpr int LV_TEXT_ALIGN_LEFT = 0;
+constexpr int LV_TEXT_ALIGN_CENTER = 1;
+constexpr int LV_ALIGN_TOP_LEFT = 0;
+constexpr int LV_ALIGN_TOP_MID = 1;
+constexpr int LV_ALIGN_TOP_RIGHT = 2;
+int screen_width = 480;
+int clock_bar_current_screen_width(int) { return screen_width; }
+void clock_bar_prepare_text_label(lv_obj_t *obj, int width, int) {
+  if (obj) obj->width = width;
+}
+void lv_obj_align(lv_obj_t *, int, int, int) {}
+void lv_obj_move_background(lv_obj_t *) {}
+void clock_bar_raise_settings_button(lv_obj_t *) {}
 
 // @production
 
@@ -55,31 +71,85 @@ int main() {
   lv_obj_t left;
   lv_obj_t *labels[] = {&left};
   set_clock_bar_temperature_labels(labels, 1);
+  lv_obj_t time;
+  // The S3's 60px item gap must not restrict a fractional reading to 56px.
+  apply_clock_bar_fixed_layout(&left, &time, nullptr, true, true, false,
+                              20, 0, 20, 0, 60);
+  assert(left.width == 181 && time.width == 62);
+  assert(20 + left.width + 8 == (screen_width - time.width) / 2);
+  for (const int width : {480, 800, 1024}) {
+    screen_width = width;
+    apply_clock_bar_fixed_layout(&left, &time, nullptr, true, true, false,
+                                20, 0, 20, 0, 120);
+    assert(left.width > 88);
+    assert(20 + left.width + 8 == (screen_width - time.width) / 2);
+  }
+  screen_width = 480;
+  apply_clock_bar_fixed_layout(&left, &time, nullptr, true, true, false,
+                              20, 0, 20, 0, 60);
   auto refresh = [&](bool visible, bool temperature, float value) {
     refresh_clock_bar_temperature_label_values(nullptr, visible, temperature, false, value, NAN);
   };
+  assert(clock_bar_temperature_precision() == 0);
+  refresh(true, true, 21.5f);
+  assert(left.text == "22°");
+  set_clock_bar_temperature_precision(2);
+  refresh(true, true, 21.25f);
+  assert(left.text == "21.25°");
+  set_clock_bar_temperature_value_count(1);
+  clock_bar_temperature_values()[0] = 21.25f;
+  refresh_clock_bar_temperature_label_values(nullptr, true, false, true, NAN, NAN);
+  assert(left.text == "21.25°");
+  set_clock_bar_modal_label("Climate");
+  clock_bar_temperature_values()[0] = -3.25f;
+  refresh_clock_bar_temperature_label_values(nullptr, true, false, true, NAN, NAN);
+  set_clock_bar_modal_label("");
+  assert(left.text == "-3.25°");
+  set_clock_bar_temperature_value_count(0);
+  set_clock_bar_temperature_precision(-1);
+  assert(clock_bar_temperature_precision() == 0);
+  set_clock_bar_temperature_precision(3);
+  assert(clock_bar_temperature_precision() == 2);
+  set_clock_bar_temperature_precision(1);
+  // Legacy and configured sensor paths retain tenths, including whole values.
+  for (const auto &sample : std::vector<std::pair<float, std::string>>{
+           {21.5f, "21.5°"}, {20.0f, "20.0°"}, {-3.25f, "-3.3°"},
+           {21.96f, "22.0°"}, {NAN, "-°"}}) {
+    refresh(true, true, sample.first);
+    assert(left.text == sample.second && !left.hidden);
+    set_clock_bar_temperature_value_count(1);
+    clock_bar_temperature_values()[0] = sample.first;
+    refresh_clock_bar_temperature_label_values(nullptr, true, false, true, NAN, NAN);
+    assert(left.text == sample.second && !left.hidden);
+    assert(clock_bar_current_temperature_text(false, true, NAN, NAN) == sample.second);
+    set_clock_bar_temperature_value_count(0);
+  }
+  temperature_suffix = "";
+  refresh(true, true, 21.5f);
+  assert(left.text == "21.5");
+  temperature_suffix = "°";
   refresh(true, true, 20);
   const std::string temperature = left.text;
   set_clock_bar_modal_label("Living room climate");
   assert(left.text == "Living room climate" && !left.hidden);
   assert(left.width == clock_bar_left_text_state().title_width);
-  refresh(true, true, 21);
+  refresh(true, true, 21.5f);
   assert(left.text == "Living room climate");
   set_clock_bar_modal_label("");
-  assert(left.text != temperature && left.text.find("21") != std::string::npos);
+  assert(left.text != temperature && left.text == "21.5°");
   assert(left.width == clock_bar_left_text_state().temperature_width);
 
   set_clock_bar_subpage_label("Upstairs");
   set_clock_bar_modal_label("Bedroom speaker");
   set_clock_bar_subpage_label("Upstairs");
-  refresh(true, true, 22);
+  refresh(true, true, 22.4f);
   assert(left.text == "Bedroom speaker");
   set_clock_bar_modal_label("Bedroom light");
   assert(left.text == "Bedroom light");
   set_clock_bar_modal_label("");
   assert(left.text == "Upstairs");
   set_clock_bar_subpage_label("");
-  assert(left.text.find("22") != std::string::npos);
+  assert(left.text == "22.4°");
 
   // A hidden temperature slot still supports titles, then hides on close.
   refresh(true, false, NAN);

@@ -14,6 +14,7 @@ harness = r'''
 #define USE_WIFI
 #define USE_WIFI_AP
 #include <cassert>
+#include <cstring>
 #include <map>
 #include <vector>
 using namespace espcontrol::reset;
@@ -62,7 +63,10 @@ struct Application {
   void feed_wdt() { assert(false && "unexpected retry"); }
 } App;
 void delay(int) {}
-std::string get_mac_address() { return "30:ED:A0:E2:F3:6A"; }
+constexpr size_t MAC_ADDRESS_BUFFER_SIZE = 13;
+void get_mac_address_into_buffer(char (&buf)[MAC_ADDRESS_BUFFER_SIZE]) {
+  std::memcpy(buf, "30eda0e2f36a", sizeof(buf));
+}
 namespace ota {
 struct Callback { template <typename T> void add_global_state_listener(T *) {} } callback;
 Callback *get_global_ota_callback() { return &callback; }
@@ -109,7 +113,7 @@ int main() {
   assert(espcontrol::reset::ResetBoot{}.get_setup_priority() > esphome::setup_priority::WIFI);
   esphome::wifi::wifi.ap = {"EspControl Test", "setup-password"};
   configure_hotspot();
-  assert(esphome::wifi::wifi.ap.ssid == "EspControl_F36A");
+  assert(esphome::wifi::wifi.ap.ssid == "EspControl_f36a");
   assert(esphome::wifi::wifi.ap.password == "setup-password");
   esphome::wifi::wifi.ap = {"Custom Setup", "custom-password"};
   configure_hotspot();

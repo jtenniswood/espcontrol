@@ -281,6 +281,11 @@ def test_native_panel_config_bindings(slug: str, profile: dict, device: str) -> 
         f"{slug}: device.yaml must enable native panel configuration so "
         "cards that contain device-owned settings remain available"
     )
+    if slug == "guition-esp32-p4-jc1060p470-v2":
+        assert panel_config.get("storage") == "card_images", (
+            f"{slug}: native configuration must use the reserved card_images "
+            "partition to avoid exhausting the small shared NVS partition"
+        )
 
     slots = int(profile["slots"])
     buttons = panel_config.get("buttons")
@@ -385,6 +390,23 @@ def test_v3_release_configuration() -> None:
     assert 'js_include: "../docs/public/webserver/embedded/www.js"' in factory
     assert f"!include {V3_SLUG}.factory.yaml" in recovery
     assert "esp32_c6_recovery.yaml" in recovery
+
+
+def test_jc1060p470_v3_configuration() -> None:
+    slug = "guition-esp32-p4-jc1060p470-v3"
+    package = (ROOT / "devices" / slug / "packages.yaml").read_text()
+    device = (ROOT / "devices" / slug / "device" / "device.yaml").read_text()
+    v2 = (ROOT / "devices" / "guition-esp32-p4-jc1060p470-v2" / "device" / "device.yaml").read_text()
+    assert "engineering_sample: false" in device
+    assert "components: [mipi_dsi]" in package
+    assert "ota: false" in package
+    assert f'firmware_manifest_slug: "{slug}"' in package
+    assert 'screen_width: "1024"' in package
+    assert 'screen_height: "600"' in package
+    build = (ROOT / "builds" / f"{slug}.yaml").read_text()
+    assert 'name: "espcontrol-jc1060p470-v3"' in build
+    # Retain the panel initialization that was physically tested in issue #2442.
+    assert device[device.index("display:"):] == v2[v2.index("display:"):]
 
 
 def test_jc4880p443_v3_configuration() -> None:
@@ -1051,6 +1073,7 @@ def main() -> int:
     test_s3_exposes_camera_and_media_cover_art(profiles)
     test_generated_yaml(profiles)
     test_v3_release_configuration()
+    test_jc1060p470_v3_configuration()
     test_jc4880p443_v3_configuration()
     test_public_api_encryption_policy(profile_slugs)
     test_ota_preserves_deployed_partition_layouts()

@@ -6,8 +6,8 @@
 
 inline void weather_metric_setup(BtnSlot &slot, const std::string &mode,
                                  const DisplayProfile &display) {
-  const char *label = mode == "pressure" ? "Air Pressure" : mode == "humidity" ? "Humidity" : "Visibility";
-  const char *icon = mode == "pressure" ? "Gauge" : mode == "humidity" ? "Water Percent" : "Weather Hazy";
+  const char *label = mode == "temperature" ? "Currently" : mode == "pressure" ? "Air Pressure" : mode == "humidity" ? "Humidity" : "Visibility";
+  const char *icon = mode == "temperature" ? "Thermometer" : mode == "pressure" ? "Gauge" : mode == "humidity" ? "Water Percent" : "Weather Hazy";
   lv_obj_clear_flag(slot.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_flag(slot.unit_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -27,10 +27,11 @@ inline void subscribe_weather_metric(BtnSlot &slot, const std::string &entity,
     std::string unit;
     bool available = true;
     bool humidity = false;
+    bool temperature = false;
     void render() const {
       if (generation != ha_subscription_generation() || !lv_obj_is_valid(label)) return;
       const double reading = available && (!humidity || value <= 100) ? value : NAN;
-      lv_label_set_display_text(label, espcontrol::weather_reading::amount(reading, unit).c_str());
+      lv_label_set_display_text(label, espcontrol::weather_reading::amount(reading, unit, temperature).c_str());
       notify_dashboard_content_changed();
     }
   };
@@ -38,6 +39,7 @@ inline void subscribe_weather_metric(BtnSlot &slot, const std::string &entity,
   state->label = slot.sensor_lbl;
   state->generation = ha_subscription_generation();
   state->humidity = mode == "humidity";
+  state->temperature = mode == "temperature";
   if (state->humidity) state->unit = "%";
   const auto value_changed = [state](esphome::StringRef value) {
     state->value = espcontrol::weather_reading::value(string_ref_limited(value, HA_SHORT_STATE_MAX_LEN));

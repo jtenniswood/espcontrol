@@ -101,7 +101,11 @@ async function checkBrowser() {
     await page.locator('#guition-esp32-p4-jc4880p443-version').selectOption('guition-esp32-p4-jc4880p443');
     await install.waitFor();
     assert.equal(await install.getAttribute('manifest'), '/espcontrol/firmware/guition-esp32-p4-jc4880p443/manifest.json');
+    await page.locator('#guition-esp32-p4-jc1060p470-version').selectOption('guition-esp32-p4-jc1060p470-v3');
+    await install.waitFor();
+    assert.equal(await install.getAttribute('manifest'), '/espcontrol/firmware/guition-esp32-p4-jc1060p470-v3/manifest.json');
     for (const [pagePath, manifest] of [
+      ['screens/jc1060p470-v3', '/espcontrol/firmware/guition-esp32-p4-jc1060p470-v3/manifest.json'],
       ['screens/jc4880p443-v3', '/espcontrol/firmware/guition-esp32-p4-jc4880p443-v3/manifest.json'],
       ['screens/jc8012p4a1-v3', '/espcontrol/firmware/guition-esp32-p4-jc8012p4a1-v3/manifest.json'],
     ]) {

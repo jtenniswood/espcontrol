@@ -86,6 +86,15 @@ export const ENTITY_CATALOG = {
         "clock_bar_time_enabled"
       ]
     },
+    "clock_bar_temperature_precision": {
+      "domain": "number",
+      "name": "Clock Bar: Temperature Precision",
+      "objectIds": [
+        "clock_bar__temperature_precision",
+        "clock_bar_temperature_precision",
+        "clock_bar_temperature_precision_setting"
+      ]
+    },
     "clock_bar_temperature_entities": {
       "domain": "text",
       "name": "Clock Bar: Temperature Entities",
@@ -796,6 +805,7 @@ export const ENTITY_CATALOG = {
       "outdoor_temp_enable",
       "screen_clock_bar",
       "screen_clock_bar_time",
+      "clock_bar_temperature_precision",
       "clock_bar_temperature_entities",
       "screen_network_status_icon",
       "screen_clock_bar_night_mode",

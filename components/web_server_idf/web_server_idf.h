@@ -187,8 +187,15 @@ class AsyncWebServerRequest {
   std::string arg(const char *name);
   std::string arg(const std::string &name) { return this->arg(name.c_str()); }
 
+#ifdef USE_WEBSERVER_OTA
+  /// Run cleanup when this request ends, including interrupted uploads.
+  void onDisconnect(std::function<void()> callback) { this->on_disconnect_ = std::move(callback); }
+#endif
+
   operator httpd_req_t *() const { return this->req_; }
   optional<std::string> get_header(const char *name) const;
+  /// Return the header length, 0 if absent, or SIZE_MAX if it does not fit.
+  size_t get_header_to(const char *name, std::span<char> buf) const;
   // NOLINTNEXTLINE(readability-identifier-naming)
   bool hasHeader(const char *name) const;
 
@@ -202,6 +209,9 @@ class AsyncWebServerRequest {
   optional<std::string> find_query_value_(const char *name) const;
   std::vector<AsyncWebParameter *> params_;
   std::string post_query_;
+#ifdef USE_WEBSERVER_OTA
+  std::function<void()> on_disconnect_;
+#endif
 #ifdef USE_WEBSERVER_AUTH_DIGEST
   mutable bool digest_nonce_stale_{false};
   // A raw-body handler may authenticate once before receiving the body and
@@ -372,6 +382,10 @@ class AsyncEventSource : public AsyncWebHandler {
   void try_send_nodefer(const char *message, size_t message_len, const char *event = nullptr, uint32_t id = 0,
                         uint32_t reconnect = 0);
   void deferrable_send_state(void *source, const char *event_type, message_generator_t *message_generator);
+  // ESPHome 2026.11 passes a detail flag instead of an event name.
+  void deferrable_send_state(void *source, bool detail_all, message_generator_t *message_generator) {
+    this->deferrable_send_state(source, detail_all ? "state_detail_all" : "state", message_generator);
+  }
   /// Returns true if there are sessions remaining (including pending cleanup).
   bool loop();
   bool empty() { return this->count() == 0; }

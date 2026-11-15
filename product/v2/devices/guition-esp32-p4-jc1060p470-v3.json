@@ -1,0 +1,48 @@
+{
+  "profiles": {
+    "platform": "esp32-p4",
+    "display": "jc1060p470-1024x600",
+    "modal": "wide-landscape",
+    "fonts": "large-panel-p4",
+    "network": [
+      "c6-firmware-update",
+      "network-coprocessor",
+      "ethernet-selection"
+    ],
+    "artwork": "landscape-1024x600"
+  },
+  "config": {
+    "public": {
+      "name": "Guition JC1060P470 V3 (production silicon)",
+      "docsPath": "/screens/jc1060p470-v3"
+    },
+    "web": {
+      "continuousCorners": true,
+      "btn": {
+        "smallTextSize": 1.757812
+      }
+    },
+    "firmware": {
+      "package": {
+        "substitutions": {
+          "button_radius": "10px"
+        }
+      }
+    }
+  },
+  "overrides": {
+    "firmware": {
+      "package": {
+        "backlightPwmFrequency": {
+          "wifi": "1000Hz",
+          "ethernet": "20000Hz"
+        }
+      }
+    },
+    "web": {
+      "grid": {
+        "gap": 0.976562
+      }
+    }
+  }
+}

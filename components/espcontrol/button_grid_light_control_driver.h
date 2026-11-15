@@ -106,11 +106,11 @@ inline bool light_control_driver_bind_subpage(
   if (environment.add_parent_indicator) {
     environment.add_parent_indicator(config.entity);
   }
-  lv_obj_add_event_cb(slot.btn, [](lv_event_t *event) {
+  bind_navigation_button_action(slot.btn, [](lv_event_t *event) {
     LightControlCtx *context = static_cast<LightControlCtx *>(
       lv_event_get_user_data(event));
     if (context) light_control_open_modal(context);
-  }, LV_EVENT_CLICKED, light);
+  }, light);
   return true;
 }
 

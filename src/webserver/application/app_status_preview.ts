@@ -329,7 +329,10 @@ export function createAppStatusPreviewFeature(runtime: UiRuntimeState, core: Cor
             if (index === 0 && state._outdoorVal != null)
                 value = state._outdoorVal;
             el.className = "sp-temp" + (show ? " sp-visible" : "");
-            el.textContent = value + unit;
+            var numericValue = Number(value);
+            el.textContent = (Number.isFinite(numericValue)
+                ? numericValue.toFixed(state.clockBarTemperaturePrecision)
+                : value) + unit;
         });
     }
     function normalizeNetworkTransport(this: any, value?: any) {

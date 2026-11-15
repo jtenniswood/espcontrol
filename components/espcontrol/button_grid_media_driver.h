@@ -496,14 +496,20 @@ inline bool media_driver_bind_subpage(
   ParsedCfg *click = grid_delete_with_owner(
     slot.btn, new ParsedCfg(config));
   const std::string mode = media_card_mode(config.sensor);
-  lv_obj_add_event_cb(slot.btn, [](lv_event_t *event) {
+  const auto action = [](lv_event_t *event) {
     ParsedCfg *saved = static_cast<ParsedCfg *>(
       lv_event_get_user_data(event));
     lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(event));
     if (!saved) return;
     media_driver_handle_click(
       card_runtime_context(*saved, Surface::SUBPAGE), *saved, target);
-  }, media_fast_press_mode(mode) ? LV_EVENT_PRESSED : LV_EVENT_CLICKED, click);
+  };
+  if (card_runtime_main_click_opens_modal(context)) {
+    bind_navigation_button_action(slot.btn, action, click);
+  } else {
+    lv_obj_add_event_cb(slot.btn, action,
+      media_fast_press_mode(mode) ? LV_EVENT_PRESSED : LV_EVENT_CLICKED, click);
+  }
   return true;
 }
 

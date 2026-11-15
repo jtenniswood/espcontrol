@@ -1505,11 +1505,13 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
       true,
       `${label}: WiFi automatic updates should be enabled by default`,
     );
-    assert.strictEqual(
-      await firmwareCard
-        .locator(".sp-fw-overview .sp-fw-actions")
-        .evaluate((node) => getComputedStyle(node).justifyContent),
-      "flex-end",
+    assert(
+      await firmwareCard.locator(".sp-fw-overview").evaluate((overview) => {
+        const actionRight = overview.querySelector(".sp-fw-btn").getBoundingClientRect().right;
+        return Array.from(overview.querySelectorAll(".sp-fw-version")).every(
+          (version) => Math.abs(version.getBoundingClientRect().right - actionRight) < 1,
+        );
+      }),
       `${label}: firmware actions should align with the version values`,
     );
     await page.evaluate(() => window.__seedEspState([{
@@ -3354,9 +3356,8 @@ async function assertAllCardSettingsGrouped(page, posts, label) {
       );
     }
 
-    const typeSelect = page.locator(
-      '.sp-settings-modal .sp-panel > [data-sp-card-primary="type"] select',
-    );
+    const primaryType = page.locator('.sp-settings-modal .sp-panel > [data-sp-card-primary="type"]');
+    const typeSelect = primaryType.locator(cardOption.value === "weather" ? "#sp-inp-weather-display" : "select");
     if ((await typeSelect.count()) > 0) {
       if (cardOption.value === "fan_speed") {
         assert.deepStrictEqual(
@@ -5114,63 +5115,13 @@ async function assertCardTransferSmoke(page, posts, label) {
     await page.locator(".sp-ctx-menu").getByText("Copy Code", { exact: true }).isVisible(),
     `${label}: card context menu exposes transfer-code copying`,
   );
-  await page.locator(".sp-ctx-menu").getByText("Copy Code", { exact: true }).click();
-  const copyDialog = page.locator(".sp-transfer-dialog");
-  await copyDialog.waitFor({ state: "visible" });
-  assert.strictEqual(
-    await copyDialog.getByRole("heading", { name: "Copy Code", exact: true }).count(),
-    1,
-    `${label}: copy dialog uses the concise title`,
-  );
-  const code = await copyDialog.locator("textarea").inputValue();
-  const envelope = JSON.parse(code);
-  assert.strictEqual(envelope.format, "espcontrol.cards", `${label}: copied card code has the format marker`);
-  assert.strictEqual(envelope.version, 1, `${label}: copied card code uses version 1`);
-  assert.strictEqual(envelope.cards.length, 1, `${label}: single-card code contains one card`);
-  assert(
-    String(envelope.cards[0].entity || "").includes("."),
-    `${label}: copied code preserves the configured entity`,
-  );
-  assert.strictEqual(
-    await copyDialog.getByText("Copy this code to another controller.", { exact: true }).count(),
-    1,
-    `${label}: copy dialog uses concise guidance`,
-  );
-  const copyButton = copyDialog.getByRole("button", { name: "Copy", exact: true });
-  assert.strictEqual(await copyButton.count(), 1, `${label}: copy dialog exposes a clipboard copy button`);
-  assert(
-    await copyButton.evaluate((button) =>
-      button.classList.contains("sp-action-btn") &&
-      button.classList.contains("sp-transfer-copy-btn") &&
-      button.querySelector(".mdi-content-copy"),
-    ),
-    `${label}: copy button uses the copy icon and transfer button style`,
-  );
-  assert.strictEqual(
-    await copyDialog.locator(".sp-transfer-actions").count(),
-    1,
-    `${label}: copy dialog shows footer actions`,
-  );
-  assert.strictEqual(
-    await copyDialog.getByText(/Press (Command|Ctrl)\+C to copy\./).count(),
-    0,
-    `${label}: copy dialog does not show a clipboard shortcut instruction`,
-  );
-  const copySelection = await copyDialog.locator("textarea").evaluate((textarea) => ({
-    start: textarea.selectionStart,
-    end: textarea.selectionEnd,
-    length: textarea.value.length,
-  }));
-  assert.deepStrictEqual(
-    copySelection,
-    { start: 0, end: copySelection.length, length: copySelection.length },
-    `${label}: card code is selected for manual copying`,
-  );
+  let code;
   for (const mode of ["modern", "http", "denied", "blocked"]) {
     await page.evaluate((mode) => {
       window.__copyTestOriginalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
       window.__copyTestOriginalExec = document.execCommand;
       window.__copiedCode = null;
+      document.querySelector(".sp-banner").className = "sp-banner";
       Object.defineProperty(navigator, "clipboard", { configurable: true, value: mode === "http" ? undefined : {
         writeText: async (value) => {
           if (mode !== "modern") throw new Error("Clipboard permission denied");
@@ -5179,32 +5130,29 @@ async function assertCardTransferSmoke(page, posts, label) {
       } });
       document.execCommand = (command) => {
         if (command !== "copy" || mode === "blocked") return false;
-        const textarea = document.querySelector(".sp-transfer-code");
+        const textarea = document.activeElement;
         window.__copiedCode = textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
         return true;
       };
     }, mode);
-    await copyDialog.getByRole("button", { name: "Copy", exact: true }).click();
-    await page.waitForFunction(() => !document.querySelector(".sp-transfer-actions .sp-transfer-copy-btn").disabled);
-    assert.strictEqual(await copyDialog.getByRole("status").textContent(), mode === "blocked"
-      ? "Could not copy automatically. Copy the selected code manually."
-      : "", `${label}: copying only shows a message when it fails`);
-    assert.strictEqual(await page.evaluate(() => window.__copiedCode), mode === "blocked" ? null : code,
-      `${label}: ${mode} clipboard path copies the exact code or reports failure`);
-    if (mode === "blocked") {
-      assert.strictEqual(await copyDialog.getByRole("button", { name: "Copy", exact: true }).count(), 1,
-        `${label}: failed copying keeps the default button state`);
-    } else {
-      const copiedButton = copyDialog.getByRole("button", { name: "Copied", exact: true });
-      assert.strictEqual(await copiedButton.count(), 1, `${label}: successful copying shows the copied state`);
-      assert(
-        await copiedButton.evaluate((button) =>
-          button.classList.contains("sp-copied") && button.querySelector(".mdi-check"),
-        ),
-        `${label}: successful copying uses the check icon and accent state`,
-      );
-      await copyDialog.getByRole("button", { name: "Copy", exact: true }).waitFor({ state: "visible" });
+    if (mode !== "modern") {
+      await page.locator('.sp-main [data-slot="1"]').click({ button: "right", force: true });
+      await page.locator(".sp-ctx-menu").waitFor({ state: "visible" });
     }
+    const textareaCount = await page.locator("textarea").count();
+    await page.locator(".sp-ctx-menu").getByText("Copy Code", { exact: true }).click();
+    await page.locator(mode === "blocked" ? ".sp-banner.sp-error" : ".sp-banner.sp-success").waitFor({ state: "visible" });
+    assert.strictEqual(await page.locator(".sp-transfer-dialog").count(), 0,
+      `${label}: copying code does not open a modal`);
+    assert.strictEqual(await page.locator("textarea").count(), textareaCount,
+      `${label}: copying cleans up the fallback textarea`);
+    assert.strictEqual(await page.locator(".sp-banner").textContent(), mode === "blocked"
+      ? "Could not copy card code. Check your browser clipboard permissions and try again."
+      : "Card code copied to clipboard.", `${label}: copying reports success only when it succeeds`);
+    const copiedCode = await page.evaluate(() => window.__copiedCode);
+    if (mode === "modern") code = copiedCode;
+    assert.strictEqual(copiedCode, mode === "blocked" ? null : code,
+      `${label}: ${mode} clipboard path copies the exact code or reports failure`);
     await page.evaluate(() => {
       if (window.__copyTestOriginalClipboard) Object.defineProperty(navigator, "clipboard", window.__copyTestOriginalClipboard);
       else delete navigator.clipboard;
@@ -5214,27 +5162,12 @@ async function assertCardTransferSmoke(page, posts, label) {
       delete window.__copiedCode;
     });
   }
-  const dialogFont = await copyDialog.evaluate((element) => getComputedStyle(element).fontFamily);
-  assert(/Inter|Segoe UI|Roboto|sans-serif/i.test(dialogFont), `${label}: copy dialog uses the web UI font stack`);
-  const codeFont = await copyDialog.locator("textarea").evaluate((element) => getComputedStyle(element).fontFamily);
-  assert(/ui-monospace|SFMono|Menlo|Consolas|monospace/i.test(codeFont), `${label}: transfer code uses a monospace font`);
-  const closeControl = await copyDialog.locator(".sp-transfer-close").evaluate((button) => {
-    const rect = button.getBoundingClientRect();
-    const icon = button.querySelector(".sp-transfer-close-icon path");
-    return {
-      buttonType: button.type,
-      hasInlineIcon: !!icon,
-      width: rect.width,
-      height: rect.height,
-      touchAction: getComputedStyle(button).touchAction,
-    };
-  });
-  assert.strictEqual(closeControl.buttonType, "button", `${label}: close control cannot submit another form`);
-  assert(closeControl.hasInlineIcon, `${label}: close control uses a self-contained icon`);
-  assert(closeControl.width >= 36 && closeControl.height >= 36, `${label}: close control has a usable target size`);
-  assert.strictEqual(closeControl.touchAction, "manipulation", `${label}: close control responds promptly to touch`);
-  await copyDialog.locator(".sp-transfer-close").click();
-  await copyDialog.waitFor({ state: "detached" });
+  const envelope = JSON.parse(code);
+  assert.strictEqual(envelope.format, "espcontrol.cards", `${label}: copied card code has the format marker`);
+  assert.strictEqual(envelope.version, 1, `${label}: copied card code uses version 1`);
+  assert.strictEqual(envelope.cards.length, 1, `${label}: single-card code contains one card`);
+  assert(String(envelope.cards[0].entity || "").includes("."),
+    `${label}: copied code preserves the configured entity`);
 
   const beforePaste = posts.length;
   const destination = await openPasteCardCodeDialog(page);
@@ -5590,6 +5523,10 @@ async function assertClockBarEditorSmoke(page, posts, label) {
   await page
     .locator("#sp-clockbar-temperature-entity")
     .fill("sensor.porch_temperature");
+  const precision = page.locator("#sp-clockbar-temperature-precision");
+  assert.strictEqual(await precision.inputValue(), "0", label + ": precision defaults to whole numbers");
+  assert.deepStrictEqual(await precision.locator("option").allTextContents(), ["10", "10.2", "10.21"]);
+  await precision.selectOption("2");
   const degreeSymbolLabel = page.locator(
     'label[for="sp-clockbar-temperature-degree-symbol"]',
   );
@@ -5647,6 +5584,25 @@ async function assertClockBarEditorSmoke(page, posts, label) {
     .click({ force: true });
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  assert.strictEqual(await precision.inputValue(), "2", label + ": precision selection is retained");
+  assert.strictEqual(
+    await page.locator('[data-clockbar-item="temperature"] .sp-temp').textContent(),
+    "17.00",
+    label + ": preview uses two decimal places",
+  );
+  await waitForAnyPost(posts, [
+    { domain: "number", name: "Clock Bar: Temperature Precision", action: "set", value: "2" },
+    { domain: "number", name: "clock_bar__temperature_precision", action: "set", value: "2" },
+  ], label + ": saving posts precision", before);
+  for (const [option, expected] of [["1", "17.0"], ["0", "17"]]) {
+    await precision.selectOption(option);
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    assert.strictEqual(await page.locator('[data-clockbar-item="temperature"] .sp-temp').textContent(), expected);
+    await page.locator('[data-clockbar-item="temperature"]').click({ force: true });
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.waitForSelector(".sp-settings-overlay.sp-visible");
+    assert.strictEqual(await precision.inputValue(), option, label + ": precision survives reopening");
+  }
   const modalHideButton = page.locator(".sp-settings-modal .sp-hide-btn");
   assert.strictEqual(
     await modalHideButton.count(),
@@ -7575,7 +7531,7 @@ async function assertWeatherWidthScaling(browser) {
   const page = await browser.newPage();
   try {
     await page.setContent('<style>' + createWebStyles(false) + '</style><div id="weather" class="sp-btn sp-weather-daily-card" style="position:relative;width:120px;height:120px;--btn-label:16px;--btn-icon:32px;--btn-pad:8px;--r:8px"><span class="sp-weather-days">' +
-      Array.from({ length: 8 }, (_, i) => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + (i ? 'Tues' : 'Today') + '</span><span class="sp-weather-temperature-high">18°/2°</span></span>').join('') + '</span></div>');
+      Array.from({ length: 8 }, (_, i) => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + (i ? 'Tue' : 'Today') + '</span><span class="sp-weather-temperature-high">18°/2°</span></span>').join('') + '</span></div>');
     const firstDayRows = await page.locator('.sp-weather-day').first().evaluate(day => Array.from(day.children).map(child => child.textContent));
     assert.deepStrictEqual(firstDayRows, ['☀', 'Today', '18°/2°'], 'Daily preview matches the device order and omits a separate low temperature row.');
     await page.addScriptTag({content:layoutScript});
@@ -7586,8 +7542,10 @@ async function assertWeatherWidthScaling(browser) {
     const counts = [];
     for (const width of [120, 240, 420, 900]) {
       await page.locator('#weather').evaluate((card, value) => { card.style.width = value + 'px'; card.getBoundingClientRect(); }, width);
-      await page.waitForFunction(value => Math.abs(document.querySelector("#weather").getBoundingClientRect().width - value) < 1, width);
-      await page.evaluate(() => new Promise(requestAnimationFrame));
+      await page.waitForFunction(previousCount => {
+        const card = document.querySelector('#weather');
+        return card.dataset.weatherRows === '1' && Number(card.dataset.weatherColumns) > previousCount;
+      }, counts.at(-1) ?? 0);
       counts.push(await page.locator('.sp-weather-day').evaluateAll(days => days.filter(day => getComputedStyle(day).display !== 'none').length));
       const fill = await page.locator('.sp-weather-days').evaluate(row => {
         const columns = Array.from(row.children).filter(day => !day.hidden).map(day => day.getBoundingClientRect());
@@ -7603,12 +7561,17 @@ async function assertWeatherWidthScaling(browser) {
     assert(counts[0] === 1 && counts[3] === 8 && counts.every((count, i) => i === 0 || count > counts[i - 1]),
       'Daily forecast preview adds complete day columns as its width increases: ' + counts.join(','));
     await page.locator('#weather').evaluate(card => { card.style.width = '420px'; card.getBoundingClientRect(); });
+    await page.waitForFunction(count => {
+      const card = document.querySelector('#weather');
+      return card.dataset.weatherRows === '1' && Number(card.dataset.weatherColumns) === count;
+    }, counts[2]);
     const columnGap = await page.locator('.sp-weather-day').evaluateAll(days => {
       const visible = days.filter(day => getComputedStyle(day).display !== 'none');
       return visible[1].getBoundingClientRect().left - visible[0].getBoundingClientRect().right;
     });
     assert(columnGap >= 19, 'Daily forecast preview matches the wider device gap between columns: ' + columnGap);
-    for (const height of [120, 240]) {
+    // Keep this fixture in one row. The S3 span checks below cover multi-row layouts.
+    for (const height of [120, 144]) {
       await page.locator('#weather').evaluate((card, value) => { card.style.height = value + 'px'; }, height);
       await page.waitForFunction(value => Math.abs(document.querySelector('#weather').getBoundingClientRect().height - value) < 1, height);
       const columns = await page.locator('.sp-weather-day').evaluateAll(days => days
@@ -7642,7 +7605,7 @@ async function assertWeatherWidthScaling(browser) {
     await page.setContent('<style>@font-face{font-family:Roboto;src:url(data:font/woff2;base64,' + roboto + ')}' + createWebStyles(false) + '</style>' +
       '<div class="sp-screen" style="' + Object.entries(vars).map(([key, value]) => key + ':' + value).join(';') + '"><div class="sp-main">' +
       '<div id="weather" class="sp-btn sp-weather-daily-card" style="grid-column:span 3"><span class="sp-weather-days">' +
-      ['Today','Tues','Weds','Thurs','Fri','Sat','Sun','Mon'].map(day => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + day + '</span><span class="sp-weather-temperature-high">18°/2°</span></span>').join('') + '</span></div></div></div>');
+      ['Today','Tue','Wed','Thu','Fri','Sat','Sun','Mon'].map(day => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + day + '</span><span class="sp-weather-temperature-high">18°/2°</span></span>').join('') + '</span></div></div></div>');
     await page.evaluate(() => document.fonts.ready);
     await page.addScriptTag({content:layoutScript});
     await page.evaluate(() => {
@@ -7709,7 +7672,7 @@ async function assertWeatherWidthScaling(browser) {
         assert(bounds,`${wide}w ${tall}h forecast content fits at preview width ${previewWidth}`);
         if(wide===1 && tall>1){
           assert.deepEqual(await page.locator('#weather .sp-weather-day:not([hidden])>span:nth-child(2)').allTextContents(),
-            ['Today','Tues','Weds'].slice(0,rows),'Narrow stacked cards show consecutive days without skipping entries');
+            ['Today','Tue','Wed'].slice(0,rows),'Narrow stacked cards show consecutive days without skipping entries');
         }
         if(rows>1 && !list){
           const spacing=await page.locator('#weather').evaluate((card,columns)=>{
@@ -7736,6 +7699,16 @@ async function assertWeatherWidthScaling(browser) {
 }
 
 async function assertS3ForecastEditorLayout(browser) {
+  const measureDay = day => {
+    const left = day.getBoundingClientRect().left;
+    const [icon, weekday, temperature] = day.children;
+    return {
+      leftAligned: [icon, weekday, temperature].every(child => Math.abs(child.getBoundingClientRect().left - left) < 1),
+      iconTop: icon.getBoundingClientRect().top,
+      weekdayTop: weekday.getBoundingClientRect().top,
+      temperature: temperature.textContent,
+    };
+  };
   const slug = 'guition-esp32-s3-4848s040';
   const nativeState = nativeConfigState(slug);
   nativeState.document.buttons[1] = 'weather.home;;Auto;Auto;;;weather;daily';
@@ -7754,7 +7727,7 @@ async function assertS3ForecastEditorLayout(browser) {
       await page.setViewportSize({ width, height: 1000 });
       await page.waitForFunction(() => document.querySelectorAll('.sp-weather-daily-card .sp-weather-day:not([hidden])').length === 4);
       const day = page.locator('.sp-weather-day:not([hidden])').first();
-      assert.strictEqual(await day.evaluate(element => getComputedStyle(element).alignItems), 'flex-start');
+      assert((await day.evaluate(measureDay)).leftAligned, 'Forecast icons and text align with the left edge of the day.');
     }
     await page.locator('.sp-screen').screenshot({ path: '/tmp/weather-preview-s3-editor-after.png' });
     console.log('S3 editor integration: 3×1 forecast shows four left-aligned days before and after resizing.');
@@ -7763,7 +7736,7 @@ async function assertS3ForecastEditorLayout(browser) {
     await page.waitForSelector(".sp-settings-overlay.sp-visible");
     const modeSelect = page.locator('[id$="weather-display"]');
     assert.deepStrictEqual(await modeSelect.locator('option').allTextContents(),
-      ["Air Pressure", "Current Conditions", "Forecast", "Humidity", "Rainfall", "Visibility", "Wind"]);
+      ["Air Pressure", "Current Conditions", "Forecast", "Humidity", "Rainfall", "Temperature", "Visibility", "Wind"]);
     assert.strictEqual(await modeSelect.inputValue(), "forecast");
     assert.strictEqual(await page.locator('[id$="weather-period"]').inputValue(), "daily");
     assert.deepStrictEqual(await page.locator('[id$="weather-period"] option').allTextContents(), ["Today", "Tomorrow", "Week"]);
@@ -7777,13 +7750,9 @@ async function assertS3ForecastEditorLayout(browser) {
         return days.length === 1 && days[0].textContent.includes(expected);
       }, label);
       assert.strictEqual(await days.count(), 1);
-      const geometry = await days.first().evaluate(day => {
-        const spans = day.querySelectorAll(':scope > span');
-        return {left: getComputedStyle(day).alignItems, icon: spans[0].getBoundingClientRect().top,
-          text: spans[1].getBoundingClientRect().top, high: spans[2].textContent};
-      });
-      assert.strictEqual(geometry.left, 'flex-start');
-      assert(geometry.icon < geometry.text && /^\d+°\/\d+°$/.test(geometry.high),
+      const geometry = await days.first().evaluate(measureDay);
+      assert(geometry.leftAligned, 'Single-day forecast icons and text align with the left edge of the day.');
+      assert(geometry.iconTop < geometry.weekdayTop && /^\d+°\/\d+°$/.test(geometry.temperature),
         'Single-day forecasts keep the icon above the day and show the high/low pair.');
       await page.setViewportSize({width: 1000, height: 1000});
       assert.strictEqual(await days.count(), 1, 'Single-day mode stays one day on a 3×1 card after resizing.');
@@ -8069,7 +8038,7 @@ async function assertRainfallEditor(browser) {
 
 async function assertWeatherReadingEditors(browser) {
   const slug = "guition-esp32-p4-jc1060p470";
-  for (const mode of ["pressure", "humidity", "visibility"]) {
+  for (const mode of ["pressure", "humidity", "visibility", "temperature"]) {
     const nativeState = nativeConfigState(slug);
     const sensor = "sensor." + mode;
     nativeState.document.buttons[1] = (mode === "visibility" ? "weather.home" : sensor) + ";;Auto;Auto;;;weather;" + mode;
@@ -8121,7 +8090,7 @@ async function assertWeatherReadingEditors(browser) {
       });
       assert.deepStrictEqual(styles.reading, styles.rain, mode + " matches Rainfall text styling");
       assert(styles.left >= 10 && styles.bottom >= 10, mode + " retains card padding");
-      assert.strictEqual(styles.text, mode === "pressure" ? "1013 hPa" : mode === "humidity" ? "65 %" : "10 km");
+      assert.strictEqual(styles.text, mode === "temperature" ? "18.5 °C" : mode === "pressure" ? "1013 hPa" : mode === "humidity" ? "65 %" : "10 km");
       await page.reload();
       await page.waitForSelector('#sp-app');
       await seedNativeDocument(page, nativeState);
@@ -8155,6 +8124,27 @@ async function assertWeatherReadingEditors(browser) {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_CLOCK_BAR_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) {
+        const context = await browser.newContext({ viewport: testCase.viewport });
+        await installRoutes(context, testCase.slug);
+        const page = await context.newPage();
+        const posts = [];
+        page.on("request", request => {
+          if (request.method() === "POST") posts.push(postRecord(request.url()));
+        });
+        await installFakeEventSource(page);
+        try {
+          await page.goto("http://espcontrol.test/" + testCase.slug + "?events=1", { waitUntil: "domcontentloaded" });
+          await page.waitForSelector("#sp-app");
+          await page.waitForFunction(() => window.__eventSources?.length > 0);
+          await page.evaluate(events => window.__seedEspState(events), seededEvents());
+          await assertClockBarEditorSmoke(page, posts, testCase.name);
+        } finally { await context.close(); }
+      }
+      console.log("Clock bar editor checks passed.");
+      return;
+    }
     if (process.env.ESPCONTROL_PIN_ONLY === "1") {
       await assertScreensaverPinSettings(browser);
       console.log("PIN settings browser checks passed.");

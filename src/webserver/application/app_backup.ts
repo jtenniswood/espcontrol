@@ -168,6 +168,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
         postAlarmDelayExitAnnouncement,
         postAlarmDelayBeepVolume,
         postAlarmDelayFinalCountdown,
+        postClockBarTemperaturePrecision,
         postTemperatureDegreeSymbol,
         postSubpageChevron,
     } = controllers.clockBarPostApi;
@@ -273,6 +274,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 alarm_delay_exit_announcement: state.alarmDelayExitAnnouncement,
                 alarm_delay_beep_volume: state.alarmDelayBeepVolume,
                 alarm_delay_final_countdown: state.alarmDelayFinalCountdown,
+                clock_bar_temperature_precision: state.clockBarTemperaturePrecision,
                 temperature_degree_symbol: state.temperatureDegreeSymbolOn,
                 subpage_chevron: state.subpageChevronsOn,
                 timezone: state.timezone,
@@ -513,6 +515,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                         postAlarmDelayBeepVolume(importedSettings.alarmDelayBeepVolume);
                         postAlarmDelayFinalCountdown(importedSettings.alarmDelayFinalCountdown);
                     }
+                    postClockBarTemperaturePrecision(importedSettings.clockBarTemperaturePrecision);
                     postTemperatureDegreeSymbol(importedSettings.temperatureDegreeSymbol);
                     postSubpageChevron(importedSettings.subpageChevron);
                     var importedTimezone: any = importedSettings.timezone;
@@ -614,6 +617,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     state.alarmDelayExitAnnouncement = importedSettings.alarmDelayExitAnnouncement;
                     state.alarmDelayBeepVolume = importedSettings.alarmDelayBeepVolume;
                     state.alarmDelayFinalCountdown = importedSettings.alarmDelayFinalCountdown;
+                    state.clockBarTemperaturePrecision = importedSettings.clockBarTemperaturePrecision;
                     state.temperatureDegreeSymbolOn = importedSettings.temperatureDegreeSymbol;
                     state.subpageChevronsOn = importedSettings.subpageChevron;
                     state.timezone = importedTimezone;

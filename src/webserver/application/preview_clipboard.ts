@@ -568,8 +568,8 @@ export function createPreviewClipboardFeature(
         cardTransferOverlay = overlay;
         return dialog;
     }
-    function showCopyCardCode(slots: any) {
-        var code: any;
+    async function showCopyCardCode(slots: any) {
+        var code: string;
         try {
             code = cardTransferCodeForSlots(slots);
         }
@@ -577,79 +577,41 @@ export function createPreviewClipboardFeature(
             showBanner(error.cardTransferMessage || error.message || "Could not create card code.", "error");
             return;
         }
-        var dialog: any = createCardTransferDialog("Copy Code");
-        var intro: any = document.createElement("p");
-        intro.textContent = "Copy this code to another controller.";
-        dialog.appendChild(intro);
-        var textarea: any = document.createElement("textarea");
-        textarea.className = "sp-input sp-textarea sp-transfer-code";
-        textarea.readOnly = true;
-        textarea.value = code;
-        textarea.setAttribute("aria-label", "Card transfer code");
-        dialog.appendChild(textarea);
-        var status = document.createElement("p");
-        status.className = "sp-transfer-note";
-        status.setAttribute("role", "status");
-        dialog.appendChild(status);
-        var actions = document.createElement("div");
-        actions.className = "sp-transfer-actions sp-btn-row";
-        var copy = createActionButton("sp-action-btn sp-transfer-copy-btn", "", "content-copy");
-        var copyLabel: any = document.createTextNode("Copy");
-        copy.appendChild(copyLabel);
-        var copyIcon: any = copy.querySelector(".mdi");
-        var copyResetTimer: any;
-        function setCopyButtonState(copied: any) {
-            copy.classList.toggle("sp-copied", copied);
-            copyIcon.className = copied ? "mdi mdi-check" : "mdi mdi-content-copy";
-            copyLabel.textContent = copied ? "Copied" : "Copy";
-        }
-        copy.addEventListener("click", async function () {
-            if (copyResetTimer) {
-                clearTimeout(copyResetTimer);
-                copyResetTimer = null;
+        var copied = false;
+        try {
+            var clipboard = document.defaultView?.navigator.clipboard;
+            if (clipboard) {
+                await clipboard.writeText(code);
+                copied = true;
             }
-            copy.disabled = true;
-            setCopyButtonState(false);
-            status.textContent = "";
-            var copied = false;
+        }
+        catch (_) {
+            // Local HTTP pages and browser permissions may require selection-based copying.
+        }
+        if (!copied) {
+            var previousFocus = document.activeElement as HTMLElement | null;
+            var textarea = document.createElement("textarea");
+            textarea.value = code;
+            textarea.readOnly = true;
+            textarea.style.position = "fixed";
+            textarea.style.opacity = "0";
+            textarea.style.pointerEvents = "none";
+            document.body.appendChild(textarea);
             try {
-                var clipboard = document.defaultView?.navigator.clipboard;
-                if (clipboard) {
-                    await clipboard.writeText(code);
-                    copied = true;
-                }
+                textarea.focus({ preventScroll: true });
+                textarea.select();
+                copied = document.execCommand("copy");
             }
             catch (_) {
-                // Local HTTP pages and browser permissions may require selection-based copying.
+                // Report blocked copying without claiming the clipboard was updated.
             }
-            if (!copied && dialog.isConnected) {
-                textarea.focus();
-                textarea.select();
-                try {
-                    copied = document.execCommand("copy");
-                }
-                catch (_) {
-                    // Leave the code selected for manual copying.
-                }
+            finally {
+                textarea.remove();
+                previousFocus?.focus({ preventScroll: true });
             }
-            status.textContent = copied
-                ? ""
-                : "Could not copy automatically. Copy the selected code manually.";
-            copy.disabled = false;
-            if (copied && dialog.isConnected) {
-                setCopyButtonState(true);
-                copyResetTimer = setTimeout(function () {
-                    copyResetTimer = null;
-                    if (dialog.isConnected)
-                        setCopyButtonState(false);
-                }, 2000);
-                copy.focus();
-            }
-        });
-        actions.appendChild(copy);
-        dialog.appendChild(actions);
-        textarea.focus();
-        textarea.select();
+        }
+        showBanner(copied ? "Card code copied to clipboard." : "Could not copy card code. Check your browser clipboard permissions and try again.",
+            copied ? "success" : "error");
     }
     function showPasteCardCode(pos: any, targetIsSubpage: any) {
         var dialog: any = createCardTransferDialog("Paste Code");

@@ -36,7 +36,7 @@ std::vector<uint8_t> fixture() {
 
 int main(int argc, char **) {
   const auto document = fixture();
-  const std::string settings = R"({"language":"de","clock_bar":false,"ntp_server_1":"time.example.test","screensaver_timeout":90})";
+  const std::string settings = R"({"language":"de","clock_bar_temperature_precision":2,"clock_bar":false,"ntp_server_1":"time.example.test","screensaver_timeout":90})";
   const std::string screen = R"({"brightness_day":42,"theme_mode":"Light","schedule_trigger":"sensor","schedule_sensor_entity":"binary_sensor.room"})";
   const std::string identity = R"({"version":1,"name":"Kitchen","hostname":"kitchen-ab1234","mac_suffix":"ab1234"})";
   std::string output;

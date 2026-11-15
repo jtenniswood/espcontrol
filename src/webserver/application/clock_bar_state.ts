@@ -1,5 +1,5 @@
 import { state } from "../state/app_instance";
-import { normalizeTemperatureUnit } from "../model/settings";
+import { normalizeClockBarTemperaturePrecision, normalizeTemperatureUnit } from "../model/settings";
 import type { ClockBarController } from "../features/clock_bar_controller";
 import type { UiRuntimeState } from "./state";
 import type { CoreFeature } from "./core";
@@ -21,7 +21,7 @@ export interface ClockBarFeature {
     primaryTemperatureEntity(): string;
     temperatureVisible(): boolean;
     applyTemperatureEntities(list?: any, postDevice?: any): void;
-    saveTemperatureSettings(entity?: any, degreeSymbolOn?: any): void;
+    saveTemperatureSettings(entity?: any, degreeSymbolOn?: any, precision?: any): void;
     setItemVisible(item?: any, visible?: any): void;
     syncTemperatureUi(): void;
     syncUi(): void;
@@ -41,6 +41,7 @@ export function createClockBarFeature(
         postText(name: string, value: string): void;
         updateTemperaturePreview(): void;
         updateItemUi(): void;
+        postTemperaturePrecision(value: number): void;
         postTemperatureDegreeSymbol(value: boolean): void;
         isTemperatureItem(item?: any): boolean;
         postTime(value: boolean): void;
@@ -188,7 +189,7 @@ export function createClockBarFeature(
         dependencies.updateTemperaturePreview();
         dependencies.updateItemUi();
     }
-    function saveClockBarTemperatureSettings(this: any, entity?: any, degreeSymbolOn?: any) {
+    function saveClockBarTemperatureSettings(this: any, entity?: any, degreeSymbolOn?: any, precision?: any) {
         entity = String(entity || "").trim();
         state.clockBarTemperatureEntities = entity ? [entity] : [];
         state._clockBarTemperatureEntitiesReceived = true;
@@ -197,12 +198,14 @@ export function createClockBarFeature(
         state._indoorOn = false;
         state.outdoorEntity = entity;
         state.indoorEntity = "";
+        state.clockBarTemperaturePrecision = normalizeClockBarTemperaturePrecision(precision);
         state.temperatureDegreeSymbolOn = !!degreeSymbolOn;
         dependencies.postTemperatureEntities(serializeClockBarTemperatureEntities(state.clockBarTemperatureEntities));
         dependencies.postSwitch(dependencies.entityName("outdoor_temp_enable"), state._outdoorOn);
         dependencies.postSwitch(dependencies.entityName("indoor_temp_enable"), false);
         dependencies.postText(dependencies.entityName("outdoor_temp_entity"), state.outdoorEntity);
         dependencies.postText(dependencies.entityName("indoor_temp_entity"), "");
+        dependencies.postTemperaturePrecision(state.clockBarTemperaturePrecision);
         dependencies.postTemperatureDegreeSymbol(state.temperatureDegreeSymbolOn);
         syncTemperatureUi();
         syncClockBarUi();

@@ -180,10 +180,10 @@ inline bool wifi_qr_driver_bind_subpage(BtnSlot &slot, const ParsedCfg &config, 
   if (!wifi_qr_driver_matches(context)) return false;
   wifi_qr_driver_subscribe_guest(config);
   ParsedCfg *stored = grid_delete_with_owner(slot.btn, new ParsedCfg(config));
-  lv_obj_add_event_cb(slot.btn, [](lv_event_t *event) {
+  bind_navigation_button_action(slot.btn, [](lv_event_t *event) {
     ParsedCfg *card = static_cast<ParsedCfg *>(lv_event_get_user_data(event));
     if (card) wifi_qr_open_modal(*card, static_cast<lv_obj_t *>(lv_event_get_target(event)));
-  }, LV_EVENT_CLICKED, stored);
+  }, stored);
   return true;
 }
 inline bool wifi_qr_driver_handle_main_click(const Context &context, const ParsedCfg &config, lv_obj_t *button) {

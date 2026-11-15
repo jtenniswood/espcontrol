@@ -16,6 +16,27 @@ const char *EspIdfPanelConfigBlobStorage::slot_key(uint8_t slot) {
   return slot == 0 ? "slot_a" : (slot == 1 ? "slot_b" : nullptr);
 }
 
+EspIdfPanelConfigBlobStorage::~EspIdfPanelConfigBlobStorage() {
+#ifdef USE_ESP32
+  if (handle_ != 0) nvs_close(handle_);
+#endif
+}
+
+bool EspIdfPanelConfigBlobStorage::begin_read_only() {
+#ifdef USE_ESP32
+  if (ready_) return false;
+  const esp_err_t result = nvs_open("espcontrol_cfg", NVS_READONLY, &handle_);
+  // A fresh installation may have no native NVS namespace at all.
+  if (result != ESP_OK && result != ESP_ERR_NVS_NOT_FOUND) return false;
+  if (result == ESP_ERR_NVS_NOT_FOUND) handle_ = 0;
+  read_only_ = true;
+  ready_ = true;
+  return true;
+#else
+  return false;
+#endif
+}
+
 bool EspIdfPanelConfigBlobStorage::begin() {
 #ifdef USE_ESP32
   if (ready_) return true;
@@ -69,19 +90,21 @@ bool EspIdfPanelConfigBlobStorage::erase_partition_slot(uint8_t slot) {
                                    partition_slot_stride()) == ESP_OK;
 }
 
-bool EspIdfPanelConfigBlobStorage::load_partition_blob(uint8_t slot,
+BlobLoadResult EspIdfPanelConfigBlobStorage::load_partition_blob(uint8_t slot,
                                                         uint8_t *output,
                                                         size_t capacity) {
   if (partition_ == nullptr || slot >= 2 || output == nullptr ||
       capacity != partition_slot_capacity_)
-    return false;
+    return {BlobLoadStatus::FAILED};
   uint32_t marker = 0;
   const size_t offset = partition_slot_offset(slot);
   if (esp_partition_read(partition_, offset, &marker, sizeof(marker)) != ESP_OK)
-    return false;
-  if (marker != PARTITION_COMMIT_MARKER) return false;
+    return {BlobLoadStatus::FAILED};
+  if (marker != PARTITION_COMMIT_MARKER) return {BlobLoadStatus::MISSING};
   return esp_partition_read(partition_, offset + PARTITION_SLOT_HEADER_SIZE,
-                            output, capacity) == ESP_OK;
+                            output, capacity) == ESP_OK
+             ? BlobLoadResult{BlobLoadStatus::OK, capacity}
+             : BlobLoadResult{BlobLoadStatus::FAILED};
 }
 
 bool EspIdfPanelConfigBlobStorage::save_partition_blob(uint8_t slot,
@@ -142,10 +165,9 @@ BlobLoadResult EspIdfPanelConfigBlobStorage::load_blob(uint8_t slot,
     return {BlobLoadStatus::FAILED};
   if (partition_backed_) {
     if (capacity != partition_slot_capacity_) return {BlobLoadStatus::FAILED};
-    return load_partition_blob(slot, output, capacity)
-               ? BlobLoadResult{BlobLoadStatus::OK, capacity}
-               : BlobLoadResult{BlobLoadStatus::MISSING};
+    return load_partition_blob(slot, output, capacity);
   }
+  if (read_only_ && handle_ == 0) return {BlobLoadStatus::MISSING};
   size_t stored_size = 0;
   esp_err_t result = nvs_get_blob(handle_, key, nullptr, &stored_size);
   if (result == ESP_ERR_NVS_NOT_FOUND) return {BlobLoadStatus::MISSING};
@@ -166,6 +188,7 @@ BlobLoadResult EspIdfPanelConfigBlobStorage::load_blob(uint8_t slot,
 bool EspIdfPanelConfigBlobStorage::save_blob(uint8_t slot, const uint8_t *data,
                                               size_t size) {
 #ifdef USE_ESP32
+  if (read_only_) return false;
   const char *key = slot_key(slot);
   if (partition_backed_)
     return ready_ && save_partition_blob(slot, data, size);
@@ -181,6 +204,7 @@ bool EspIdfPanelConfigBlobStorage::save_blob(uint8_t slot, const uint8_t *data,
 
 bool EspIdfPanelConfigBlobStorage::sync() {
 #ifdef USE_ESP32
+  if (read_only_) return false;
   if (partition_backed_) return ready_;
   return ready_ && nvs_commit(handle_) == ESP_OK;
 #else

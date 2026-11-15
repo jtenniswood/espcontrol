@@ -20,7 +20,8 @@
         "rainfall",
         "pressure",
         "humidity",
-        "visibility"
+        "visibility",
+        "temperature"
       ],
       "defaultValue": "",
       "storageField": "precision",
@@ -121,6 +122,30 @@
           "humidity"
         ]
       }
+    },
+    {
+      "name": "temperature_source",
+      "label": "Temperature Source",
+      "kind": "choice",
+      "values": [
+        "sensor",
+        "forecast"
+      ],
+      "defaultValue": "sensor",
+      "omitDefault": true,
+      "applicability": [
+        {
+          "source": "field",
+          "name": "precision",
+          "operator": "equals",
+          "value": "temperature"
+        }
+      ],
+      "supportedWhen": {
+        "precision": [
+          "temperature"
+        ]
+      }
     }
   ],
   "normalization": {
@@ -163,7 +188,8 @@
       "wind_source",
       "rainfall_source",
       "pressure_source",
-      "humidity_source"
+      "humidity_source",
+      "temperature_source"
     ],
     "migrationActions": [
       "legacy_weather_forecast"

@@ -1,0 +1,3 @@
+interface:
+  display_name: "Translation Audit"
+  short_description: "Audit EspControl device text and translation coverage"

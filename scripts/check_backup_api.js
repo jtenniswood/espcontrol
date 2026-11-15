@@ -42,6 +42,7 @@ try {
   assert.equal(plan.subpages["2"].buttons[0].label, "Movie: night");
   assert.equal(plan.subpages["2"].backLabel, "Back; home");
   assert.equal(plan.settings.clock_bar, false);
+  assert.equal(plan.settings.clock_bar_temperature_precision, 2);
   assert.equal(plan.settings.language, "de");
   assert.equal(plan.screen.brightness_day, 42);
   assert.equal(plan.screen.schedule_sensor_entity, "binary_sensor.room");

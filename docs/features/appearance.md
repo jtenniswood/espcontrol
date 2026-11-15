@@ -80,10 +80,10 @@ Open **Screen > Appearance > Clock Bar**:
 
 To change individual items, open **Layout** and select them in the preview:
 
-- **Temperature > Edit** selects the Home Assistant sensor and degree-symbol display.
+- **Temperature > Edit** selects the Home Assistant sensor, **Unit Precision** (10, 10.2, or 10.21), and degree-symbol display. Precision defaults to whole numbers (10).
 - **Clock** or **Connectivity > Hide / Show** changes visibility.
 
-Hidden items stay greyed in the preview so you can show them again. Only one temperature reading is displayed. Set [time and timezone](/settings/system#time) and [temperature units](/settings/system#temperature) under **System > Preferences**.
+Hidden items stay greyed in the preview so you can show them again. Only one temperature reading is displayed, rounded to the selected precision. Set [time and timezone](/settings/system#time) and [temperature units](/settings/system#temperature) under **System > Preferences**.
 
 ### Open Device Information
 

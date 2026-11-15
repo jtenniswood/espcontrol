@@ -2397,9 +2397,9 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_set_style_bg_opa(ui.menu_close_btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.menu_close_btn, 0, LV_PART_MAIN);
   lv_obj_add_flag(ui.menu_close_btn, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_add_event_cb(ui.menu_close_btn, [](lv_event_t *) {
+  bind_navigation_button_action(ui.menu_close_btn, [](lv_event_t *) {
     climate_hide_action_menu();
-  }, LV_EVENT_CLICKED, nullptr);
+  }, nullptr);
 
   ui.menu_mode_btn = climate_create_menu_tile(ui.menu_view, find_icon("Fire"), "Mode",
     ctx->icon_font, ctx->option_title_font, ctx->option_value_font,

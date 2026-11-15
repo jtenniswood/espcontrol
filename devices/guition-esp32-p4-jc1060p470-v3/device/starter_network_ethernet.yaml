@@ -1,0 +1,8 @@
+# =============================================================================
+# STARTER NETWORK - Ethernet credentials placeholder
+# =============================================================================
+# Ethernet builds must not define WiFi. This package intentionally stays empty
+# so the user-facing esphome.yaml can switch network transport safely.
+# =============================================================================
+
+{}

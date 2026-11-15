@@ -1419,10 +1419,10 @@ inline AlarmCardCtx *create_alarm_card_context(
   apply_slot_text_width_compensation(back_slot, width_compensation_percent);
   lv_label_set_display_text(back_slot.icon_lbl, "\U000F0141");
   lv_label_set_display_text(back_slot.text_lbl, espcontrol_i18n("Back"));
-  lv_obj_add_event_cb(back_btn, [](lv_event_t *e) {
+  bind_navigation_button_action(back_btn, [](lv_event_t *e) {
     lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_user_data(e));
     if (target) lv_scr_load_anim(target, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
-  }, LV_EVENT_CLICKED, main_page_obj);
+  }, main_page_obj);
 
   std::string modes[ALARM_MAX_ACTIONS];
   int mode_count = alarm_visible_action_modes(p.options, modes, ALARM_MAX_VISIBLE_ACTIONS);

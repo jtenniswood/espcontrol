@@ -38,6 +38,7 @@ export function registerWeatherCardTypes(
     } = weatherOptions;
     const readings: Record<string, { label: string; icon: string; sample: string; sensor: string }> = {
         rainfall: { label: "Rainfall", icon: "weather-rainy", sample: "2.4 mm", sensor: "sensor.rainfall_today" },
+        temperature: { label: "Currently", icon: "thermometer", sample: "18.5 °C", sensor: "sensor.temperature" },
         pressure: { label: "Air Pressure", icon: "gauge", sample: "1013 hPa", sensor: "sensor.air_pressure" },
         humidity: { label: "Humidity", icon: "water-percent", sample: "65 %", sensor: "sensor.humidity" },
         visibility: { label: "Visibility", icon: "weather-hazy", sample: "10 km", sensor: "" },
@@ -70,7 +71,7 @@ export function registerWeatherCardTypes(
                     b.entity = "";
                     helpers.saveField("entity", b.entity);
                 }
-                for (const mode of ["rainfall", "pressure", "humidity"])
+                for (const mode of ["rainfall", "pressure", "humidity", "temperature"])
                     b.options = setConfigOptionValue(b.options, mode + "_source", "");
                 helpers.saveField("options", b.options);
                 b.precision = precision;
@@ -240,12 +241,12 @@ export function registerWeatherCardTypes(
                 };
             }
             if (weatherCardIsForecastMode(b)) {
-                let samples: [string, string, string][] = [["Today", "weather-rainy", "18°/2°"], ["Tues", "weather-sunny", "20°/9°"], ["Weds", "weather-partly-cloudy", "18°/14°"], ["Thurs", "weather-rainy", "20°/13°"], ["Fri", "weather-sunny", "14°/6°"], ["Sat", "weather-cloudy", "18°/10°"], ["Sun", "weather-sunny", "19°/11°"], ["Mon", "weather-cloudy", "17°/8°"]];
+                let samples: [string, string, string][] = [["Today", "weather-rainy", "18°/2°"], ["Tue", "weather-sunny", "20°/9°"], ["Wed", "weather-partly-cloudy", "18°/14°"], ["Thu", "weather-rainy", "20°/13°"], ["Fri", "weather-sunny", "14°/6°"], ["Sat", "weather-cloudy", "18°/10°"], ["Sun", "weather-sunny", "19°/11°"], ["Mon", "weather-cloudy", "17°/8°"]];
                 if (b.precision === "today") samples = samples.slice(0, 1);
                 else if (b.precision === "tomorrow") samples = samples.slice(1, 2).map(([, condition, temperature]) => ["Tomorrow", condition, temperature]);
                 return {
                     buttonClass: "sp-weather-daily-card",
-                    iconHtml: '<span class="sp-weather-days">' + samples.map((day) => '<span class="sp-weather-day" data-weather-weekday="' + (day[0] === "Today" ? "Mon" : day[0] === "Tomorrow" ? "Tues" : day[0]) + '"><span class="mdi mdi-' + day[1] + '"></span><span>' + day[0] + '</span><span class="sp-weather-temperature-high">' + day[2] + '</span></span>').join("") + '</span>',
+                    iconHtml: '<span class="sp-weather-days">' + samples.map((day) => '<span class="sp-weather-day" data-weather-weekday="' + (day[0] === "Today" ? "Mon" : day[0] === "Tomorrow" ? "Tue" : day[0]) + '"><span class="mdi mdi-' + day[1] + '"></span><span>' + day[0] + '</span><span class="sp-weather-temperature-high">' + day[2] + '</span></span>').join("") + '</span>',
                     labelHtml: "",
                 };
             }

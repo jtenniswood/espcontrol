@@ -279,9 +279,9 @@ humidity=Humidity
 last_forecast=Last forecast
 weekday_sun=Sun
 weekday_mon=Mon
-weekday_tues=Tues
-weekday_weds=Weds
-weekday_thurs=Thurs
+weekday_tues=Tue
+weekday_weds=Wed
+weekday_thurs=Thu
 weekday_fri=Fri
 weekday_sat=Sat
 
@@ -306,3 +306,4 @@ wind_north_west=North West
 ha_disconnected_title=Home Assistant disconnected
 ha_disconnected_instructions=Check this device in Home Assistant\nfor an encryption key or connection alert
 ha_disconnected_path=Settings > Devices & Services\n> ESPHome
+temperature=Currently

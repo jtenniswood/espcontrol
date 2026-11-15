@@ -184,7 +184,7 @@ Yes, when the Home Assistant climate entity exposes those capabilities. Range th
 
 ### Why Does My Weather Card Only Show Cloudy Instead of a Temperature?
 
-**Current Conditions** shows the state. Select **Today's Forecast** or **Tomorrow's Forecast** for forecast conditions and high temperatures and enable actions permission. Use a Sensor card for measured temperature. See [Weather](/card-types/weather).
+**Current Conditions** shows the state. Select **Forecast → Period → Today** or **Tomorrow** for forecast conditions and high/low temperatures and enable actions permission. Select **Temperature**, then choose **Forecast** for the weather entity’s current temperature or **Sensor** for a measured temperature. See [Weather](/card-types/weather).
 
 ### Can I Choose a Different Background Colour for Every Card?
 
@@ -215,6 +215,8 @@ The light popup uses touch-friendly colour choices. Its available tabs depend on
 There is no seconds option for the normal clock bar or Date & Time card. The clock bar updates by the minute. See [Time Settings](/settings/system#time) for timezone and 12/24-hour options.
 
 ### What If the Icon I Need Isn't Listed?
+
+For festive lights, search the card icon picker for **Ornament**, **Pine Tree**, **Gift**, or **Stocking**. Update the display firmware if these icons are missing.
 
 The panel includes hundreds of icons from the Material Design Icons set. If the one you need isn't there, [open an issue on GitHub](https://github.com/jtenniswood/espcontrol/issues) with the icon name (from [pictogrammers.com/library/mdi](https://pictogrammers.com/library/mdi/)) and what you'd use it for. We'll look into adding it.
 
