@@ -1745,6 +1745,9 @@ void ArtworkImage::draw_pixel_to_buffer_(uint8_t *buffer, int width, int x, int 
       }
       break;
     }
+    default:
+      // Configuration restricts artwork to the formats handled above.
+      break;
   }
 }
 
