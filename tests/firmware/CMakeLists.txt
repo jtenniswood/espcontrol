@@ -219,6 +219,12 @@ target_compile_options(media_volume_capability_test PRIVATE -Wall -Wextra -Werro
 target_include_directories(media_volume_capability_test PRIVATE ../../components/espcontrol)
 add_test(NAME media_volume_capability_test COMMAND media_volume_capability_test)
 
+add_executable(media_group_member_readings_test media_group_member_readings_test.cpp)
+target_compile_features(media_group_member_readings_test PRIVATE cxx_std_17)
+target_compile_options(media_group_member_readings_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(media_group_member_readings_test PRIVATE ../../components/espcontrol)
+add_test(NAME media_group_member_readings_test COMMAND media_group_member_readings_test)
+
 add_test(NAME media_power_override_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/media_power_override_test.py)
