@@ -8,6 +8,6 @@ namespace espcontrol::configuration {
 // Keep this value in lock-step with that declaration; check_release_contract.py
 // protects the relationship before a release is published.
 constexpr LegacyConfigurationMode PANEL_CONFIG_LEGACY_MODE =
-    LegacyConfigurationMode::DUAL_WRITE;
+    LegacyConfigurationMode::READ_IMPORT_ONLY;
 
 }  // namespace espcontrol::configuration

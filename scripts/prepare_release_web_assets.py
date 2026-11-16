@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -20,6 +21,8 @@ CURRENT_VERSION_RE = re.compile(
     r"(?m)^WEB_ASSET_CURRENT_FIRMWARE_VERSION = (.+)$"
 )
 MAX_STABLE_RELEASES = 5
+BUNDLE_PATH_RE = re.compile(r"bundles/([0-9a-f]{64})/www\.js")
+SOURCE_REVISION_RE = re.compile(r"[0-9a-f]{40}")
 
 
 class PrepareReleaseWebAssetsError(RuntimeError):
@@ -112,10 +115,74 @@ def prepare(path: Path, tag: str, releases: list[dict], set_current_version: boo
     return True
 
 
+def published_bundle(version: str) -> tuple[dict, str]:
+    if not RELEASE_TAG_RE.fullmatch(version):
+        raise PrepareReleaseWebAssetsError(f"Invalid published release tag {version!r}")
+    result = subprocess.run(
+        ["gh", "release", "download", version, "--pattern", "release-manifest.json", "--output", "-"],
+        check=True, capture_output=True,
+    )
+    manifest = json.loads(result.stdout)
+    if not isinstance(manifest, dict) or not isinstance(manifest.get("webBundle"), dict):
+        raise PrepareReleaseWebAssetsError(f"Missing published web bundle for {version}")
+    revision = manifest.get("sourceRevision", "")
+    bundle = manifest["webBundle"]
+    path = bundle.get("path")
+    path_match = BUNDLE_PATH_RE.fullmatch(path) if isinstance(path, str) else None
+    profiles = bundle.get("deviceProfiles")
+    versions = bundle.get("firmwareVersions")
+    if (
+        manifest.get("releaseVersion") != version
+        or not isinstance(revision, str)
+        or not SOURCE_REVISION_RE.fullmatch(revision)
+        or path_match is None
+        or bundle.get("sha256") != path_match.group(1)
+        or bundle.get("id") != bundle["sha256"]
+        or not isinstance(versions, list)
+        or version not in versions
+        or not isinstance(profiles, list)
+        or not profiles
+        or bundle.get("webAssetVersion") not in (1, 2)
+    ):
+        raise PrepareReleaseWebAssetsError(f"Invalid published web bundle for {version}")
+    return {**bundle, "firmwareVersions": [version]}, revision
+
+
+def bundle_bytes(bundle: dict, revision: str) -> bytes:
+    source = f"{revision}:docs/public/webserver/{bundle['path']}"
+    command = ["git", "show", source]
+    result = subprocess.run(command, capture_output=True)
+    if result.returncode:
+        # Release and Pages workspaces can be shallow. Read the exact source
+        # recorded in the release manifest, even if Pages dropped the bundle.
+        subprocess.run(["git", "fetch", "--no-tags", "--depth=1", "origin", revision], check=True)
+        result = subprocess.run(command, check=True, capture_output=True)
+    if hashlib.sha256(result.stdout).hexdigest() != bundle["sha256"]:
+        raise PrepareReleaseWebAssetsError(f"{source} differs from the published bundle")
+    return result.stdout
+
+
+def stage_published_bundles(output: Path, versions: list[str]) -> None:
+    bundles = []
+    for version in versions:
+        bundle, revision = published_bundle(version)
+        path = output / bundle["path"]
+        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != bundle["sha256"]:
+            content = bundle_bytes(bundle, revision)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(content)
+        bundles.append(bundle)
+    output.mkdir(parents=True, exist_ok=True)
+    (output / "web-assets.json").write_text(
+        json.dumps({"schemaVersion": 1, "bundles": bundles}) + "\n", encoding="utf-8",
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("tag", help="New release tag, for example v1.2.3")
     parser.add_argument("--build-script", type=Path, default=BUILD_SCRIPT)
+    parser.add_argument("--published-web-assets", type=Path, help="Stage the exact bundles for older releases")
     parser.add_argument(
         "--releases-json",
         type=Path,
@@ -141,7 +208,14 @@ def main(argv: list[str] | None = None) -> int:
             releases,
             set_current_version=not args.legacy_only,
         )
-    except PrepareReleaseWebAssetsError as exc:
+        if args.published_web_assets is not None:
+            versions = supported_versions(args.tag, releases)
+            older_versions = [
+                version for version in versions
+                if version != "dev" and (args.legacy_only or version != args.tag)
+            ]
+            stage_published_bundles(args.published_web_assets, older_versions)
+    except (OSError, ValueError, subprocess.CalledProcessError, PrepareReleaseWebAssetsError) as exc:
         print(f"::error::{exc}")
         return 1
     if changed:
