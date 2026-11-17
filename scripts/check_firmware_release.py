@@ -14,7 +14,9 @@ import re
 import subprocess
 from tempfile import TemporaryDirectory
 from threading import Thread
+from unittest.mock import patch
 
+from build import BuildError, load_published_web_bundles
 import firmware_release
 import prepare_c6_firmware
 import prepare_release_web_assets
@@ -178,7 +180,8 @@ def test_release_workflow_uses_current_ota_output() -> None:
     assert "name: Prepare release web assets" in workflow
     assert "scripts/prepare_release_web_assets.py" in workflow
     assert "--legacy-web-manifest" in workflow
-    assert 'any(.firmwareVersions[]?; . != "dev")' in workflow
+    assert "--published-web-assets" in workflow
+    assert "unique | .[]" in workflow
     assert "name: Upload release web assets" in workflow
     assert "name: Download release web assets" in workflow
     assert "dist/release-web-assets" in workflow
@@ -233,7 +236,7 @@ def test_release_preparation_is_workflow_owned() -> None:
     assert "name: Prepare published release web assets" in pages_workflow
     assert "--legacy-only" in pages_workflow
     assert "--legacy-web-manifest" in pages_workflow
-    assert 'any(.firmwareVersions[]?; . != "dev")' in pages_workflow
+    assert "--published-web-assets" in pages_workflow
     assert "git push origin main" not in skill
     with TemporaryDirectory() as tmp:
         build_script = Path(tmp) / "build.py"
@@ -313,6 +316,42 @@ def web_manifest_for(base: Path, device_profiles: list[str]) -> Path:
     path = base.parent / "web-assets.json"
     path.write_text(json.dumps(data), encoding="utf-8")
     return path
+
+
+def test_published_bundle_retention() -> None:
+    with TemporaryDirectory() as tmp:
+        output = Path(tmp)
+        versions = ["v2.14.0", "v2.13.0"]
+        sources = {}
+        for version in versions:
+            content = f"editor for {version}".encode()
+            digest = hashlib.sha256(content).hexdigest()
+            sources[version] = ({
+                "id": digest,
+                "path": f"bundles/{digest}/www.js",
+                "sha256": digest,
+                "webAssetVersion": 2,
+                "deviceProfiles": [SLUG],
+                "firmwareVersions": [version],
+            }, version)
+        with patch.object(prepare_release_web_assets, "published_bundle", side_effect=sources.__getitem__), \
+             patch.object(prepare_release_web_assets, "bundle_bytes", side_effect=lambda _, version: f"editor for {version}".encode()):
+            prepare_release_web_assets.stage_published_bundles(output, versions)
+
+        manifest = output / "web-assets.json"
+        entries, files = load_published_web_bundles(manifest, versions)
+        assert entries == {version: sources[version][0] for version in versions}
+        for version, bundle in entries.items():
+            assert files[bundle["path"]] == f"editor for {version}"
+
+        old_bundle = output / entries[versions[-1]]["path"]
+        old_bundle.write_text("unexpected contents", encoding="utf-8")
+        try:
+            load_published_web_bundles(manifest, versions)
+        except BuildError as exc:
+            assert "invalid digest" in str(exc)
+        else:
+            raise AssertionError("A damaged older editor bundle was accepted")
 
 
 def test_web_bundle_compatibility_aliases() -> None:
@@ -799,6 +838,7 @@ def main() -> int:
     test_pages_excludes_draft_prereleases()
     test_release_skill_creates_selected_tag_before_draft()
     test_valid_files_and_directory()
+    test_published_bundle_retention()
     test_web_bundle_compatibility_aliases()
     test_placeholder_fails()
     test_unrelated_placeholder_strings_pass()
