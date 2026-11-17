@@ -107,12 +107,15 @@ def generate(source, output):
     font.setupOS2(
         sTypoAscender=mdi["OS/2"].sTypoAscender,
         sTypoDescender=mdi["OS/2"].sTypoDescender,
+        sTypoLineGap=mdi["OS/2"].sTypoLineGap,
+        fsSelection=mdi["OS/2"].fsSelection,
         usWinAscent=mdi["OS/2"].usWinAscent,
         usWinDescent=mdi["OS/2"].usWinDescent,
     )
     font.setupPost()
     # A fixed timestamp keeps the checked-in font reproducible.
-    font.setupHead(created=3786912000, modified=3786912000)
+    font.font["head"].created = 3786912000
+    font.font["head"].modified = 3786912000
     font.font.recalcTimestamp = False
     font.save(output)
     print(f"{len(replacements)} Material Symbols and {len(cmap) - len(replacements)} MDI glyphs")
