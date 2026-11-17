@@ -11,7 +11,7 @@ substitutions:
   name: "espcontrol-jc4880p443-v3"
   friendly_name: "EspControl 4inch V3"
   espcontrol_component_url: "file:///config"
-  mdi_font_file: "/config/common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
+  icon_font_file: "/config/common/assets/fonts/espcontrol-icons.ttf"
   espcontrol_component_ref: "HEAD"
 
 esp32:

@@ -3,9 +3,14 @@
 This directory contains internal firmware assets for icons and glyph sets. It is
 repository documentation for maintainers and is not part of the public docs site.
 
-The Material Design Icons font is committed under `common/assets/fonts/` so
-firmware builds do not depend on downloading it during ESPHome configuration.
-Keep its filename version aligned with `MDI_VERSION` in `scripts/build.py`.
+The panel and configurator use the same `fonts/espcontrol-icons.ttf` asset. It
+contains Google Material Symbols Outlined (fill 0, weight 400, grade 0, optical
+size 24) and keeps Material Design Icons glyphs for choices without an
+equivalent. `material_symbols.json` maps existing MDI slugs to Google symbol
+names. The generated font puts the new artwork at the existing codepoints so
+firmware, preview, and saved layouts can keep using the same icon identifiers.
+The original MDI font is the input for fallback artwork. Both upstream font
+licenses are in `fonts/`.
 
 ## Font style names
 
@@ -90,7 +95,7 @@ npm run check:all
 
 ## How to add an icon
 
-All button icons are defined once in [`icons.json`](icons.json) and synced to the device font list, firmware lookup table, and web UI by a script. Never edit generated icon lists directly.
+All button icons are defined once in [`icons.json`](../../product/v2/icons.json) and synced to the device font list, firmware lookup table, and web UI by a script. Never edit generated icon lists directly.
 
 ## 1. Find the icon on MDI
 
@@ -124,7 +129,15 @@ This patches the generated icon sections in:
 - `components/espcontrol/icons.h` — C++ icon lookup table and domain defaults
 - `src/webserver/generated/icons.ts` — web UI icon picker names and domain defaults
 
-Run `python3 scripts/build.py` to also rebuild the shared web UI bundle at `docs/public/webserver/www.js`.
+Add an entry to `material_symbols.json` if Google has a distinct equivalent.
+Then regenerate the shared font with FontTools installed and rebuild the
+configurator bundle.
+
+```sh
+python3 -m pip install fonttools==4.60.2
+python3 scripts/generate_icon_font.py
+python3 scripts/build.py www
+```
 
 ## 4. Verify
 
