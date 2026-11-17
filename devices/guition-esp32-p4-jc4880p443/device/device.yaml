@@ -219,6 +219,7 @@ light:
     name: Display Backlight
     icon: mdi:lightbulb-on
     id: display_backlight
+    entity_category: config
     restore_mode: RESTORE_DEFAULT_ON
     default_transition_length: 0s
     gamma_correct: 1.0

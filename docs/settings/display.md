@@ -38,7 +38,9 @@ The [screensaver](/settings/sleep#screensaver) and [Night Schedule](/settings/sl
 
 ### Home Assistant Control
 
-Use **Screen: Brightness Mode** and **Display Backlight** in Home Assistant. Its **Sunrise and sunset** and **Fixed times** options correspond to **Automatic** and **Timed** in web setup.
+Find **Screen: Brightness Mode** and **Display Backlight** under **Configuration** on the panel's Home Assistant device page. The brightness mode's **Sunrise and sunset** and **Fixed times** options correspond to **Automatic** and **Timed** in web setup.
+
+Home Assistant skips **Display Backlight** when a light action targets an area, floor, or device. Select the entity directly to control the panel. For an action that targets every light with `entity_id: all`, explicitly exclude the backlight.
 
 Changing Display Backlight's brightness selects Manual mode. Turning it on or off keeps the selected mode, so sleep/wake automations can still use automatic brightness.
 
