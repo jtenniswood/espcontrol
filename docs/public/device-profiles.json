@@ -240,6 +240,30 @@
       "rotation": true,
       "ethernetManualInstall": true,
       "subpages": true
+    },
+    {
+      "slug": "sunton-esp32-s3-8048s043",
+      "installSlug": "sunton-esp32-s3-8048s043",
+      "name": "Sunton ESP32-8048S043",
+      "docsPath": "/screens/8048s043",
+      "screenSize": "4.3 inches",
+      "resolution": "800 x 480",
+      "orientation": "Landscape",
+      "slots": 12,
+      "imageSlots": 2,
+      "imageCardTypes": [
+        "image",
+        "media_cover_art"
+      ],
+      "grid": {
+        "rows": 3,
+        "cols": 4
+      },
+      "chipFamily": "ESP32-S3",
+      "relays": 0,
+      "rotation": true,
+      "ethernetManualInstall": false,
+      "subpages": true
     }
   ]
 }

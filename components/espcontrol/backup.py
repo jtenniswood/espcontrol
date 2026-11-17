@@ -49,6 +49,7 @@ BACKUP_FIELDS = (
     ('settings', 'screensaver_dimmed_brightness_night', 'screen_saver_nighttime_dimmed_brightness', 'number', 'Screen Saver: Nighttime Dimmed Brightness'),
     ('settings', 'screensaver_timeout', 'screensaver_timeout', 'number', 'Screensaver Timeout'),
     ('settings', 'home_screen_timeout', 'home_screen_timeout', 'number', 'Home Screen Timeout'),
+    ('settings', 'artwork_decode_slice', 'artwork_decode_slice', 'number', 'Artwork Decode Slice'),
     ('settings', 'clock_screensaver', 'screen_saver_clock', 'switch', 'Screen Saver: Clock'),
     ('settings', 'clock_date', 'screen_saver_show_date', 'switch', 'Screen Saver: Show Date'),
     ('settings', 'clock_overlay', 'screen_saver_clock_overlay', 'switch', 'Screen Saver: Clock Overlay'),

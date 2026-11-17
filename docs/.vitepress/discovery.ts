@@ -47,6 +47,8 @@ export const redirects: Record<string, string> = {
     `${hostname}card-types/`,
   'generated/screens/4848s040-grid': `${hostname}screens/4848s040#card-grid`,
   'generated/screens/4848s040-install': `${hostname}screens/4848s040#install`,
+  'generated/screens/8048s043-grid': `${hostname}screens/8048s043#card-grid`,
+  'generated/screens/8048s043-install': `${hostname}screens/8048s043#install`,
   'generated/screens/jc1060p470-grid': `${hostname}screens/jc1060p470#card-grid`,
   'generated/screens/jc1060p470-install': `${hostname}screens/jc1060p470-v1#install`,
   'generated/screens/jc1060p470-v2-grid': `${hostname}screens/jc1060p470#card-grid`,

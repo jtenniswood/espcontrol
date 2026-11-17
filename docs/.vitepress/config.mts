@@ -90,6 +90,13 @@ const pageImages: Record<string, typeof defaultImage> = {
 }
 
 const screenProducts: Record<string, Record<string, string>> = {
+  'screens/8048s043.md': {
+    name: 'Sunton ESP32-8048S043',
+    model: 'ESP32-8048S043',
+    size: '4.3 inches',
+    resolution: '800 x 480',
+    processor: 'ESP32-S3',
+  },
   'screens/4848s040.md': {
     name: 'Guition 4848S040',
     model: '4848S040',
@@ -377,6 +384,7 @@ export default defineConfig({
           },
           { text: '4-inch ESP32-P4 86', link: '/screens/p4-86' },
           { text: '4-inch 4848S040', link: '/screens/4848s040' },
+          { text: '4.3-inch Sunton 8048S043', link: '/screens/8048s043' },
           { text: 'Printable Stands', link: '/reference/3d-printable-stands' },
         ],
       },

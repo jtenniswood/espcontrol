@@ -629,6 +629,39 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         els.setIdleBadge = idleBadge;
         syncIdleUi(runtime);
         var idleCard: any = makeCollapsibleCard("Idle", idleBody, true, idleBadge);
+        var artworkCard: any = null;
+        if (layout.config.features?.artworkDecodeSpeed) {
+            var artworkBody: any = document.createElement("div");
+            artworkBody.appendChild(fieldLabel("Artwork Decode Speed", "sp-set-artwork-decode-slice"));
+            var artworkSelect: any = document.createElement("select");
+            artworkSelect.className = "sp-select";
+            artworkSelect.id = "sp-set-artwork-decode-slice";
+            [
+                { label: "Screen default", value: 0 },
+                { label: "Smoothest touch (12 ms)", value: 12 },
+                { label: "Balanced (40 ms)", value: 40 },
+                { label: "Faster artwork (80 ms)", value: 80 },
+                { label: "Fastest artwork (150 ms)", value: 150 },
+            ].forEach(function (this: any, opt?: any) {
+                var o: any = document.createElement("option");
+                o.value = String(opt.value);
+                o.textContent = opt.label;
+                if (opt.value === state.artworkDecodeSlice)
+                    o.selected = true;
+                artworkSelect.appendChild(o);
+            });
+            artworkSelect.addEventListener("change", function (this: any) {
+                state.artworkDecodeSlice = parseFloat(this.value) || 0;
+                postNumber(entityName("artwork_decode_slice"), state.artworkDecodeSlice);
+            });
+            artworkBody.appendChild(artworkSelect);
+            var artworkHint: any = document.createElement("div");
+            artworkHint.className = "sp-field-hint";
+            artworkHint.textContent = "Longer decode slices show new album art sooner, but taps can lag while artwork loads.";
+            artworkBody.appendChild(artworkHint);
+            els.setArtworkDecodeSlice = artworkSelect;
+            artworkCard = makeCollapsibleCard("Artwork Loading", artworkBody, true);
+        }
         var systemSettingsCards: any = buildSystemSettingsCards();
         appendSettingsSection(config, "Appearance", [
             activeColourCard,
@@ -640,7 +673,7 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         appendSettingsSection(config, "Display", [
             backlightCard,
             rotationCard,
-        ]);
+        ].concat(artworkCard ? [artworkCard] : []));
         appendSettingsSection(config, "Sleep & Schedule", [
             coverArtCard,
             screensaverCard,

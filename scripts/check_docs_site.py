@@ -242,6 +242,7 @@ def check_build(dist):
     }
     screen_guides = {
         '4848s040': ('4848s040#card-grid', '4848s040'),
+        '8048s043': ('8048s043#card-grid', '8048s043'),
         'jc1060p470': ('jc1060p470#card-grid', 'jc1060p470-v1'),
         'jc1060p470-v2': ('jc1060p470#card-grid', 'jc1060p470-v2'),
         'jc1060p470-v3': ('jc1060p470#card-grid', 'jc1060p470-v3'),

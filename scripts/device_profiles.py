@@ -31,7 +31,7 @@ VALID_MODAL_LAYOUT_FAMILIES = {
 VALID_MODAL_DENSITIES = {"compact", "comfortable", "spacious"}
 VALID_MODAL_MEMORY_TIERS = {"standard", "constrained"}
 IMAGE_CARD_PICKER_TYPES = ("image", "media_cover_art")
-CAMERA_SCREENSAVER_DEVICE_SLUGS = {"guition-esp32-s3-4848s040"}
+CAMERA_SCREENSAVER_DEVICE_SLUGS = {"guition-esp32-s3-4848s040", "sunton-esp32-s3-8048s043"}
 REQUIRED_FONT_ROLES = (
     "icon",
     "sensor",
@@ -906,6 +906,9 @@ def web_features(profile: dict[str, Any]) -> dict[str, Any]:
         features["subpageConfigChunks"] = package["subpageConfigChunks"]
     if camera_screensaver_supported(profile):
         features["cameraScreensaver"] = True
+    if profile["firmware"]["build"].get("chip") == "ESP32-S3":
+        # S3 artwork uses cooperative software JPEG decode; P4 decodes in hardware.
+        features["artworkDecodeSpeed"] = True
     return features
 
 

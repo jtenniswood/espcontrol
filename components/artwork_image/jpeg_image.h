@@ -49,6 +49,10 @@ class JpegDecoder : public ImageDecoder {
   int out_w_{0};
   int out_h_{0};
   int y_{0};
+  // Decoder work time and cooperative slice count, logged on completion so
+  // slow artwork can be attributed to decode cost or to main-loop starvation.
+  uint32_t decode_work_us_{0};
+  uint32_t decode_slices_{0};
   bool cinfo_created_{false};
   bool decode_started_{false};
   bool use_rgb565_{false};

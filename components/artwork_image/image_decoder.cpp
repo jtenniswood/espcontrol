@@ -11,6 +11,10 @@
 namespace esphome {
 namespace artwork_image {
 
+static uint32_t jpeg_decode_budget_override_ms_value = 0;
+void set_jpeg_decode_budget_override_ms(uint32_t ms) { jpeg_decode_budget_override_ms_value = ms; }
+uint32_t get_jpeg_decode_budget_override_ms() { return jpeg_decode_budget_override_ms_value; }
+
 static const char *const TAG = "artwork_image.decoder";
 
 ImageDecoder::~ImageDecoder() { this->release_filtered_resize(); }

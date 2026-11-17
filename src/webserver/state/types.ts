@@ -14,6 +14,7 @@ export interface DeviceConfigFeatures {
   battery?: boolean;
   alarmDelayAudio?: boolean;
   cameraScreensaver?: boolean;
+  artworkDecodeSpeed?: boolean;
 }
 
 export interface DeviceConfig {
@@ -194,6 +195,7 @@ export interface AppState {
   screensaverTimeoutMax: number;
   screensaverTimeoutLimitsLoaded: boolean;
   homeScreenTimeout: number;
+  artworkDecodeSlice: number;
   brightnessDayVal: number;
   brightnessNightVal: number;
   brightnessMode: string;
