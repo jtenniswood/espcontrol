@@ -104,6 +104,8 @@ const visibleIcons = computed(() => {
 .icon-gallery select {
   appearance: none;
   padding-inline-end: 2.65rem;
+  color: color-mix(in srgb, var(--vp-c-text-1) 72%, black);
+  font-size: 1rem;
 }
 
 .icon-gallery__field {
