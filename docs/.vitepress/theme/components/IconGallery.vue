@@ -37,17 +37,15 @@ const visibleIcons = computed(() => {
 <template>
   <div class="icon-gallery">
     <div class="icon-gallery__filters">
-      <div>
-        <label for="icon-gallery-search">Search icons</label>
-        <input
-          id="icon-gallery-search"
-          v-model="query"
-          type="search"
-          placeholder="Try water leak or smart outlet"
-          autocomplete="off"
-          spellcheck="false"
-        >
-      </div>
+      <input
+        id="icon-gallery-search"
+        v-model="query"
+        type="search"
+        aria-label="Search icons"
+        placeholder="Try water leak or smart outlet"
+        autocomplete="off"
+        spellcheck="false"
+      >
       <div>
         <label for="icon-gallery-category">Category</label>
         <select id="icon-gallery-category" v-model="selectedCategory">
@@ -111,6 +109,7 @@ const visibleIcons = computed(() => {
 
 .icon-gallery input {
   min-height: 3.25rem;
+  margin-top: 0;
   font-size: 1.125rem;
   line-height: 1.5;
 }
