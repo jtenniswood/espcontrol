@@ -90,9 +90,10 @@ const visibleIcons = computed(() => {
 
 .icon-gallery input,
 .icon-gallery select {
+  display: block;
   width: 100%;
-  min-height: 3.25rem;
-  padding: 0.6rem 0.75rem;
+  height: 3.25rem;
+  padding: 0 0.75rem;
   border: 1px solid var(--vp-c-divider);
   border-radius: 0.5rem;
   background: var(--vp-c-bg-soft);
@@ -153,10 +154,9 @@ const visibleIcons = computed(() => {
 }
 
 .icon-gallery__item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  grid-template-rows: 2rem minmax(2.5em, 1fr);
+  place-items: center;
   gap: 0.5rem;
   min-height: 6.5rem;
   padding: 0.75rem 0.5rem;
