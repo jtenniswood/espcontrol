@@ -10,7 +10,7 @@ substitutions:
   espcontrol_component_url: "file:///config"
   espcontrol_component_ref: "HEAD"
   cover_art_placeholder_file: "../common/assets/cover_art_placeholder.svg"
-  mdi_font_file: "/config/common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
+  icon_font_file: "/config/common/assets/fonts/espcontrol-icons.ttf"
 
 web_server:
   ota: false

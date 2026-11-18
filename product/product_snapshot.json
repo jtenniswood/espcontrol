@@ -12,7 +12,7 @@
     "deviceProfiles": 10,
     "cardTypes": 44,
     "entityNames": 113,
-    "icons": 374,
+    "icons": 500,
     "structuralIcons": 28,
     "compatibilityFixtureGroups": 2
   },
@@ -10400,6 +10400,636 @@
         "name": "Window Shutter Open",
         "codepoint": "F111E",
         "mdi": "window-shutter-open"
+      },
+      {
+        "name": "Activity Zone",
+        "codepoint": "F4000",
+        "mdi": "material-symbol-activity-zone"
+      },
+      {
+        "name": "Air Circulation",
+        "codepoint": "F4001",
+        "mdi": "material-symbol-airwave"
+      },
+      {
+        "name": "Air Freshener",
+        "codepoint": "F4002",
+        "mdi": "material-symbol-air-freshener"
+      },
+      {
+        "name": "Arming Countdown",
+        "codepoint": "F4003",
+        "mdi": "material-symbol-arming-countdown"
+      },
+      {
+        "name": "Automatic Daylight",
+        "codepoint": "F4004",
+        "mdi": "material-symbol-light-mode-auto"
+      },
+      {
+        "name": "Automatic Heating and Cooling",
+        "codepoint": "F4005",
+        "mdi": "material-symbol-mode-heat-cool"
+      },
+      {
+        "name": "Automation",
+        "codepoint": "F4006",
+        "mdi": "material-symbol-automation"
+      },
+      {
+        "name": "Battery Charging Indicator",
+        "codepoint": "F4007",
+        "mdi": "material-symbol-battery-android-frame-bolt"
+      },
+      {
+        "name": "Battery Fault",
+        "codepoint": "F4008",
+        "mdi": "material-symbol-battery-error"
+      },
+      {
+        "name": "Battery Full Indicator",
+        "codepoint": "F4009",
+        "mdi": "material-symbol-battery-android-frame-full"
+      },
+      {
+        "name": "Battery Healthy",
+        "codepoint": "F400A",
+        "mdi": "material-symbol-battery-status-good"
+      },
+      {
+        "name": "Battery Replacement",
+        "codepoint": "F400B",
+        "mdi": "material-symbol-battery-change"
+      },
+      {
+        "name": "Boiler Controller",
+        "codepoint": "F400C",
+        "mdi": "material-symbol-nest-heat-link-e"
+      },
+      {
+        "name": "Built-in Dishwasher",
+        "codepoint": "F400D",
+        "mdi": "material-symbol-dishwasher-gen"
+      },
+      {
+        "name": "Built-in Microwave",
+        "codepoint": "F400E",
+        "mdi": "material-symbol-microwave-gen"
+      },
+      {
+        "name": "Built-in Oven",
+        "codepoint": "F400F",
+        "mdi": "material-symbol-oven-gen"
+      },
+      {
+        "name": "Carbon Dioxide Sensor",
+        "codepoint": "F4010",
+        "mdi": "material-symbol-co2"
+      },
+      {
+        "name": "Carbon Monoxide Alarm",
+        "codepoint": "F4011",
+        "mdi": "material-symbol-detector-co"
+      },
+      {
+        "name": "Charger",
+        "codepoint": "F4012",
+        "mdi": "material-symbol-charger"
+      },
+      {
+        "name": "Closed Blinds",
+        "codepoint": "F4013",
+        "mdi": "material-symbol-blinds-closed"
+      },
+      {
+        "name": "Compact Smart Speaker",
+        "codepoint": "F4014",
+        "mdi": "material-symbol-nest-mini"
+      },
+      {
+        "name": "Connected Air Purifier",
+        "codepoint": "F4015",
+        "mdi": "material-symbol-air-purifier-gen"
+      },
+      {
+        "name": "Connected Smoke Detector",
+        "codepoint": "F4016",
+        "mdi": "material-symbol-nest-protect"
+      },
+      {
+        "name": "Cooker Hood",
+        "codepoint": "F4017",
+        "mdi": "material-symbol-range-hood"
+      },
+      {
+        "name": "Cooking",
+        "codepoint": "F4018",
+        "mdi": "material-symbol-cooking"
+      },
+      {
+        "name": "Cooling Mode",
+        "codepoint": "F4019",
+        "mdi": "material-symbol-mode-cool"
+      },
+      {
+        "name": "Cooling Off",
+        "codepoint": "F401A",
+        "mdi": "material-symbol-mode-cool-off"
+      },
+      {
+        "name": "Defrost Mode",
+        "codepoint": "F401B",
+        "mdi": "material-symbol-hvac-max-defrost"
+      },
+      {
+        "name": "Detector Alarm",
+        "codepoint": "F401C",
+        "mdi": "material-symbol-detector-alarm"
+      },
+      {
+        "name": "Detector Low Battery",
+        "codepoint": "F401D",
+        "mdi": "material-symbol-detector-battery"
+      },
+      {
+        "name": "Detector Offline",
+        "codepoint": "F401E",
+        "mdi": "material-symbol-detector-offline"
+      },
+      {
+        "name": "Detector Status",
+        "codepoint": "F401F",
+        "mdi": "material-symbol-detector-status"
+      },
+      {
+        "name": "Device Controller",
+        "codepoint": "F4020",
+        "mdi": "material-symbol-controller-gen"
+      },
+      {
+        "name": "Discover Wi-Fi",
+        "codepoint": "F4021",
+        "mdi": "material-symbol-wifi-find"
+      },
+      {
+        "name": "Door Contact Sensor",
+        "codepoint": "F4022",
+        "mdi": "material-symbol-door-sensor"
+      },
+      {
+        "name": "Door Sensor",
+        "codepoint": "F4023",
+        "mdi": "material-symbol-sensor-door"
+      },
+      {
+        "name": "Doorbell Chime",
+        "codepoint": "F4024",
+        "mdi": "material-symbol-doorbell-chime"
+      },
+      {
+        "name": "Doorbell Visitor",
+        "codepoint": "F4025",
+        "mdi": "material-symbol-nest-doorbell-visitor"
+      },
+      {
+        "name": "Eco Thermostat Mode",
+        "codepoint": "F4026",
+        "mdi": "material-symbol-nest-farsight-eco"
+      },
+      {
+        "name": "Electrical Energy",
+        "codepoint": "F4027",
+        "mdi": "material-symbol-electric-bolt"
+      },
+      {
+        "name": "Emergency Heat",
+        "codepoint": "F4028",
+        "mdi": "material-symbol-emergency-heat"
+      },
+      {
+        "name": "Energy Monitor",
+        "codepoint": "F4029",
+        "mdi": "material-symbol-energy"
+      },
+      {
+        "name": "Energy Saving",
+        "codepoint": "F402A",
+        "mdi": "material-symbol-energy-savings-leaf"
+      },
+      {
+        "name": "Energy Savings Programme",
+        "codepoint": "F402B",
+        "mdi": "material-symbol-energy-program-saving"
+      },
+      {
+        "name": "Floodlight Camera",
+        "codepoint": "F402C",
+        "mdi": "material-symbol-nest-cam-floodlight"
+      },
+      {
+        "name": "Focused Airflow",
+        "codepoint": "F402D",
+        "mdi": "material-symbol-fan-focus"
+      },
+      {
+        "name": "Garage Ready",
+        "codepoint": "F402E",
+        "mdi": "material-symbol-garage-check"
+      },
+      {
+        "name": "Heat Pump Balance",
+        "codepoint": "F402F",
+        "mdi": "material-symbol-heat-pump-balance"
+      },
+      {
+        "name": "Heating Mode",
+        "codepoint": "F4030",
+        "mdi": "material-symbol-mode-heat"
+      },
+      {
+        "name": "Heating Off",
+        "codepoint": "F4031",
+        "mdi": "material-symbol-mode-heat-off"
+      },
+      {
+        "name": "High Humidity",
+        "codepoint": "F4032",
+        "mdi": "material-symbol-humidity-high"
+      },
+      {
+        "name": "Home Garage",
+        "codepoint": "F4033",
+        "mdi": "material-symbol-garage-home"
+      },
+      {
+        "name": "Home Wi-Fi",
+        "codepoint": "F4034",
+        "mdi": "material-symbol-wifi-home"
+      },
+      {
+        "name": "Hotspot Off",
+        "codepoint": "F4035",
+        "mdi": "material-symbol-wifi-tethering-off"
+      },
+      {
+        "name": "Indirect Airflow",
+        "codepoint": "F4036",
+        "mdi": "material-symbol-fan-indirect"
+      },
+      {
+        "name": "Indoor Air Quality",
+        "codepoint": "F4037",
+        "mdi": "material-symbol-aq-indoor"
+      },
+      {
+        "name": "Indoor Camera",
+        "codepoint": "F4038",
+        "mdi": "material-symbol-nest-cam-indoor"
+      },
+      {
+        "name": "Indoor Humidity",
+        "codepoint": "F4039",
+        "mdi": "material-symbol-humidity-indoor"
+      },
+      {
+        "name": "Laundry Machine",
+        "codepoint": "F403A",
+        "mdi": "material-symbol-laundry"
+      },
+      {
+        "name": "Light Rain",
+        "codepoint": "F403B",
+        "mdi": "material-symbol-rainy-light"
+      },
+      {
+        "name": "Locator Tag",
+        "codepoint": "F403C",
+        "mdi": "material-symbol-nest-locator-tag"
+      },
+      {
+        "name": "Low Humidity",
+        "codepoint": "F403D",
+        "mdi": "material-symbol-humidity-low"
+      },
+      {
+        "name": "Lower Setpoint",
+        "codepoint": "F403E",
+        "mdi": "material-symbol-thermostat-arrow-down"
+      },
+      {
+        "name": "Medium Humidity",
+        "codepoint": "F403F",
+        "mdi": "material-symbol-humidity-mid"
+      },
+      {
+        "name": "Mesh Wi-Fi Point",
+        "codepoint": "F4040",
+        "mdi": "material-symbol-nest-wifi-point"
+      },
+      {
+        "name": "Mesh Wi-Fi Router",
+        "codepoint": "F4041",
+        "mdi": "material-symbol-nest-wifi-pro"
+      },
+      {
+        "name": "Motion Alert",
+        "codepoint": "F4042",
+        "mdi": "material-symbol-motion-sensor-alert"
+      },
+      {
+        "name": "Multi-room Audio",
+        "codepoint": "F4043",
+        "mdi": "material-symbol-nest-multi-room"
+      },
+      {
+        "name": "Multicooker",
+        "codepoint": "F4044",
+        "mdi": "material-symbol-multicooker"
+      },
+      {
+        "name": "Multiple Water Drops",
+        "codepoint": "F4045",
+        "mdi": "material-symbol-water-drops"
+      },
+      {
+        "name": "Network Ping",
+        "codepoint": "F4046",
+        "mdi": "material-symbol-network-ping"
+      },
+      {
+        "name": "Occupancy Sensor",
+        "codepoint": "F4047",
+        "mdi": "material-symbol-sensor-occupied"
+      },
+      {
+        "name": "Open Garage Door",
+        "codepoint": "F4048",
+        "mdi": "material-symbol-garage-door-open"
+      },
+      {
+        "name": "Outdoor Air Quality",
+        "codepoint": "F4049",
+        "mdi": "material-symbol-aq"
+      },
+      {
+        "name": "Outdoor Camera",
+        "codepoint": "F404A",
+        "mdi": "material-symbol-nest-cam-outdoor"
+      },
+      {
+        "name": "Personal Lock",
+        "codepoint": "F404B",
+        "mdi": "material-symbol-lock-person"
+      },
+      {
+        "name": "Power Input",
+        "codepoint": "F404C",
+        "mdi": "material-symbol-power-input"
+      },
+      {
+        "name": "Power Off",
+        "codepoint": "F404D",
+        "mdi": "material-symbol-power-off"
+      },
+      {
+        "name": "Raise Setpoint",
+        "codepoint": "F404E",
+        "mdi": "material-symbol-thermostat-arrow-up"
+      },
+      {
+        "name": "Relative Humidity",
+        "codepoint": "F404F",
+        "mdi": "material-symbol-humidity-percentage"
+      },
+      {
+        "name": "Remote Settings",
+        "codepoint": "F4050",
+        "mdi": "material-symbol-settings-remote"
+      },
+      {
+        "name": "Remote Temperature Sensor",
+        "codepoint": "F4051",
+        "mdi": "material-symbol-nest-thermostat-sensor"
+      },
+      {
+        "name": "Room Settings",
+        "codepoint": "F4052",
+        "mdi": "material-symbol-room-preferences"
+      },
+      {
+        "name": "Round Thermostat",
+        "codepoint": "F4053",
+        "mdi": "material-symbol-nest-thermostat"
+      },
+      {
+        "name": "Router Offline",
+        "codepoint": "F4054",
+        "mdi": "material-symbol-router-off"
+      },
+      {
+        "name": "Scene Control",
+        "codepoint": "F4055",
+        "mdi": "material-symbol-scene"
+      },
+      {
+        "name": "Security Contact Sensor",
+        "codepoint": "F4056",
+        "mdi": "material-symbol-nest-detect"
+      },
+      {
+        "name": "Security Hub",
+        "codepoint": "F4057",
+        "mdi": "material-symbol-nest-secure-alarm"
+      },
+      {
+        "name": "Sensors Offline",
+        "codepoint": "F4058",
+        "mdi": "material-symbol-sensors-off"
+      },
+      {
+        "name": "Siren",
+        "codepoint": "F4059",
+        "mdi": "material-symbol-siren"
+      },
+      {
+        "name": "Siren Armed",
+        "codepoint": "F405A",
+        "mdi": "material-symbol-siren-check"
+      },
+      {
+        "name": "Siren Open",
+        "codepoint": "F405B",
+        "mdi": "material-symbol-siren-open"
+      },
+      {
+        "name": "Siren Unknown",
+        "codepoint": "F405C",
+        "mdi": "material-symbol-siren-question"
+      },
+      {
+        "name": "Sliding Door",
+        "codepoint": "F405D",
+        "mdi": "material-symbol-door-sliding"
+      },
+      {
+        "name": "Smart Button",
+        "codepoint": "F405E",
+        "mdi": "material-symbol-smart-button"
+      },
+      {
+        "name": "Smart Display",
+        "codepoint": "F405F",
+        "mdi": "material-symbol-smart-display"
+      },
+      {
+        "name": "Smart Outlet",
+        "codepoint": "F4060",
+        "mdi": "material-symbol-smart-outlet"
+      },
+      {
+        "name": "Smart Screen",
+        "codepoint": "F4061",
+        "mdi": "material-symbol-smart-screen"
+      },
+      {
+        "name": "Smart Speaker",
+        "codepoint": "F4062",
+        "mdi": "material-symbol-nest-audio"
+      },
+      {
+        "name": "Smart Video Doorbell",
+        "codepoint": "F4063",
+        "mdi": "material-symbol-doorbell-3p"
+      },
+      {
+        "name": "Smoke Alarm",
+        "codepoint": "F4064",
+        "mdi": "material-symbol-detector-smoke"
+      },
+      {
+        "name": "Standby Mode",
+        "codepoint": "F4065",
+        "mdi": "material-symbol-mode-standby"
+      },
+      {
+        "name": "Switch Panel",
+        "codepoint": "F4066",
+        "mdi": "material-symbol-switches"
+      },
+      {
+        "name": "Timed Energy Programme",
+        "codepoint": "F4067",
+        "mdi": "material-symbol-energy-program-time-used"
+      },
+      {
+        "name": "Timed Lock",
+        "codepoint": "F4068",
+        "mdi": "material-symbol-lock-clock"
+      },
+      {
+        "name": "Timer Off",
+        "codepoint": "F4069",
+        "mdi": "material-symbol-timer-off"
+      },
+      {
+        "name": "Timer Paused",
+        "codepoint": "F406A",
+        "mdi": "material-symbol-timer-pause"
+      },
+      {
+        "name": "Timer Running",
+        "codepoint": "F406B",
+        "mdi": "material-symbol-timer-play"
+      },
+      {
+        "name": "Urgent Motion Alert",
+        "codepoint": "F406C",
+        "mdi": "material-symbol-motion-sensor-urgent"
+      },
+      {
+        "name": "Ventilation Mode",
+        "codepoint": "F406D",
+        "mdi": "material-symbol-mode-fan-2"
+      },
+      {
+        "name": "VOC Monitor",
+        "codepoint": "F406E",
+        "mdi": "material-symbol-water-voc"
+      },
+      {
+        "name": "Voice Shortcut",
+        "codepoint": "F406F",
+        "mdi": "material-symbol-quick-phrases"
+      },
+      {
+        "name": "Wall Switch Off",
+        "codepoint": "F4070",
+        "mdi": "material-symbol-switch-off"
+      },
+      {
+        "name": "Wall-mounted Camera",
+        "codepoint": "F4071",
+        "mdi": "material-symbol-nest-cam-wall-mount"
+      },
+      {
+        "name": "Water Conductivity",
+        "codepoint": "F4072",
+        "mdi": "material-symbol-water-ec"
+      },
+      {
+        "name": "Water Heater",
+        "codepoint": "F4073",
+        "mdi": "material-symbol-water-heater"
+      },
+      {
+        "name": "Water Leak",
+        "codepoint": "F4074",
+        "mdi": "material-symbol-water-damage"
+      },
+      {
+        "name": "Water Loss",
+        "codepoint": "F4075",
+        "mdi": "material-symbol-water-loss"
+      },
+      {
+        "name": "Water pH",
+        "codepoint": "F4076",
+        "mdi": "material-symbol-water-ph"
+      },
+      {
+        "name": "Water Tap",
+        "codepoint": "F4077",
+        "mdi": "material-symbol-faucet"
+      },
+      {
+        "name": "Water Valve",
+        "codepoint": "F4078",
+        "mdi": "material-symbol-valve"
+      },
+      {
+        "name": "Wi-Fi Device",
+        "codepoint": "F4079",
+        "mdi": "material-symbol-wifi-device"
+      },
+      {
+        "name": "Wi-Fi Setup Mode",
+        "codepoint": "F407A",
+        "mdi": "material-symbol-wifi-protected-setup"
+      },
+      {
+        "name": "Window Contact Sensor",
+        "codepoint": "F407B",
+        "mdi": "material-symbol-sensor-window"
+      },
+      {
+        "name": "Window Sensor",
+        "codepoint": "F407C",
+        "mdi": "material-symbol-window-sensor"
+      },
+      {
+        "name": "Wired Camera",
+        "codepoint": "F407D",
+        "mdi": "material-symbol-nest-cam-wired-stand"
       }
     ],
     "domain_defaults": {
