@@ -299,6 +299,10 @@ export default defineConfig({
         articleSchema.mainEntity = pageData.frontmatter.faqAnswers
         delete pageData.frontmatter.faqAnswers
       }
+      if (pageData.relativePath === 'reference/icons.md') {
+        articleSchema['@type'] = 'CollectionPage'
+        articleSchema.about = { '@id': `${hostname}#software` }
+      }
       const screenProduct = screenProducts[pageData.relativePath]
       if (screenProduct) {
         articleSchema.about = {
