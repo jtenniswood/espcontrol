@@ -10,6 +10,6 @@ import IconGallery from '../.vitepress/theme/components/IconGallery.vue'
 
 # Icon Gallery
 
-Search for an icon here, then use its name in the configurator's card icon picker. The gallery uses the same font and catalog as the picker.
+Search by name or narrow the gallery by category. Use the icon's name in the configurator's card icon picker.
 
 <IconGallery />
