@@ -2869,6 +2869,65 @@ async function assertNewMediaCardDefaults(page, posts, label, mediaCoverArtSuppo
   );
 }
 
+function boxSelectedSlots(page) {
+  return page.locator(".sp-main .sp-btn.sp-selected").evaluateAll(cards =>
+    cards.map(card => Number(card.dataset.slot)));
+}
+
+async function dragSelectionBox(page, fromSlot, toSlot, fromGap = false) {
+  // Read the bounds together because device updates can replace the card elements.
+  const points = await page.waitForFunction(({ fromSlot, toSlot, fromGap }) => {
+    const wrap = document.querySelector(".sp-wrap")?.getBoundingClientRect();
+    const from = document.querySelector(`.sp-main [data-slot="${fromSlot}"]`)?.getBoundingClientRect();
+    const to = document.querySelector(`.sp-main [data-slot="${toSlot}"]`)?.getBoundingClientRect();
+    if (!wrap?.height || !from?.height || !to?.height) return null;
+    const start = fromGap
+      ? [(from.right + to.left) / 2, from.top + from.height * 0.25]
+      : [from.x + from.width * 0.75, wrap.y + 8];
+    return { start, end: [to.x + to.width * 0.25, to.y + to.height * 0.5] };
+  }, { fromSlot, toSlot, fromGap });
+  const { start, end } = await points.jsonValue();
+  await points.dispose();
+  await page.mouse.move(...start);
+  await page.mouse.down();
+  await page.mouse.move(...end, { steps: 8 });
+  await page.locator(".sp-selection-box").waitFor();
+}
+
+async function assertCardBoxSelection(page, label) {
+  const box = page.locator(".sp-selection-box");
+  assert.deepStrictEqual(await boxSelectedSlots(page), [1], `${label}: starting selection`);
+  await dragSelectionBox(page, 2, 1);
+  assert.deepStrictEqual(await boxSelectedSlots(page), [1, 2], `${label}: cards highlight before release`);
+  await page.keyboard.press("Escape");
+  await page.mouse.up();
+  assert.strictEqual(await box.count(), 0);
+  assert.deepStrictEqual(await boxSelectedSlots(page), [1], `${label}: Escape restores the previous selection`);
+
+  await dragSelectionBox(page, 1, 2, true);
+  await page.mouse.up();
+  assert.deepStrictEqual(await boxSelectedSlots(page), [2], `${label}: drag from a gap replaces the selection`);
+
+  await page.keyboard.down("Shift");
+  await dragSelectionBox(page, 1, 1);
+  await page.mouse.up();
+  await page.keyboard.up("Shift");
+  assert.deepStrictEqual(await boxSelectedSlots(page), [1, 2], `${label}: Shift adds to the selection`);
+
+  const toggleKey = process.platform === "darwin" ? "Meta" : "Control";
+  await page.keyboard.down(toggleKey);
+  await dragSelectionBox(page, 1, 1);
+  await page.mouse.up();
+  await page.keyboard.up(toggleKey);
+  assert.deepStrictEqual(await boxSelectedSlots(page), [2], `${label}: Command or Ctrl toggles cards in the box`);
+
+  await dragSelectionBox(page, 2, 1);
+  await page.mouse.up();
+  assert.deepStrictEqual(await boxSelectedSlots(page), [1, 2], `${label}: drag commits the selection`);
+  assert.strictEqual(await box.count(), 0);
+  assert.strictEqual(await page.locator(".sp-selection-label").textContent(), "2 cards selected");
+}
+
 async function assertContextColourPicker(browser, testCase) {
   for (const native of [false, true]) {
     const fixture = nativeConfigState(testCase.slug);
@@ -2958,7 +3017,7 @@ async function assertContextColourPicker(browser, testCase) {
       await waitForSaved(() => !storedButton(1)?.includes("card_off_color="));
       assert(storedButton(1).includes("card_on_color=FFFFFF"));
 
-      await card(2).click({ modifiers: ["ControlOrMeta"] });
+      await assertCardBoxSelection(page, label);
       await openPicker(card(1));
       assert.strictEqual(await menu.locator('.sp-card-color-preset[aria-pressed="true"]').count(), 0,
         `${label}: mixed card backgrounds leave all presets unselected`);
@@ -2968,6 +3027,10 @@ async function assertContextColourPicker(browser, testCase) {
       await page.locator(".sp-brand").click();
       await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
       await page.locator(".sp-back-btn").waitFor();
+      await dragSelectionBox(page, -2, 1);
+      assert.deepStrictEqual(await boxSelectedSlots(page), [1], `${label}: box selects the subpage card and skips Back`);
+      await page.mouse.up();
+      assert.deepStrictEqual(await boxSelectedSlots(page), [1], `${label}: subpage selection commits`);
       await openPicker(card(1));
       await menu.locator('[data-color="DA5125"]').click();
       await waitForSaved(() => storedSubpage()?.includes("card_off_color=DA5125"));
@@ -8124,6 +8187,11 @@ async function assertWeatherReadingEditors(browser) {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_CONTEXT_COLOUR_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) await assertContextColourPicker(browser, testCase);
+      console.log(`Drag selection and context colour checks passed for ${ACTIVE_CASES.length} layouts, native and legacy saves.`);
+      return;
+    }
     if (process.env.ESPCONTROL_CLOCK_BAR_ONLY === "1") {
       for (const testCase of ACTIVE_CASES) {
         const context = await browser.newContext({ viewport: testCase.viewport });
@@ -8184,11 +8252,6 @@ async function assertWeatherReadingEditors(browser) {
         } finally { await context.close(); }
       }
       console.log(`Card title browser checks passed for ${ACTIVE_CASES.length} layouts.`);
-      return;
-    }
-    if (process.env.ESPCONTROL_CONTEXT_COLOUR_ONLY === "1") {
-      for (const testCase of ACTIVE_CASES) await assertContextColourPicker(browser, testCase);
-      console.log(`Context colour picker browser checks passed for ${ACTIVE_CASES.length} layouts, native and legacy saves.`);
       return;
     }
     if (process.env.ESPCONTROL_ACTIVE_COLOUR_ONLY === "1") {

@@ -51,6 +51,7 @@ To choose another type for a new card, close its settings and start again from t
 | Move a card | Drag it to another position. An occupied card moves to the next available slot. |
 | Resize a card | Hover over it and drag the bottom-right handle. Release to save, or press **Escape** to cancel. |
 | Rename a card | Click its title, type a name, and press **Enter**. Press **Escape** or click away to cancel. |
+| Select several cards | On Home or a subpage, drag a box from the margin around the preview or a gap between cards. Cards touched by the box highlight as you drag. Hold **Shift** to add cards, **Command** or **Ctrl** to toggle cards, or press **Escape** to cancel. Release, then right-click a selected card for group actions. |
 | Change its colour | Right-click the card and open **Change Colour**, or edit **Custom Colours**. |
 | Copy between pages | Right-click and choose **Cut** or **Copy**, then **Paste** in an empty slot on the destination page. |
 | Copy to another panel | Use **Copy Code** and **Paste Code**; follow the [transfer steps](/features/subpages#copying-cards-between-controllers). |

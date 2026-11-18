@@ -41,6 +41,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".fade-in{animation:fadeIn .3s ease}" +
         "@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}" +
         ".sp-wrap{display:flex;justify-content:center;padding:16px var(--gap) 4px;user-select:none}" +
+        ".sp-selection-box{position:fixed;box-sizing:border-box;z-index:10;pointer-events:none;" +
+        "border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 18%,transparent)}" +
         ".sp-screen{" + previewThemeCss("Dark") + "}" +
         ".sp-screen.sp-theme-light{" + previewThemeCss("Light") + "}" +
         ".sp-screen{width:var(--screen-w);aspect-ratio:var(--screen-aspect);background:var(--preview-background);" +
