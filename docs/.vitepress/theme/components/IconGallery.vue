@@ -124,8 +124,8 @@ const visibleIcons = computed(() => {
 
 .icon-gallery__field-icon {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+  inset-block: 0;
+  margin-block: auto;
   color: var(--vp-c-text-2);
   font-size: 1.25rem;
   pointer-events: none;
