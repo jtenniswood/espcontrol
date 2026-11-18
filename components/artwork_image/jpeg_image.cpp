@@ -311,7 +311,7 @@ int JpegDecoder::start_decode_(uint8_t *buffer, size_t size) {
   jpeg_create_decompress(&this->cinfo_);
   jpeg_mem_src(&this->cinfo_, buffer, size);
 
-  if (jpeg_read_header(&this->cinfo_, TRUE) != JPEG_HEADER_OK) {
+  if (jpeg_read_header(&this->cinfo_, true) != JPEG_HEADER_OK) {
     ESP_LOGE(TAG, "Could not read JPEG header");
     this->cleanup_();
     return DECODE_ERROR_INVALID_TYPE;
