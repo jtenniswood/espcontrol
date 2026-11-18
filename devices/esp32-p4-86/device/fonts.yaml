@@ -10,7 +10,7 @@ font:
   - file: '${icon_font_file}'
     id: font_icon_main
     size: 66
-    bpp: 4
+    bpp: 2
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
   # Smaller card icons
