@@ -218,7 +218,7 @@ There is no seconds option for the normal clock bar or Date & Time card. The clo
 
 For festive lights, search the card icon picker for **Ornament**, **Pine Tree**, **Gift**, or **Stocking**. Update the display firmware if these icons are missing.
 
-The panel includes hundreds of icons from the Material Design Icons set. If the one you need isn't there, [open an issue on GitHub](https://github.com/jtenniswood/espcontrol/issues) with the icon name (from [pictogrammers.com/library/mdi](https://pictogrammers.com/library/mdi/)) and what you'd use it for. We'll look into adding it.
+Search the [EspControl icon gallery](/reference/icons) for all the choices in the configurator. If the one you need isn't there, [open an issue on GitHub](https://github.com/jtenniswood/espcontrol/issues) with the icon name and what you'd use it for.
 
 ## Screens, power, and mounting
 
