@@ -3,7 +3,12 @@
 #include "image_decoder.h"
 #include "esphome/core/defines.h"
 #ifdef USE_ARTWORK_IMAGE_JPEG_SUPPORT
+// libjpeg's boolean macros change feature checks in ESP-IDF Bluetooth headers.
+#pragma push_macro("TRUE")
+#pragma push_macro("FALSE")
 #include <jpeglib.h>
+#pragma pop_macro("FALSE")
+#pragma pop_macro("TRUE")
 #include <csetjmp>
 #include <cstddef>
 #include <cstdint>
