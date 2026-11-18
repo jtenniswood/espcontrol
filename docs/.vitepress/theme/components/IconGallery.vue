@@ -84,9 +84,7 @@ const visibleIcons = computed(() => {
 
 .icon-gallery__filters {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(12rem, 2fr);
   gap: 0.75rem;
-  max-width: 40rem;
 }
 
 .icon-gallery label {
@@ -108,6 +106,13 @@ const visibleIcons = computed(() => {
 
 .icon-gallery select {
   appearance: auto;
+  max-width: 18rem;
+}
+
+.icon-gallery input {
+  min-height: 3.25rem;
+  font-size: 1.125rem;
+  line-height: 1.5;
 }
 
 .icon-gallery input::placeholder {
@@ -162,9 +167,4 @@ const visibleIcons = computed(() => {
   line-height: 1;
 }
 
-@media (max-width: 560px) {
-  .icon-gallery__filters {
-    grid-template-columns: 1fr;
-  }
-}
 </style>
