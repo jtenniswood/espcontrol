@@ -178,6 +178,7 @@ export function createControlsShellFeature(
                 '<div class="sp-main"></div>' +
                 "</div>";
         page.appendChild(wrap);
+        els.previewWrap = wrap;
         els.previewScreen = wrap.querySelector(".sp-screen");
         els.topbar = wrap.querySelector(".sp-topbar");
         els.clockBarSections = {

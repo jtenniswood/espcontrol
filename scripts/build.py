@@ -12,7 +12,7 @@ Usage:
     python scripts/build.py www           # build www.js only
     python scripts/build.py portal        # build offline WiFi setup pages only
     python scripts/build.py www --retain-current-bundle  # retain a release bundle
-    python scripts/build.py www --legacy-web-manifest PATH  # use the published bundle as the legacy bundle
+    python scripts/build.py www --legacy-web-manifest PATH  # retain the published bundles
     python scripts/build.py www --temporary-output DIR  # isolated fresh bundles
     python scripts/build.py icons --check # check icons only
     python scripts/build.py --self-test    # verify transactional publishing
@@ -39,8 +39,9 @@ from product_model_v2 import load_product_model_v2, source_directory, source_pat
 
 ROOT = Path(__file__).resolve().parent.parent
 MDI_VERSION = "7.4.47"
+MATERIAL_SYMBOL_SLUG_PREFIX = "material-symbol-"
 MDI_CSS_URL = f"https://cdn.jsdelivr.net/npm/@mdi/font@{MDI_VERSION}/css/materialdesignicons.css"
-MDI_WEB_FONT = ROOT / "common" / "assets" / "fonts" / f"materialdesignicons-webfont-{MDI_VERSION}.ttf"
+ASSET_ICON_FONT = ROOT / "common" / "assets" / "fonts" / "espcontrol-icons.ttf"
 INTER_WEB_FONT = ROOT / "node_modules" / "vitepress" / "dist" / "client" / "theme-default" / "fonts" / "inter-roman-latin.woff2"
 ROBOTO_WEB_FONT = ROOT / "common" / "assets" / "fonts" / "roboto-latin.woff2"
 SUPPORT_BUTTON_IMAGE = ROOT / "common" / "assets" / "images" / "buy-me-a-coffee-button.png"
@@ -49,9 +50,8 @@ WEB_BUNDLE_RETENTION = ROOT / "docs" / "public" / "webserver" / "bundle-retentio
 
 # Keep this list aligned with the GitHub Pages release catalogue in pages.yml.
 # The current source bundle is intentionally restricted to development firmware
-# (and the release being prepared). Stable firmware keeps using the retained
-# bundle from the latest published source until that firmware contains the
-# matching generated icon glyphs.
+# (and the release being prepared). Stable firmware uses its published bundle
+# so it keeps the generated icon glyphs and device profiles it shipped with.
 WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = (
     "dev",
     "v2.10.0",
@@ -62,8 +62,7 @@ WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = (
 )
 WEB_ASSET_CURRENT_FIRMWARE_VERSION = None
 # Local fallback for builds that do not have the currently published manifest.
-# Release and Pages workflows pass --legacy-web-manifest so this rotates with
-# the published release instead of remaining pinned here.
+# Release and Pages workflows supply the exact published bundles.
 WEB_ASSET_LEGACY_BUNDLE_ID = "42f3fd87eb8cbfab59943a7643a19416ded29eddb8608498ada20e95b416fd49"
 WEB_ASSET_LEGACY_BUNDLE_PATH = f"bundles/{WEB_ASSET_LEGACY_BUNDLE_ID}/www.js"
 
@@ -3772,8 +3771,8 @@ def embedded_web_mdi_styles():
     stylesheet or font after the editor has started. This matters when a display
     is reachable on the local network but cannot reach the Internet.
     """
-    if not MDI_WEB_FONT.exists():
-        raise BuildError(f"Missing bundled web icon font: {MDI_WEB_FONT.relative_to(ROOT)}")
+    if not ASSET_ICON_FONT.exists():
+        raise BuildError(f"Missing bundled web icon font: {ASSET_ICON_FONT.relative_to(ROOT)}")
     if not INTER_WEB_FONT.exists():
         raise BuildError(f"Missing bundled web interface font: {INTER_WEB_FONT.relative_to(ROOT)}")
     if not ROBOTO_WEB_FONT.exists():
@@ -3791,7 +3790,7 @@ def embedded_web_mdi_styles():
     interface_font_data = base64.b64encode(INTER_WEB_FONT.read_bytes()).decode("ascii")
     preview_font_data = base64.b64encode(ROBOTO_WEB_FONT.read_bytes()).decode("ascii")
     support_button_image_data = base64.b64encode(SUPPORT_BUTTON_IMAGE.read_bytes()).decode("ascii")
-    icon_font_data = base64.b64encode(MDI_WEB_FONT.read_bytes()).decode("ascii")
+    icon_font_data = base64.b64encode(ASSET_ICON_FONT.read_bytes()).decode("ascii")
     css = [
         "@font-face{font-family:'Roboto';src:url(data:font/woff2;base64,",
         preview_font_data,
@@ -3802,10 +3801,10 @@ def embedded_web_mdi_styles():
         "@font-face{font-family:'Inter';src:url(data:font/woff2;base64,",
         interface_font_data,
         ") format('woff2');font-weight:100 900;font-style:normal;font-display:swap}",
-        "@font-face{font-family:'Material Design Icons';src:url(data:font/ttf;base64,",
+        "@font-face{font-family:'EspControl Icons';src:url(data:font/ttf;base64,",
         icon_font_data,
         ") format('truetype');font-weight:normal;font-style:normal;font-display:block}",
-        ".mdi{display:inline-block;font-family:'Material Design Icons';font-weight:normal;font-style:normal;line-height:1;text-rendering:auto;-webkit-font-smoothing:antialiased}",
+        ".mdi{display:inline-block;font-family:'EspControl Icons';font-weight:normal;font-style:normal;line-height:1;text-rendering:auto;-webkit-font-smoothing:antialiased}",
         ".mdi::before{display:inline-block}",
     ]
     css.extend(
@@ -3854,7 +3853,7 @@ def check_firmware_icon_literals(data):
 
 
 def check_mdi_versions():
-    """Make sure the browser CSS and device font URLs stay on the same MDI version."""
+    """Check any MDI references against the pinned fallback release."""
     files = [
         ROOT / "src" / "webserver" / "application" / "app.ts",
         ROOT / "common" / "assets" / "icons.yaml",
@@ -3876,17 +3875,29 @@ def check_mdi_versions():
 
 
 def validate_icon_data(data):
-    """Verify icons.json matches the pinned Material Design Icons release."""
+    """Verify legacy MDI codepoints and reserved slots for Google-only icons."""
     errors = []
     errors.extend(check_duplicate_icon_fields(data))
     errors.extend(check_mdi_versions())
     errors.extend(check_firmware_icon_literals(data))
 
     mdi_codepoints = load_mdi_codepoints()
+    material_symbols = load_json(ROOT / "common" / "assets" / "material_symbols.json")
+    material_slots = set()
     for item in icon_items(data):
         mdi = item["mdi"]
-        expected = mdi_codepoints.get(mdi)
         actual = item["codepoint"].upper()
+        if mdi.startswith(MATERIAL_SYMBOL_SLUG_PREFIX):
+            symbol = material_symbols.get(mdi, "")
+            if not re.fullmatch(r"[a-z0-9_]+", symbol) or mdi != MATERIAL_SYMBOL_SLUG_PREFIX + symbol.replace("_", "-"):
+                errors.append(f"{item['name']} needs a matching Material Symbols entry for {mdi}")
+            if not re.fullmatch(r"F4[0-9A-F]{3}", actual):
+                errors.append(f"{item['name']} must use a Material Symbols slot from F4000 to F4FFF")
+            elif actual in material_slots:
+                errors.append(f"{item['name']} reuses Material Symbols slot {actual}")
+            material_slots.add(actual)
+            continue
+        expected = mdi_codepoints.get(mdi)
         if expected is None:
             errors.append(f"{item['name']} references missing mdi-{mdi}")
         elif actual != expected:
@@ -3917,7 +3928,7 @@ def assert_icon_data_valid(data):
     if not errors:
         return
 
-    print(f"Icon data does not match Material Design Icons {MDI_VERSION}:")
+    print("Icon catalog contains invalid entries:")
     for error in errors:
         print(f"  {error}")
     raise BuildError("Icon validation failed.")
@@ -3944,7 +3955,9 @@ def gen_icon_glyphs(data):
             continue
         seen_codepoints.add(icon["codepoint"])
         cp = icon["codepoint"]
-        lines.append(f'- "\\U{cp:>08s}"  # mdi-{icon["mdi"]}\n')
+        slug = icon["mdi"]
+        comment = slug if slug.startswith(MATERIAL_SYMBOL_SLUG_PREFIX) else f"mdi-{slug}"
+        lines.append(f'- "\\U{cp:>08s}"  # {comment}\n')
     return "".join(lines)
 
 
@@ -4088,7 +4101,7 @@ def load_timezone_options():
     return options
 
 
-def load_legacy_web_bundle(manifest_path):
+def load_published_web_bundles(manifest_path, firmware_versions):
     path = Path(manifest_path)
     try:
         manifest = json.loads(path.read_text(encoding="utf-8"))
@@ -4097,33 +4110,35 @@ def load_legacy_web_bundle(manifest_path):
     bundles = manifest.get("bundles") if isinstance(manifest, dict) else None
     if not isinstance(bundles, list):
         raise BuildError(f"Legacy web asset manifest {path} has no bundle entries")
-    bundle = next(
-        (
-            candidate
-            for candidate in bundles
-            if isinstance(candidate, dict)
-            and isinstance(candidate.get("firmwareVersions"), list)
-            and any(
-                isinstance(version, str) and version != "dev"
-                for version in candidate["firmwareVersions"]
-            )
-        ),
-        None,
-    )
-    if bundle is None:
-        raise BuildError(
-            f"Legacy web asset manifest {path} has no published firmware bundle"
-        )
-    bundle_id = bundle.get("id")
-    bundle_path = bundle.get("path")
-    if (
-        not isinstance(bundle_id, str)
-        or not re.fullmatch(r"[0-9a-f]{64}", bundle_id)
-        or bundle.get("sha256") != bundle_id
-        or bundle_path != f"bundles/{bundle_id}/www.js"
-    ):
-        raise BuildError(f"Legacy web asset manifest {path} has an invalid current bundle")
-    return bundle_id, bundle_path
+    entries_by_version = {}
+    files = {}
+    for bundle in bundles:
+        if not isinstance(bundle, dict) or not isinstance(bundle.get("firmwareVersions"), list):
+            raise BuildError(f"Legacy web asset manifest {path} contains an invalid bundle")
+        bundle_id = bundle.get("id")
+        bundle_path = bundle.get("path")
+        if (
+            not isinstance(bundle_id, str)
+            or not re.fullmatch(r"[0-9a-f]{64}", bundle_id)
+            or bundle.get("sha256") != bundle_id
+            or bundle_path != f"bundles/{bundle_id}/www.js"
+        ):
+            raise BuildError(f"Legacy web asset manifest {path} contains an invalid bundle path")
+        if bundle_path not in files:
+            try:
+                data = (path.parent / bundle_path).read_bytes()
+            except OSError as exc:
+                raise BuildError(f"Could not read published web bundle {bundle_path}") from exc
+            if hashlib.sha256(data).hexdigest() != bundle_id:
+                raise BuildError(f"Published web bundle {bundle_path} has an invalid digest")
+            files[bundle_path] = data.decode("utf-8")
+        for version in bundle["firmwareVersions"]:
+            if version in entries_by_version:
+                raise BuildError(f"Duplicate published web bundle for {version}")
+            entries_by_version[version] = bundle
+    if set(entries_by_version) != set(firmware_versions):
+        raise BuildError(f"Legacy web asset manifest {path} does not match the release catalogue")
+    return entries_by_version, files
 
 
 def build_www(
@@ -4167,10 +4182,6 @@ def build_www(
     bridge_text = (build_root / "www.js").read_text()
     bundle_sha256 = hashlib.sha256(bundle_text.encode("utf-8")).hexdigest()
     bundle_relative_path = Path("bundles") / bundle_sha256 / "www.js"
-    legacy_bundle_id = WEB_ASSET_LEGACY_BUNDLE_ID
-    legacy_bundle_path = WEB_ASSET_LEGACY_BUNDLE_PATH
-    if legacy_web_manifest is not None:
-        legacy_bundle_id, legacy_bundle_path = load_legacy_web_bundle(legacy_web_manifest)
     current_firmware_versions = ["dev"]
     if WEB_ASSET_CURRENT_FIRMWARE_VERSION is not None:
         if WEB_ASSET_CURRENT_FIRMWARE_VERSION not in WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS:
@@ -4190,20 +4201,34 @@ def build_www(
         "deviceProfiles": list(devices),
         "firmwareVersions": current_firmware_versions,
     }
-    legacy_bundle = {
-        "id": legacy_bundle_id,
-        "sha256": legacy_bundle_id,
-        "path": legacy_bundle_path,
-        "deviceProfiles": list(devices),
-        "firmwareVersions": legacy_firmware_versions,
-    }
+    bundles_by_path = {current_bundle["path"]: current_bundle}
+    legacy_files = {}
+    if legacy_web_manifest is None:
+        legacy_bundle = bundles_by_path.setdefault(WEB_ASSET_LEGACY_BUNDLE_PATH, {
+            "id": WEB_ASSET_LEGACY_BUNDLE_ID,
+            "sha256": WEB_ASSET_LEGACY_BUNDLE_ID,
+            "path": WEB_ASSET_LEGACY_BUNDLE_PATH,
+            "deviceProfiles": list(devices),
+            "firmwareVersions": [],
+        })
+        legacy_bundle["firmwareVersions"].extend(legacy_firmware_versions)
+    else:
+        published_bundles, legacy_files = load_published_web_bundles(
+            legacy_web_manifest, legacy_firmware_versions,
+        )
+        for version in legacy_firmware_versions:
+            bundle = published_bundles[version]
+            entry = bundles_by_path.setdefault(
+                bundle["path"], {**bundle, "firmwareVersions": []},
+            )
+            entry["firmwareVersions"].append(version)
+        legacy_files.pop(current_bundle["path"], None)
     manifest_text = json.dumps({
         "schemaVersion": 1,
         "bundles": [
-            {**current_bundle, "webAssetVersion": 2},
-            {**current_bundle, "webAssetVersion": 1},
-            {**legacy_bundle, "webAssetVersion": 2},
-            {**legacy_bundle, "webAssetVersion": 1},
+            {**bundle, "webAssetVersion": asset_version}
+            for bundle in bundles_by_path.values()
+            for asset_version in (2, 1)
         ],
     }, indent=2) + "\n"
 
@@ -4217,6 +4242,7 @@ def build_www(
         (build_root / bundle_relative_path, bundle_text),
         (build_root / "web-assets.json", manifest_text),
     ])
+    outputs.extend((build_root / path, source) for path, source in legacy_files.items())
 
     output_root = build_root if output_dir is not None else WWW_OUTPUT_DIR
     if retain_current_bundle and output_dir is None:

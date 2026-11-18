@@ -178,6 +178,11 @@ def self_test() -> None:
         raise AssertionError("read/import-only accepted non-consecutive dual-write releases")
     original = PRODUCT_MODEL.read_text(encoding="utf-8")
     original_policy = COMPATIBILITY_POLICY.read_text(encoding="utf-8")
+    current_mode, other_mode = (
+        ("DUAL_WRITE", "READ_IMPORT_ONLY")
+        if contract["panelConfigCompatibility"]["phase"] == "dual-write"
+        else ("READ_IMPORT_ONLY", "DUAL_WRITE")
+    )
     try:
         product_model = json.loads(original)
         product_model["modelVersion"] = int(product_model["modelVersion"]) + 1
@@ -193,8 +198,8 @@ def self_test() -> None:
     try:
         COMPATIBILITY_POLICY.write_text(
             original_policy.replace(
-                "LegacyConfigurationMode::DUAL_WRITE",
-                "LegacyConfigurationMode::READ_IMPORT_ONLY",
+                f"LegacyConfigurationMode::{current_mode}",
+                f"LegacyConfigurationMode::{other_mode}",
             ),
             encoding="utf-8",
         )
