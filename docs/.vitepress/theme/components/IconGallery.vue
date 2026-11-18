@@ -59,7 +59,7 @@ const visibleIcons = computed(() => {
         </select>
       </div>
     </div>
-    <p class="icon-gallery__count" role="status">
+    <p class="visually-hidden" role="status">
       {{ visibleIcons.length }} of {{ icons.length }} icons
     </p>
     <ul v-if="visibleIcons.length" class="icon-gallery__grid" aria-label="Available icons" role="list">
@@ -142,16 +142,11 @@ const visibleIcons = computed(() => {
   outline-offset: 2px;
 }
 
-.icon-gallery__count {
-  color: var(--vp-c-text-2);
-  font-size: 0.875rem;
-}
-
 .icon-gallery__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 7.5rem), 1fr));
   gap: 0.625rem;
-  margin: 0;
+  margin: 1rem 0 0;
   padding: 0;
   list-style: none;
 }
