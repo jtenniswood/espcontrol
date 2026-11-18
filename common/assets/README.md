@@ -3,9 +3,14 @@
 This directory contains internal firmware assets for icons and glyph sets. It is
 repository documentation for maintainers and is not part of the public docs site.
 
-The Material Design Icons font is committed under `common/assets/fonts/` so
-firmware builds do not depend on downloading it during ESPHome configuration.
-Keep its filename version aligned with `MDI_VERSION` in `scripts/build.py`.
+The panel and configurator use the same `fonts/espcontrol-icons.ttf` asset. It
+contains Google Material Symbols Outlined (fill 0, weight 400, grade 0, optical
+size 24) and keeps Material Design Icons glyphs for choices without an
+equivalent. `material_symbols.json` maps existing MDI slugs to Google symbol
+names. The generated font puts the new artwork at the existing codepoints so
+firmware, preview, and saved layouts can keep using the same icon identifiers.
+The original MDI font is the input for fallback artwork. Both upstream font
+licenses are in `fonts/`.
 
 ## Font style names
 
@@ -90,11 +95,18 @@ npm run check:all
 
 ## How to add an icon
 
-All button icons are defined once in [`icons.json`](icons.json) and synced to the device font list, firmware lookup table, and web UI by a script. Never edit generated icon lists directly.
+All button icons are defined once in [`icons.json`](../../product/v2/icons.json) and synced to the device font list, firmware lookup table, and web UI by a script. Never edit generated icon lists directly.
 
-## 1. Find the icon on MDI
+## 1. Choose a symbol
 
-Browse [Material Design Icons](https://materialdesignicons.com/) and note three things:
+For a Google-only icon, find its identifier in
+[Material Symbols Outlined](https://fonts.google.com/icons). Give it a
+user-facing name and the next unused codepoint in `F4000`–`F4FFF`.
+Use `material-symbol-` followed by the Google identifier with hyphens in
+the catalog's `mdi` field. That field also supplies the browser's icon class.
+
+For an MDI icon, browse [Material Design Icons](https://materialdesignicons.com/)
+and record its published codepoint and class:
 
 | Field | Example | Where to find it |
 |-------|---------|-------------------|
@@ -110,6 +122,10 @@ Open `product/v2/icons.json` and add an object to the `"icons"` array:
 { "name": "Ceiling Fan", "codepoint": "F1797", "mdi": "ceiling-fan" }
 ```
 
+For a Google-only entry, also map its catalog slug to the Google identifier in
+`material_symbols.json`. For example, the existing `material-symbol-airwave`
+entry maps to `airwave`.
+
 The array order determines display order in the LVGL font glyph list and the C++ lookup table. The YAML select options and JS picker sort alphabetically, so position doesn't matter for those.
 
 ## 3. Run the sync script
@@ -124,15 +140,26 @@ This patches the generated icon sections in:
 - `components/espcontrol/icons.h` — C++ icon lookup table and domain defaults
 - `src/webserver/generated/icons.ts` — web UI icon picker names and domain defaults
 
-Run `python3 scripts/build.py` to also rebuild the shared web UI bundle at `docs/public/webserver/www.js`.
+An MDI entry can map to a distinct Google equivalent in `material_symbols.json`.
+Then regenerate the shared font with FontTools installed and rebuild the
+configurator bundle.
+
+```sh
+python3 -m pip install fonttools==4.60.2
+python3 scripts/generate_icon_font.py
+python3 scripts/build.py www
+```
 
 ## 4. Verify
 
 ```sh
 python3 scripts/build.py icons --check
+python3 scripts/generate_icon_font.py --check
 ```
 
-Exits 0 if everything is in sync. The check also compares each `icons.json` codepoint with the pinned Material Design Icons release, so the browser preview and device font cannot silently drift apart.
+The catalog check verifies published MDI codepoints and reserved slots for
+Google-only symbols. The font check regenerates the asset against the pinned
+upstream fonts and compares it with the bundled copy.
 
 ## Domain defaults
 
