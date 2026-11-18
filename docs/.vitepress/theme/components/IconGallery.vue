@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import catalog from '../../../../product/v2/icons.json'
 import categoryGroups from './icon-gallery-categories.json'
 
@@ -32,6 +32,54 @@ const visibleIcons = computed(() => {
     terms.every((term) => searchKeys.some((key) => key.includes(term))),
   )
 })
+
+const copyFeedback = ref<{ name: string; copied: boolean }>()
+let feedbackTimer: ReturnType<typeof setTimeout> | undefined
+let copyRequest = 0
+
+function copyFromSelection(name: string) {
+  const previousFocus = document.activeElement
+  const field = document.createElement('textarea')
+  field.value = name
+  field.readOnly = true
+  field.style.cssText = 'position:fixed;opacity:0;pointer-events:none'
+  document.body.appendChild(field)
+  try {
+    field.focus({ preventScroll: true })
+    field.select()
+    return document.execCommand('copy')
+  } catch {
+    return false
+  } finally {
+    field.remove()
+    if (previousFocus instanceof HTMLElement) {
+      previousFocus.focus({ preventScroll: true })
+    }
+  }
+}
+
+async function copyIconName(name: string) {
+  const request = ++copyRequest
+  let copied = false
+  if (navigator.clipboard) {
+    try {
+      await navigator.clipboard.writeText(name)
+      copied = true
+    } catch {
+      // The selection fallback also works on the local HTTP preview.
+    }
+  }
+  if (request !== copyRequest) return
+  if (!copied) copied = copyFromSelection(name)
+  clearTimeout(feedbackTimer)
+  copyFeedback.value = { name, copied }
+  feedbackTimer = setTimeout(() => { copyFeedback.value = undefined }, 2000)
+}
+
+onUnmounted(() => {
+  copyRequest++
+  clearTimeout(feedbackTimer)
+})
 </script>
 
 <template>
@@ -62,10 +110,25 @@ const visibleIcons = computed(() => {
     <p class="visually-hidden" role="status">
       {{ visibleIcons.length }} of {{ icons.length }} icons
     </p>
+    <p class="visually-hidden" role="status">
+      <template v-if="copyFeedback">
+        {{ copyFeedback.copied ? `Copied ${copyFeedback.name}` : `Could not copy ${copyFeedback.name}` }}
+      </template>
+    </p>
     <ul v-if="visibleIcons.length" class="icon-gallery__grid" aria-label="Available icons" role="list">
       <li v-for="icon in visibleIcons" :key="icon.name" class="icon-gallery__item">
-        <span class="icon-gallery__glyph" aria-hidden="true">{{ icon.glyph }}</span>
-        <span>{{ icon.name }}</span>
+        <button
+          type="button"
+          class="icon-gallery__tile"
+          :aria-label="`Copy ${icon.name}`"
+          @click="copyIconName(icon.name)"
+        >
+          <span class="icon-gallery__glyph" aria-hidden="true">{{ icon.glyph }}</span>
+          <span v-if="copyFeedback?.name === icon.name">
+            {{ copyFeedback.copied ? 'Copied!' : 'Copy failed' }}
+          </span>
+          <span v-else>{{ icon.name }}</span>
+        </button>
       </li>
     </ul>
     <p v-else>No icons match these filters.</p>
@@ -139,7 +202,8 @@ const visibleIcons = computed(() => {
 }
 
 .icon-gallery input:focus-visible,
-.icon-gallery select:focus-visible {
+.icon-gallery select:focus-visible,
+.icon-gallery__tile:focus-visible {
   outline: 2px solid var(--vp-c-brand-1);
   outline-offset: 2px;
 }
@@ -155,6 +219,10 @@ const visibleIcons = computed(() => {
 
 .icon-gallery__item {
   display: grid;
+}
+
+.icon-gallery__tile {
+  display: grid;
   grid-template-rows: 2rem minmax(2.5em, 1fr);
   place-items: center;
   gap: 0.5rem;
@@ -167,6 +235,11 @@ const visibleIcons = computed(() => {
   line-height: 1.25;
   text-align: center;
   overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.icon-gallery__tile:hover {
+  border-color: var(--vp-c-brand-1);
 }
 
 .icon-gallery__item + .icon-gallery__item {
