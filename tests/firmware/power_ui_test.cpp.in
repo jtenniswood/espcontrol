@@ -472,17 +472,19 @@ int main(){
     if(card->display.modal.layout_family==DisplayModalLayoutFamily::LARGE_SQUARE){
       const int ew=ui.nodes[0]->w,eh=ui.nodes[0]->h;
       assert(ew!=eh);
+      assert(ui.nodes[1]->w==ui.nodes[2]->w&&ui.nodes[1]->w<ew);
       assert(ui.area->x==0&&ui.area->y==0);
       const double cx=ui.area->w/2.0,cy=ui.area->h/2.0;
       double radial=-1;
-      for(auto *node:ui.nodes){
-        assert(node->w==ew&&node->h==eh&&node->parent==ui.shell.panel);
-        const double d=std::hypot(node->x+ew/2.0-cx,node->y+eh/2.0-cy);
+      for(size_t i=0;i<4;++i){
+        auto *node=ui.nodes[i];
+        assert((i==1||i==2?node->w<=ew:node->w==ew)&&node->h==eh&&node->parent==ui.shell.panel);
+        const double d=std::hypot(node->x+node->w/2.0-cx,node->y+eh/2.0-cy);
         if(radial<0)radial=d;else assert(std::abs(d-radial)<=1);
       }
       for(size_t i=0;i<4;++i){
-        assert(ui.detail_rows[i]->max_w==ew&&ui.details[i]->max_w<=ew);
-        assert(ui.names[i]->max_w<ew&&ui.details[i]->mode==LV_LABEL_LONG_CLIP);
+        assert(ui.detail_rows[i]->max_w==ui.nodes[i]->w&&ui.details[i]->max_w<=ui.nodes[i]->w);
+        assert(ui.names[i]->max_w<ui.nodes[i]->w&&ui.details[i]->mode==LV_LABEL_LONG_CLIP);
       }
       for(size_t i:{0,2,3,4})assert(ui.paths[i].arc.radius==32);
     }else{

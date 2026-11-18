@@ -62,6 +62,7 @@ struct FlowGeometry {
   std::array<std::array<Point, 3>, 7> heads{};
   double scale = 1;
   double envelope_width = 0, envelope_height = 0, radial_distance = 0, port_spacing = 0;
+  double side_envelope_width = 0;
 };
 inline FlowFamily flow_family(int width, int height) {
   return width * 5 > height * 6 ? FlowFamily::LANDSCAPE
@@ -81,7 +82,8 @@ inline double flow_port_spacing(double half_width, double half_height, double si
 inline FlowGeometry flow_geometry(int width, int height, FlowFamily family,
                                   double node_width = 138, double node_height = 108,
                                   double side_node_width = 0, bool refine_clearance = false,
-                                  bool shared_envelopes = false, double render_scale = 0) {
+                                  bool shared_envelopes = false, double render_scale = 0,
+                                  double tightened_side_width = 0) {
   FlowGeometry out;
   const double cx = width / 2.0, cy = height / 2.0;
   const double margin = std::max(4.0, std::min(width, height) * .02);
@@ -108,6 +110,12 @@ inline FlowGeometry flow_geometry(int width, int height, FlowFamily family,
                                      height - out.envelope_height) / 2;
       dx = dy = out.radial_distance;
     }
+  }
+  if (out.envelope_width > 0) {
+    // Keep the established common radius/centres. Only the horizontal side
+    // bounds and their face ports can shrink to their own measured content.
+    if (tightened_side_width > 0) side_hw = std::min(hw, tightened_side_width / 2);
+    out.side_envelope_width = 2 * side_hw;
   }
   out.port_spacing = port;
   out.nodes = {{{cx, cy - dy}, {cx + dx, cy}, {cx - dx, cy}, {cx, cy + dy}}};

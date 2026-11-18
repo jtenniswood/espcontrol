@@ -465,11 +465,21 @@ inline void power_flow_layout() {
   // Keep measured legacy compact widths; common-envelope sizing takes the
   // maximum across all four names, numeric bounds and SOC/activity captions.
   const int side_node_w = std::min<int>(std::lround(width * .48), measure(text_font, value_font, false));
+  int tightened_side_width = 0;
+  if (shared_envelopes && !large) {
+    tightened_side_width = side_node_w;
+    // Square Grid/Home need no SOC row. Include partial-system captions too,
+    // keeping these fixed bounds independent of the current live readings.
+    for (const char *state : {"No measurement", "Stale"})
+      tightened_side_width = std::max(tightened_side_width,
+        power_flow_text_width(espcontrol_i18n(state), text_font) + 8);
+  }
   const int node_h = text_h * 2 + value_h + 6;
   const auto family = espcontrol::power::flow_family(layout.sw, layout.sh);
   const auto geometry = espcontrol::power::flow_geometry(width, height, family,
     node_w, node_h, side_node_w, shared_envelopes, shared_envelopes,
-    espcontrol::power::flow_render_scale(reference_viewport.width, reference_viewport.height, family));
+    espcontrol::power::flow_render_scale(reference_viewport.width, reference_viewport.height, family),
+    tightened_side_width);
   lv_area_t diagram_content, panel_content;
   lv_obj_get_content_coords(ui.diagram, &diagram_content);
   lv_obj_get_content_coords(ui.shell.panel, &panel_content);
@@ -519,7 +529,8 @@ inline void power_flow_layout() {
     if (icon_font && icon_font->line_height)
       apply_icon_width_compensation(ui.icons[i], 256 * text_h / icon_font->line_height);
     control_modal_center_tab_icon(ui.icons[i]);
-    const int this_width = geometry.envelope_width > 0 ? static_cast<int>(geometry.envelope_width)
+    const int this_width = geometry.envelope_width > 0
+      ? static_cast<int>(i == 1 || i == 2 ? geometry.side_envelope_width : geometry.envelope_width)
       : i == 1 || i == 2 ? side_node_w : node_w;
     const int this_height = geometry.envelope_height > 0 ? static_cast<int>(geometry.envelope_height) : node_h;
     // Solar/Home have no activity row: centre their actual two visible rows,

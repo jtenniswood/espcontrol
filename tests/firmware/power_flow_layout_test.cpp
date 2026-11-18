@@ -203,6 +203,33 @@ int main() {
   assert(recovered.radial_distance==236&&recovered.port_spacing==22);
   assert(recovered.paths[1].back().y-recovered.paths[1].front().y==354);
   assert(recovered.paths[5].back().x-recovered.paths[5].front().x==218);
+  const auto tightened=flow_geometry(710,655,FlowFamily::SQUARE,238,102,151,true,true,scale720,180);
+  assert(tightened.envelope_width==238&&tightened.side_envelope_width==180);
+  assert(tightened.radial_distance==recovered.radial_distance);
+  assert(tightened.port_spacing==recovered.port_spacing);
+  for(size_t n=0;n<4;++n){
+    assert(same(tightened.nodes[n],recovered.nodes[n]));
+    for(size_t p=0;p<3;++p){
+      const double half=n==1||n==2?tightened.side_envelope_width/2:tightened.envelope_width/2;
+      if(n==1)assert(tightened.nodes[n].x-half-tightened.ports[n][p].x==8);
+      if(n==2)assert(tightened.ports[n][p].x-tightened.nodes[n].x-half==8);
+      if(n==0||n==3)assert(same(tightened.ports[n][p],recovered.ports[n][p]));
+      else{
+        assert(tightened.ports[n][p].y==recovered.ports[n][p].y);
+        assert(std::abs(tightened.ports[n][p].x-recovered.ports[n][p].x)==29);
+      }
+    }
+  }
+  assert(tightened.paths[5].back().x-tightened.paths[5].front().x==276);
+  for(size_t edge=0;edge<7;++edge){
+    assert(tightened.arcs[edge].radius==recovered.arcs[edge].radius);
+    assert(same(tightened.arcs[edge].center,recovered.arcs[edge].center));
+    for(auto p:tightened.paths[edge])assert(p.x>=0&&p.x<=710&&p.y>=0&&p.y<=655);
+    for(size_t j=0;j<FLOW_POINT_COUNT;++j)
+      assert(same(tightened.paths[4][j],tightened.paths[6][FLOW_POINT_COUNT-1-j]));
+  }
+  // No opt-in: landscape and approved portrait keep their exact old geometry.
+  assert(recovered.side_envelope_width==recovered.envelope_width);
   for(size_t edge:{0,2,3,4}){
     const auto &path=recovered.paths[edge];
     assert(std::hypot(path[1].x-path[0].x,path[1].y-path[0].y)>=123);
@@ -220,6 +247,7 @@ int main() {
   // a 158 px square at that centre would extend to -18.82 px. Keep that
   // profile's rectangular boxes and centres; only symmetric port spacing grows.
   const auto approved_portrait=flow_geometry(434,583,FlowFamily::PORTRAIT,158,69,103);
+  assert(approved_portrait.side_envelope_width==0);
   assert(approved_portrait.envelope_width==0&&approved_portrait.envelope_height==0);
   assert(same(approved_portrait.nodes[0],{217,43.18}));
   assert(same(approved_portrait.nodes[2],{60.18,291.5}));
