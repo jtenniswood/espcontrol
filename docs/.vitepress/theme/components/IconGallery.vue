@@ -49,17 +49,14 @@ const visibleIcons = computed(() => {
           spellcheck="false"
         >
       </div>
-      <div>
-        <label for="icon-gallery-category">Category</label>
-        <div class="icon-gallery__field">
-          <select id="icon-gallery-category" v-model="selectedCategory">
-            <option value="">All categories</option>
-            <option v-for="category in categories" :key="category" :value="category">
-              {{ category }}
-            </option>
-          </select>
-          <span class="vpi-chevron-down icon-gallery__field-icon icon-gallery__category-icon" aria-hidden="true" />
-        </div>
+      <div class="icon-gallery__field">
+        <select id="icon-gallery-category" v-model="selectedCategory" aria-label="Category">
+          <option value="">All categories</option>
+          <option v-for="category in categories" :key="category" :value="category">
+            {{ category }}
+          </option>
+        </select>
+        <span class="vpi-chevron-down icon-gallery__field-icon icon-gallery__category-icon" aria-hidden="true" />
       </div>
     </div>
     <p class="visually-hidden" role="status">
@@ -91,11 +88,6 @@ const visibleIcons = computed(() => {
   gap: 0.75rem;
 }
 
-.icon-gallery label {
-  display: block;
-  font-weight: 600;
-}
-
 .icon-gallery input,
 .icon-gallery select {
   width: 100%;
@@ -116,10 +108,6 @@ const visibleIcons = computed(() => {
 
 .icon-gallery__field {
   position: relative;
-}
-
-.icon-gallery label + .icon-gallery__field {
-  margin-top: 0.4rem;
 }
 
 .icon-gallery__field-icon {
