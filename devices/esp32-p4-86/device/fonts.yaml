@@ -7,28 +7,28 @@
 
 font:
   # Main action/setup icons
-  - file: '${mdi_font_file}'
+  - file: '${icon_font_file}'
     id: font_icon_main
     size: 66
-    bpp: 4
+    bpp: 2
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
   # Smaller card icons
-  - file: '${mdi_font_file}'
+  - file: '${icon_font_file}'
     id: font_icon_card
     size: 50
     bpp: 4
     glyphs: !include ../../../common/assets/climate_card_icon_glyphs.yaml
 
   # Status, network, and subpage icons
-  - file: '${mdi_font_file}'
+  - file: '${icon_font_file}'
     id: font_icon_status
     size: 26
     bpp: 4
     glyphs: !include ../../../common/assets/network_status_glyphs.yaml
 
   # Clock-bar icons: match the S3 panel's physical size at 1.5x resolution.
-  - file: '${mdi_font_file}'
+  - file: '${icon_font_file}'
     id: font_icon_clock_bar
     size: 36
     bpp: 4

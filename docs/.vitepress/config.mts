@@ -299,6 +299,10 @@ export default defineConfig({
         articleSchema.mainEntity = pageData.frontmatter.faqAnswers
         delete pageData.frontmatter.faqAnswers
       }
+      if (pageData.relativePath === 'reference/icons.md') {
+        articleSchema['@type'] = 'CollectionPage'
+        articleSchema.about = { '@id': `${hostname}#software` }
+      }
       const screenProduct = screenProducts[pageData.relativePath]
       if (screenProduct) {
         articleSchema.about = {
@@ -433,6 +437,7 @@ export default defineConfig({
         text: 'Reference',
         items: [
           { text: 'FAQ', link: '/reference/faq' },
+          { text: 'Icon Gallery', link: '/reference/icons' },
           { text: 'Troubleshooting', link: '/getting-started/troubleshooting' },
           { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
           { text: 'Device Runtime Tests', link: '/reference/device-runtime-tests' },

@@ -4,7 +4,7 @@
   "panelConfigDocumentVersion": 1,
   "webAssetVersion": 2,
   "panelConfigCompatibility": {
-    "phase": "dual-write",
+    "phase": "read-import-only",
     "dualWriteStableReleases": 2,
     "readImportOnlyStableReleases": 1
   }

@@ -41,6 +41,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".fade-in{animation:fadeIn .3s ease}" +
         "@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}" +
         ".sp-wrap{display:flex;justify-content:center;padding:16px var(--gap) 4px;user-select:none}" +
+        ".sp-selection-box{position:fixed;box-sizing:border-box;z-index:10;pointer-events:none;" +
+        "border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 18%,transparent)}" +
         ".sp-screen{" + previewThemeCss("Dark") + "}" +
         ".sp-screen.sp-theme-light{" + previewThemeCss("Light") + "}" +
         ".sp-screen{width:var(--screen-w);aspect-ratio:var(--screen-aspect);background:var(--preview-background);" +
@@ -603,7 +605,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-ctx-sub-trigger{position:relative;padding-right:34px}" +
         ".sp-ctx-sub-trigger[aria-expanded=true],.sp-ctx-sub-trigger:focus-visible{background:var(--accent-soft)}" +
         ".sp-ctx-sub-trigger:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}" +
-        ".sp-ctx-sub-trigger::after{content:'\\F0142';font-family:'Material Design Icons';position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;opacity:.5;pointer-events:none}" +
+        ".sp-ctx-sub-trigger::after{content:'\\F0142';font-family:'EspControl Icons';position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;opacity:.5;pointer-events:none}" +
         ".sp-ctx-submenu{display:none;position:fixed;background:var(--surface);" +
         "border:1px solid var(--border);border-radius:var(--radius);padding:4px 0;min-width:120px;" +
         "box-shadow:var(--shadow-3);z-index:201}" +
