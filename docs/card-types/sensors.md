@@ -91,7 +91,10 @@ for existing configurations. Uncheck it only when the component is physically ab
 from the configured electrical system: that contribution is then zero for balance
 checking. Its node/landscape reading card is hidden without moving other nodes or
 cards. An included component with an empty sensor field remains installed but
-**unmeasured**, shown as `--` / **No measurement**, never zero. Configured sensors
+**unmeasured**, never zero. In the Flow diagram, missing or unavailable power
+readings show `—`; the central status chip explains the calculation state. Valid
+activity and optional Battery SOC remain visible. The landscape Sensor cards keep
+their detailed **No measurement** / **Unavailable** captions. Configured sensors
 reporting unknown, unavailable, invalid or explicitly stale data also retain their
 node with no current numeric value. Valid other readings and Battery/Grid activity
 remain visible. When neither Battery nor Grid is included, the activity subtitle

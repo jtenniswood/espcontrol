@@ -62,7 +62,7 @@ struct FlowGeometry {
   std::array<std::array<Point, 3>, 7> heads{};
   double scale = 1;
   double envelope_width = 0, envelope_height = 0, radial_distance = 0, port_spacing = 0;
-  double side_envelope_width = 0;
+  double side_envelope_width = 0, side_envelope_height = 0;
 };
 inline FlowFamily flow_family(int width, int height) {
   return width * 5 > height * 6 ? FlowFamily::LANDSCAPE
@@ -83,7 +83,7 @@ inline FlowGeometry flow_geometry(int width, int height, FlowFamily family,
                                   double node_width = 138, double node_height = 108,
                                   double side_node_width = 0, bool refine_clearance = false,
                                   bool shared_envelopes = false, double render_scale = 0,
-                                  double tightened_side_width = 0) {
+                                  double minimum_side_width = 0) {
   FlowGeometry out;
   const double cx = width / 2.0, cy = height / 2.0;
   const double margin = std::max(4.0, std::min(width, height) * .02);
@@ -111,11 +111,33 @@ inline FlowGeometry flow_geometry(int width, int height, FlowFamily family,
       dx = dy = out.radial_distance;
     }
   }
+  const bool common_radius = out.envelope_width > 0;
+  // Keep the approved centres, port spacing and bend radius independent of
+  // the paired bounds. A narrower lateral pair must not move either node.
+  const double old_room = std::min(std::abs(dx - side_hw - gap - port),
+                                   std::abs(dy - hh - gap - port));
+  const int radius = std::max(0, static_cast<int>(std::floor(std::min(32.0,
+    common_radius ? old_room - 11 * out.scale : old_room * .42))));
+  const double side_hh = hh;
+  if (minimum_side_width > 0) {
+    // 720 px reference: 238x118 vertically, 200x102 laterally. Use the same
+    // ratios elsewhere, bounded by compiled content and space at fixed centres.
+    // Even deltas retain the exact pixel centres of the flex-laid-out text.
+    const double old_side_width = 2 * side_hw;
+    const double desired_width = std::max(old_side_width * (200.0 / 238), minimum_side_width);
+    side_hw -= std::max(0.0, std::floor((old_side_width - desired_width) / 2));
+    const double old_half_height = hh;
+    const double tangent = std::min(11 * out.scale, std::max(0.0, dy - hh - gap - port - radius));
+    const double maximum_half_height = std::min(cy - dy - gap,
+      dy - gap - port - radius - tangent);
+    hh += std::max(0.0, std::floor(std::min(old_half_height * (118.0 / 102),
+                                          maximum_half_height) - old_half_height));
+    out.envelope_width = 2 * hw;
+    out.envelope_height = 2 * hh;
+  }
   if (out.envelope_width > 0) {
-    // Keep the established common radius/centres. Only the horizontal side
-    // bounds and their face ports can shrink to their own measured content.
-    if (tightened_side_width > 0) side_hw = std::min(hw, tightened_side_width / 2);
     out.side_envelope_width = 2 * side_hw;
+    out.side_envelope_height = 2 * side_hh;
   }
   out.port_spacing = port;
   out.nodes = {{{cx, cy - dy}, {cx + dx, cy}, {cx - dx, cy}, {cx, cy + dy}}};
@@ -127,11 +149,8 @@ inline FlowGeometry flow_geometry(int width, int height, FlowFamily family,
                 {{{cx - port, cy + dy - hh - gap}, {cx, cy + dy - hh - gap}, {cx + port, cy + dy - hh - gap}}}}};
   auto straight = [](Point a, Point b) { return FlowPath{{a, a, b, b}}; };
   auto bend = [&](size_t index, Point a, Point b, int sign, bool top) {
-    // One radius for mirrored elbows, constrained by actual node clearance.
-    const double room = out.envelope_width > 0
-      ? std::min(std::abs(b.y - a.y), std::abs(b.x - a.x)) - 11 * out.scale
-      : std::min(std::abs(b.y - a.y), std::abs(b.x - a.x)) * .42;
-    const int r = std::max(0, static_cast<int>(std::floor(std::min(32.0, room))));
+    // Retain the approved radius even when paired face ports move.
+    const int r = radius;
     const Point center{a.x + sign * r, b.y + (top ? -r : r)};
     out.paths[index] = {{{a}, {a.x, center.y}, {center.x, b.y}, {b}}};
     const int start = top ? (sign > 0 ? 90 : 0) : (sign > 0 ? 180 : 270);

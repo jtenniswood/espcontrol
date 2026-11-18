@@ -203,39 +203,63 @@ int main() {
   assert(recovered.radial_distance==236&&recovered.port_spacing==22);
   assert(recovered.paths[1].back().y-recovered.paths[1].front().y==354);
   assert(recovered.paths[5].back().x-recovered.paths[5].front().x==218);
-  const auto tightened=flow_geometry(710,655,FlowFamily::SQUARE,238,102,151,true,true,scale720,180);
-  assert(tightened.envelope_width==238&&tightened.side_envelope_width==180);
-  assert(tightened.radial_distance==recovered.radial_distance);
-  assert(tightened.port_spacing==recovered.port_spacing);
-  for(size_t n=0;n<4;++n){
-    assert(same(tightened.nodes[n],recovered.nodes[n]));
-    for(size_t p=0;p<3;++p){
-      const double half=n==1||n==2?tightened.side_envelope_width/2:tightened.envelope_width/2;
-      if(n==1)assert(tightened.nodes[n].x-half-tightened.ports[n][p].x==8);
-      if(n==2)assert(tightened.ports[n][p].x-tightened.nodes[n].x-half==8);
-      if(n==0||n==3)assert(same(tightened.ports[n][p],recovered.ports[n][p]));
-      else{
-        assert(tightened.ports[n][p].y==recovered.ports[n][p].y);
-        assert(std::abs(tightened.ports[n][p].x-recovered.ports[n][p].x)==29);
+  // Exactly two symmetric pairs, using one responsive ratio and native-content
+  // minimum. Centres, text centring parity, port separation and radii are frozen.
+  for(auto p : {std::array<int,7>{710,655,238,102,151,1,1},
+                {434,287,158,69,103,0,0}, {434,573,208,93,141,0,0},
+                {572,521,158,69,103,1,1}, {722,713,176,75,114,1,1}}) {
+    const auto family=flow_family(p[0],p[1]);
+    const auto before=flow_geometry(p[0],p[1],family,p[2],p[3],p[4],p[5],p[6]);
+    const auto pair=flow_geometry(p[0],p[1],family,p[2],p[3],p[4],p[5],p[6],0,p[4]);
+    const double old_w=before.envelope_width>0?before.envelope_width:p[2];
+    const double old_side=before.envelope_width>0?before.side_envelope_width:p[4];
+    assert(pair.envelope_width==old_w&&pair.envelope_height>=p[3]);
+    assert(pair.side_envelope_width>=p[4]&&pair.side_envelope_width<=old_side);
+    assert(pair.side_envelope_height==p[3]);
+    assert(std::fmod(old_side-pair.side_envelope_width,2)==0);
+    assert(std::fmod(pair.envelope_height-p[3],2)==0);
+    assert(pair.port_spacing==before.port_spacing);
+    for(size_t n=0;n<4;++n){
+      assert(same(pair.nodes[n],before.nodes[n]));
+      const double half_w=(n==1||n==2?pair.side_envelope_width:pair.envelope_width)/2;
+      const double half_h=(n==1||n==2?pair.side_envelope_height:pair.envelope_height)/2;
+      assert(pair.nodes[n].x-half_w>=0&&pair.nodes[n].x+half_w<=p[0]);
+      assert(pair.nodes[n].y-half_h>=0&&pair.nodes[n].y+half_h<=p[1]);
+      for(size_t k=0;k<3;++k){const auto port=pair.ports[n][k];
+        const double gap=n==0?port.y-pair.nodes[n].y-half_h:n==3?pair.nodes[n].y-half_h-port.y:
+          n==1?pair.nodes[n].x-half_w-port.x:port.x-pair.nodes[n].x-half_w;
+        assert(std::abs(gap-(p[5]?8:4))<1e-8);
       }
     }
+    const int stroke=(std::max<int>(2,std::lround(3.2*pair.scale))+1)&~1;
+    auto clear=[&](Point point){for(size_t n=0;n<4;++n){
+      const double hw=(n==1||n==2?pair.side_envelope_width:pair.envelope_width)/2;
+      const double hh=(n==1||n==2?pair.side_envelope_height:pair.envelope_height)/2;
+      const double x=std::max(std::abs(point.x-pair.nodes[n].x)-hw,0.0);
+      const double y=std::max(std::abs(point.y-pair.nodes[n].y)-hh,0.0);
+      assert(std::hypot(x,y)-stroke/2.0>=(p[5]?5.99:1.99));
+    }};
+    auto segment=[&](Point a,Point b){for(int k=0;k<=100;++k)
+      clear({a.x+(b.x-a.x)*k/100,a.y+(b.y-a.y)*k/100});};
+    for(size_t edge=0;edge<7;++edge){
+      assert(pair.arcs[edge].radius==before.arcs[edge].radius);
+      assert(same(pair.arcs[edge].center,before.arcs[edge].center));
+      const auto &path=pair.paths[edge];const auto &arc=pair.arcs[edge];
+      segment(path[0],arc.radius?path[1]:path[3]);
+      if(arc.radius){segment(path[2],path[3]);
+        for(int angle=arc.start_angle;angle<=arc.end_angle;++angle){const double radians=angle*std::acos(-1)/180;
+          clear({arc.center.x+arc.radius*std::cos(radians),arc.center.y+arc.radius*std::sin(radians)});}}
+      segment(pair.heads[edge][0],pair.heads[edge][1]);segment(pair.heads[edge][1],pair.heads[edge][2]);
+      for(auto point:pair.paths[edge])assert(point.x>=0&&point.x<=p[0]&&point.y>=0&&point.y<=p[1]);
+      for(size_t k=0;k<FLOW_POINT_COUNT;++k)assert(same(pair.paths[4][k],pair.paths[6][FLOW_POINT_COUNT-1-k]));
+    }
   }
-  assert(tightened.paths[5].back().x-tightened.paths[5].front().x==276);
-  for(size_t edge=0;edge<7;++edge){
-    assert(tightened.arcs[edge].radius==recovered.arcs[edge].radius);
-    assert(same(tightened.arcs[edge].center,recovered.arcs[edge].center));
-    for(auto p:tightened.paths[edge])assert(p.x>=0&&p.x<=710&&p.y>=0&&p.y<=655);
-    for(size_t j=0;j<FLOW_POINT_COUNT;++j)
-      assert(same(tightened.paths[4][j],tightened.paths[6][FLOW_POINT_COUNT-1-j]));
-  }
-  // No opt-in: landscape and approved portrait keep their exact old geometry.
-  assert(recovered.side_envelope_width==recovered.envelope_width);
-  for(size_t edge:{0,2,3,4}){
-    const auto &path=recovered.paths[edge];
-    assert(std::hypot(path[1].x-path[0].x,path[1].y-path[0].y)>=123);
-    assert(std::hypot(path[3].x-path[2].x,path[3].y-path[2].y)>=55);
-    assert(recovered.arcs[edge].radius==32);
-  }
+  const auto paired720=flow_geometry(710,655,FlowFamily::SQUARE,238,102,151,true,true,scale720,151);
+  assert(paired720.envelope_width==238&&paired720.envelope_height==118);
+  assert(paired720.side_envelope_width==200&&paired720.side_envelope_height==102);
+  assert(paired720.port_spacing==22&&paired720.arcs[0].radius==32);
+  assert(paired720.paths[5].back().x-paired720.paths[5].front().x==256);
+  assert(paired720.paths[1].back().y-paired720.paths[1].front().y==338);
   // Width and height respond independently; translations cannot force empty
   // vertical space, and taller native rows do not widen a short caption.
   const auto wider=flow_geometry(710,655,FlowFamily::SQUARE,260,102,151,true,true,scale720);

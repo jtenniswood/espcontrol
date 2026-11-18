@@ -478,8 +478,8 @@ int main(){
       double radial=-1;
       for(size_t i=0;i<4;++i){
         auto *node=ui.nodes[i];
-        assert((i==1||i==2?node->w<=ew:node->w==ew)&&node->h==eh&&node->parent==ui.shell.panel);
-        const double d=std::hypot(node->x+node->w/2.0-cx,node->y+eh/2.0-cy);
+        assert((i==1||i==2?node->w<=ew:node->w==ew)&&node->h==(i==1||i==2?ui.nodes[1]->h:eh)&&node->parent==ui.shell.panel);
+        const double d=std::hypot(node->x+node->w/2.0-cx,node->y+node->h/2.0-cy);
         if(radial<0)radial=d;else assert(std::abs(d-radial)<=1);
       }
       for(size_t i=0;i<4;++i){
@@ -488,12 +488,15 @@ int main(){
       }
       for(size_t i:{0,2,3,4})assert(ui.paths[i].arc.radius==32);
     }else{
-      const auto original=espcontrol::power::flow_geometry(ui.area->w,ui.area->h,
-        espcontrol::power::flow_family(frame.sw,frame.sh),ui.nodes[0]->w,ui.nodes[0]->h,ui.nodes[1]->w);
-      for(size_t i=0;i<4;++i){
-        assert(ui.nodes[i]->y==ui.area->y+std::lround(original.nodes[i].y-ui.nodes[i]->h/2.0));
-        assert(ui.nodes[i]->x==ui.area->x+std::lround(original.nodes[i].x-ui.nodes[i]->w/2.0));
-      }
+      // Each pair has one fixed native-content bound. Numerical before/after
+      // centre invariance is covered with the original inputs in the layout test;
+      // reconstructing that baseline from the NEW paired widths would move it.
+      assert(ui.nodes[0]->w==ui.nodes[3]->w&&ui.nodes[0]->h==ui.nodes[3]->h);
+      assert(ui.nodes[1]->w==ui.nodes[2]->w&&ui.nodes[1]->h==ui.nodes[2]->h);
+      assert(std::abs(ui.nodes[0]->x*2+ui.nodes[0]->w-ui.area->x*2-ui.area->w)<=1);
+      assert(std::abs(ui.nodes[3]->x*2+ui.nodes[3]->w-ui.area->x*2-ui.area->w)<=1);
+      assert(std::abs(ui.nodes[1]->y*2+ui.nodes[1]->h-ui.area->y*2-ui.area->h)<=1);
+      assert(std::abs(ui.nodes[2]->y*2+ui.nodes[2]->h-ui.area->y*2-ui.area->h)<=1);
     }
 
     auto count_stage=[](const char *prefix){return std::count_if(diagnostic_logs.begin(),diagnostic_logs.end(),[&](const auto &s){return s.find(prefix)==0;});};
@@ -730,7 +733,7 @@ int main(){
       const int count=objects;assert(count<=113&&sizeof(PowerFlowUi)<=2304);
       publish("sensor.soc","unavailable");publish("sensor.b","unavailable");
       assert(ui.sidebar[3].secondary_lbl->text==espcontrol_i18n("Unavailable"));
-      assert(ui.values[3]->text=="--"&&ui.sidebar[3].sensor_lbl->text=="--"&&ui.sidebar[3].unit_lbl->text.empty());
+      assert(ui.values[3]->text=="—"&&ui.sidebar[3].sensor_lbl->text=="--"&&ui.sidebar[3].unit_lbl->text.empty());
       power_flow_layout();assert(objects==count&&subscriptions==10);
       // A rotated viewport falls back without deleting/recreating model or view.
       std::swap(frame.panel_w,frame.panel_h);power_flow_layout();
@@ -748,16 +751,13 @@ int main(){
   power_flow_open(card);
   assert(power_flow_ui().nodes[1]->w<power_flow_ui().nodes[3]->w);
   auto &small_ui=power_flow_ui();
-  const auto unchanged=espcontrol::power::flow_geometry(small_ui.area->w,small_ui.area->h,
-    espcontrol::power::FlowFamily::SQUARE,small_ui.nodes[0]->w,small_ui.nodes[0]->h,small_ui.nodes[1]->w);
-  for(size_t i=0;i<7;++i){
-    assert(small_ui.paths[i].arc.radius==unchanged.arcs[i].radius);
-    for(size_t j=0;j<espcontrol::power::FLOW_POINT_COUNT;++j){
-      assert(small_ui.paths[i].points[j].x==espcontrol::power::flow_coordinate<int>(unchanged.paths[i][j].x));
-      assert(small_ui.paths[i].points[j].y==espcontrol::power::flow_coordinate<int>(unchanged.paths[i][j].y));
-    }
-  }
+  assert(small_ui.nodes[0]->w==small_ui.nodes[3]->w&&small_ui.nodes[0]->h==small_ui.nodes[3]->h);
+  assert(small_ui.nodes[1]->w==small_ui.nodes[2]->w&&small_ui.nodes[1]->h==small_ui.nodes[2]->h);
   for(size_t i:{0,2,3,4})assert(small_ui.paths[i].arc.radius>0);
+  for(size_t j=0;j<espcontrol::power::FLOW_POINT_COUNT;++j){
+    assert(small_ui.paths[4].points[j].x==small_ui.paths[6].points[espcontrol::power::FLOW_POINT_COUNT-1-j].x);
+    assert(small_ui.paths[4].points[j].y==small_ui.paths[6].points[espcontrol::power::FLOW_POINT_COUNT-1-j].y);
+  }
   power_flow_hide();
   set_espcontrol_language("en");frame.inset=8;card->display.modal={};card->grid_cols=1;card->grid_rows=1;
   fail_after=9;const int base_objects=objects;power_flow_open(card);
@@ -778,7 +778,7 @@ int main(){
   power_driver_setup_visual(sub,cfg,context,{},GridConfig{},2);power_driver_bind_data(sub,cfg,context,profile,GridConfig{});
   send(sub.btn,LV_EVENT_CLICKED);assert(power_flow_ui().card&&subscriptions==10);
   publish("sensor.soc","78");publish("sensor.soc","%","unit_of_measurement");
-  assert(power_flow_ui().soc->text=="78% · ");
+  assert(power_flow_ui().soc->text=="78%");
   auto &battery_ui=power_flow_ui();
   assert(battery_ui.nodes[3]->children.size()==3);
   assert(battery_ui.soc->parent==battery_ui.details[3]->parent);
@@ -791,7 +791,7 @@ int main(){
   publish("sensor.soc","unavailable");assert(battery_ui.soc->text.empty());
   assert(battery_ui.details[3]->text=="Charging");
   publish("sensor.soc","78");publish("sensor.b","unavailable");
-  assert(battery_ui.soc->text=="78% · "&&battery_ui.details[3]->text=="Unavailable");
+  assert(battery_ui.soc->text=="78%"&&battery_ui.details[3]->text.empty());
   for(auto id:{"sensor.s","sensor.h"})publish(id,"W","unit_of_measurement");
   publish("sensor.s","1500","",false);publish("sensor.h","1000","",false);publish("sensor.g","0","",false);publish("sensor.b","-500","",false);assert(timers.size()==1);
   lv_obj_del(sub.btn);assert(timers.empty());advance(1000);assert(subscriptions==0&&objects==0&&!power_flow_ui().card&&!power_card_contexts());
@@ -822,7 +822,7 @@ int main(){
     assert(owner->data.model.calculation.inferred_w[5]==1000.6);
     for(size_t i=0;i<7;++i)assert(bool(ui.lines[i]->flags&LV_OBJ_FLAG_HIDDEN)==(i!=5));
     power_cards_disconnected();assert(!owner->publish_timer&&!owner->data.model.calculation.pending);
-    assert(ui.values[1]->text=="--"&&ui.values[2]->text=="--");
+    assert(ui.values[1]->text=="—"&&ui.values[2]->text=="—");
     for(auto *line:ui.lines)assert(line->flags&LV_OBJ_FLAG_HIDDEN);
     assert(owner->data.model.capabilities.installed==6);
     publish("sensor.h","0");publish("sensor.g","0");
@@ -841,13 +841,35 @@ int main(){
   assert(owner->data.model.calculation.validity==espcontrol::power::CalculationValidity::READINGS_ONLY);
   assert(owner->data.model.capabilities.installed==6);
   assert(!(ui.nodes[1]->flags&LV_OBJ_FLAG_HIDDEN));
-  assert(ui.values[1]->text=="--"&&ui.details[1]->text==espcontrol_i18n("No measurement"));
-  assert(ui.detail_rows[1]->max_w==ui.nodes[1]->w);
-  assert(ui.details[1]->max_w<=ui.nodes[1]->w);
+  assert(ui.values[1]->text=="—"&&ui.details[1]->text.empty());
   assert(ui.details[1]->mode==LV_LABEL_LONG_CLIP);
   assert(ui.details[2]->text=="Importing"&&ui.status->text==espcontrol_i18n("Readings only"));
   for(auto *line:ui.lines)assert(line->flags&LV_OBJ_FLAG_HIDDEN);
   lv_obj_del(unmeasured.btn);assert(subscriptions==0&&objects==0&&timers.empty());
+  // Diagram presentation does not collapse model validity, alter the sidebar
+  // diagnostics, or shift any reserved row when a measurement is unavailable.
+  cfg.installed=15;cfg.home="sensor.h";cfg.soc="sensor.soc";
+  auto missing=make_slot(false);power_driver_setup_visual(missing,cfg,context,{},GridConfig{},2);
+  power_driver_bind_data(missing,cfg,context,profile,GridConfig{});
+  owner=power_card_for_button(missing.btn);power_flow_open(owner);auto &missing_ui=power_flow_ui();
+  const int missing_objects=objects;
+  for(auto validity:{espcontrol::power::ReadingValidity::MISSING,
+                     espcontrol::power::ReadingValidity::UNKNOWN,
+                     espcontrol::power::ReadingValidity::UNMEASURED,
+                     espcontrol::power::ReadingValidity::UNAVAILABLE,
+                     espcontrol::power::ReadingValidity::STALE,
+                     espcontrol::power::ReadingValidity::INVALID}){
+    for(auto &reading:owner->data.model.calculation.nodes)reading.validity=validity;
+    owner->data.model.battery_soc={78,espcontrol::power::ReadingValidity::VALID};
+    power_flow_update(owner);
+    for(size_t i=0;i<4;++i){
+      assert(missing_ui.values[i]->text=="—"&&missing_ui.details[i]->text.empty());
+      assert(owner->data.model.calculation.nodes[i].validity==validity);
+      assert(!(missing_ui.detail_rows[i]->flags&LV_OBJ_FLAG_HIDDEN));
+    }
+    assert(missing_ui.soc->text=="78%"&&objects==missing_objects);
+  }
+  lv_obj_del(missing.btn);assert(subscriptions==0&&objects==0&&timers.empty());
   // Measured Home zero is numeric, unlike missing/unavailable Home. Exercise
   // every supported physical topology without moving the fixed node geometry.
   for(uint8_t mask=2;mask<16;++mask)if(mask&2){
@@ -860,8 +882,8 @@ int main(){
     publish("sensor.h","0");publish("sensor.h","W","unit_of_measurement");advance(200);
     assert(view.values[1]->text=="0 W");
     publish("sensor.h","unavailable");
-    assert(view.values[1]->text=="--");
-    assert(view.details[1]->text==espcontrol_i18n("Unavailable"));
+    assert(view.values[1]->text=="—");
+    assert(view.details[1]->text.empty());
     assert(!(view.nodes[1]->flags&LV_OBJ_FLAG_HIDDEN));
     for(auto *line:view.lines)assert(line->flags&LV_OBJ_FLAG_HIDDEN);
     lv_obj_del(measured.btn);assert(subscriptions==0&&objects==0&&timers.empty());

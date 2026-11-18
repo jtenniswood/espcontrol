@@ -288,18 +288,6 @@ inline int power_flow_text_width(const char *text, const lv_font_t *font) {
   lv_text_get_size(&size, text, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
   return size.x;
 }
-// Legacy portrait nodes retain their approved narrow envelopes. Only the new
-// installed-but-unmeasured caption needs an explicit native overflow bound.
-inline void power_flow_limit_unmeasured(PowerFlowNodes &ui, PowerCardCtx *ctx, size_t i) {
-  if (!ui.legacy_rows || ctx->data.model.calculation.nodes[i].validity !=
-      espcontrol::power::ReadingValidity::UNMEASURED) return;
-  const int width = lv_obj_get_width(ui.nodes[i]);
-  if (width <= 0) return;
-  const int soc_width = i == 3 && ctx->has_soc && ctx->data.model.battery_soc.valid()
-    ? power_flow_text_width("100% · ", lv_obj_get_style_text_font(ui.details[i], LV_PART_MAIN)) : 0;
-  lv_obj_set_style_max_width(ui.detail_rows[i], width, LV_PART_MAIN);
-  lv_obj_set_style_max_width(ui.details[i], std::max(1, width - soc_width), LV_PART_MAIN);
-}
 // Native modal-chip surface/muted-text roles, on the existing label itself.
 // No button, pressed state, corner mask, child container or extra draw depth.
 inline void power_flow_style_status(lv_obj_t *label, const DisplayProfile &display,
@@ -443,15 +431,17 @@ inline void power_flow_layout() {
   if (card_font && (!compact || card_font->line_height < compact->line_height)) compact = card_font;
   auto *text_font = body;
   auto *value_font = body;
-  auto measure = [&](const lv_font_t *text, const lv_font_t *value, bool with_soc = true) {
+  auto measure = [&](const lv_font_t *text, const lv_font_t *value, bool with_soc = true, bool valid_content_only = false) {
     int w = 0;
     for (size_t i = 0; i < 4; ++i)
       if ((i == 0 || i == 3) == with_soc)
         w = std::max<int>(w, power_flow_text_width(lv_label_get_text(ui.names[i]), text) + text->line_height + 4);
     const char *states[] = {with_soc ? "Charging" : "Importing",
       with_soc ? "Discharging" : "Exporting", "Idle", "Unavailable"};
-    for (const char *state : states)
+    for (const char *state : states) {
+      if (valid_content_only && std::strcmp(state, "Unavailable") == 0) continue;
       w = std::max(w, power_flow_text_width((std::string(with_soc ? "100% · " : "") + espcontrol_i18n(state)).c_str(), text));
+    }
     // Fixed measurement envelope: live values never move the geometry.
     w = std::max(w, power_flow_text_width(ui.card->precision ? "-8888888.888 W" : "-8888888 W", value));
     return w + 8;
@@ -465,21 +455,15 @@ inline void power_flow_layout() {
   // Keep measured legacy compact widths; common-envelope sizing takes the
   // maximum across all four names, numeric bounds and SOC/activity captions.
   const int side_node_w = std::min<int>(std::lround(width * .48), measure(text_font, value_font, false));
-  int tightened_side_width = 0;
-  if (shared_envelopes && !large) {
-    tightened_side_width = side_node_w;
-    // Square Grid/Home need no SOC row. Include partial-system captions too,
-    // keeping these fixed bounds independent of the current live readings.
-    for (const char *state : {"No measurement", "Stale"})
-      tightened_side_width = std::max(tightened_side_width,
-        power_flow_text_width(espcontrol_i18n(state), text_font) + 8);
-  }
+  // Missing-data captions belong to the central chip, not node sizing.
+  // Only native headings, bounded watts and valid activity constrain the pair.
+  const int minimum_side_width = measure(text_font, value_font, false, true);
   const int node_h = text_h * 2 + value_h + 6;
   const auto family = espcontrol::power::flow_family(layout.sw, layout.sh);
   const auto geometry = espcontrol::power::flow_geometry(width, height, family,
     node_w, node_h, side_node_w, shared_envelopes, shared_envelopes,
     espcontrol::power::flow_render_scale(reference_viewport.width, reference_viewport.height, family),
-    tightened_side_width);
+    minimum_side_width);
   lv_area_t diagram_content, panel_content;
   lv_obj_get_content_coords(ui.diagram, &diagram_content);
   lv_obj_get_content_coords(ui.shell.panel, &panel_content);
@@ -488,7 +472,7 @@ inline void power_flow_layout() {
   lv_obj_set_size(ui.area, width, height);
   lv_obj_set_pos(ui.area, node_x, node_y);
   ui.status_center = {node_x + width / 2, node_y + height / 2};
-  const int side_width = geometry.envelope_width > 0
+  const int side_width = geometry.radial_distance > 0
     ? static_cast<int>(geometry.envelope_width) : side_node_w;
   ui.status_max_width = std::max(1, static_cast<int>(2 * std::min(
     width / 2.0 - geometry.nodes[2].x - side_width / 2.0,
@@ -532,16 +516,17 @@ inline void power_flow_layout() {
     const int this_width = geometry.envelope_width > 0
       ? static_cast<int>(i == 1 || i == 2 ? geometry.side_envelope_width : geometry.envelope_width)
       : i == 1 || i == 2 ? side_node_w : node_w;
-    const int this_height = geometry.envelope_height > 0 ? static_cast<int>(geometry.envelope_height) : node_h;
+    const int this_height = geometry.envelope_height > 0
+      ? static_cast<int>(i == 1 || i == 2 ? geometry.side_envelope_height : geometry.envelope_height) : node_h;
     // Solar/Home have no activity row: centre their actual two visible rows,
     // retaining the approved blank third-row reserve on legacy compact views.
-    power_flow_set_visible(ui.detail_rows[i], geometry.envelope_width == 0 || i >= 2 ||
+    power_flow_set_visible(ui.detail_rows[i], geometry.radial_distance == 0 || i >= 2 ||
       !ui.card->data.model.calculation.nodes[i].valid());
     lv_obj_set_size(ui.nodes[i], this_width, this_height);
     // A bounded envelope cannot grow for an unusually wide translation. Keep
     // the existing native CLIP mode and constrain the combined row too;
     // otherwise its content width pushes the whole flex column off centre.
-    const bool bounded = geometry.envelope_width > 0;
+    const bool bounded = geometry.radial_distance > 0;
     const int soc_width = i == 3 && ui.card->has_soc
       ? power_flow_text_width("100% · ", text_font) : 0;
     lv_obj_set_style_max_width(ui.names[i], bounded
@@ -551,7 +536,6 @@ inline void power_flow_layout() {
       ? std::max(1, this_width - soc_width) : LV_COORD_MAX, LV_PART_MAIN);
     lv_obj_set_pos(ui.nodes[i], node_x + std::lround(geometry.nodes[i].x - this_width / 2.0),
                     node_y + std::lround(geometry.nodes[i].y - this_height / 2.0));
-    power_flow_limit_unmeasured(ui, ui.card, i);
   }
   if (text_font) lv_obj_set_style_text_font(ui.soc, text_font, LV_PART_MAIN);
   lv_obj_set_height(ui.soc, text_h);
@@ -584,19 +568,20 @@ inline void power_flow_update_nodes(PowerFlowNodes &ui, PowerCardCtx *ctx) {
   const auto &calc = ctx->data.model.calculation;
   for (size_t i = 0; i < 4; ++i) {
     power_flow_set_visible(ui.nodes[i], calc.capabilities.includes(static_cast<espcontrol::power::Node>(i)));
-    power_set_text(ui.values[i], power_reading_text(calc.nodes[i], ctx->precision));
-    std::string detail = power_node_detail(calc, i);
-    power_flow_set_visible(ui.detail_rows[i], ui.legacy_rows || i >= 2 || !detail.empty());
+    power_set_text(ui.values[i], calc.nodes[i].valid()
+      ? power_reading_text(calc.nodes[i], ctx->precision) : "—");
+    // Keep sidebar diagnostics intact; diagram invalid values use only a dash.
+    std::string detail = calc.nodes[i].valid() ? power_node_detail(calc, i) : "";
+    power_flow_set_visible(ui.detail_rows[i], ui.legacy_rows || i >= 2 || !calc.nodes[i].valid());
     if (i == 3) {
       const bool available_soc = ctx->has_soc && ctx->data.model.battery_soc.valid();
       char soc[24] = "";
       if (available_soc)
         format_fixed_decimal(soc, sizeof(soc), ctx->data.model.battery_soc.value, 0);
-      power_set_text(ui.soc, available_soc ? std::string(soc) + "% · " : "");
+      power_set_text(ui.soc, available_soc ? std::string(soc) + (detail.empty() ? "%" : "% · ") : "");
       power_flow_set_visible(ui.soc, available_soc);
     }
     power_set_text(ui.details[i], detail);
-    power_flow_limit_unmeasured(ui, ctx, i);
   }
 }
 // Bounded hardware evidence: callback ages are local arrival ages, not HA's
