@@ -433,6 +433,7 @@ export default defineConfig({
         text: 'Reference',
         items: [
           { text: 'FAQ', link: '/reference/faq' },
+          { text: 'Icon Gallery', link: '/reference/icons' },
           { text: 'Troubleshooting', link: '/getting-started/troubleshooting' },
           { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
           { text: 'Device Runtime Tests', link: '/reference/device-runtime-tests' },

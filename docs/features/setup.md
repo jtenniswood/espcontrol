@@ -28,7 +28,7 @@ The documentation follows the tabs on your device:
 1. [Install EspControl](/getting-started/install) and add the panel to Home Assistant.
 2. [Enable Home Assistant actions](/getting-started/home-assistant-actions) so the panel can control devices.
 3. Open **Layout**, select an empty **+** slot, and choose **Lights** or **Switch**.
-4. Enter your Home Assistant entity ID, such as `light.kitchen`, and choose a label and icon.
+4. Enter your Home Assistant entity ID, such as `light.kitchen`, and choose a label and icon. Browse the [Icon Gallery](/reference/icons) for the available choices.
 5. Choose **Apply Configuration**, wait for the panel to reconnect, then tap the card on the physical screen to check it works.
 
 Use the [card guide](/card-types/) to choose other controls, or [Subpages](/features/subpages) to group them into rooms and pages.
