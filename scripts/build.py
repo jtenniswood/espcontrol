@@ -39,6 +39,7 @@ from product_model_v2 import load_product_model_v2, source_directory, source_pat
 
 ROOT = Path(__file__).resolve().parent.parent
 MDI_VERSION = "7.4.47"
+MATERIAL_SYMBOL_SLUG_PREFIX = "material-symbol-"
 MDI_CSS_URL = f"https://cdn.jsdelivr.net/npm/@mdi/font@{MDI_VERSION}/css/materialdesignicons.css"
 ASSET_ICON_FONT = ROOT / "common" / "assets" / "fonts" / "espcontrol-icons.ttf"
 INTER_WEB_FONT = ROOT / "node_modules" / "vitepress" / "dist" / "client" / "theme-default" / "fonts" / "inter-roman-latin.woff2"
@@ -3834,17 +3835,29 @@ def check_mdi_versions():
 
 
 def validate_icon_data(data):
-    """Verify icons.json matches the pinned Material Design Icons release."""
+    """Verify legacy MDI codepoints and reserved slots for Google-only icons."""
     errors = []
     errors.extend(check_duplicate_icon_fields(data))
     errors.extend(check_mdi_versions())
     errors.extend(check_firmware_icon_literals(data))
 
     mdi_codepoints = load_mdi_codepoints()
+    material_symbols = load_json(ROOT / "common" / "assets" / "material_symbols.json")
+    material_slots = set()
     for item in icon_items(data):
         mdi = item["mdi"]
-        expected = mdi_codepoints.get(mdi)
         actual = item["codepoint"].upper()
+        if mdi.startswith(MATERIAL_SYMBOL_SLUG_PREFIX):
+            symbol = material_symbols.get(mdi, "")
+            if not re.fullmatch(r"[a-z0-9_]+", symbol) or mdi != MATERIAL_SYMBOL_SLUG_PREFIX + symbol.replace("_", "-"):
+                errors.append(f"{item['name']} needs a matching Material Symbols entry for {mdi}")
+            if not re.fullmatch(r"F4[0-9A-F]{3}", actual):
+                errors.append(f"{item['name']} must use a Material Symbols slot from F4000 to F4FFF")
+            elif actual in material_slots:
+                errors.append(f"{item['name']} reuses Material Symbols slot {actual}")
+            material_slots.add(actual)
+            continue
+        expected = mdi_codepoints.get(mdi)
         if expected is None:
             errors.append(f"{item['name']} references missing mdi-{mdi}")
         elif actual != expected:
@@ -3875,7 +3888,7 @@ def assert_icon_data_valid(data):
     if not errors:
         return
 
-    print(f"Icon data does not match Material Design Icons {MDI_VERSION}:")
+    print("Icon catalog contains invalid entries:")
     for error in errors:
         print(f"  {error}")
     raise BuildError("Icon validation failed.")
@@ -3902,7 +3915,9 @@ def gen_icon_glyphs(data):
             continue
         seen_codepoints.add(icon["codepoint"])
         cp = icon["codepoint"]
-        lines.append(f'- "\\U{cp:>08s}"  # mdi-{icon["mdi"]}\n')
+        slug = icon["mdi"]
+        comment = slug if slug.startswith(MATERIAL_SYMBOL_SLUG_PREFIX) else f"mdi-{slug}"
+        lines.append(f'- "\\U{cp:>08s}"  # {comment}\n')
     return "".join(lines)
 
 

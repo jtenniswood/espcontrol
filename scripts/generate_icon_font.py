@@ -68,8 +68,8 @@ def generate(source, output):
     metrics = {".notdef": (em, 0)}
     cmap = {}
     for codepoint in sorted(set(slots.values())):
-        name = mdi_cmap[codepoint]
         if codepoint in replacements:
+            name = mdi_cmap.get(codepoint, f"materialSymbol{codepoint:X}")
             pen = TTGlyphPen(google_glyphs)
             symbol = google_glyphs[google_cmap[replacements[codepoint]]]
             # Google draws from the bottom of the em square. Match the panel
@@ -79,6 +79,7 @@ def generate(source, output):
             glyph.recalcBounds(None)
             metric = (otRound(symbol.width * scale), glyph.xMin)
         else:
+            name = mdi_cmap[codepoint]
             glyph = mdi["glyf"][name]
             if glyph.isComposite():
                 raise ValueError(f"Fallback glyph {name} must be a simple outline")
