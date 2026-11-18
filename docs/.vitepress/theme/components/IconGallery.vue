@@ -37,8 +37,8 @@ const visibleIcons = computed(() => {
 <template>
   <div class="icon-gallery">
     <div class="icon-gallery__filters">
-      <div class="icon-gallery__search">
-        <span class="vpi-search icon-gallery__search-icon" aria-hidden="true" />
+      <div class="icon-gallery__field">
+        <span class="vpi-search icon-gallery__field-icon icon-gallery__search-icon" aria-hidden="true" />
         <input
           id="icon-gallery-search"
           v-model="query"
@@ -51,12 +51,15 @@ const visibleIcons = computed(() => {
       </div>
       <div>
         <label for="icon-gallery-category">Category</label>
-        <select id="icon-gallery-category" v-model="selectedCategory">
-          <option value="">All categories</option>
-          <option v-for="category in categories" :key="category" :value="category">
-            {{ category }}
-          </option>
-        </select>
+        <div class="icon-gallery__field">
+          <select id="icon-gallery-category" v-model="selectedCategory">
+            <option value="">All categories</option>
+            <option v-for="category in categories" :key="category" :value="category">
+              {{ category }}
+            </option>
+          </select>
+          <span class="vpi-chevron-down icon-gallery__field-icon icon-gallery__category-icon" aria-hidden="true" />
+        </div>
       </div>
     </div>
     <p class="visually-hidden" role="status">
@@ -96,27 +99,31 @@ const visibleIcons = computed(() => {
 .icon-gallery input,
 .icon-gallery select {
   width: 100%;
-  min-height: 2.875rem;
-  margin-top: 0.4rem;
+  min-height: 3.25rem;
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--vp-c-divider);
   border-radius: 0.5rem;
   background: var(--vp-c-bg-soft);
   color: var(--vp-c-text-1);
+  font-size: 1.125rem;
+  line-height: 1.5;
 }
 
 .icon-gallery select {
-  appearance: auto;
-  max-width: 18rem;
+  appearance: none;
+  padding-inline-end: 2.65rem;
 }
 
-.icon-gallery__search {
+.icon-gallery__field {
   position: relative;
 }
 
-.icon-gallery__search-icon {
+.icon-gallery label + .icon-gallery__field {
+  margin-top: 0.4rem;
+}
+
+.icon-gallery__field-icon {
   position: absolute;
-  inset-inline-start: 0.85rem;
   top: 50%;
   transform: translateY(-50%);
   color: var(--vp-c-text-2);
@@ -124,12 +131,16 @@ const visibleIcons = computed(() => {
   pointer-events: none;
 }
 
+.icon-gallery__search-icon {
+  inset-inline-start: 0.85rem;
+}
+
+.icon-gallery__category-icon {
+  inset-inline-end: 0.85rem;
+}
+
 .icon-gallery input {
-  min-height: 3.25rem;
-  margin-top: 0;
   padding-inline-start: 2.65rem;
-  font-size: 1.125rem;
-  line-height: 1.5;
 }
 
 .icon-gallery input::placeholder {
