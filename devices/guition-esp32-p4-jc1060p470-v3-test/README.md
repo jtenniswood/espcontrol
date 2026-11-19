@@ -45,11 +45,12 @@ checkout and any custom `ESPCONTROL_IDF_CACHE` directory accessible to Docker
 Desktop. Paths containing spaces are supported. Windows uses Docker's default
 container user; macOS/Linux builds retain the host user's file ownership.
 
-The builder requires a clean committed checkout. It uses `.github/esphome.env`
-(currently ESPHome 2026.10.2), verifies ESP-IDF 5.5.5 or newer in the 5.5 series,
-validates the configuration and performs a clean compile. It checks production
-chip image headers, the factory-image flash offsets, the vendored display driver,
-the browser-upload guard, native OTA and the absence of both updaters.
+The builder requires a clean committed checkout. It uses the ESPHome version in
+[`.github/esphome.env`](../../.github/esphome.env), verifies ESP-IDF 5.5.5 or newer
+in the 5.5 series, validates the configuration and performs a clean compile. It
+checks production chip image headers, the factory-image flash offsets, the
+vendored display driver, the browser-upload guard, native OTA and the absence of
+both updaters.
 The downloaded toolchain is retained in `.esphome/idf-cache/`; optionally set
 `ESPCONTROL_IDF_CACHE` to an absolute directory to reuse another local cache.
 
