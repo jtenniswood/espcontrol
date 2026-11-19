@@ -276,6 +276,15 @@ int main() {
   assert(same(approved_portrait.nodes[0],{217,43.18}));
   assert(same(approved_portrait.nodes[2],{60.18,291.5}));
   assert(approved_portrait.port_spacing==13.5);
+  // Real German portrait metrics: the pre-refinement side width (179) left
+  // only 46 px for the chip. The accepted paired width (151) permits 74 px.
+  const auto german=flow_geometry(434,573,FlowFamily::PORTRAIT,208,93,179,false,false,0,141);
+  assert(german.side_envelope_width==151);
+  assert(flow_status_width(german,434)==74);
+  assert(flow_status_height(german,573)==349);
+  const auto dutch=flow_geometry(434,573,FlowFamily::PORTRAIT,208,93,195,false,false,0,141);
+  assert(flow_status_width(dutch,434)==44&&flow_status_height(dutch,573)==349);
+  assert(flow_status_width(paired720,710)>0);
   CardData data;
   data.model.set_polarity({true,false});
   data.state(1,"1"); assert(!data.model.readings[1].valid()); // no assumed W

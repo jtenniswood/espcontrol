@@ -220,7 +220,7 @@ struct PowerFlowUi : PowerFlowNodes {
   lv_obj_t *dashboard = nullptr, *diagram = nullptr, *back_area = nullptr;
   lv_obj_t *area = nullptr, *status = nullptr;
   lv_point_t status_center{};
-  int status_max_width = 0;
+  int status_max_width = 0, status_max_height = 0;
   BtnSlot sidebar[4]{}, back_slot{};
   espcontrol::power::FlowDashboardGrid grid{};
   lv_coord_t columns[6]{}, rows[5]{};
@@ -308,13 +308,24 @@ inline void power_flow_layout_status() {
   // Reading just-set object coordinates here would use stale LVGL bounds;
   // forcing synchronous layout would deepen the formerly exhausted draw stack.
   const int cx = ui.status_center.x, cy = ui.status_center.y;
-  constexpr int pad_x = 12, pad_y = 6;
+  constexpr int pad_y = 6;
+  int pad_x = 12;
   const int width = ui.status_max_width;
   lv_point_t text;
+  // Choose the final width before wrapping; shrinking to an already-wrapped
+  // line can wrap it again in LVGL. Keep the native font and reserve both axes.
   lv_text_get_size(&text, lv_label_get_text(ui.status), font, 0, 0,
-                   std::max(1, width - 2 * pad_x), LV_TEXT_FLAG_NONE);
-  const int w = std::min(width, static_cast<int>(text.x) + 2 * pad_x);
-  const int h = static_cast<int>(text.y) + 2 * pad_y;
+                   LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+  const int natural_width = text.x;
+  int w, h;
+  do {
+    w = std::min(width, natural_width + 2 * pad_x);
+    lv_text_get_size(&text, lv_label_get_text(ui.status), font, 0, 0,
+                     std::max(1, w - 2 * pad_x), LV_TEXT_FLAG_NONE);
+    h = static_cast<int>(text.y) + 2 * pad_y;
+    if (ui.status_max_height <= 0 || h <= ui.status_max_height || pad_x == pad_y) break;
+    --pad_x;
+  } while (true);
   lv_obj_set_style_text_font(ui.status, font, LV_PART_MAIN);
   lv_obj_set_style_pad_all(ui.status, pad_y, LV_PART_MAIN);
   lv_obj_set_style_pad_left(ui.status, pad_x, LV_PART_MAIN);
@@ -442,8 +453,9 @@ inline void power_flow_layout() {
       if (valid_content_only && std::strcmp(state, "Unavailable") == 0) continue;
       w = std::max(w, power_flow_text_width((std::string(with_soc ? "100% · " : "") + espcontrol_i18n(state)).c_str(), text));
     }
-    // Fixed measurement envelope: live values never move the geometry.
-    w = std::max(w, power_flow_text_width(ui.card->precision ? "-8888888.888 W" : "-8888888 W", value));
+    // Integer-W presentation owns this bound. The legacy saved precision field
+    // remains compatible but must not change typography, positions or clearance.
+    w = std::max(w, power_flow_text_width("-8888888 W", value));
     return w + 8;
   };
   if (body && compact && (measure(body, body) > reference_viewport.width * .42 || body->line_height * 3 + 6 > reference_viewport.height * .42))
@@ -472,11 +484,8 @@ inline void power_flow_layout() {
   lv_obj_set_size(ui.area, width, height);
   lv_obj_set_pos(ui.area, node_x, node_y);
   ui.status_center = {node_x + width / 2, node_y + height / 2};
-  const int side_width = geometry.radial_distance > 0
-    ? static_cast<int>(geometry.envelope_width) : side_node_w;
-  ui.status_max_width = std::max(1, static_cast<int>(2 * std::min(
-    width / 2.0 - geometry.nodes[2].x - side_width / 2.0,
-    geometry.nodes[1].x - side_width / 2.0 - width / 2.0)) - 12);
+  ui.status_max_width = espcontrol::power::flow_status_width(geometry, width);
+  ui.status_max_height = espcontrol::power::flow_status_height(geometry, height);
   // Large views use the native Back card; compact views retain the shell arrow.
   power_flow_set_visible(ui.shell.close_btn, !large);
   for (size_t i = 0; i < 7; ++i) {

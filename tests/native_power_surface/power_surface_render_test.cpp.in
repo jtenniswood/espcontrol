@@ -21,7 +21,7 @@ struct SurfaceUi {
   lv_obj_t *diagram = nullptr, *back_area = nullptr, *area = nullptr, *status = nullptr;
   lv_obj_t *nodes[4]{}, *details[4]{};
   lv_point_t status_center{};
-  int status_max_width=0;
+  int status_max_width=0,status_max_height=0;
 };
 SurfaceUi ui;
 SurfaceUi &power_flow_ui() { return ui; }
@@ -89,10 +89,8 @@ int main() {
         ui.nodes[i]=plain(ui.shell.panel,left+std::lround(geometry.nodes[i].x-w/2.0),std::lround(geometry.nodes[i].y-h/2.0),w,h);
       }
       ui.status_center={left+width/2,area_height/2};
-      const int side_width=geometry.envelope_width?geometry.envelope_width:103;
-      ui.status_max_width=std::max(1,static_cast<int>(2*std::min(
-        width/2.0-geometry.nodes[2].x-side_width/2.0,
-        geometry.nodes[1].x-side_width/2.0-width/2.0))-12);
+      ui.status_max_width=espcontrol::power::flow_status_width(geometry,width);
+      ui.status_max_height=espcontrol::power::flow_status_height(geometry,area_height);
       ui.details[3]=lv_label_create(ui.nodes[3]);
       lv_obj_set_style_text_font(ui.details[3],LV_FONT_DEFAULT,LV_PART_MAIN);
       ui.status=lv_label_create(ui.shell.panel);
@@ -171,6 +169,44 @@ int main() {
     }
     lv_display_delete(display);
   }
+  // Reproduce the tall chip from the German portrait geometry with a native
+  // font's glyph metrics and the production secondary-text row height. The
+  // current device-font probe additionally covers exact compiled Roboto pixels.
+  screen_width=480;pixels.assign(480*800,0);
+  auto *portrait=lv_display_create(480,800);lv_display_set_color_format(portrait,LV_COLOR_FORMAT_RGB565);
+  std::vector<uint16_t> buffer(480*800/4);
+  lv_display_set_buffers(portrait,buffer.data(),nullptr,buffer.size()*2,LV_DISPLAY_RENDER_MODE_PARTIAL);
+  lv_display_set_flush_cb(portrait,flush);
+  PowerCardCtx card;ui={};ui.card=&card;
+  auto *overlay=plain(lv_layer_top(),0,0,480,800);
+  ui.shell.panel=plain(overlay,23,136,434,573);ui.area=ui.shell.panel;
+  const auto german=espcontrol::power::flow_geometry(434,573,espcontrol::power::FlowFamily::PORTRAIT,208,93,179,false,false,0,141);
+  for(int i=0;i<4;++i){const bool side=i==1||i==2;
+    const int w=side?german.side_envelope_width:german.envelope_width;
+    const int h=side?german.side_envelope_height:german.envelope_height;
+    ui.nodes[i]=plain(ui.shell.panel,std::lround(german.nodes[i].x-w/2.0),std::lround(german.nodes[i].y-h/2.0),w,h);
+  }
+  lv_font_t secondary=*LV_FONT_DEFAULT;secondary.line_height=29;
+  ui.details[3]=lv_label_create(ui.nodes[3]);lv_obj_set_style_text_font(ui.details[3],&secondary,LV_PART_MAIN);
+  ui.status=lv_label_create(ui.shell.panel);lv_obj_remove_style_all(ui.status);
+  lv_obj_clear_flag(ui.status,LV_OBJ_FLAG_CLICKABLE);lv_obj_set_style_text_align(ui.status,LV_TEXT_ALIGN_CENTER,LV_PART_MAIN);
+  ui.status_center={217,286};ui.status_max_width=espcontrol::power::flow_status_width(german,434);
+  ui.status_max_height=espcontrol::power::flow_status_height(german,573);
+  assert(ui.status_max_width==74&&ui.status_max_height==349);
+  for(const char *language:{"en","cs","da","de","es","fi","fr","he","hu","it","nb","nl","pl","pt-br","pt","ro","ru","sk","sl","sv","tr","uk"}){
+    set_espcontrol_language(language);
+    for(const char *state:{"Unavailable","Inconsistent readings","Readings only","Idle"}){
+      lv_label_set_text(ui.status,espcontrol_i18n(state));power_flow_layout_status();lv_obj_update_layout(overlay);lv_refr_now(portrait);
+      lv_area_t chip;lv_obj_get_coords(ui.status,&chip);
+      assert(std::abs(chip.x1+chip.x2-(23*2+434))<=1);
+      assert(std::abs(chip.y1+chip.y2-(136*2+572))<=1);
+      for(auto *node:ui.nodes){lv_area_t n;lv_obj_get_coords(node,&n);assert(chip.x2<n.x1||chip.x1>n.x2||chip.y2<n.y1||chip.y1>n.y2);}
+      lv_point_t text;lv_text_get_size(&text,lv_label_get_text(ui.status),&secondary,0,0,lv_obj_get_content_width(ui.status),LV_TEXT_FLAG_NONE);
+      assert(text.y<=lv_obj_get_content_height(ui.status));
+      assert(lv_obj_get_style_text_font(ui.status,LV_PART_MAIN)==&secondary);
+    }
+  }
+  lv_obj_delete(overlay);ui={};lv_display_delete(portrait);
   set_active_theme_palette(DARK_THEME);
   lv_deinit();
 }

@@ -67,7 +67,7 @@ using EventCallback=void (*)(lv_event_t*);
 struct lv_obj_t {
   std::string text;
   lv_font_t const *font=nullptr;
-  int radius=0,bg_opacity=0,text_opacity=255,line_width=2,layout=0,padding=0,pad_row=0,gcol=0,grow=0,gcols=1,grows=1;
+  int radius=0,bg_opacity=0,text_opacity=255,line_width=2,layout=0,padding=0,pad_left=0,pad_row=0,gcol=0,grow=0,gcols=1,grows=1;
   bool flex_center=false,continuous=false;
   const lv_coord_t *columns=nullptr,*rows=nullptr;
   int x=0,y=0,w=140,h=16,flags=0,state=0,max_h=32767,max_w=32767,mode=0,flex=0,pad_bottom=0,pad_column=0,cross=0;
@@ -156,7 +156,7 @@ void lv_obj_set_style_bg_opa(lv_obj_t *o,int v,int){o->bg_opacity=v;}
 void lv_obj_set_style_radius(lv_obj_t *o,int r,int){o->radius=r;}
 void lv_obj_set_style_border_width(lv_obj_t*,int,int){}
 void lv_obj_set_style_pad_all(lv_obj_t *o,int p,int){o->padding=p;}
-void lv_obj_set_style_pad_left(lv_obj_t*,int,int){}
+void lv_obj_set_style_pad_left(lv_obj_t *o,int p,int){o->pad_left=p;}
 void lv_obj_set_style_pad_right(lv_obj_t*,int,int){}
 void lv_obj_set_style_pad_bottom(lv_obj_t *o,int p,int){o->pad_bottom=p;}
 void lv_obj_set_style_pad_column(lv_obj_t *o,int p,int){o->pad_column=p;}
@@ -499,6 +499,29 @@ int main(){
       assert(std::abs(ui.nodes[2]->y*2+ui.nodes[2]->h-ui.area->y*2-ui.area->h)<=1);
     }
 
+    // Supported legacy precision values survive configuration parsing but
+    // cannot reserve decimal geometry for integer-only Power presentation.
+    struct NodeBounds {int x,y,w,h;const lv_font_t *font;};
+    std::array<NodeBounds,4> integer_bounds;
+    for(size_t i=0;i<4;++i)integer_bounds[i]={ui.nodes[i]->x,ui.nodes[i]->y,ui.nodes[i]->w,ui.nodes[i]->h,ui.values[i]->font};
+    std::array<PowerFlowStroke,7> integer_paths;
+    std::copy(std::begin(ui.paths),std::end(ui.paths),integer_paths.begin());
+    const int precision=card->precision;
+    for(const std::string saved:{"0","1","2"}){
+      card->precision=parse_precision(saved);power_flow_layout();
+      for(size_t i=0;i<4;++i){const auto &b=integer_bounds[i];
+        assert(ui.nodes[i]->x==b.x&&ui.nodes[i]->y==b.y&&ui.nodes[i]->w==b.w&&ui.nodes[i]->h==b.h);
+        assert(ui.values[i]->font==b.font);
+      }
+      for(size_t i=0;i<7;++i){assert(ui.paths[i].arc.radius==integer_paths[i].arc.radius);
+        for(size_t j=0;j<espcontrol::power::FLOW_POINT_COUNT;++j){
+          assert(ui.paths[i].points[j].x==integer_paths[i].points[j].x);
+          assert(ui.paths[i].points[j].y==integer_paths[i].points[j].y);
+        }}
+      assert(card->precision==parse_precision(saved));
+    }
+    card->precision=precision;
+
     auto count_stage=[](const char *prefix){return std::count_if(diagnostic_logs.begin(),diagnostic_logs.end(),[&](const auto &s){return s.find(prefix)==0;});};
     assert(ui.diagnostic_updates==1);
     const int emitted = POWER_DIAGNOSTICS ? 1 : 0;
@@ -829,6 +852,18 @@ int main(){
     publish("sensor.h","W","unit_of_measurement");publish("sensor.g","W","unit_of_measurement");
     assert(owner->data.model.calculation.secondary_label()=="Idle");
     lv_obj_del(partial.btn);assert(subscriptions==0&&objects==0&&timers.empty()&&!power_flow_ui().card);
+  }
+  // A 44px portrait gap needs wrapping space more than generous chip padding.
+  {
+    auto chip_owner=make_slot(false);power_driver_setup_visual(chip_owner,cfg,context,{},GridConfig{},2);
+    power_driver_bind_data(chip_owner,cfg,context,profile,GridConfig{});
+    auto *owner=power_card_for_button(chip_owner.btn);power_flow_open(owner);auto &ui=power_flow_ui();
+    const auto *font=ui.details[3]->font;lv_font_t portrait_secondary{29};ui.details[3]->font=&portrait_secondary;
+    ui.status_max_width=44;ui.status_max_height=349;
+    power_set_text(ui.status,"Inconsistent readings");power_flow_layout_status();
+    assert(ui.status->h<=349&&ui.status->w<=44&&ui.status->font==&portrait_secondary);
+    assert(ui.status->pad_left>=6&&ui.status->pad_left<12);
+    ui.details[3]->font=font;lv_obj_del(chip_owner.btn);assert(objects==0&&subscriptions==0);
   }
   // Installed Home without a sensor is visible and unknown, not absent/zero.
   cfg.installed=4; // Legacy save excluded Home; the model must still include it.

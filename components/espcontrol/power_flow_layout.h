@@ -64,6 +64,18 @@ struct FlowGeometry {
   double envelope_width = 0, envelope_height = 0, radial_distance = 0, port_spacing = 0;
   double side_envelope_width = 0, side_envelope_height = 0;
 };
+// The centered passive chip must reserve the actual lateral pair, not the
+// wider Solar/Battery bounds or obsolete pre-refinement captions.
+inline int flow_status_width(const FlowGeometry &geometry, int width) {
+  return std::max(1, static_cast<int>(2 * std::min(
+    width / 2.0 - geometry.nodes[2].x - geometry.side_envelope_width / 2,
+    geometry.nodes[1].x - geometry.side_envelope_width / 2 - width / 2.0)) - 12);
+}
+inline int flow_status_height(const FlowGeometry &geometry, int height) {
+  return std::max(1, static_cast<int>(2 * std::min(
+    height / 2.0 - geometry.nodes[0].y - geometry.envelope_height / 2,
+    geometry.nodes[3].y - geometry.envelope_height / 2 - height / 2.0)) - 12);
+}
 inline FlowFamily flow_family(int width, int height) {
   return width * 5 > height * 6 ? FlowFamily::LANDSCAPE
        : height * 5 > width * 6 ? FlowFamily::PORTRAIT : FlowFamily::SQUARE;

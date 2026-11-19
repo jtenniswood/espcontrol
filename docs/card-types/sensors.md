@@ -56,7 +56,7 @@ moving or deleting any card. Unsupported narrow saves/restores are rejected
 before writes. All Power values use whole watts, rounded to nearest with exact
 halves away from zero (`1234.5 → 1235 W`, `-328.5 → -329 W`, `-0.3 → 0 W`).
 Calculations retain full input precision. Older saved decimal-precision fields
-remain compatible but no longer affect displayed values; input sensors may still
+remain compatible but no longer affect displayed values or Flow layout; input sensors may still
 report W or kW. Grid/Battery values in Power Flow retain their signs: negative means exporting
 or charging. The muted status caption also names the direction. Battery SOC
 and activity share one row beneath its signed watt value.
