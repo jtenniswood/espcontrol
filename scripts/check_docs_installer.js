@@ -85,13 +85,52 @@ async function checkPostFlashReset() {
     const flash = runFlash(Transport, Loader, {}, location, { log() {} });
     const manifest = { builds: [{ chipFamily: 'ESP32-P4', parts: [] }] };
     const events = [];
-    await flash(event => events.push(event.state), { getInfo: () => ({}) },
+    await flash(event => events.push(event), { getInfo: () => ({}) },
       `/espcontrol/firmware/${scenario.slug ?? v3}/manifest.json`, manifest, false);
     assert.deepEqual(calls, ['write', ...(scenario.expected === 'normal' ? ['RTS'] : []),
       scenario.expected, 'disconnect'], scenario.label);
-    assert.equal(events.at(-1), scenario.writeFails ? 'error' : 'finished', scenario.label);
+    assert.equal(events.at(-1).state, scenario.writeFails ? 'error' : 'finished', scenario.label);
+    if (!scenario.writeFails) {
+      assert.equal(events.at(-1).restartedWithWatchdog, scenario.expected === 'watchdog', scenario.label);
+    }
   }
   console.log('7-inch V3 post-flash reset checks passed.');
+
+  const dialogPath = path.join(path.dirname(flashPath), 'install-dialog.js');
+  const dialogSource = installer.transform(fs.readFileSync(dialogPath, 'utf8'), dialogPath + '?v=dev');
+  const confirmInstall = dialogSource.match(/    async _confirmInstall\(\) \{([\s\S]+?)\n    \}/)[1];
+  for (const { restartedWithWatchdog, improvWait, shouldReopen } of [
+    { restartedWithWatchdog: true, improvWait: 0, shouldReopen: false },
+    { restartedWithWatchdog: true, improvWait: 10, shouldReopen: true },
+    { restartedWithWatchdog: false, improvWait: 0, shouldReopen: true },
+  ]) {
+    const calls = [];
+    const state = { state: 'finished', restartedWithWatchdog };
+    let reopen;
+    const runConfirmInstall = new Function('flash', 'sleep', `return async function () {${confirmInstall}}`)(
+      onEvent => onEvent(state), () => new Promise(resolve => { reopen = resolve; }));
+    const dialog = {
+      _manifest: { new_install_improv_wait_time: improvWait },
+      port: {
+        async close() { calls.push('close'); },
+        async open() { calls.push('reopen'); },
+      },
+      async _initialize(justInstalled) { assert.equal(justInstalled, true); calls.push('initialize'); },
+      requestUpdate() { calls.push('update'); },
+    };
+    await runConfirmInstall.call(dialog);
+    assert.equal(dialog._installState, state);
+    assert.equal(Boolean(reopen), shouldReopen);
+    if (shouldReopen) {
+      reopen();
+      await new Promise(resolve => setImmediate(resolve));
+      assert.deepEqual(calls, ['close', 'reopen', 'initialize', 'update']);
+    } else {
+      assert.deepEqual(calls, ['close']);
+      assert.equal(dialog._client, null, 'Show completion without checking for serial Wi-Fi setup');
+    }
+  }
+  console.log('7-inch V3 installer completion checks passed.');
 }
 
 async function checkBrowser() {
