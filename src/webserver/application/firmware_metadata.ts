@@ -20,7 +20,7 @@ export function publicFirmwareManifestUrl(this: any) {
         return FIRMWARE_PUBLIC_MANIFEST_BASE + encodeURIComponent(deviceId) + "/manifest.json";
     }
 export function publicFirmwareVersionsUrl(this: any) {
-        return FIRMWARE_PUBLIC_MANIFEST_BASE + encodeURIComponent(deviceId) + "/versions.json";
+        return FIRMWARE_PUBLIC_MANIFEST_BASE + encodeURIComponent(deviceId) + "/native-versions.json";
     }
 export function publicFirmwareAssetUrl(this: any, assetPath?: any, baseUrl?: any) {
         assetPath = String(assetPath || "").trim();
