@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress'
+import { usbInstallerReset } from './usb-installer-reset.mjs'
 import { faqSchema, hostname, jsonLd, writeRedirects } from './discovery'
 
 const defaultImage = {
@@ -175,6 +176,7 @@ const screenProducts: Record<string, Record<string, string>> = {
 }
 
 export default defineConfig({
+  vite: { plugins: [usbInstallerReset()] },
   title: 'EspControl',
   description:
     'Touchscreen control panel for Home Assistant on supported ESP32 panels — card-based controls, web configuration, automatic updates.',
