@@ -6,6 +6,7 @@ EspControlApp owns long-lived firmware services while YAML continues to supply
 device-specific wiring.
 """
 import esphome.codegen as cg
+from esphome.components import text
 from esphome.components.esp32 import VARIANT_ESP32P4, VARIANT_ESP32S3, get_esp32_variant
 import esphome.config_validation as cv
 from esphome.const import CONF_ID, __version__
@@ -30,7 +31,7 @@ CONF_WEB_AUTH_PASSWORD = "web_auth_password"
 espcontrol_ns = cg.global_ns.namespace("espcontrol")
 EspControlApp = espcontrol_ns.class_("EspControlApp", cg.Component)
 PanelIdentity = espcontrol_ns.class_("PanelIdentity", cg.Component)
-PanelConfigField = espcontrol_ns.namespace("configuration").class_("PanelConfigField", cg.Component)
+PanelConfigField = espcontrol_ns.namespace("configuration").class_("PanelConfigField", text.Text, cg.Component)
 ResetBoot = espcontrol_ns.namespace("reset").class_("ResetBoot", cg.Component)
 
 PANEL_CONFIG_BUTTON_SCHEMA = cv.Schema(
