@@ -153,10 +153,13 @@ jobs:
         run: |
           SOURCE_DIR="${PWD}"
           python3 scripts/prepare_c6_firmware.py
-          shared_cache_root="${RUNNER_TEMP}/espcontrol-esphome/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}/nightly"
-          shared_platformio_cache="${shared_cache_root}/platformio-${ESPHOME_VERSION}"
-          rm -rf "${shared_cache_root}"
-          mkdir -p "${shared_platformio_cache}"
+          # Keep the shared toolchain on the Docker host, independent of
+          # runner temporary-directory cleanup and anonymous volume pruning
+          # (NET-108: host bind leaks that `rm -rf` cannot remove).
+          cache_volume="espcontrol-nightly-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          ${DOCKER} volume create "${cache_volume}"
+          ${DOCKER} run --rm --user 0:0 --entrypoint /bin/chown \
+            -v "${cache_volume}:/cache" "${ESPHOME_IMAGE}" "$(id -u):$(id -g)" /cache
           set +e
 
           compile_one() {
@@ -169,21 +172,17 @@ jobs:
               return 1
             fi
 
-            cache_name=$(printf '%s' "${target}" | tr '.' '-')
-            target_cache_root="${shared_cache_root}/targets/${cache_name}"
-            build_cache="${target_cache_root}/build"
             build_input_dir=".firmware-builds"
-            rm -rf "${target_cache_root}" .esphome "${build_input_dir}" || return 1
-            mkdir -p "${build_cache}" "${build_input_dir}" || return 1
+            rm -rf "${build_input_dir}" || return 1
+            mkdir -p "${build_input_dir}" || return 1
             cp builds/*.yaml "${build_input_dir}/" || return 1
 
             container=$(${DOCKER} create \
               --user "$(id -u):$(id -g)" \
               -e HOME=/config \
-              -e PLATFORMIO_CORE_DIR=/config/.esphome/platformio \
+              -e PLATFORMIO_CORE_DIR=/cache/platformio \
               -e PLATFORMIO_SETTING_ENABLE_TELEMETRY=false \
-              -v "${shared_platformio_cache}:/config/.esphome" \
-              -v "${build_cache}:/config/${build_input_dir}/.esphome" \
+              -v "${cache_volume}:/cache" \
               --entrypoint /bin/sh \
               "${ESPHOME_IMAGE}" -c '
                 /entrypoint.sh compile "$1"
@@ -196,16 +195,15 @@ jobs:
               "/config/${build_input_dir}/.esphome")
             create_status=$?
             if [ "${create_status}" -ne 0 ]; then
-              rm -rf "${target_cache_root}"
               return "${create_status}"
             fi
             cleanup_container() {
-              ${DOCKER} rm -f "${container}" >/dev/null 2>&1 || true
-              rm -rf "${target_cache_root}" .esphome "${build_input_dir}" || true
+              ${DOCKER} rm -fv "${container}" >/dev/null 2>&1 || true
+              rm -rf "${build_input_dir}" || true
             }
             trap cleanup_container EXIT
 
-            ${DOCKER} cp "${SOURCE_DIR}/." "${container}:/config"
+            ${DOCKER} cp -a "${SOURCE_DIR}/." "${container}:/config"
             copy_status=$?
             if [ "${copy_status}" -ne 0 ]; then
               cleanup_container
@@ -215,10 +213,8 @@ jobs:
 
             ${DOCKER} start -a "${container}"
             compile_status=$?
-            # A containerized self-hosted runner cannot read the Docker host's
-            # bind-mount paths. Measure inside the build container, then copy
-            # only the report back before removing the container.
-            size_summary="${target_cache_root}/firmware-size-summary.md"
+            # Copy the report out before deleting this target's build files.
+            size_summary="${build_input_dir}/firmware-size-summary.md"
             if ${DOCKER} cp "${container}:/config/${build_input_dir}/.esphome/firmware-size-summary.md" "${size_summary}"; then
               if [ -f "$GITHUB_STEP_SUMMARY" ] && grep -Fq '## Firmware size and headroom' "$GITHUB_STEP_SUMMARY"; then
                 tail -n +5 "${size_summary}" >> "$GITHUB_STEP_SUMMARY"
@@ -252,12 +248,14 @@ jobs:
             echo "::error::Firmware compile failures:${failures}"
             exit 1
           fi
-          rm -rf "${shared_cache_root}"
 
       - name: Clean firmware caches
-        if: always()
+        if: always() && env.DOCKER != ''
         working-directory: espcontrol-nightly
         run: |
-          rm -rf "${RUNNER_TEMP}/espcontrol-esphome/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          rm -rf .esphome .firmware-builds
+          cache_volume="espcontrol-nightly-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          if ${DOCKER} volume inspect "${cache_volume}" >/dev/null 2>&1; then
+            ${DOCKER} volume rm "${cache_volume}"
+          fi
+          rm -rf .firmware-builds
           bash scripts/reclaim_actions_disk.sh
