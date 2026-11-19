@@ -43,7 +43,10 @@ async function checkFlashPower(revision, romPowered = false) {
 async function checkPostFlashReset() {
   const { usbInstallerReset } = await import('../docs/.vitepress/usb-installer-reset.mjs');
   const flashPath = path.join(path.dirname(require.resolve('esp-web-tools')), 'flash.js');
-  const flashSource = usbInstallerReset().transform(fs.readFileSync(flashPath, 'utf8'), flashPath);
+  const source = fs.readFileSync(flashPath, 'utf8');
+  const installer = usbInstallerReset();
+  const flashSource = installer.transform(source, flashPath);
+  assert.equal(installer.transform(source, flashPath + '?v=dev'), flashSource);
   const runFlash = new Function('Transport', 'ESPLoader', 'window', 'location', 'console', flashSource
     .replace(/^import .*;$/gm, '')
     .replace('export const flash', 'const sleep = async () => {}; const flash') + '\nreturn flash;');

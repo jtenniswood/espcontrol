@@ -5,7 +5,7 @@ export function usbInstallerReset() {
     name: 'espcontrol-usb-installer-reset',
     config: () => ({ optimizeDeps: { exclude: ['esp-web-tools/dist/install-button.js'] } }),
     transform(source, id) {
-      if (!id.endsWith('/esp-web-tools/dist/flash.js')) return;
+      if (!id.split('?', 1)[0].endsWith('/esp-web-tools/dist/flash.js')) return;
 
       const reset = '    await hardResetDevice(transport, esploader);\n    console.log("DISCONNECT");';
       if (source.split(reset).length !== 2) {
