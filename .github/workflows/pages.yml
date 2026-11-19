@@ -115,7 +115,9 @@ jobs:
 
       - uses: actions/checkout@v7.0.1
         with:
-          sparse-checkout: devices/manifest.json
+          sparse-checkout: |
+            devices/manifest.json
+            product/release_contract.json
           sparse-checkout-cone-mode: false
 
       - name: Set device slugs
@@ -132,7 +134,25 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=30")
           STABLE_RELEASES_JSON=$(printf '%s' "${RELEASES_JSON}" | jq -c '[.[] | select((.draft | not) and (.prerelease | not))][0:5]')
-          RELEASE_COUNT=$(printf '%s' "${STABLE_RELEASES_JSON}" | jq 'length')
+          # Older firmware and its immutable editor need the read/import-only
+          # release even after it rolls out of the normal version history.
+          GATEWAY_TAG=$(jq -er '.panelConfigCompatibility.legacyGatewayRelease' product/release_contract.json)
+          GATEWAY_RELEASE=$(jq -c --arg tag "${GATEWAY_TAG}" \
+            'first(.[] | select(.tag_name == $tag and (.draft | not) and (.prerelease | not))) // empty' \
+            <<< "${RELEASES_JSON}")
+          if [ -z "${GATEWAY_RELEASE}" ]; then
+            GATEWAY_RELEASE=$(curl -fsSL \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${GATEWAY_TAG}")
+          fi
+          jq -e --arg tag "${GATEWAY_TAG}" \
+            '.tag_name == $tag and (.draft | not) and (.prerelease | not)' \
+            <<< "${GATEWAY_RELEASE}" >/dev/null
+          STABLE_RELEASES_JSON=$(jq -c --argjson gateway "${GATEWAY_RELEASE}" \
+            'if any(.[]; .tag_name == $gateway.tag_name) then . else . + [$gateway] end' \
+            <<< "${STABLE_RELEASES_JSON}")
+          RELEASE_COUNT=$(jq 'length' <<< "${STABLE_RELEASES_JSON}")
 
           if [ "${RELEASE_COUNT}" -eq 0 ]; then
             echo "::warning::No stable firmware releases found"
@@ -171,6 +191,8 @@ jobs:
           }
 
           NATIVE_RELEASES=()
+          NATIVE_ONLY_RELEASES=()
+          GATEWAY_PHASE=
           for IDX in $(seq 0 $((RELEASE_COUNT - 1))); do
             RELEASE_JSON=$(printf '%s' "${STABLE_RELEASES_JSON}" | jq -c ".[$IDX]")
             if ! jq -e 'any(.assets[]; .name == "release-manifest.json")' <<< "${RELEASE_JSON}" >/dev/null; then
@@ -183,16 +205,28 @@ jobs:
               'select(.releaseVersion == $tag) | .releaseContract.panelConfigCompatibility.phase // "legacy"' \
               "${CONTRACT_TMP}")
             rm -f "${CONTRACT_TMP}"
+            if [ "${RELEASE_TAG}" = "${GATEWAY_TAG}" ]; then
+              GATEWAY_PHASE="${PHASE}"
+            fi
             case "${PHASE}" in
-              read-import-only|native-only) NATIVE_RELEASES+=("${RELEASE_TAG}") ;;
+              read-import-only) NATIVE_RELEASES+=("${RELEASE_TAG}") ;;
+              native-only)
+                NATIVE_RELEASES+=("${RELEASE_TAG}")
+                NATIVE_ONLY_RELEASES+=("${RELEASE_TAG}")
+                ;;
             esac
           done
+
+          if [ "${GATEWAY_PHASE}" != read-import-only ]; then
+            echo "::error::The compatibility gateway is missing its read/import-only release contract"
+            exit 1
+          fi
 
           for SLUG in $DEVICE_SLUGS; do
             mkdir -p "firmware/${SLUG}"
             INDEX_ENTRIES=$(mktemp)
+            NATIVE_INDEX_ENTRIES=$(mktemp)
             HAVE_CURRENT=false
-            : > "${INDEX_ENTRIES}"
 
             for IDX in $(seq 0 $((RELEASE_COUNT - 1))); do
               RELEASE_JSON=$(printf '%s' "${STABLE_RELEASES_JSON}" | jq -c ".[$IDX]")
@@ -210,7 +244,12 @@ jobs:
               fi
               VERSION_PATH=$(printf '%s' "${VERSION}" | sed 's/[^A-Za-z0-9._-]/_/g')
 
-              if [ "${HAVE_CURRENT}" = false ]; then
+              IS_GATEWAY=false
+              if [ "${HAVE_CURRENT}" = false ] && \
+                 { [ "${#NATIVE_ONLY_RELEASES[@]}" -eq 0 ] || [ "${RELEASE_TAG}" = "${GATEWAY_TAG}" ]; }; then
+                IS_GATEWAY=true
+              fi
+              if [ "${IS_GATEWAY}" = true ]; then
                 OTA_OUTPUT="firmware/${SLUG}/${SLUG}.ota.bin"
                 OTA_INDEX_PATH="${SLUG}.ota.bin"
               else
@@ -222,7 +261,7 @@ jobs:
                 continue
               fi
 
-              if [ "${HAVE_CURRENT}" = false ]; then
+              if [ "${IS_GATEWAY}" = true ]; then
                 cp "${MANIFEST_TMP}" "firmware/${SLUG}/manifest.json"
                 download_asset "${RELEASE_JSON}" "${SLUG}.factory.bin" "firmware/${SLUG}/${SLUG}.factory.bin" || true
                 RECOVERY_MANIFEST="firmware/${SLUG}/recovery/manifest.json"
@@ -252,19 +291,31 @@ jobs:
                 ENTRY_RELEASE_URL="${RELEASE_HTML_URL}"
               fi
 
-              jq -n \
+              ENTRY=$(jq -cn \
                 --arg version "${VERSION}" \
                 --arg release_url "${ENTRY_RELEASE_URL}" \
                 --arg ota_path "${OTA_INDEX_PATH}" \
                 --arg ota_md5 "${OTA_MD5}" \
-                '{version:$version, release_url:$release_url, ota:{path:$ota_path, md5:$ota_md5}}' \
-                >> "${INDEX_ENTRIES}"
+                '{version:$version, release_url:$release_url, ota:{path:$ota_path, md5:$ota_md5}}')
+              printf '%s\n' "${ENTRY}" >> "${NATIVE_INDEX_ENTRIES}"
+              if [[ " ${NATIVE_ONLY_RELEASES[*]} " != *" ${RELEASE_TAG} "* ]]; then
+                printf '%s\n' "${ENTRY}" >> "${INDEX_ENTRIES}"
+              fi
             done
 
             if [ -s "${INDEX_ENTRIES}" ]; then
               jq -s --arg device "${SLUG}" '{device:$device, versions:.}' \
                 "${INDEX_ENTRIES}" > "firmware/${SLUG}/versions.json"
             fi
+            if [ -s "${NATIVE_INDEX_ENTRIES}" ]; then
+              jq -s --arg device "${SLUG}" '{device:$device, versions:.}' \
+                "${NATIVE_INDEX_ENTRIES}" > "firmware/${SLUG}/native-versions.json"
+            fi
+            if [ "${#NATIVE_ONLY_RELEASES[@]}" -gt 0 ] && [ "${HAVE_CURRENT}" = false ]; then
+              echo "::error::${SLUG} is missing the compatibility gateway firmware"
+              exit 1
+            fi
+            rm -f "${INDEX_ENTRIES}" "${NATIVE_INDEX_ENTRIES}"
           done
 
       - name: Download firmware from latest pre-release

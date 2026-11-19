@@ -297,6 +297,35 @@ bool read_import_only_preserves_upgrade_import_without_legacy_writes() {
   return imported.imported_legacy() && upgrade_legacy.mirror_calls == 0;
 }
 
+bool native_only_ignores_legacy_storage_and_preserves_native_rollback() {
+  MemoryBackend backend(256);
+  ConfigurationStore store(backend);
+  FakeLegacy legacy;
+  legacy.value = bytes("old-layout");
+  FakeRuntime runtime;
+  ConfigurationService native(store, legacy, nullptr, nullptr, 0,
+                              LegacyConfigurationMode::NATIVE_ONLY);
+  native.set_runtime_adapter(&runtime);
+
+  std::array<uint8_t, 64> output{};
+  if (native.load(output.data(), output.size()).status != ServiceStatus::EMPTY ||
+      native.refresh_legacy_shadow(output.data(), output.size()).status != ServiceStatus::EMPTY ||
+      legacy.load_calls != 0) return false;
+
+  const auto layout = bytes("restored-layout");
+  if (!native.save_if_generation(0, CURRENT_CONFIGURATION_DOCUMENT_VERSION,
+                                 layout.data(), layout.size()).ok() ||
+      runtime.applied != layout || legacy.mirror_calls != 0) return false;
+
+  ConfigurationService rollback(store, legacy, nullptr, nullptr, 0,
+                                LegacyConfigurationMode::READ_IMPORT_ONLY);
+  const auto loaded = rollback.load(output.data(), output.size());
+  return loaded.status == ServiceStatus::OK && loaded.generation == 1 &&
+         loaded.document_size == layout.size() &&
+         std::equal(layout.begin(), layout.end(), output.begin()) &&
+         legacy.load_calls == 0;
+}
+
 bool conditional_save_rejects_a_stale_generation() {
   MemoryBackend backend(256);
   ConfigurationStore store(backend);
@@ -430,6 +459,7 @@ int main() {
       stored_document_can_be_applied_to_the_runtime_atomically() &&
       runtime_is_updated_even_if_the_legacy_mirror_fails() &&
       read_import_only_preserves_upgrade_import_without_legacy_writes() &&
+      native_only_ignores_legacy_storage_and_preserves_native_rollback() &&
       conditional_save_rejects_a_stale_generation() &&
       version_and_buffer_failures_are_explicit() &&
       malformed_store_document_is_not_treated_as_legacy() &&

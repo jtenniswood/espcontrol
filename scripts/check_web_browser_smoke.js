@@ -504,7 +504,7 @@ async function installRoutes(context, slug, options = {}) {
         });
         return;
       }
-      if (requestUrl.pathname.endsWith("/versions.json")) {
+      if (requestUrl.pathname.endsWith("/native-versions.json")) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -6861,7 +6861,7 @@ async function assertHostedCompatibility(browser) {
     await page.waitForSelector("#sp-app");
     await page.waitForFunction(() => window.__eventSources?.length > 0);
     await page.evaluate(events => window.__seedEspState(events), seededEvents());
-    await page.waitForFunction(() => ["manifest.json", "versions.json"].every(name =>
+    await page.waitForFunction(() => ["manifest.json", "native-versions.json"].every(name =>
       window.__compatRequests.some(item => item.url.startsWith("https://jtenniswood.github.io/espcontrol/firmware/") && item.url.endsWith(name) && item.status === 200)));
     const requests = await page.evaluate(() => window.__compatRequests);
     for (const request of requests.filter(item => item.url.startsWith("https://jtenniswood.github.io/espcontrol/firmware/"))) {

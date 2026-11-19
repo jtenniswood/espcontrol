@@ -11,21 +11,9 @@
 # =============================================================================
 
 text:
-  - platform: template
-    name: "${entity_button_order}"
-    internal: true
+  - platform: espcontrol
     id: button_order
-    optimistic: true
-    restore_value: true
     initial_value: ""
-    min_length: 0
-    max_length: 120
-    mode: text
-    entity_category: config
-    icon: "mdi:order-numeric-ascending"
-    update_interval: never
-    web_server:
-      sorting_group_id: sg_button
     on_value:
       then:
         - if:
