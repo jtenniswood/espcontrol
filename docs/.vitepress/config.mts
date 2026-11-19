@@ -411,6 +411,7 @@ export default defineConfig({
           { text: 'Date & Time', link: '/card-types/calendar' },
           { text: 'Doors & Windows', link: '/card-types/doors-windows' },
           { text: 'Fans', link: '/card-types/fans' },
+          { text: 'Flights', link: '/card-types/flights' },
           { text: 'Garage Door', link: '/card-types/garage-doors' },
           { text: 'Gate', link: '/card-types/gates' },
           { text: 'Internal', link: '/card-types/internal-relays' },

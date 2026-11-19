@@ -1,5 +1,35 @@
 [
   {
+    "name": "flights: metric",
+    "input": "~sensor.espcontrol_flights,,Airplane,Auto,,,flights,,",
+    "expected": {
+      "entity": "sensor.espcontrol_flights",
+      "label": "",
+      "icon": "Airplane",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "flights",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "flights: imperial",
+    "input": "~sensor.espcontrol_flights,,Airplane,Auto,,,flights,,units%3Dimperial",
+    "expected": {
+      "entity": "sensor.espcontrol_flights",
+      "label": "",
+      "icon": "Airplane",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "flights",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
     "name": "timer: countdown",
     "input": "~timer.example,,Auto,Auto,,3,timer,,",
     "expected": {

@@ -47,6 +47,7 @@ using FanCardCtx = Runtime;
 using ImageCardCtx = Runtime;
 using OptionSelectCtx = Runtime;
 using WeatherDailyCard = Runtime;
+using FlightsCardCtx = Runtime;
 struct lv_obj_t { Runtime *runtime = nullptr; bool hidden = false; lv_obj_t *parent = nullptr; };
 constexpr int LV_OBJ_FLAG_HIDDEN = 1;
 void *lv_obj_get_user_data(lv_obj_t *obj) { return obj->runtime; }
@@ -125,6 +126,7 @@ OPEN(fan_preset_open, FAN_PRESET)
 OPEN(image_card_open_modal, IMAGE_CARD)
 OPEN(option_select_open_modal, OPTION_SELECT)
 OPEN(weather_daily_open_modal, WEATHER_FORECAST)
+OPEN(handle_flights_card_click, FLIGHTS)
 size_t weather_daily_selected_day(const Runtime &card) { return card.selected_day; }
 Runtime *weather_daily_card_for(lv_obj_t *button) { return button ? button->runtime : nullptr; }
 void wifi_qr_open_modal(const ParsedCfg &, lv_obj_t *) { show(nullptr, ControlModalKind::WIFI_QR); }
@@ -195,6 +197,7 @@ int main() {
     {"alarm", "", "alarm_control_panel.office", ControlModalKind::ALARM_CONTROL},
     {"option_select", "", "select.office", ControlModalKind::OPTION_SELECT},
     {"wifi_qr", "", "switch.guest", ControlModalKind::WIFI_QR},
+    {"flights", "", "sensor.espcontrol_flights", ControlModalKind::FLIGHTS},
   };
   {
     Runtime runtime; runtime.entity_id = "weather.home";

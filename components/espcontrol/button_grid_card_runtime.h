@@ -33,6 +33,7 @@ inline Family family_for_runtime_type(espcontrol::card_runtime::CardTypeId type)
     case Type::ALARM: return Family::ALARM;
     case Type::ALARM_ACTION: return Family::ALARM_ACTION;
     case Type::TIMER: return Family::TIMER;
+    case Type::FLIGHTS: return Family::FLIGHTS;
     case Type::CALENDAR:
     case Type::CLOCK:
     case Type::TIMEZONE: return Family::DATE_TIME;
