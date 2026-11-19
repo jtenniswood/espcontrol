@@ -50,6 +50,11 @@ def compatibility_policy(contract: dict) -> dict:
     assert compatibility.get("readImportOnlyStableReleases") == 1, (
         "PanelConfig compatibility policy must retain one read/import-only stable release"
     )
+    if compatibility["phase"] == "native-only":
+        gateway = compatibility.get("legacyGatewayRelease")
+        assert isinstance(gateway, str) and re.fullmatch(r"v\d+\.\d+\.\d+", gateway), (
+            "native-only requires a stable legacy gateway version"
+        )
     return compatibility
 
 
@@ -82,6 +87,15 @@ def validate_release_history(contract: dict, releases: list[dict]) -> None:
         f"{phase} requires {required} consecutive published {previous_phase} releases "
         "with the current PanelConfig document version"
     )
+    if phase == "native-only":
+        gateway = next(
+            (release for release in matching if release.get("tagName") == policy["legacyGatewayRelease"]),
+            None,
+        )
+        assert gateway is not None and (
+            gateway["manifest"]["releaseContract"].get("panelConfigCompatibility", {}).get("phase")
+            == "read-import-only"
+        ), "legacy gateway must be a published read/import-only release"
 
 
 def github_release_history(repository: str) -> list[dict]:
@@ -185,11 +199,14 @@ def self_test() -> None:
     else:
         raise AssertionError("read/import-only accepted non-consecutive dual-write releases")
     native_only_contract = json.loads(json.dumps(contract))
-    native_only_contract["panelConfigCompatibility"]["phase"] = "native-only"
-    validate_release_history(native_only_contract, [published("read-import-only")])
+    native_only_policy = native_only_contract["panelConfigCompatibility"]
+    native_only_policy["phase"] = "native-only"
+    native_only_policy["legacyGatewayRelease"] = "v2.15.0"
+    gateway = {**published("read-import-only"), "tagName": "v2.15.0"}
+    validate_release_history(native_only_contract, [gateway])
     validate_release_history(
         native_only_contract,
-        [published("native-only"), published("native-only"), published("read-import-only")],
+        [published("native-only"), published("native-only"), gateway],
     )
     try:
         validate_release_history(native_only_contract, [published("native-only"), published("dual-write")])
@@ -197,6 +214,12 @@ def self_test() -> None:
         assert "1 consecutive published read-import-only" in str(error)
     else:
         raise AssertionError("native-only accepted release history without a read/import-only release")
+    try:
+        validate_release_history(native_only_contract, [published("read-import-only")])
+    except AssertionError as error:
+        assert "legacy gateway must be a published" in str(error)
+    else:
+        raise AssertionError("native-only accepted an unpublished gateway release")
     original = PRODUCT_MODEL.read_text(encoding="utf-8")
     original_policy = COMPATIBILITY_POLICY.read_text(encoding="utf-8")
     current_phase = contract["panelConfigCompatibility"]["phase"]

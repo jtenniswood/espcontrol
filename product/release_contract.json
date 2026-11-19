@@ -6,6 +6,7 @@
   "panelConfigCompatibility": {
     "phase": "native-only",
     "dualWriteStableReleases": 2,
-    "readImportOnlyStableReleases": 1
+    "readImportOnlyStableReleases": 1,
+    "legacyGatewayRelease": "v2.15.0"
   }
 }

@@ -115,7 +115,9 @@ jobs:
 
       - uses: actions/checkout@v7.0.1
         with:
-          sparse-checkout: devices/manifest.json
+          sparse-checkout: |
+            devices/manifest.json
+            product/release_contract.json
           sparse-checkout-cone-mode: false
 
       - name: Set device slugs
@@ -134,7 +136,7 @@ jobs:
           STABLE_RELEASES_JSON=$(printf '%s' "${RELEASES_JSON}" | jq -c '[.[] | select((.draft | not) and (.prerelease | not))][0:5]')
           # Older firmware and its immutable editor need the read/import-only
           # release even after it rolls out of the normal version history.
-          GATEWAY_TAG=v2.15.0
+          GATEWAY_TAG=$(jq -er '.panelConfigCompatibility.legacyGatewayRelease' product/release_contract.json)
           GATEWAY_RELEASE=$(jq -c --arg tag "${GATEWAY_TAG}" \
             'first(.[] | select(.tag_name == $tag and (.draft | not) and (.prerelease | not))) // empty' \
             <<< "${RELEASES_JSON}")
