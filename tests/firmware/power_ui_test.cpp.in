@@ -18,7 +18,10 @@
 std::vector<std::string> diagnostic_logs;
 template<class... Args> void test_log(const char *tag,const char *format,Args... args){
   if(std::string(tag)!="power_diag"&&std::string(tag)!="power_balance")return;
-  char text[256];snprintf(text,sizeof(text),format,args...);diagnostic_logs.emplace_back(text);
+  char text[256];
+  if constexpr(sizeof...(Args)==0)snprintf(text,sizeof(text),"%s",format);
+  else snprintf(text,sizeof(text),format,args...);
+  diagnostic_logs.emplace_back(text);
 }
 #define ESP_LOGW(...) test_log(__VA_ARGS__)
 
@@ -330,6 +333,11 @@ void publish(std::string id,std::string value,std::string attribute="",bool sett
   if(settle)advance(200);
 }
 int main(){
+  test_log("power_diag","literal 100% %s %n");
+  test_log("power_balance","value=%d unit=%s",42,"W");
+  test_log("ignored","not recorded");
+  assert((diagnostic_logs==std::vector<std::string>{"literal 100% %s %n","value=42 unit=W"}));
+  diagnostic_logs.clear();
   using namespace espcontrol::cards;
   using espcontrol::power::Reading;
   using espcontrol::power::ReadingValidity;
