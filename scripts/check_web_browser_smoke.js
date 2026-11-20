@@ -14,6 +14,7 @@ const {
   createPanelConfigBackupPayload,
   decodePanelConfig,
   encodePanelConfig,
+  serializeLegacySubpageConfig,
   activeCardColor,
   decodeConfigField,
 } = loadTypeScriptModule(path.join(ROOT, "src", "webserver", "model", "index.ts"));
@@ -6674,6 +6675,271 @@ async function assertTimerEntityValidation(page) {
     !document.querySelector(".sp-settings-overlay.sp-visible"));
 }
 
+async function assertPowerDashboard(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(context, testCase.slug);
+  const page = await context.newPage();
+  const errors = [];
+  const posts = [];
+  page.on("request", request => { if (request.method() === "POST") posts.push(postRecord(request.url())); });
+  page.on("pageerror", error => errors.push(error.message));
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => window.__eventSources?.length > 0);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents().concat([
+      { id: "text-button_order", state: "" },
+    ]));
+    await page.locator(".sp-main .sp-empty-cell").first().click();
+    await page.getByRole("button", { name: "Power card type", exact: true }).click();
+    const save = page.locator(".sp-settings-modal .sp-save-btn");
+    assert.equal(await page.locator("#sp-inp-label").inputValue(), "Power Dashboard");
+    assert.equal(await page.locator("#sp-inp-power-invert_grid").isChecked(), false);
+    assert.equal(await page.locator("#sp-inp-power-invert_battery").isChecked(), false);
+    assert.equal(await page.locator("#sp-inp-power-precision").count(), 0);
+    assert.equal(await page.locator("#sp-inp-power-include-home").count(), 0);
+    for (const name of ["solar", "grid", "battery"])
+      assert(await page.locator("#sp-inp-power-include-" + name).isChecked());
+    const home = page.locator("#sp-inp-power-entity");
+    await home.fill("switch.home");
+    await save.click();
+    assert(await home.getAttribute("aria-invalid"));
+    await home.fill("sensor.home");
+    const settings = page.locator(".sp-settings-modal .sp-disclosure").filter({ hasText: "Card Settings" }).first();
+    if (!(await settings.evaluate(el => el.classList.contains("sp-open")))) await settings.locator(".sp-disclosure-button").click();
+    for (const [key, value] of [["solar_entity", "sensor.solar"], ["grid_entity", "sensor.grid"], ["battery_entity", "sensor.battery"]])
+      await page.locator("#sp-inp-power-" + key).fill(value);
+    const soc = page.locator("#sp-inp-power-battery_soc_entity");
+    await soc.fill("number.soc");
+    await save.click();
+    await page.getByText("Choose a sensor entity (sensor.*) for Battery SOC (optional).", { exact: true }).waitFor();
+    await soc.fill("");
+    const longId = "sensor." + "very_long_house_power_".repeat(4);
+    await home.fill(longId);
+    await page.locator("#sp-inp-power-solar_entity").fill(longId);
+    assert.equal(await page.locator("#sp-inp-power-config-size").count(), 0);
+    assert.equal(await page.getByText("Requires at least two grid columns.", { exact: false }).count(), 0);
+    assert.equal(await page.getByText("Configuration size:", { exact: false }).count(), 0);
+    assert.deepEqual(await page.locator(".sp-settings-modal").evaluate(modal => {
+      const ids = ["grid_entity", "invert_grid", "battery_entity", "invert_battery", "battery_soc_entity"];
+      return Array.from(modal.querySelectorAll("input"))
+        .map(input => input.id.replace("sp-inp-power-", "")).filter(id => ids.includes(id));
+    }), ["grid_entity", "invert_grid", "battery_entity", "invert_battery", "battery_soc_entity"]);
+    for (const name of ["invert_grid", "invert_battery"])
+      assert.equal(await page.locator("#sp-inp-power-" + name).count(), 1);
+    await save.click();
+    await page.getByText("Power settings exceed this panel's configuration limit. Shorten entity IDs or the label, omit optional SOC, or use a subpage. No settings were saved.", { exact: true }).waitFor();
+    assert(await page.locator(".sp-settings-overlay.sp-visible").count());
+    await home.fill("sensor.home");
+    await page.locator("#sp-inp-power-solar_entity").fill("sensor.solar");
+    await soc.fill("sensor.soc");
+    await page.locator("#sp-inp-power-invert_grid + .sp-toggle-track").click();
+    await page.locator("#sp-inp-power-invert_battery + .sp-toggle-track").click();
+    await page.locator("#sp-inp-label").fill("House Power");
+    await save.click();
+    await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
+    const power = page.locator(".sp-main .sp-power-card");
+    assert.equal(await power.locator(".sp-sensor-value").textContent(), "--");
+    assert.equal(await power.locator(".sp-sensor-unit").textContent(), "W");
+    assert.equal(await power.locator(".sp-power-secondary").textContent(), "Unavailable");
+    assert(await power.locator(".sp-power-chevron").isVisible());
+    for (const [mode, active, background, foreground] of [
+      ["Dark", "Light", "rgb(49, 49, 49)", "rgb(255, 255, 255)"],
+      ["Light", "Dark", "rgb(255, 255, 255)", "rgb(51, 51, 51)"],
+      ["Auto", "Light", "rgb(255, 255, 255)", "rgb(51, 51, 51)"],
+      ["Auto", "Dark", "rgb(49, 49, 49)", "rgb(255, 255, 255)"],
+    ]) {
+      await page.evaluate(([mode, active]) => window.__seedEspState([
+        { id: "select/Screen: Theme Mode", state: mode, value: mode, option: ["Dark", "Light", "Auto"] },
+        { id: "text_sensor-screen__active_theme", state: active, value: active },
+      ]), [mode, active]);
+      await page.waitForFunction(bg => document.querySelector(".sp-power-card")?.style.backgroundColor === bg, background);
+      assert.equal(await power.locator(".sp-sensor-value").evaluate(el => getComputedStyle(el).color), foreground);
+      const bounds = await power.evaluate(card => {
+        const value = card.querySelector(".sp-sensor-preview").getBoundingClientRect();
+        const primary = card.querySelector(".sp-power-labels > .sp-btn-label").getBoundingClientRect();
+        const secondary = card.querySelector(".sp-power-secondary").getBoundingClientRect();
+        const chevron = card.querySelector(".sp-power-chevron").getBoundingClientRect();
+        return { overlap: value.bottom > primary.top + 1 || primary.bottom > secondary.top + 1,
+          rightOverlap: secondary.right > chevron.left + 1 };
+      });
+      assert(!bounds.overlap && !bounds.rightOverlap, `${testCase.name}: Power label/value/chevron bounds ${JSON.stringify(bounds)}`);
+    }
+    // Measurement grouping uses the native preview baseline and gap, even at five digits.
+    for(const watts of ["9", "923", "1042", "3500", "35000"]){
+      const measurement=await power.evaluate((card,watts)=>{
+        const value=card.querySelector(".sp-sensor-value");value.textContent=watts;
+        const unit=card.querySelector(".sp-sensor-unit");
+        const a=value.getBoundingClientRect(),b=unit.getBoundingClientRect(),r=card.getBoundingClientRect();
+        return {gap:b.left-a.right,right:b.right,cardRight:r.right,align:getComputedStyle(value.parentElement).alignItems,unit:unit.textContent};
+      },watts);
+      assert(measurement.gap>=-.5&&measurement.gap<=16, `${testCase.name}: adjacent W unit at ${watts} ${JSON.stringify(measurement)}`);
+      assert(measurement.right<=measurement.cardRight+1, `${testCase.name}: five-digit watts remain in card`);
+      assert.equal(measurement.align,"baseline");assert.equal(measurement.unit,"W");
+    }
+    // Real generated layout with long titles/statuses and four-digit watts.
+    const originalText = await power.evaluate(card => ({ title: card.querySelector(".sp-power-labels > .sp-btn-label").textContent,
+      value: card.querySelector(".sp-sensor-value").textContent, secondary: card.querySelector(".sp-power-secondary").textContent }));
+    for (const title of ["Power Dashboard", "Household photovoltaic consumption dashboard", "Stromverbrauch und Batteriestatus"]) {
+      for (const status of ["Charging · Exporting", "Discharging · Importing", "Unavailable"]) {
+        const bounds = await power.evaluate((card, [title, status]) => {
+          const primary = card.querySelector(".sp-power-labels > .sp-btn-label"); primary.textContent = title;
+          const secondary = card.querySelector(".sp-power-secondary"); secondary.textContent = status;
+          const value = card.querySelector(".sp-sensor-value"); value.textContent = "1042";
+          const a=value.getBoundingClientRect(), b=primary.getBoundingClientRect(), c=secondary.getBoundingClientRect(), d=card.querySelector(".sp-power-chevron").getBoundingClientRect();
+          return { overlap: a.bottom > b.top + 1 || b.bottom > c.top + 1 || c.right > d.left + 1, valueBottom:a.bottom, primaryTop:b.top, primaryBottom:b.bottom, secondaryTop:c.top, secondaryRight:c.right, chevronLeft:d.left };
+        }, [title, status]);
+        assert(!bounds.overlap, `${testCase.name}: long Power label/status overlap ${JSON.stringify(bounds)}`);
+      }
+    }
+    await power.evaluate((card, original) => {
+      card.querySelector(".sp-power-labels > .sp-btn-label").textContent=original.title;
+      card.querySelector(".sp-sensor-value").textContent=original.value;
+      card.querySelector(".sp-power-secondary").textContent=original.secondary;
+    }, originalText);
+    // Upstream uses native drag-resize handles, not the retired Size submenu.
+    await power.hover();
+    const handle=await power.locator(".sp-resize-handle").boundingBox();
+    const cardBounds=await power.boundingBox();
+    assert(handle&&cardBounds, `${testCase.name}: native Power resize handle`);
+    await page.mouse.move(handle.x+handle.width/2,handle.y+handle.height/2);
+    await page.mouse.down();
+    await page.mouse.move(handle.x+handle.width/2-cardBounds.width*.55,handle.y+handle.height/2,{steps:6});
+    await page.mouse.up();
+    await page.waitForFunction(()=>!document.querySelector(".sp-resizing"));
+    assert(await power.evaluate(card=>card.classList.contains("sp-btn-wide")), `${testCase.name}: native resize cannot shrink Power below two columns`);
+    await page.mouse.move(0,0);
+    const saved = posts.find(post => post.domain === "text" && post.value?.includes("solar_entity=sensor.solar"));
+    assert(saved?.value.includes("invert_grid,invert_battery"), "Power UI persists both inversion flags");
+    assert(saved?.value.includes("battery_soc_entity=sensor.soc"), "Power UI persists optional SOC");
+    assert(await power.evaluate(card => card.classList.contains("sp-btn-wide")), "New Power card uses two columns");
+    if (process.env.ESPCONTROL_POWER_SCREENSHOTS) {
+      fs.mkdirSync(process.env.ESPCONTROL_POWER_SCREENSHOTS, { recursive: true });
+      await power.screenshot({ path: path.join(process.env.ESPCONTROL_POWER_SCREENSHOTS, testCase.slug + ".png") });
+    }
+    // Device event reload uses the same normalized nine-field config and flags.
+    await page.evaluate(() => window.__seedEspState([
+      { id: "text-button_1_config", state: "sensor.h;Reloaded Power;Auto;Auto;;;power;;solar_entity=sensor.s,grid_entity=sensor.g,battery_entity=sensor.b,invert_grid,invert_battery,card_off_color=112233,card_active_color=custom,card_on_color=ABCDEF" },
+      { id: "text-button_order", state: "1" },
+    ]));
+    await power.getByText("Reloaded Power", { exact: true }).waitFor();
+    await power.click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    assert.equal(await page.locator("#sp-inp-power-entity").inputValue(), "sensor.h");
+    assert(await page.locator("#sp-inp-power-invert_grid").isChecked());
+    assert(await page.locator("#sp-inp-power-invert_battery").isChecked());
+    const cardSettings = page.locator(".sp-settings-modal .sp-disclosure").filter({ hasText: "Card Settings" }).first();
+    if (!(await cardSettings.evaluate(el => el.classList.contains("sp-open")))) await cardSettings.locator(".sp-disclosure-button").click();
+    await page.locator("#sp-inp-power-solar_entity").fill("sensor.s2");
+    await page.locator("#sp-inp-power-solar_entity").fill("sensor.s");
+    await page.locator("#sp-inp-power-invert_grid + .sp-toggle-track").click();
+    await page.locator("#sp-inp-power-invert_grid + .sp-toggle-track").click();
+    for (const name of ["solar", "battery"])
+      await page.locator("#sp-inp-power-include-" + name + " + .sp-toggle-track").click();
+    assert(await page.locator("#sp-inp-power-solar_entity").isDisabled());
+    assert(await page.locator("#sp-inp-power-battery_soc_entity").isDisabled());
+    assert(await page.locator("#sp-inp-power-invert_battery").isDisabled());
+    assert(!(await page.locator("#sp-inp-power-invert_battery + .sp-toggle-track").isVisible()));
+    await home.fill(""); // Installed but unmeasured Home remains explicit, not zero.
+    await save.click();
+    await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
+    const partialSaved = posts.findLast(post => post.value?.includes("exclude_solar") && post.value?.includes("exclude_battery"));
+    assert(partialSaved, "Partial Power settings were saved");
+    for (const option of ["card_off_color=112233", "card_active_color=custom", "card_on_color=ABCDEF"])
+      assert(partialSaved.value.includes(option), "Power entity/polarity/component edits preserve " + option);
+    await power.click();await page.getByRole("button", { name: "Edit", exact: true }).click();
+    assert.equal(await home.inputValue(), "");
+    assert(!(await page.locator("#sp-inp-power-include-solar").isChecked()));
+    assert(!(await page.locator("#sp-inp-power-include-battery").isChecked()));
+    if (!(await cardSettings.evaluate(el => el.classList.contains("sp-open")))) await cardSettings.locator(".sp-disclosure-button").click();
+    await page.locator("#sp-inp-power-include-grid + .sp-toggle-track").click();
+    assert(await home.isEnabled()); // Home-only is supported, even unmeasured.
+    await save.click();
+    await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
+    const homeOnly=posts.findLast(post=>post.value?.includes("exclude_grid")&&post.value?.includes("exclude_solar")&&post.value?.includes("exclude_battery"));
+    assert(homeOnly&&!homeOnly.value.includes("exclude_home"));
+    await power.click();await page.getByRole("button", { name: "Edit", exact: true }).click();
+    if (!(await cardSettings.evaluate(el => el.classList.contains("sp-open")))) await cardSettings.locator(".sp-disclosure-button").click();
+    for (const name of ["solar", "grid", "battery"])
+      await page.locator("#sp-inp-power-include-" + name + " + .sp-toggle-track").click();
+    await home.fill("sensor.h");
+    assert.equal(await page.locator("#sp-inp-power-solar_entity").inputValue(), "sensor.s");
+    for (const name of ["invert_grid", "invert_battery"]) {
+      const inversion = page.locator("#sp-inp-power-" + name);
+      assert(await inversion.isChecked(), "Excluded/unmeasured components retain " + name);
+      assert(await inversion.isEnabled());
+      // Native toggles intentionally keep their checkbox zero-sized; the
+      // adjacent track is the visible/tappable control.
+      assert(await page.locator("#sp-inp-power-" + name + " + .sp-toggle-track").isVisible());
+    }
+    await save.click();
+    await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
+    if (testCase.slug === "esp32-p4-86") {
+      // Isolate the legacy device snapshot from the preceding local saves;
+      // those still await acknowledgements in this synthetic transport.
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForFunction(() => window.__eventSources?.length > 0);
+      await page.evaluate(events => window.__seedEspState(events.concat([
+        { id: "text-button_1_config", state: "sensor.home;Reloaded Power;Auto;Auto;;;power;;solar_entity=sensor.solar,grid_entity=sensor.grid,battery_entity=sensor.battery,invert_grid,invert_battery" },
+        { id: "text-button_2_config", state: "light.neighbor;Protected neighbor;Auto;Auto;;;;;" },
+        { id: "text-button_order", state: "1,2" },
+      ])), seededEvents());
+      await power.waitFor();
+      assert(await power.locator(".sp-sensor-preview").count()===0);
+      await power.click();await page.getByRole("button",{name:"Edit",exact:true}).click();
+      const labelSection = page.locator(".sp-disclosure").filter({has: page.locator("#sp-inp-label")});
+      if (!(await labelSection.evaluate(el => el.classList.contains("sp-open")))) await labelSection.locator(".sp-disclosure-button").click();
+      await page.locator("#sp-inp-label").fill("Cannot overwrite neighbor");
+      const beforeBlocked = posts.length;
+      await page.locator(".sp-settings-modal .sp-save-btn").click();
+      await page.getByText("Power needs at least two columns. Choose Wide or larger in an empty area, or move neighboring cards yourself. No cards were moved or overwritten.",{exact:true}).waitFor();
+      assert.equal(posts.length,beforeBlocked,"Blocked Power expansion performs no configuration writes");
+      assert(await page.locator('.sp-main [data-slot="2"][data-pos="1"]').count());
+      await page.locator(".sp-settings-close").click();
+      const beforePaste = posts.length;
+      await power.click({button:"right"});
+      await page.locator(".sp-ctx-menu").getByText("Copy",{exact:true}).click();
+      await page.locator(".sp-main .sp-empty-cell").first().click({button:"right"});
+      await page.locator(".sp-ctx-menu").getByText("Paste",{exact:true}).click();
+      await page.getByText("Power needs at least two columns. Choose Wide or larger in an empty area, or move neighboring cards yourself. No cards were moved or overwritten.",{exact:true}).waitFor();
+      assert.equal(await power.count(),1,"Narrow copied Power is rejected before local mutation");
+      assert.equal(posts.length,beforePaste,"Narrow Power paste performs no partial writes");
+      const subpage = serializeLegacySubpageConfig(["1w", "B"], [[
+        "sensor.home", "Subpage Power", "Auto", "Auto", "", "", "power", "",
+        "solar_entity=sensor.solar,grid_entity=sensor.grid,battery_entity=sensor.battery,invert_grid,invert_battery",
+      ]]);
+      await page.evaluate(sub => {
+        window.__seedEspState([
+          { id: "text-button_1_config", state: ";Power Page;Chevron Right;Auto;;;subpage" },
+          { id: "text-subpage_1_config", state: sub },
+          { id: "text-button_order", state: "1" },
+        ]);
+      }, subpage);
+      await page.locator(".sp-main .sp-subpage-badge").click();
+      await power.getByText("Subpage Power", { exact: true }).waitFor();
+      await power.click();
+      await page.getByRole("button", { name: "Edit", exact: true }).click();
+      assert.equal(await page.locator("#sp-sp-inp-power-entity").inputValue(), "sensor.home");
+      const disclosure = page.locator(".sp-settings-modal .sp-disclosure").filter({ hasText: "Card Settings" }).first();
+      if (!(await disclosure.evaluate(el => el.classList.contains("sp-open")))) await disclosure.locator(".sp-disclosure-button").click();
+      assert(await page.locator("#sp-sp-inp-power-invert_battery").isChecked());
+      const longer = "sensor." + "house_inverter_".repeat(4);
+      await page.locator("#sp-sp-inp-power-grid_entity").fill(longer);
+      await page.locator(".sp-settings-modal .sp-save-btn").click();
+      await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
+      assert(posts.some(post => post.name.startsWith("subpage_") && post.value?.includes(longer)), "Subpage save preserves a longer Power binding");
+      const backup = backupFixture(testCase.slug, testCase.slots);
+      backup.buttons[0] = { entity: longer, label: "Power Dashboard", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "power", precision: "", options: "solar_entity=" + longer + ",grid_entity=" + longer + ",battery_entity=" + longer };
+      const before = posts.length;
+      await importBackup(page, backup, "power-oversized-main");
+      await page.getByText("Power settings exceed this panel's 255-byte card limit. Shorten entity IDs or the label, omit optional SOC, or use a subpage.", { exact: true }).waitFor();
+      assert.equal(posts.length, before, "Unsupported Power restore is rejected before configuration writes");
+    }
+    assert.deepEqual(errors, [], `${testCase.name}: Power browser errors`);
+    console.log(`Power editor/preview passed: ${testCase.slug}`);
+  } finally { await context.close(); }
+}
+
 async function runCase(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
   await installRoutes(context, testCase.slug);
@@ -8187,6 +8453,11 @@ async function assertWeatherReadingEditors(browser) {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_POWER_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) await assertPowerDashboard(browser, testCase);
+      console.log("Power configurator browser checks passed.");
+      return;
+    }
     if (process.env.ESPCONTROL_CONTEXT_COLOUR_ONLY === "1") {
       for (const testCase of ACTIVE_CASES) await assertContextColourPicker(browser, testCase);
       console.log(`Drag selection and context colour checks passed for ${ACTIVE_CASES.length} layouts, native and legacy saves.`);
@@ -8315,6 +8586,7 @@ async function assertWeatherReadingEditors(browser) {
     await assertFirmwareRetryFeedback(browser);
     await assertResetControls(browser);
     for (const testCase of ACTIVE_CASES) {
+      await assertPowerDashboard(browser, testCase);
       await assertCameraScreensaverDimming(browser, testCase);
       if (!acceptanceOnly) {
         await runCase(browser, testCase);

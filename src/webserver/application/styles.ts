@@ -130,6 +130,13 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-weather-wind-speed,.sp-rainfall-value,.sp-weather-temperature-high{white-space:nowrap;font-size:var(--btn-small-text);color:var(--card-text-color,var(--preview-text-primary));opacity:.7}" +
         ".sp-sensor-value{font-size:var(--btn-icon);line-height:1;font-weight:300}" +
         ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;color:var(--card-text-color,var(--preview-text-primary))}" +
+        ".sp-power-card .sp-sensor-preview{min-width:0;max-width:100%;overflow:hidden;flex-shrink:0}" +
+        ".sp-power-labels{display:flex;flex:1;justify-content:flex-end;flex-direction:column;min-width:0;min-height:0;overflow:hidden}" +
+        ".sp-power-labels>.sp-btn-label{white-space:nowrap;text-overflow:ellipsis;flex-shrink:0}" +
+        ".sp-power-labels>.sp-btn-label-row{flex-shrink:0}" +
+        ".sp-btn-big .sp-power-labels>.sp-btn-label,.sp-btn-extra-large .sp-power-labels>.sp-btn-label,.sp-btn-max-wide .sp-power-labels>.sp-btn-label,.sp-btn-max-tall .sp-power-labels>.sp-btn-label,.sp-btn-portrait-large .sp-power-labels>.sp-btn-label,.sp-btn-landscape-large .sp-power-labels>.sp-btn-label{white-space:normal;flex-shrink:1}" +
+        ".sp-power-secondary{white-space:nowrap;text-overflow:ellipsis;opacity:.7;flex-shrink:0}" +
+        ".sp-power-narrow .sp-sensor-preview,.sp-power-narrow .sp-power-secondary{display:none}" +
         ".sp-slider-preview{position:absolute;inset:0;border-radius:var(--r);overflow:hidden;pointer-events:none}" +
         ".sp-slider-track{display:block;width:100%;height:100%;position:relative}" +
         ".sp-slider-fill{position:absolute;left:0;bottom:0;width:100%;height:80%;background:var(--card-slider-fill-color,var(--card-active-color,var(--screen-primary)));" +
@@ -658,7 +665,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-fw-btn.sp-fw-btn-busy:hover{background:rgba(35,37,43,.5);border-color:rgba(74,77,84,.45)}" +
         ".sp-btn-label-row{display:flex;align-items:baseline;width:100%;overflow:hidden;position:relative;z-index:1}" +
         ".sp-btn-label-row .sp-btn-label{flex:1;min-width:0}" +
-        ".sp-subpage-badge{font-size:var(--btn-label);line-height:1;color:var(--card-text-color,var(--preview-text-primary));flex-shrink:0;" +
+        ".sp-subpage-badge,.sp-navigation-chevron{font-size:var(--btn-label);line-height:1;color:var(--card-text-color,var(--preview-text-primary));flex-shrink:0;" +
         "cursor:pointer;padding:0 0 0 2px;border-radius:4px}" +
         ".sp-btn:has(>.sp-resize-handle) .sp-subpage-badge{margin-right:max(0px,calc(40px - var(--btn-pad)))}" +
         ".sp-hide-subpage-chevrons .sp-subpage-badge{display:none}" +

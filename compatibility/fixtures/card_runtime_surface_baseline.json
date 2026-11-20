@@ -3280,6 +3280,70 @@
       }
     },
     {
+      "name": "power: model",
+      "sourceKind": "contract",
+      "sourceType": "power",
+      "mode": "model",
+      "canonicalType": "power",
+      "web": {
+        "registration": "power",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": true
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "caecc989d80a651e"
+        }
+      },
+      "firmware": {
+        "family": "POWER"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "modal"
+        ],
+        "modalOwner": "power"
+      }
+    },
+    {
+      "name": "power: inverted",
+      "sourceKind": "contract",
+      "sourceType": "power",
+      "mode": "inverted",
+      "canonicalType": "power",
+      "web": {
+        "registration": "power",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": true
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "caecc989d80a651e"
+        }
+      },
+      "firmware": {
+        "family": "POWER"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "modal"
+        ],
+        "modalOwner": "power"
+      }
+    },
+    {
       "name": "local: accepted_legacy_input",
       "sourceKind": "runtime_only",
       "sourceType": "local",

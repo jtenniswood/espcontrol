@@ -1,3 +1,4 @@
+import { powerCardConfigError, powerStoredConfigError, powerGridLayoutError } from "../model/power_card";
 import { clearScreensaverPinForRestore } from "./screensaver_pin";
 import { resetAwareFetch } from "../api/reset_session";
 import type { PanelIdentityBackup } from "../model/panel_identity";
@@ -396,6 +397,17 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     nativeDocument = EspControlModel.decodePanelConfig(
                         EspControlModel.decodePanelConfigBackupPayload(backedUpNativeConfig));
                 }
+                // Validate the authoritative restore payload before any layout writes.
+                for (const value of Object.values(nativeDocument.buttons)) {
+                    const error = powerStoredConfigError(value, false, controllers.nativePanelConfig?.maxConfigValueBytes() ?? 255);
+                    if (error) throw new Error(error);
+                }
+                for (const value of Object.values(nativeDocument.subpages)) {
+                    for (const card of parseSubpageConfig(value).buttons) {
+                        const error = powerCardConfigError(card);
+                        if (error) throw new Error(error);
+                    }
+                }
                 nativeDocument.settings.button_order = String(nativeDocument.settings.button_order || backupPlan.button_order || "");
                 nativeDocument.settings.button_on_color = String(nativeDocument.settings.button_on_color || backupPlan.config.button_on_color || "");
                 var parsedButtonOrder: any = EspControlModel.parseGridOrder(
@@ -403,6 +415,16 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     controllers.layout.numSlots,
                     importedGridCols,
                     {});
+                const powerMainError = powerGridLayoutError(
+                    Array.from({ length: controllers.layout.numSlots }, (_, i) => parseButtonConfig(nativeDocument.buttons[i + 1] || "")),
+                    parsedButtonOrder.grid, parsedButtonOrder.sizes, controllers.layout.numSlots, importedGridCols);
+                if (powerMainError) throw new Error(powerMainError);
+                for (const value of Object.values(nativeDocument.subpages)) {
+                    const sub = parseSubpageConfig(value);
+                    const geometry = EspControlModel.buildSubpageGrid(sub, controllers.layout.totalSlots, importedGridCols);
+                    const error = powerGridLayoutError(sub.buttons, geometry.grid, geometry.sizes, controllers.layout.totalSlots, importedGridCols);
+                    if (error) throw new Error(error);
+                }
                 nativeDocument.settings.button_order = EspControlModel.serializeGridOrder(
                     parsedButtonOrder.grid,
                     parsedButtonOrder.sizes);

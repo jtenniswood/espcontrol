@@ -1,0 +1,212 @@
+#include "lvgl.h"
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstdio>
+#include <vector>
+#include "power_flow_layout.h"
+#include "i18n_generated.h"
+#include "button_grid_style.h"
+#include "src/misc/cache/instance/lv_image_cache.h"
+#include "src/misc/cache/instance/lv_image_header_cache.h"
+#include "button_grid_continuous_corners.h"
+
+struct BtnSlot { lv_obj_t *btn = nullptr; };
+struct DisplayProfile { struct { int red_percent=100, green_percent=100, blue_percent=100; } color; };
+struct PowerCardCtx { BtnSlot slot; DisplayProfile display; bool continuous_corners = true; };
+struct SurfaceUi {
+  PowerCardCtx *card = nullptr;
+  struct { bool large = false; } grid;
+  struct { lv_obj_t *panel = nullptr; } shell;
+  lv_obj_t *diagram = nullptr, *back_area = nullptr, *area = nullptr, *status = nullptr;
+  lv_obj_t *nodes[4]{}, *details[4]{};
+  lv_point_t status_center{};
+  int status_max_width=0,status_max_height=0;
+};
+SurfaceUi ui;
+SurfaceUi &power_flow_ui() { return ui; }
+int control_modal_card_radius(lv_obj_t *source) { return lv_obj_get_style_radius(source, LV_PART_MAIN); }
+// @surface_helpers
+
+std::vector<uint16_t> pixels;
+int screen_width = 0;
+void flush(lv_display_t *display, const lv_area_t *area, uint8_t *data) {
+  const auto *source = reinterpret_cast<const uint16_t *>(data);
+  for (int y=area->y1; y<=area->y2; ++y)
+    for (int x=area->x1; x<=area->x2; ++x) pixels[y*screen_width+x] = *source++;
+  lv_display_flush_ready(display);
+}
+uint16_t sample(lv_obj_t *object, int numerator=1, int denominator=2) {
+  lv_area_t bounds; lv_obj_get_coords(object, &bounds);
+  const int x = bounds.x1 + lv_obj_get_width(object)*numerator/denominator;
+  const int y = bounds.y1 + lv_obj_get_height(object)*numerator/denominator;
+  return pixels[y*screen_width+x];
+}
+lv_obj_t *plain(lv_obj_t *parent, int x, int y, int w, int h) {
+  auto *object = lv_obj_create(parent);
+  lv_obj_remove_style_all(object);
+  lv_obj_clear_flag(object, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(object, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_pos(object,x,y); lv_obj_set_size(object,w,h);
+  return object;
+}
+int main() {
+  lv_init();
+  // Surface-sized fixtures complement the production layout/lifecycle tests.
+  for (const auto dimensions : {std::array<int,3>{1280,800,22}, {1024,600,32}, {720,720,35}, {480,800,26}}) {
+    screen_width=dimensions[0];const int height=dimensions[1], radius=dimensions[2];
+    pixels.assign(screen_width*height,0);
+    std::vector<uint16_t> buffer(screen_width*32);
+    auto *display=lv_display_create(screen_width,height);
+    lv_display_set_color_format(display,LV_COLOR_FORMAT_RGB565);
+    lv_display_set_buffers(display,buffer.data(),nullptr,buffer.size()*sizeof(uint16_t),LV_DISPLAY_RENDER_MODE_PARTIAL);
+    lv_display_set_flush_cb(display,flush);
+    for (bool continuous : {false,true}) for (bool calibrated : {false,true}) for(int cycle=0;cycle<3;++cycle) {
+      PowerCardCtx card;
+      card.continuous_corners=continuous;
+      if(calibrated)card.display.color={80,110,95};
+      auto *home=plain(lv_screen_active(),0,0,screen_width,height);
+      lv_obj_set_style_bg_opa(home,LV_OPA_COVER,LV_PART_MAIN);
+      card.slot.btn=create_grid_card_button(lv_screen_active(),radius,18,LV_FONT_DEFAULT,lv_color_hex(0),false);
+      lv_obj_add_flag(card.slot.btn,LV_OBJ_FLAG_HIDDEN);
+      auto *overlay=plain(lv_layer_top(),0,0,screen_width,height);
+      ui={};ui.card=&card;ui.grid.large=screen_width>height;
+      ui.shell.panel=plain(overlay,5,40,screen_width-10,height-45);
+      lv_obj_set_style_bg_opa(ui.shell.panel,LV_OPA_COVER,LV_PART_MAIN);
+      lv_obj_set_style_radius(ui.shell.panel,radius,LV_PART_MAIN);
+      auto *dashboard=plain(ui.shell.panel,0,0,screen_width-10,height-45);
+      const int left=ui.grid.large?(screen_width-10)*2/5:0;
+      ui.diagram=plain(dashboard,left,0,screen_width-10-left,height-45);
+      ui.back_area=ui.grid.large?card.slot.btn:nullptr;
+      ui.area=plain(ui.shell.panel,left,0,screen_width-10-left,height-45);
+      lv_obj_update_layout(overlay);
+      const int width=lv_obj_get_width(ui.area), area_height=lv_obj_get_height(ui.area);
+      const auto geometry=espcontrol::power::flow_geometry(width,area_height,
+        espcontrol::power::flow_family(screen_width,height),158,69,103,ui.grid.large || screen_width==height,true);
+      for(int i=0;i<4;++i){
+        const int w=geometry.envelope_width?geometry.envelope_width:(i==1||i==2?103:158);
+        const int h=geometry.envelope_height?geometry.envelope_height:69;
+        ui.nodes[i]=plain(ui.shell.panel,left+std::lround(geometry.nodes[i].x-w/2.0),std::lround(geometry.nodes[i].y-h/2.0),w,h);
+      }
+      ui.status_center={left+width/2,area_height/2};
+      ui.status_max_width=espcontrol::power::flow_status_width(geometry,width);
+      ui.status_max_height=espcontrol::power::flow_status_height(geometry,area_height);
+      ui.details[3]=lv_label_create(ui.nodes[3]);
+      lv_obj_set_style_text_font(ui.details[3],LV_FONT_DEFAULT,LV_PART_MAIN);
+      ui.status=lv_label_create(ui.shell.panel);
+      lv_obj_remove_style_all(ui.status);
+      lv_obj_clear_flag(ui.status,LV_OBJ_FLAG_CLICKABLE);
+      lv_obj_set_style_text_align(ui.status,LV_TEXT_ALIGN_CENTER,LV_PART_MAIN);
+      // A foreground sibling must never enter the native background mask.
+      auto *foreground=plain(ui.shell.panel,left+80,80,8,8);
+      lv_obj_set_style_bg_color(foreground,lv_color_hex(0xFF8C00),LV_PART_MAIN);
+      lv_obj_set_style_bg_opa(foreground,LV_OPA_COVER,LV_PART_MAIN);
+      for (const auto *theme : {&DARK_THEME,&LIGHT_THEME,&DARK_THEME}) {
+        set_active_theme_palette(*theme);
+        power_flow_apply_surfaces(*theme);
+        lv_obj_clear_flag(ui.status,LV_OBJ_FLAG_HIDDEN);
+        for(const char *language : {"en","cs","da","de","es","fi","fr","he","hu","it","nb","nl","pl","pt-br","pt","ro","ru","sk","sl","sv","tr","uk"}) {
+          set_espcontrol_language(language);
+          for(const char *state : {"Unavailable","Inconsistent readings","Readings only","Idle"}) {
+            lv_label_set_text(ui.status,espcontrol_i18n(state));
+            power_flow_layout_status();lv_obj_update_layout(overlay);lv_refr_now(display);
+            lv_area_t chip,viewport;lv_obj_get_coords(ui.status,&chip);lv_obj_get_coords(ui.area,&viewport);
+            if(std::abs(chip.x1+chip.x2-viewport.x1-viewport.x2)>1)
+              std::fprintf(stderr,"CHIP %dx%d %s %s: [%d,%d..%d,%d] viewport [%d,%d..%d,%d]\n",screen_width,height,language,state,chip.x1,chip.y1,chip.x2,chip.y2,viewport.x1,viewport.y1,viewport.x2,viewport.y2);
+            assert(std::abs(chip.x1+chip.x2-viewport.x1-viewport.x2)<=1);
+            assert(std::abs(chip.y1+chip.y2-viewport.y1-viewport.y2)<=1);
+            assert(chip.x1>=viewport.x1&&chip.x2<=viewport.x2&&chip.y1>=viewport.y1&&chip.y2<=viewport.y2);
+            for(auto *node:ui.nodes){lv_area_t n;lv_obj_get_coords(node,&n);assert(chip.x2<n.x1||chip.x1>n.x2||chip.y2<n.y1||chip.y1>n.y2);}
+            assert(lv_obj_get_style_text_font(ui.status,LV_PART_MAIN)==LV_FONT_DEFAULT);
+            assert(lv_obj_get_style_bg_opa(ui.status,LV_PART_MAIN)==LV_OPA_COVER);
+            assert(lv_obj_get_style_text_align(ui.status,LV_PART_MAIN)==LV_TEXT_ALIGN_CENTER);
+            assert(!lv_obj_has_flag(ui.status,LV_OBJ_FLAG_CLICKABLE));
+            assert(pixels[((chip.y1+chip.y2)/2)*screen_width+chip.x1+6]==lv_color_to_u16(lv_color_hex(display_correct_color(theme->surface_primary,card.display))));
+            const auto *font=lv_obj_get_style_text_font(ui.status,LV_PART_MAIN);lv_point_t text;
+            lv_text_get_size(&text,lv_label_get_text(ui.status),font,0,0,lv_obj_get_content_width(ui.status),LV_TEXT_FLAG_NONE);
+            assert(text.x<=lv_obj_get_content_width(ui.status));
+            assert(text.y<=lv_obj_get_content_height(ui.status));
+          }
+        }
+        set_espcontrol_language("en");lv_obj_add_flag(ui.status,LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_style_bg_color(home,lv_color_hex(0xFF00FF),LV_PART_MAIN);
+        lv_obj_update_layout(overlay);lv_refr_now(display);
+        const auto flow=sample(ui.diagram,1,3);
+        assert(sample(foreground)==lv_color_to_u16(lv_color_hex(0xFF8C00)));
+        for (uint32_t accent : {0xFFFFFFu,0x001122u,0xFF8C00u}) {
+          lv_obj_set_style_bg_color(foreground,lv_color_hex(accent),LV_PART_MAIN);
+          lv_refr_now(display);
+          assert(sample(foreground)==lv_color_to_u16(lv_color_hex(accent)));
+        }
+        lv_obj_set_style_bg_color(home,lv_color_hex(0x00FF00),LV_PART_MAIN);
+        lv_refr_now(display);
+        assert(sample(ui.diagram,1,3)==flow); // no Home ghosting
+        assert(sample(foreground)==lv_color_to_u16(lv_color_hex(0xFF8C00)));
+        assert(lv_obj_get_child_count(ui.diagram)==0);
+        assert(!lv_obj_has_flag(ui.diagram,LV_OBJ_FLAG_CLICKABLE));
+        assert(lv_obj_get_state(ui.diagram)==LV_STATE_DEFAULT);
+        assert(!card_uses_continuous_corners(ui.shell.panel));
+        // Render the actual native card over the ordinary grid's page fill.
+        lv_obj_add_flag(overlay,LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_style_bg_color(home,lv_color_hex(theme->background),LV_PART_MAIN);
+        auto *sensor=create_grid_card_button(lv_screen_active(),radius,18,LV_FONT_DEFAULT,lv_color_hex(theme->text_primary),continuous);
+        lv_obj_set_pos(sensor,40,60);lv_obj_set_size(sensor,std::max(180,4*radius+4),std::max(150,4*radius+4));
+        lv_obj_clear_flag(sensor,LV_OBJ_FLAG_CLICKABLE);
+        BtnSlot slot{sensor};CardPalette palette;
+        palette.has_sensor_color=true;
+        palette.surface_sensor_val=display_correct_color(theme->surface_sensor,card.display);
+        espcontrol::cards::sensor_driver_apply_background(slot,palette);
+        lv_obj_update_layout(sensor);lv_refr_now(display);
+        const auto native=sample(sensor);
+        std::printf("%dx%d mask=%d calibrated=%d theme=%s Flow=%04x Sensor=%04x\n",
+          screen_width,height,continuous,calibrated,theme==&LIGHT_THEME?"Light":"Dark",flow,native);
+        std::fflush(stdout);
+        assert(flow==native);
+        lv_obj_delete(sensor);lv_obj_clear_flag(overlay,LV_OBJ_FLAG_HIDDEN);
+      }
+      lv_obj_delete(overlay);lv_obj_delete(card.slot.btn);lv_obj_delete(home);ui={};
+      assert(espcontrol::corners::mask_cache()==nullptr);
+    }
+    lv_display_delete(display);
+  }
+  // Reproduce the tall chip from the German portrait geometry with a native
+  // font's glyph metrics and the production secondary-text row height. The
+  // current device-font probe additionally covers exact compiled Roboto pixels.
+  screen_width=480;pixels.assign(480*800,0);
+  auto *portrait=lv_display_create(480,800);lv_display_set_color_format(portrait,LV_COLOR_FORMAT_RGB565);
+  std::vector<uint16_t> buffer(480*800/4);
+  lv_display_set_buffers(portrait,buffer.data(),nullptr,buffer.size()*2,LV_DISPLAY_RENDER_MODE_PARTIAL);
+  lv_display_set_flush_cb(portrait,flush);
+  PowerCardCtx card;ui={};ui.card=&card;
+  auto *overlay=plain(lv_layer_top(),0,0,480,800);
+  ui.shell.panel=plain(overlay,23,136,434,573);ui.area=ui.shell.panel;
+  const auto german=espcontrol::power::flow_geometry(434,573,espcontrol::power::FlowFamily::PORTRAIT,208,93,179,false,false,0,141);
+  for(int i=0;i<4;++i){const bool side=i==1||i==2;
+    const int w=side?german.side_envelope_width:german.envelope_width;
+    const int h=side?german.side_envelope_height:german.envelope_height;
+    ui.nodes[i]=plain(ui.shell.panel,std::lround(german.nodes[i].x-w/2.0),std::lround(german.nodes[i].y-h/2.0),w,h);
+  }
+  lv_font_t secondary=*LV_FONT_DEFAULT;secondary.line_height=29;
+  ui.details[3]=lv_label_create(ui.nodes[3]);lv_obj_set_style_text_font(ui.details[3],&secondary,LV_PART_MAIN);
+  ui.status=lv_label_create(ui.shell.panel);lv_obj_remove_style_all(ui.status);
+  lv_obj_clear_flag(ui.status,LV_OBJ_FLAG_CLICKABLE);lv_obj_set_style_text_align(ui.status,LV_TEXT_ALIGN_CENTER,LV_PART_MAIN);
+  ui.status_center={217,286};ui.status_max_width=espcontrol::power::flow_status_width(german,434);
+  ui.status_max_height=espcontrol::power::flow_status_height(german,573);
+  assert(ui.status_max_width==74&&ui.status_max_height==349);
+  for(const char *language:{"en","cs","da","de","es","fi","fr","he","hu","it","nb","nl","pl","pt-br","pt","ro","ru","sk","sl","sv","tr","uk"}){
+    set_espcontrol_language(language);
+    for(const char *state:{"Unavailable","Inconsistent readings","Readings only","Idle"}){
+      lv_label_set_text(ui.status,espcontrol_i18n(state));power_flow_layout_status();lv_obj_update_layout(overlay);lv_refr_now(portrait);
+      lv_area_t chip;lv_obj_get_coords(ui.status,&chip);
+      assert(std::abs(chip.x1+chip.x2-(23*2+434))<=1);
+      assert(std::abs(chip.y1+chip.y2-(136*2+572))<=1);
+      for(auto *node:ui.nodes){lv_area_t n;lv_obj_get_coords(node,&n);assert(chip.x2<n.x1||chip.x1>n.x2||chip.y2<n.y1||chip.y1>n.y2);}
+      lv_point_t text;lv_text_get_size(&text,lv_label_get_text(ui.status),&secondary,0,0,lv_obj_get_content_width(ui.status),LV_TEXT_FLAG_NONE);
+      assert(text.y<=lv_obj_get_content_height(ui.status));
+      assert(lv_obj_get_style_text_font(ui.status,LV_PART_MAIN)==&secondary);
+    }
+  }
+  lv_obj_delete(overlay);ui={};lv_display_delete(portrait);
+  set_active_theme_palette(DARK_THEME);
+  lv_deinit();
+}

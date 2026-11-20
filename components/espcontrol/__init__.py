@@ -8,6 +8,7 @@ device-specific wiring.
 import esphome.codegen as cg
 from esphome.components.esp32 import VARIANT_ESP32P4, VARIANT_ESP32S3, get_esp32_variant
 from esphome.components import text
+from esphome.components.lvgl.defines import add_lv_use
 import esphome.config_validation as cv
 from esphome.const import CONF_ID, __version__
 from esphome.core import CORE, CoroPriority, Version, coroutine_with_priority
@@ -81,8 +82,15 @@ def _consume_endpoint_socket(config):
 CONFIG_SCHEMA = cv.All(CONFIG_SCHEMA, _consume_endpoint_socket)
 
 
+def register_power_flow_widgets():
+    # Power Flow creates native lines in C++, so YAML's widget discovery cannot
+    # find this dependency. Register it before LVGL emits its configuration.
+    add_lv_use("line")
+
+
 @coroutine_with_priority(CoroPriority.DIAGNOSTICS)
 async def to_code(config):
+    register_power_flow_widgets()
     # Run before safe_mode's early return and before any preference consumers.
     if CORE.config.get("preferences", {}).get("rtc_storage", False):
         raise cv.Invalid("EspControl reset requires flash preferences; remove preferences.rtc_storage")

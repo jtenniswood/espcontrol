@@ -586,6 +586,9 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Kontrollér denne enhed i Home Assistant\nfor en krypteringsnøgle eller forbindelsesadvarsel";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Indstillinger > Enheder og tjenester\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Lige nu";
+  if (std::strcmp(text, "No measurement") == 0) return "Ingen måling";
+  if (std::strcmp(text, "Readings only") == 0) return "Kun målinger";
+  if (std::strcmp(text, "Stale") == 0) return "Forældet";
   return text;
 }
 
@@ -834,6 +837,15 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Bestätigen";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Gast-WLAN";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "WLAN wurde nicht geändert";
+  if (std::strcmp(text, "Power Dashboard") == 0) return "Leistungsübersicht";
+  if (std::strcmp(text, "Charging") == 0) return "Lädt";
+  if (std::strcmp(text, "Discharging") == 0) return "Entlädt";
+  if (std::strcmp(text, "Importing") == 0) return "Importiert";
+  if (std::strcmp(text, "Exporting") == 0) return "Exportiert";
+  if (std::strcmp(text, "Grid") == 0) return "Netz";
+  if (std::strcmp(text, "Battery") == 0) return "Batterie";
+  if (std::strcmp(text, "Inferred flows") == 0) return "Geschätzte Flüsse";
+  if (std::strcmp(text, "Inconsistent readings") == 0) return "Inkonsistente Messwerte";
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Verbinde dich mit dem WLAN-Hotspot";
   if (std::strcmp(text, "to configure your network.") == 0) return "um dein Netzwerk einzurichten.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Öffne dann 192.168.4.1 in deinem Browser";
@@ -865,6 +877,9 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Dieses Gerät in Home Assistant auf einen\nVerschlüsselungsschlüssel oder Verbindungshinweis prüfen";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Einstellungen > Geräte & Dienste\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Aktuell";
+  if (std::strcmp(text, "No measurement") == 0) return "Nicht gemessen";
+  if (std::strcmp(text, "Readings only") == 0) return "Nur Messwerte";
+  if (std::strcmp(text, "Stale") == 0) return "Veraltet";
   return text;
 }
 
@@ -1121,6 +1136,15 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Confirmar";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi de invitados";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "El Wi-Fi no ha cambiado";
+  if (std::strcmp(text, "Power Dashboard") == 0) return "Panel de potencia";
+  if (std::strcmp(text, "Charging") == 0) return "Cargando";
+  if (std::strcmp(text, "Discharging") == 0) return "Descargando";
+  if (std::strcmp(text, "Importing") == 0) return "Importando";
+  if (std::strcmp(text, "Exporting") == 0) return "Exportando";
+  if (std::strcmp(text, "Grid") == 0) return "Red";
+  if (std::strcmp(text, "Battery") == 0) return "Batería";
+  if (std::strcmp(text, "Inferred flows") == 0) return "Flujos estimados";
+  if (std::strcmp(text, "Inconsistent readings") == 0) return "Lecturas incoherentes";
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Conéctate al punto de acceso WiFi";
   if (std::strcmp(text, "to configure your network.") == 0) return "para configurar tu red.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Después abre 192.168.4.1 en tu navegador";
@@ -1154,6 +1178,9 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Revisa este dispositivo en Home Assistant\npor una clave de cifrado o alerta de conexión";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Ajustes > Dispositivos y servicios\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Ahora";
+  if (std::strcmp(text, "No measurement") == 0) return "Sin medición";
+  if (std::strcmp(text, "Readings only") == 0) return "Solo lecturas";
+  if (std::strcmp(text, "Stale") == 0) return "Obsoleto";
   return text;
 }
 
@@ -1446,6 +1473,9 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Tarkista tämä laite Home Assistantissa\nsalausavaimen tai yhteysilmoituksen varalta";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Asetukset > Laitteet ja palvelut\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Nyt";
+  if (std::strcmp(text, "No measurement") == 0) return "Ei mittausta";
+  if (std::strcmp(text, "Readings only") == 0) return "Vain lukemat";
+  if (std::strcmp(text, "Stale") == 0) return "Vanhentunut";
   return text;
 }
 
@@ -1695,6 +1725,16 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Confirmer";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi invité";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Le Wi-Fi n’a pas changé";
+  if (std::strcmp(text, "Power Dashboard") == 0) return "Tableau de puissance";
+  if (std::strcmp(text, "Charging") == 0) return "Charge";
+  if (std::strcmp(text, "Discharging") == 0) return "Décharge";
+  if (std::strcmp(text, "Importing") == 0) return "Importation";
+  if (std::strcmp(text, "Exporting") == 0) return "Exportation";
+  if (std::strcmp(text, "Solar") == 0) return "Solaire";
+  if (std::strcmp(text, "Grid") == 0) return "Réseau";
+  if (std::strcmp(text, "Battery") == 0) return "Batterie";
+  if (std::strcmp(text, "Inferred flows") == 0) return "Flux estimés";
+  if (std::strcmp(text, "Inconsistent readings") == 0) return "Mesures incohérentes";
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Connectez-vous au point d’accès WiFi";
   if (std::strcmp(text, "to configure your network.") == 0) return "pour configurer votre réseau.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Ouvrez ensuite 192.168.4.1 dans votre navigateur";
@@ -1728,6 +1768,9 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Vérifiez cet appareil dans Home Assistant\npour une clé de chiffrement ou une alerte de connexion";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Paramètres > Appareils et services\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Actuellement";
+  if (std::strcmp(text, "No measurement") == 0) return "Sans mesure";
+  if (std::strcmp(text, "Readings only") == 0) return "Mesures seules";
+  if (std::strcmp(text, "Stale") == 0) return "Périmé";
   return text;
 }
 
@@ -2566,6 +2609,16 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Confermare";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi ospiti";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Il Wi-Fi non è cambiato";
+  if (std::strcmp(text, "Power Dashboard") == 0) return "Dashboard potenza";
+  if (std::strcmp(text, "Charging") == 0) return "In carica";
+  if (std::strcmp(text, "Discharging") == 0) return "In scarica";
+  if (std::strcmp(text, "Importing") == 0) return "Importazione";
+  if (std::strcmp(text, "Exporting") == 0) return "Esportazione";
+  if (std::strcmp(text, "Solar") == 0) return "Solare";
+  if (std::strcmp(text, "Grid") == 0) return "Rete";
+  if (std::strcmp(text, "Battery") == 0) return "Batteria";
+  if (std::strcmp(text, "Inferred flows") == 0) return "Flussi stimati";
+  if (std::strcmp(text, "Inconsistent readings") == 0) return "Letture incoerenti";
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Connettiti all’hotspot WiFi";
   if (std::strcmp(text, "to configure your network.") == 0) return "per configurare la tua rete.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Poi apri 192.168.4.1 nel browser";
@@ -2599,6 +2652,9 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Controlla questo dispositivo in Home Assistant\nper una chiave di crittografia o un avviso di connessione";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Impostazioni > Dispositivi e servizi\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Attualmente";
+  if (std::strcmp(text, "No measurement") == 0) return "Non misurato";
+  if (std::strcmp(text, "Readings only") == 0) return "Solo letture";
+  if (std::strcmp(text, "Stale") == 0) return "Obsoleto";
   return text;
 }
 
@@ -3140,6 +3196,11 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Bevestigen";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Gastwifi";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "Wifi is niet gewijzigd";
+  if (std::strcmp(text, "Power Dashboard") == 0) return "Vermogensdashboard";
+  if (std::strcmp(text, "Charging") == 0) return "Laden";
+  if (std::strcmp(text, "Discharging") == 0) return "Ontladen";
+  if (std::strcmp(text, "Importing") == 0) return "Importeren";
+  if (std::strcmp(text, "Exporting") == 0) return "Exporteren";
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Maak verbinding met de WiFi-hotspot";
   if (std::strcmp(text, "to configure your network.") == 0) return "om je netwerk in te stellen.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Open daarna 192.168.4.1 in je browser";
@@ -3171,6 +3232,9 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Controleer dit apparaat in Home Assistant\nop een encryptiesleutel of verbindingsmelding";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Instellingen > Apparaten & diensten\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Momenteel";
+  if (std::strcmp(text, "No measurement") == 0) return "Niet gemeten";
+  if (std::strcmp(text, "Readings only") == 0) return "Alleen waarden";
+  if (std::strcmp(text, "Stale") == 0) return "Verouderd";
   return text;
 }
 
@@ -3459,6 +3523,9 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Sprawdź to urządzenie w Home Assistant:\nklucz szyfrowania lub alert połączenia";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Ustawienia > Urządzenia i usługi\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Obecnie";
+  if (std::strcmp(text, "No measurement") == 0) return "Brak pomiaru";
+  if (std::strcmp(text, "Readings only") == 0) return "Tylko odczyty";
+  if (std::strcmp(text, "Stale") == 0) return "Nieaktualne";
   return text;
 }
 
@@ -3715,6 +3782,11 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Confirmar";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi de convidados";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "O Wi-Fi não mudou";
+  if (std::strcmp(text, "Power Dashboard") == 0) return "Painel de potência";
+  if (std::strcmp(text, "Charging") == 0) return "Carregando";
+  if (std::strcmp(text, "Discharging") == 0) return "Descarregando";
+  if (std::strcmp(text, "Importing") == 0) return "Importando";
+  if (std::strcmp(text, "Exporting") == 0) return "Exportando";
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Conecte-se ao ponto de acesso WiFi";
   if (std::strcmp(text, "to configure your network.") == 0) return "para configurar sua rede.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Depois abra 192.168.4.1 no navegador";
@@ -4005,6 +4077,11 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Confirm") == 0) return "Confirmar";
   if (std::strcmp(text, "Guest Wi-Fi") == 0) return "Wi-Fi de convidados";
   if (std::strcmp(text, "Wi-Fi did not change") == 0) return "O Wi-Fi não mudou";
+  if (std::strcmp(text, "Power Dashboard") == 0) return "Painel de potência";
+  if (std::strcmp(text, "Charging") == 0) return "A carregar";
+  if (std::strcmp(text, "Discharging") == 0) return "A descarregar";
+  if (std::strcmp(text, "Importing") == 0) return "A importar";
+  if (std::strcmp(text, "Exporting") == 0) return "A exportar";
   if (std::strcmp(text, "Connect to the WiFi hotspot") == 0) return "Ligue-se ao ponto de acesso WiFi";
   if (std::strcmp(text, "to configure your network.") == 0) return "para configurar a sua rede.";
   if (std::strcmp(text, "Then visit 192.168.4.1 in your browser") == 0) return "Depois abra 192.168.4.1 no navegador";
@@ -4038,6 +4115,9 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Verifique este dispositivo no Home Assistant\nquanto a uma chave de encriptação ou alerta de ligação";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Definições > Dispositivos e serviços\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Atualmente";
+  if (std::strcmp(text, "No measurement") == 0) return "Sem medição";
+  if (std::strcmp(text, "Readings only") == 0) return "Apenas leituras";
+  if (std::strcmp(text, "Stale") == 0) return "Desatualizado";
   return text;
 }
 
@@ -5489,6 +5569,9 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Check this device in Home Assistant\nfor an encryption key or connection alert") == 0) return "Kontrollera denna enhet i Home Assistant\nför en krypteringsnyckel eller anslutningsvarning";
   if (std::strcmp(text, "Settings > Devices & Services\n> ESPHome") == 0) return "Inställningar > Enheter och tjänster\n> ESPHome";
   if (std::strcmp(text, "Currently") == 0) return "Just nu";
+  if (std::strcmp(text, "No measurement") == 0) return "Ingen mätning";
+  if (std::strcmp(text, "Readings only") == 0) return "Endast värden";
+  if (std::strcmp(text, "Stale") == 0) return "Inaktuellt";
   return text;
 }
 
@@ -6338,6 +6421,16 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirm";
   if (std::strcmp(key, "guest_wifi") == 0) return "Guest Wi-Fi";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Wi-Fi did not change";
+  if (std::strcmp(key, "power_dashboard") == 0) return "Power Dashboard";
+  if (std::strcmp(key, "charging") == 0) return "Charging";
+  if (std::strcmp(key, "discharging") == 0) return "Discharging";
+  if (std::strcmp(key, "importing") == 0) return "Importing";
+  if (std::strcmp(key, "exporting") == 0) return "Exporting";
+  if (std::strcmp(key, "solar") == 0) return "Solar";
+  if (std::strcmp(key, "grid") == 0) return "Grid";
+  if (std::strcmp(key, "battery") == 0) return "Battery";
+  if (std::strcmp(key, "inferred_flows") == 0) return "Inferred flows";
+  if (std::strcmp(key, "inconsistent_readings") == 0) return "Inconsistent readings";
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Connect to the WiFi hotspot";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "to configure your network.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Then visit 192.168.4.1 in your browser";
@@ -6378,6 +6471,9 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Check this device in Home Assistant\nfor an encryption key or connection alert";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Settings > Devices & Services\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Currently";
+  if (std::strcmp(key, "power_no_measurement") == 0) return "No measurement";
+  if (std::strcmp(key, "power_readings_only") == 0) return "Readings only";
+  if (std::strcmp(key, "power_stale") == 0) return "Stale";
   return key;
 }
 
@@ -6966,6 +7062,9 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Kontrollér denne enhed i Home Assistant\nfor en krypteringsnøgle eller forbindelsesadvarsel";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Indstillinger > Enheder og tjenester\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Lige nu";
+  if (std::strcmp(key, "power_no_measurement") == 0) return "Ingen måling";
+  if (std::strcmp(key, "power_readings_only") == 0) return "Kun målinger";
+  if (std::strcmp(key, "power_stale") == 0) return "Forældet";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7215,6 +7314,15 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Bestätigen";
   if (std::strcmp(key, "guest_wifi") == 0) return "Gast-WLAN";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "WLAN wurde nicht geändert";
+  if (std::strcmp(key, "power_dashboard") == 0) return "Leistungsübersicht";
+  if (std::strcmp(key, "charging") == 0) return "Lädt";
+  if (std::strcmp(key, "discharging") == 0) return "Entlädt";
+  if (std::strcmp(key, "importing") == 0) return "Importiert";
+  if (std::strcmp(key, "exporting") == 0) return "Exportiert";
+  if (std::strcmp(key, "grid") == 0) return "Netz";
+  if (std::strcmp(key, "battery") == 0) return "Batterie";
+  if (std::strcmp(key, "inferred_flows") == 0) return "Geschätzte Flüsse";
+  if (std::strcmp(key, "inconsistent_readings") == 0) return "Inkonsistente Messwerte";
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Verbinde dich mit dem WLAN-Hotspot";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "um dein Netzwerk einzurichten.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Öffne dann 192.168.4.1 in deinem Browser";
@@ -7251,6 +7359,9 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Dieses Gerät in Home Assistant auf einen\nVerschlüsselungsschlüssel oder Verbindungshinweis prüfen";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Einstellungen > Geräte & Dienste\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Aktuell";
+  if (std::strcmp(key, "power_no_measurement") == 0) return "Nicht gemessen";
+  if (std::strcmp(key, "power_readings_only") == 0) return "Nur Messwerte";
+  if (std::strcmp(key, "power_stale") == 0) return "Veraltet";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7508,6 +7619,15 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmar";
   if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi de invitados";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "El Wi-Fi no ha cambiado";
+  if (std::strcmp(key, "power_dashboard") == 0) return "Panel de potencia";
+  if (std::strcmp(key, "charging") == 0) return "Cargando";
+  if (std::strcmp(key, "discharging") == 0) return "Descargando";
+  if (std::strcmp(key, "importing") == 0) return "Importando";
+  if (std::strcmp(key, "exporting") == 0) return "Exportando";
+  if (std::strcmp(key, "grid") == 0) return "Red";
+  if (std::strcmp(key, "battery") == 0) return "Batería";
+  if (std::strcmp(key, "inferred_flows") == 0) return "Flujos estimados";
+  if (std::strcmp(key, "inconsistent_readings") == 0) return "Lecturas incoherentes";
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Conéctate al punto de acceso WiFi";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "para configurar tu red.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Después abre 192.168.4.1 en tu navegador";
@@ -7547,6 +7667,9 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Revisa este dispositivo en Home Assistant\npor una clave de cifrado o alerta de conexión";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Ajustes > Dispositivos y servicios\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Ahora";
+  if (std::strcmp(key, "power_no_measurement") == 0) return "Sin medición";
+  if (std::strcmp(key, "power_readings_only") == 0) return "Solo lecturas";
+  if (std::strcmp(key, "power_stale") == 0) return "Obsoleto";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7847,6 +7970,9 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Tarkista tämä laite Home Assistantissa\nsalausavaimen tai yhteysilmoituksen varalta";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Asetukset > Laitteet ja palvelut\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Nyt";
+  if (std::strcmp(key, "power_no_measurement") == 0) return "Ei mittausta";
+  if (std::strcmp(key, "power_readings_only") == 0) return "Vain lukemat";
+  if (std::strcmp(key, "power_stale") == 0) return "Vanhentunut";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8097,6 +8223,16 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmer";
   if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi invité";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Le Wi-Fi n’a pas changé";
+  if (std::strcmp(key, "power_dashboard") == 0) return "Tableau de puissance";
+  if (std::strcmp(key, "charging") == 0) return "Charge";
+  if (std::strcmp(key, "discharging") == 0) return "Décharge";
+  if (std::strcmp(key, "importing") == 0) return "Importation";
+  if (std::strcmp(key, "exporting") == 0) return "Exportation";
+  if (std::strcmp(key, "solar") == 0) return "Solaire";
+  if (std::strcmp(key, "grid") == 0) return "Réseau";
+  if (std::strcmp(key, "battery") == 0) return "Batterie";
+  if (std::strcmp(key, "inferred_flows") == 0) return "Flux estimés";
+  if (std::strcmp(key, "inconsistent_readings") == 0) return "Mesures incohérentes";
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Connectez-vous au point d’accès WiFi";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "pour configurer votre réseau.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Ouvrez ensuite 192.168.4.1 dans votre navigateur";
@@ -8136,6 +8272,9 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Vérifiez cet appareil dans Home Assistant\npour une clé de chiffrement ou une alerte de connexion";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Paramètres > Appareils et services\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Actuellement";
+  if (std::strcmp(key, "power_no_measurement") == 0) return "Sans mesure";
+  if (std::strcmp(key, "power_readings_only") == 0) return "Mesures seules";
+  if (std::strcmp(key, "power_stale") == 0) return "Périmé";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8991,6 +9130,16 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Confermare";
   if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi ospiti";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Il Wi-Fi non è cambiato";
+  if (std::strcmp(key, "power_dashboard") == 0) return "Dashboard potenza";
+  if (std::strcmp(key, "charging") == 0) return "In carica";
+  if (std::strcmp(key, "discharging") == 0) return "In scarica";
+  if (std::strcmp(key, "importing") == 0) return "Importazione";
+  if (std::strcmp(key, "exporting") == 0) return "Esportazione";
+  if (std::strcmp(key, "solar") == 0) return "Solare";
+  if (std::strcmp(key, "grid") == 0) return "Rete";
+  if (std::strcmp(key, "battery") == 0) return "Batteria";
+  if (std::strcmp(key, "inferred_flows") == 0) return "Flussi stimati";
+  if (std::strcmp(key, "inconsistent_readings") == 0) return "Letture incoerenti";
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Connettiti all’hotspot WiFi";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "per configurare la tua rete.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Poi apri 192.168.4.1 nel browser";
@@ -9030,6 +9179,9 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Controlla questo dispositivo in Home Assistant\nper una chiave di crittografia o un avviso di connessione";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Impostazioni > Dispositivi e servizi\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Attualmente";
+  if (std::strcmp(key, "power_no_measurement") == 0) return "Non misurato";
+  if (std::strcmp(key, "power_readings_only") == 0) return "Solo letture";
+  if (std::strcmp(key, "power_stale") == 0) return "Obsoleto";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9578,6 +9730,11 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Bevestigen";
   if (std::strcmp(key, "guest_wifi") == 0) return "Gastwifi";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "Wifi is niet gewijzigd";
+  if (std::strcmp(key, "power_dashboard") == 0) return "Vermogensdashboard";
+  if (std::strcmp(key, "charging") == 0) return "Laden";
+  if (std::strcmp(key, "discharging") == 0) return "Ontladen";
+  if (std::strcmp(key, "importing") == 0) return "Importeren";
+  if (std::strcmp(key, "exporting") == 0) return "Exporteren";
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Maak verbinding met de WiFi-hotspot";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "om je netwerk in te stellen.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Open daarna 192.168.4.1 in je browser";
@@ -9613,6 +9770,9 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Controleer dit apparaat in Home Assistant\nop een encryptiesleutel of verbindingsmelding";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Instellingen > Apparaten & diensten\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Momenteel";
+  if (std::strcmp(key, "power_no_measurement") == 0) return "Niet gemeten";
+  if (std::strcmp(key, "power_readings_only") == 0) return "Alleen waarden";
+  if (std::strcmp(key, "power_stale") == 0) return "Verouderd";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -9909,6 +10069,9 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Sprawdź to urządzenie w Home Assistant:\nklucz szyfrowania lub alert połączenia";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Ustawienia > Urządzenia i usługi\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Obecnie";
+  if (std::strcmp(key, "power_no_measurement") == 0) return "Brak pomiaru";
+  if (std::strcmp(key, "power_readings_only") == 0) return "Tylko odczyty";
+  if (std::strcmp(key, "power_stale") == 0) return "Nieaktualne";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -10166,6 +10329,11 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmar";
   if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi de convidados";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "O Wi-Fi não mudou";
+  if (std::strcmp(key, "power_dashboard") == 0) return "Painel de potência";
+  if (std::strcmp(key, "charging") == 0) return "Carregando";
+  if (std::strcmp(key, "discharging") == 0) return "Descarregando";
+  if (std::strcmp(key, "importing") == 0) return "Importando";
+  if (std::strcmp(key, "exporting") == 0) return "Exportando";
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Conecte-se ao ponto de acesso WiFi";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "para configurar sua rede.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Depois abra 192.168.4.1 no navegador";
@@ -10463,6 +10631,11 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmar";
   if (std::strcmp(key, "guest_wifi") == 0) return "Wi-Fi de convidados";
   if (std::strcmp(key, "wifi_did_not_change") == 0) return "O Wi-Fi não mudou";
+  if (std::strcmp(key, "power_dashboard") == 0) return "Painel de potência";
+  if (std::strcmp(key, "charging") == 0) return "A carregar";
+  if (std::strcmp(key, "discharging") == 0) return "A descarregar";
+  if (std::strcmp(key, "importing") == 0) return "A importar";
+  if (std::strcmp(key, "exporting") == 0) return "A exportar";
   if (std::strcmp(key, "connect_to_the_wifi_hotspot") == 0) return "Ligue-se ao ponto de acesso WiFi";
   if (std::strcmp(key, "to_configure_your_network") == 0) return "para configurar a sua rede.";
   if (std::strcmp(key, "then_visit_192_168_4_1_in_your_browser") == 0) return "Depois abra 192.168.4.1 no navegador";
@@ -10502,6 +10675,9 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Verifique este dispositivo no Home Assistant\nquanto a uma chave de encriptação ou alerta de ligação";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Definições > Dispositivos e serviços\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Atualmente";
+  if (std::strcmp(key, "power_no_measurement") == 0) return "Sem medição";
+  if (std::strcmp(key, "power_readings_only") == 0) return "Apenas leituras";
+  if (std::strcmp(key, "power_stale") == 0) return "Desatualizado";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -11991,6 +12167,9 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "ha_disconnected_instructions") == 0) return "Kontrollera denna enhet i Home Assistant\nför en krypteringsnyckel eller anslutningsvarning";
   if (std::strcmp(key, "ha_disconnected_path") == 0) return "Inställningar > Enheter och tjänster\n> ESPHome";
   if (std::strcmp(key, "temperature") == 0) return "Just nu";
+  if (std::strcmp(key, "power_no_measurement") == 0) return "Ingen mätning";
+  if (std::strcmp(key, "power_readings_only") == 0) return "Endast värden";
+  if (std::strcmp(key, "power_stale") == 0) return "Inaktuellt";
   return espcontrol_i18n_key_en(key);
 }
 

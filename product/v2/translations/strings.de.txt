@@ -260,6 +260,17 @@ timer=Timer
 timer_confirm=Bestätigen
 guest_wifi=Gast-WLAN
 wifi_did_not_change=WLAN wurde nicht geändert
+power_dashboard=Leistungsübersicht
+charging=Lädt
+discharging=Entlädt
+importing=Importiert
+exporting=Exportiert
+
+solar=Solar
+grid=Netz
+battery=Batterie
+inferred_flows=Geschätzte Flüsse
+inconsistent_readings=Inkonsistente Messwerte
 connect_to_the_wifi_hotspot=Verbinde dich mit dem WLAN-Hotspot
 to_configure_your_network=um dein Netzwerk einzurichten.
 then_visit_192_168_4_1_in_your_browser=Öffne dann 192.168.4.1 in deinem Browser
@@ -306,3 +317,8 @@ ha_disconnected_title=Home Assistant getrennt
 ha_disconnected_instructions=Dieses Gerät in Home Assistant auf einen\nVerschlüsselungsschlüssel oder Verbindungshinweis prüfen
 ha_disconnected_path=Einstellungen > Geräte & Dienste\n> ESPHome
 temperature=Aktuell
+
+
+power_no_measurement=Nicht gemessen
+power_readings_only=Nur Messwerte
+power_stale=Veraltet

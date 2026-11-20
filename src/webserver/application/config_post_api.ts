@@ -1,3 +1,4 @@
+import { powerGridLayoutError } from "../model/power_card";
 import { state } from "../state/app_instance";
 import * as EspControlModel from "../model";
 import { ENTITY_CATALOG } from "../generated/entity_catalog";
@@ -74,6 +75,13 @@ export function createConfigPersistenceFeature(
         });
         return api.postQueue;
     }
+    function rejectPowerLayout(buttons: any[], grid: number[], sizes: any, slots: number) {
+        const error = powerGridLayoutError(buttons, grid, sizes, slots, layout.gridCols);
+        if (!error) return false;
+        requests().postQueueError = true;
+        showBanner(error, "error");
+        return true;
+    }
     function buttonConfigByteLimit(): number {
         return nativePanelConfig?.maxConfigValueBytes() ?? 255;
     }
@@ -91,6 +99,7 @@ export function createConfigPersistenceFeature(
     // ── Config Post API ───────────────────────────────────────────────────
     function saveButtonConfig(this: any, slot?: any) {
         var b: any = state.buttons[slot - 1];
+        if (b.type === "power" && rejectPowerLayout(state.buttons, state.grid, state.sizes, layout.numSlots)) return Promise.resolve("unsupported");
         var value: any = serializeButtonConfig(b);
         if (!isWifiSharingButton(b))
             return requests().postText(entityNameForSlot("button_config", slot), value);
@@ -104,6 +113,10 @@ export function createConfigPersistenceFeature(
     function saveButtonConfigAndOrder(this: any, slot?: any, order?: any) {
         var b: any = state.buttons[slot - 1];
         var value: any = serializeButtonConfig(b);
+        if (b.type === "power") {
+            const parsed = EspControlModel.parseGridOrder(String(order || ""), layout.numSlots, layout.gridCols, {});
+            if (rejectPowerLayout(state.buttons, parsed.grid, parsed.sizes, layout.numSlots)) return Promise.resolve("unsupported");
+        }
         var wifiSharing: any = isWifiSharingButton(b);
         var nativeSave: any = nativePanelConfig
             ? nativePanelConfig.writeButtonAndOrder(Number.parseInt(String(slot), 10), value, String(order || ""))
@@ -162,6 +175,7 @@ export function createConfigPersistenceFeature(
     }
     function saveSubpageEntity(this: any, slot?: any) {
         var sp: any = state.subpages[slot];
+        if (sp && rejectPowerLayout(sp.buttons, sp.grid, sp.sizes || {}, layout.totalSlots)) return Promise.resolve("unsupported");
         var full: any = sp ? serializeSubpageConfig(sp) : "";
         if (!subpageConfigFits(full))
             return rejectOversizedSubpage();

@@ -892,6 +892,13 @@ Object.entries(legacyV1.oldButtonStrings).forEach(([name, value]) => {
   }
 });
 assertSubpageRoundTrip(hooks, "current subpage", current.subpage, true);
+const powerCard = buttonShape(hooks.parseButtonConfig(
+  "sensor.home;House;Auto;Auto;;;power;;solar_entity=sensor.solar,grid_entity=sensor.grid,battery_entity=sensor.battery,battery_soc_entity=sensor.soc,invert_grid,invert_battery"
+));
+assertSubpageRoundTrip(hooks, "Power legacy subpage with all bindings", { order: ["1", "B"], buttons: [powerCard], backLabel: "Back" }, false);
+assertSubpageRoundTrip(hooks, "Power compact subpage with custom label", { order: ["1", "B"], buttons: [{ ...powerCard, label: "House:Power" }], backLabel: "Back" }, true);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("power", false), true, "Power is selectable with native rendering and editor controls");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("power", true), true, "Power is selectable in subpages");
 Object.entries(current.compactSubpageStrings).forEach(([name, value]) => {
   assertSubpageRoundTrip(hooks, `current compact subpage ${name}`, value.expected, true);
   assert.deepStrictEqual(

@@ -260,6 +260,17 @@ timer=Timer
 timer_confirm=Bekräfta
 guest_wifi=Gäst-Wi-Fi
 wifi_did_not_change=Wi-Fi ändrades inte
+power_dashboard=Power Dashboard
+charging=Charging
+discharging=Discharging
+importing=Importing
+exporting=Exporting
+
+solar=Solar
+grid=Grid
+battery=Battery
+inferred_flows=Inferred flows
+inconsistent_readings=Inconsistent readings
 connect_to_the_wifi_hotspot=Anslut till WiFi-hotspotten
 to_configure_your_network=för att konfigurera ditt nätverk.
 then_visit_192_168_4_1_in_your_browser=Öppna sedan 192.168.4.1 i din webbläsare
@@ -306,3 +317,8 @@ ha_disconnected_title=Home Assistant frånkopplad
 ha_disconnected_instructions=Kontrollera denna enhet i Home Assistant\nför en krypteringsnyckel eller anslutningsvarning
 ha_disconnected_path=Inställningar > Enheter och tjänster\n> ESPHome
 temperature=Just nu
+
+
+power_no_measurement=Ingen mätning
+power_readings_only=Endast värden
+power_stale=Inaktuellt

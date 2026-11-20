@@ -208,8 +208,16 @@ inline void ha_reset_deferred_state_requests() {
 }
 #define ESPCONTROL_HA_DEFERRED_HELPERS_DEFINED 1
 
+// A card family can clear its live snapshot with the same disconnect event;
+// the HA coordinator continues to own replay and reconnect subscriptions.
+inline void (*&ha_retained_state_invalidated_handler())() {
+  static void (*handler)() = nullptr;
+  return handler;
+}
+
 inline void ha_invalidate_retained_state() {
   ha_read_coordinator().invalidate_retained_state();
+  if (auto handler = ha_retained_state_invalidated_handler()) handler();
   ha_log_subscription_diagnostics("client-disconnected");
 }
 

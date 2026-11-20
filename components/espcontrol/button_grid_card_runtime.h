@@ -63,6 +63,7 @@ inline Family family_for_runtime_type(espcontrol::card_runtime::CardTypeId type)
     case Type::SCREEN_LOCK: return Family::SCREEN_LOCK;
     case Type::SCREENSAVER: return Family::SCREENSAVER;
     case Type::SENSOR: return Family::SENSOR;
+    case Type::POWER: return Family::POWER;
     case Type::SLIDER:
     case Type::LIGHT_BRIGHTNESS: return Family::SLIDER;
     case Type::SUBPAGE: return Family::SUBPAGE;
@@ -187,6 +188,7 @@ inline bool card_runtime_main_click_opens_modal(
     case Driver::MEDIA_VOLUME:
     case Driver::MEDIA_COVER_ART:
     case Driver::OPTION_SELECT:
+    case Driver::POWER:
       return true;
     case Driver::FAN:
       return context.runtime.type == Type::FAN_PRESET;

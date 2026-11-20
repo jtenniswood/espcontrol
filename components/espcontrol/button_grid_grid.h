@@ -332,6 +332,7 @@ inline void grid_prepare_timer_visual_reset(lv_obj_t *owner);
 #include "button_grid_climate_control_driver.h"
 #include "button_grid_alarm_driver.h"
 #include "button_grid_media_driver.h"
+#include "button_grid_power_driver.h"
 
 inline void apply_card_label_line_clamp(lv_obj_t *label, const GridConfig &cfg,
                                         int row_span = 1) {
@@ -353,7 +354,7 @@ inline void apply_card_label_line_clamp(lv_obj_t *label, const GridConfig &cfg,
 
 inline bool card_slot_static_child(const BtnSlot &s, lv_obj_t *child) {
   return child == s.icon_lbl || child == s.sensor_container ||
-         child == s.text_lbl || child == s.subpage_lbl;
+         child == s.text_lbl || child == s.subpage_lbl || child == s.secondary_lbl;
 }
 
 inline void reset_card_slot_dynamic_children(BtnSlot &s) {
@@ -368,6 +369,10 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
   lv_obj_set_style_opa(s.btn, LV_OPA_COVER, LV_PART_MAIN);
   if (s.icon_lbl) lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   if (s.sensor_container) lv_obj_set_user_data(s.sensor_container, nullptr);
+  if (s.secondary_lbl) {
+    lv_label_set_display_text(s.secondary_lbl, "");
+    lv_obj_add_flag(s.secondary_lbl, LV_OBJ_FLAG_HIDDEN);
+  }
   if (s.text_lbl) {
     lv_obj_set_style_bg_opa(s.text_lbl, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_pad_all(s.text_lbl, 0, LV_PART_MAIN);
@@ -650,6 +655,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
 
 
   if (espcontrol::cards::timer_driver_setup_visual(s, p, context)) return;
+  if (espcontrol::cards::power_driver_setup_visual(s, p, context, palette, cfg, col_span)) return;
   if (espcontrol::cards::image_driver_setup_visual(s, p, context, palette)) {
     espcontrol::cards::image_driver_attach_interaction(s, p, context);
     espcontrol::cards::image_driver_refresh_layout(s, p, context);
@@ -988,6 +994,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
   display_apply_main_width(s.icon_lbl, display);
   control_modal_register_card_label(s);
   display_apply_slot_text_width(s, display);
+  if (espcontrol::cards::power_driver_refresh_layout(s, context, cfg, col_span)) return;
   if (espcontrol::cards::weather_driver_matches(context) &&
       (p.precision == "wind" || p.precision == "rainfall" || weather_metric_mode(p.precision) || espcontrol::cards::weather_driver_shows_forecast(p))) {
     espcontrol::cards::weather_driver_refresh_layout(s, p, context, display, row_span, col_span);
@@ -2024,6 +2031,7 @@ inline void grid_phase2(
     int col_span = order.col_span[idx - 1] > 0 ? order.col_span[idx - 1] : 1;
     if (cfg.info_only && info_only_hidden_card_type(context)) continue;
     navigation_register_home_target(idx, pos, p.label, scfg, s.btn);
+    if (espcontrol::cards::power_driver_bind_data(s, p, context, display, cfg)) continue;
     if (espcontrol::cards::image_driver_bind_main(
           s, p, context, cfg, palette)) continue;
     if (espcontrol::cards::wifi_qr_driver_bind_main(s, p, context)) continue;
@@ -2180,10 +2188,7 @@ inline void grid_phase2(
     BtnSlot back_slot = create_dynamic_card_slot(
       back_btn, sp_icon_fnt, display_sensor_font(display), sp_btn_fnt, sp_txt_color,
       cfg.subpage_chevron_font);
-    display_apply_main_width(back_slot.icon_lbl, display);
-    display_apply_slot_text_width(back_slot, display);
-    lv_label_set_display_text(back_slot.icon_lbl, "\U000F0141");
-    lv_label_set_display_text(back_slot.text_lbl, sp_back_label.c_str());
+    setup_subpage_back_card(back_slot, display, sp_back_label);
     apply_card_label_line_clamp(back_slot.text_lbl, cfg, sp_ord.back_row_span);
     configure_button_label_wrap(back_slot.text_lbl);
     const bool back_neutral_background = apply_subpage_back_colors(back_btn, sp_order_str, display);
@@ -2306,6 +2311,7 @@ inline void grid_phase2(
               add_parent_indicator(entity_id, timer_card_state_active_ref);
             })) continue;
       if (bind_basic_sensor_card(sub_slot, sb_cfg, context, card_palette, cs)) continue;
+      if (espcontrol::cards::power_driver_bind_data(sub_slot, sb_cfg, context, display, cfg)) continue;
       espcontrol::cards::BasicActionSubpageEnvironment action_environment;
       action_environment.grid_config = &cfg;
       action_environment.parent_config = &p;

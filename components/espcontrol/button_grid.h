@@ -66,6 +66,7 @@
 #include "button_grid_alarm.h"
 #include "screensaver_pin_ui.h"
 #include "button_grid_navigation.h"
+#include "button_grid_power.h"
 #include "theme_runtime_ui.h"
 #include "button_grid_grid.h"
 

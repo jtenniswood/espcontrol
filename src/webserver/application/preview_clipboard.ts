@@ -1,3 +1,4 @@
+import { powerPlacementError, powerGridLayoutError } from "../model/power_card";
 import { state } from "../state/app_instance";
 import * as EspControlModel from "../model";
 import { sizeFromToken } from "../model/grid";
@@ -384,6 +385,9 @@ export function createPreviewClipboardFeature(
                 var subpage: any = parseSubpageConfig(entry.subpageConfig);
                 subpage.sizes = {};
                 buildSubpageGrid(subpage);
+                const powerError = powerGridLayoutError(subpage.buttons, subpage.grid, subpage.sizes,
+                    dependencies.layout.previewSlots, dependencies.layout.gridCols);
+                if (powerError) return { error: powerError };
                 if (!clipboardSubpageFits(subpage)) {
                     return { error: "A copied subpage is too large for this controller." };
                 }
@@ -470,6 +474,15 @@ export function createPreviewClipboardFeature(
         if (plan.error) {
             showBanner(plan.error, "error");
             return { ok: false, error: plan.error };
+        }
+        // Check staged placements before touching local state or sending any
+        // writes. The generic planner may downgrade copied cards to Single.
+        const placed = targetIsSubpage ? plan.subpage : plan;
+        for (const slot of plan.slots) {
+            const error = powerPlacementError(placed.buttons[slot - 1], placed.sizes[slot] || 1,
+                placed.grid.indexOf(slot), placed.grid, placed.sizes, slot,
+                dependencies.layout.previewSlots, dependencies.layout.gridCols);
+            if (error) { showBanner(error, "error"); return { ok: false, error }; }
         }
         if (targetIsSubpage) {
             var homeSlot: any = state.editingSubpage;

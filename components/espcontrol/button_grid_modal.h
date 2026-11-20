@@ -60,6 +60,9 @@ inline ControlModalDefinition control_modal_definition(ControlModalKind kind) {
     case ControlModalKind::NETWORK_STATUS:
       return {ControlModalPresentation::STATUS, ControlModalChrome::CLOSE,
               ControlModalDismissPolicy::DISMISS};
+    case ControlModalKind::POWER_FLOW:
+      return {ControlModalPresentation::STATUS, ControlModalChrome::BACK,
+              ControlModalDismissPolicy::DISMISS};
     case ControlModalKind::ALARM_PIN:
       return {ControlModalPresentation::KEYPAD, ControlModalChrome::BACK,
               ControlModalDismissPolicy::DISMISS};

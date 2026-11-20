@@ -260,6 +260,17 @@ timer=Temporizador
 timer_confirm=Confirmar
 guest_wifi=Wi-Fi de convidados
 wifi_did_not_change=O Wi-Fi não mudou
+power_dashboard=Painel de potência
+charging=A carregar
+discharging=A descarregar
+importing=A importar
+exporting=A exportar
+
+solar=Solar
+grid=Grid
+battery=Battery
+inferred_flows=Inferred flows
+inconsistent_readings=Inconsistent readings
 connect_to_the_wifi_hotspot=Ligue-se ao ponto de acesso WiFi
 to_configure_your_network=para configurar a sua rede.
 then_visit_192_168_4_1_in_your_browser=Depois abra 192.168.4.1 no navegador
@@ -306,3 +317,8 @@ ha_disconnected_title=Home Assistant desligado
 ha_disconnected_instructions=Verifique este dispositivo no Home Assistant\nquanto a uma chave de encriptação ou alerta de ligação
 ha_disconnected_path=Definições > Dispositivos e serviços\n> ESPHome
 temperature=Atualmente
+
+
+power_no_measurement=Sem medição
+power_readings_only=Apenas leituras
+power_stale=Desatualizado

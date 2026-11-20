@@ -1,3 +1,4 @@
+import { powerPlacementError } from "../model/power_card";
 import { createColorSwatches } from "../components/color_swatches";
 import { configOptionValue, setCardColor } from "../model/config_primitives";
 import { defaultCardBackgroundColor } from "../state/preview_theme";
@@ -132,6 +133,9 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
             return;
         var button: any = slot === -2 ? null : c.buttons[slot - 1];
         targetSz = normalizeCardSizeForConfig(button, targetSz);
+        const placementError = powerPlacementError(button || { type: "" }, targetSz,
+            slotPos, c.grid, c.sizes, slot, c.maxSlots, dependencies.layout.gridCols);
+        if (placementError) { showBanner(placementError, "error"); return; }
         var curSz: any = c.sizes[slot] || 1;
         if (curSz === targetSz)
             return;
@@ -311,7 +315,7 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
             options.push({ size: CARD_SIZE_LANDSCAPE_LARGE, label: "Massive Wide (3x4)" });
         if (cardSupportsPortraitLargeSize(b))
             options.push({ size: CARD_SIZE_PORTRAIT_LARGE, label: "Massive (4x3)" });
-        return options;
+        return b && b.type === "power" ? options.filter((option: any) => sizeColSpan(option.size) >= 2) : options;
     }
     function addSingleCardMenuItems(this: any, slot?: any) {
         if (slot === -2) {
@@ -487,6 +491,9 @@ export function createPreviewContextMenuFeature(dependencies: PreviewContextMenu
             return cardSizeMenuOptions(slot === -2 ? null : c.buttons[slot - 1])
                 .filter((option: { size: number }) => slot !== -2 || [CARD_SIZE_SINGLE, CARD_SIZE_TALL, CARD_SIZE_EXTRA_TALL, CARD_SIZE_WIDE, CARD_SIZE_EXTRA_WIDE, CARD_SIZE_ULTRA_WIDE, CARD_SIZE_LARGE].includes(option.size))
                 .filter((option: { size: number }) => resizeGridSlot(c.grid, c.sizes, slot, pos, option.size, c.maxSlots, dependencies.layout.gridCols, !c.isSub).accepted)
+                .filter((option: { size: number }) => !powerPlacementError(
+                    slot === -2 ? { type: "" } : c.buttons[slot - 1] || { type: "" },
+                    option.size, pos, c.grid, c.sizes, slot, c.maxSlots, dependencies.layout.gridCols))
                 .map((option: { size: number }) => resizeTargetDimensions(option.size, cellWidth, cellHeight, gap));
         },
     });

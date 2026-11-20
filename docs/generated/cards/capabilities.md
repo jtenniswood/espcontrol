@@ -53,3 +53,4 @@ This generated reference lists stable setup facts from the shared card contract.
 | Wifi Sharing | wifi_qr | switch | Yes | Own picker item | Network name; Security: wpa, open; Password; Hidden network; Visible Tabs: qr, credentials, guest | Visible |
 | QR Card | wifi_qr_card | switch | Yes | Wifi Sharing (wifi_qr) | Network name; Security: wpa, open; Password; Hidden network; Visible Tabs: qr, credentials, guest | Visible |
 | Weather Forecast | weather_forecast | weather | Yes | Own picker item | None | Hidden |
+| Power | power | sensor | Yes | Own picker item | Solar power; Grid power; Battery power; Battery SOC; Invert Grid power sign; Invert Battery power sign; Exclude Solar component; Exclude Grid component; Exclude Battery component | Visible |

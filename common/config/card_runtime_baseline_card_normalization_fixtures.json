@@ -1560,6 +1560,36 @@
     }
   },
   {
+    "name": "power: model",
+    "input": "~sensor.home,Power%20Dashboard,Auto,Auto,,,power,,solar_entity%3Dsensor.solar%2Cgrid_entity%3Dsensor.grid%2Cbattery_entity%3Dsensor.battery%2Cbattery_soc_entity%3Dsensor.soc",
+    "expected": {
+      "entity": "sensor.home",
+      "label": "Power Dashboard",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "power",
+      "precision": "",
+      "options": "solar_entity=sensor.solar,grid_entity=sensor.grid,battery_entity=sensor.battery,battery_soc_entity=sensor.soc"
+    }
+  },
+  {
+    "name": "power: inverted",
+    "input": "~sensor.home,Power%20Dashboard,Auto,Auto,,,power,,solar_entity%3Dsensor.solar%2Cgrid_entity%3Dsensor.grid%2Cbattery_entity%3Dsensor.battery%2Cinvert_grid%2Cinvert_battery",
+    "expected": {
+      "entity": "sensor.home",
+      "label": "Power Dashboard",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "power",
+      "precision": "",
+      "options": "solar_entity=sensor.solar,grid_entity=sensor.grid,battery_entity=sensor.battery,invert_grid,invert_battery"
+    }
+  },
+  {
     "name": "local: accepted_legacy_input",
     "input": "~zoom_mute,,,,local,,local,,",
     "expected": {

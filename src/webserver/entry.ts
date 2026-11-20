@@ -100,6 +100,7 @@ import { createReconnectController } from "./features/reconnect";
 import { registerActionCardTypes } from "./cards/action";
 import { registerAlarmCardTypes } from "./cards/alarm";
 import { registerTimerCardTypes } from "./cards/timer";
+import { registerPowerCardTypes } from "./cards/power";
 import { registerCalendarCardTypes } from "./cards/calendar";
 import { registerClimateCardTypes } from "./cards/climate";
 import { registerClockCardTypes } from "./cards/clock";
@@ -154,6 +155,7 @@ function registerCards(context: ApplicationContext) {
   registerActionCardTypes(registry, context.configuration.confirmationOptions, context.controllers.entityState, fields, cardUi);
   registerAlarmCardTypes(registry, context.configuration.accessClimateAlarm, context.controllers.renderQueue, fields, cardUi);
   registerTimerCardTypes(registry);
+  registerPowerCardTypes(registry, fields);
   registerCalendarCardTypes(registry, context.configuration.dateTimeOptions, fields);
   registerClimateCardTypes(
     registry,

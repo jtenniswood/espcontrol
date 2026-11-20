@@ -934,6 +934,27 @@ static void test_custom_back_button_theme_preservation() {
   set_active_theme_palette(DARK_THEME);
 }
 
+// Power's read-only side cards reuse this explicit native control boundary.
+// Equal Dark surface RGB values must not select the wrong Light surface role.
+void test_readonly_power_control_chrome() {
+  lv_obj_t card, value, status;
+  card.opacity = LV_OPA_COVER;
+  card.background = lv_color_hex(theme_display_color(DARK_THEME.control_neutral));
+  theme_set_control_neutral_fill(&card);
+  value.type = status.type = &lv_label_class;
+  value.parent = status.parent = &card;
+  value.text = lv_color_hex(DARK_THEME.text_primary);
+  status.text = lv_color_hex(DARK_THEME.text_muted);
+  card.children = {&value, &status};
+  theme_restyle_tree(&card, DARK_THEME, LIGHT_THEME);
+  assert(card.background.full == theme_display_color(LIGHT_THEME.control_neutral));
+  assert(value.text.full == LIGHT_THEME.text_primary && status.text.full == LIGHT_THEME.text_muted);
+  theme_restyle_tree(&card, LIGHT_THEME, DARK_THEME);
+  assert(card.background.full == theme_display_color(DARK_THEME.control_neutral));
+  assert(value.text.full == DARK_THEME.text_primary && status.text.full == DARK_THEME.text_muted);
+  assert(card.children[0] == &value && card.children[1] == &status);
+}
+
 int main() {
   test_custom_back_button_theme_preservation();
   test_custom_default_contrast_after_active_theme_refresh();
@@ -1209,4 +1230,5 @@ int main() {
   test_pressed_overflow_recovery();
   test_content_collisions();
   test_registry_exhaustion();
+  test_readonly_power_control_chrome();
 }

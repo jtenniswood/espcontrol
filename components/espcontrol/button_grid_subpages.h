@@ -54,6 +54,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   // Shared colours must survive the card-specific option cleanup below.
   const std::string card_colors = card_color_options_normalized(b.options);
   b.options = options_without_card_colors(b.options);
+  normalize_saved_config_power(b, espcontrol::power::normalize_options);
   if (brightness_slider_type(b.type) && !b.sensor.empty()) b.sensor.clear();
   if (fan_card_type(b.type)) {
     b.sensor.clear();
@@ -226,7 +227,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
       b.type != "webhook" && b.type != "wifi_qr" && b.type != "wifi_qr_card" &&
       b.type != "sensor" && b.type != "door_window" && b.type != "presence" &&
       b.type != "subpage" && b.type != "light_control" && b.type != "media" &&
-      b.type != "image" && b.type != "weather" &&
+      b.type != "image" && b.type != "power" && b.type != "weather" &&
       !fan_card_type(b.type) && !card_large_numbers_supported(p)) {
     b.options.clear();
   }
@@ -374,6 +375,16 @@ inline BtnSlot create_dynamic_card_slot(lv_obj_t *btn,
   lv_obj_align(slot.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
   configure_button_label_wrap(slot.text_lbl);
 
+  slot.secondary_lbl = lv_label_create(btn);
+  if (label_font) lv_obj_set_style_text_font(slot.secondary_lbl, label_font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(slot.secondary_lbl, text_color, LV_PART_MAIN);
+  lv_obj_set_style_text_opa(slot.secondary_lbl, LV_OPA_70, LV_PART_MAIN);
+  lv_label_set_display_text(slot.secondary_lbl, "");
+  lv_label_set_long_mode(slot.secondary_lbl, LV_LABEL_LONG_DOT);
+  lv_obj_set_width(slot.secondary_lbl, lv_pct(100));
+  lv_obj_align(slot.secondary_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+  lv_obj_add_flag(slot.secondary_lbl, LV_OBJ_FLAG_HIDDEN);
+
   slot.subpage_lbl = lv_label_create(btn);
   const lv_font_t *chevron_font = subpage_icon_font ? subpage_icon_font : icon_font;
   if (chevron_font) lv_obj_set_style_text_font(slot.subpage_lbl, chevron_font, LV_PART_MAIN);
@@ -383,6 +394,17 @@ inline BtnSlot create_dynamic_card_slot(lv_obj_t *btn,
   lv_obj_align(slot.subpage_lbl, LV_ALIGN_BOTTOM_RIGHT, 0, 2);
   lv_obj_add_flag(slot.subpage_lbl, LV_OBJ_FLAG_HIDDEN);
   return slot;
+}
+
+// Shared visual setup for native subpage-return cards. Navigation is supplied
+// by the owner (screen return or closing a detail view).
+inline void setup_subpage_back_card(BtnSlot &slot, const DisplayProfile &display,
+                                     const std::string &label) {
+  display_apply_main_width(slot.icon_lbl, display);
+  display_apply_slot_text_width(slot, display);
+  lv_label_set_display_text(slot.icon_lbl, "\U000F0141");
+  lv_label_set_display_text(slot.text_lbl, label.c_str());
+  configure_button_label_wrap(slot.text_lbl);
 }
 
 // Extract the order string (everything before the first pipe) from subpage config

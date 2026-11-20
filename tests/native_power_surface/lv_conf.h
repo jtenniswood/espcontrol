@@ -1,0 +1,12 @@
+#ifndef LV_CONF_H
+#define LV_CONF_H
+#define LV_COLOR_DEPTH 16
+#define LV_MEM_SIZE (2U * 1024U * 1024U)
+#define LV_USE_DRAW_SW 1
+#define LV_DRAW_SW_COMPLEX 1
+#define LV_DRAW_SW_SUPPORT_RGB565 1
+#define LV_DRAW_SW_SUPPORT_ARGB8888 1
+#define LV_DRAW_SW_SUPPORT_PREMULTIPLIED 0
+#define LV_USE_PPA 0
+#define LV_USE_LOG 0
+#endif

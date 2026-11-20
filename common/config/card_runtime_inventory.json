@@ -3,7 +3,7 @@
   "lifecycleVocabulary": {
     "subscriptions": ["none", "state", "attributes", "local", "time", "action_response", "http"],
     "actions": ["none", "home_assistant_service", "local", "http", "navigation", "modal"],
-    "modalOwners": ["none", "alarm", "climate", "cover", "image", "media", "wifi_qr", "weather"]
+    "modalOwners": ["none", "alarm", "climate", "cover", "image", "media", "wifi_qr", "weather", "power"]
   },
   "types": {
     "timer": {
@@ -377,6 +377,38 @@
       "classification": "accepted_legacy_input", "canonicalType": "weather", "webRegistration": "weather_forecast", "firmwareFamily": "WEATHER",
       "lifecycle": { "subscriptions": ["action_response"], "actions": ["modal"], "modalOwner": "weather" },
       "modes": [{ "name": "legacy_forecast", "config": { "entity": "weather.example", "type": "weather_forecast" } }]
+    },
+    "power": {
+      "classification": "canonical",
+      "canonicalType": "power",
+      "webRegistration": "power",
+      "firmwareFamily": "POWER",
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "modal"
+        ],
+        "modalOwner": "power"
+      },
+      "modes": [
+        {
+          "name": "model",
+          "config": {
+            "entity": "sensor.home",
+            "options": "solar_entity=sensor.solar,grid_entity=sensor.grid,battery_entity=sensor.battery,battery_soc_entity=sensor.soc"
+          }
+        },
+        {
+          "name": "inverted",
+          "config": {
+            "entity": "sensor.home",
+            "options": "solar_entity=sensor.solar,grid_entity=sensor.grid,battery_entity=sensor.battery,invert_grid,invert_battery"
+          }
+        }
+      ]
     }
   },
   "runtimeOnlyTypes": {

@@ -45,6 +45,7 @@
   },
   "pilots": {
     "cards": {
+      "power": "product/v2/cards/power.json",
       "sensor": "product/v2/cards/sensor.json",
       "media": "product/v2/cards/media.json",
       "image": "product/v2/cards/image.json",

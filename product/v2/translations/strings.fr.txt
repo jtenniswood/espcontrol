@@ -260,6 +260,17 @@ timer=Minuteur
 timer_confirm=Confirmer
 guest_wifi=Wi-Fi invité
 wifi_did_not_change=Le Wi-Fi n’a pas changé
+power_dashboard=Tableau de puissance
+charging=Charge
+discharging=Décharge
+importing=Importation
+exporting=Exportation
+
+solar=Solaire
+grid=Réseau
+battery=Batterie
+inferred_flows=Flux estimés
+inconsistent_readings=Mesures incohérentes
 connect_to_the_wifi_hotspot=Connectez-vous au point d’accès WiFi
 to_configure_your_network=pour configurer votre réseau.
 then_visit_192_168_4_1_in_your_browser=Ouvrez ensuite 192.168.4.1 dans votre navigateur
@@ -306,3 +317,8 @@ ha_disconnected_title=Home Assistant déconnecté
 ha_disconnected_instructions=Vérifiez cet appareil dans Home Assistant\npour une clé de chiffrement ou une alerte de connexion
 ha_disconnected_path=Paramètres > Appareils et services\n> ESPHome
 temperature=Actuellement
+
+
+power_no_measurement=Sans mesure
+power_readings_only=Mesures seules
+power_stale=Périmé

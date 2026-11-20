@@ -1,0 +1,37 @@
+{
+  "label": "Power",
+  "hidden": false,
+  "allowInSubpage": true,
+  "domains": ["sensor"],
+  "options": [
+    {"name": "solar_entity", "label": "Solar power", "kind": "text", "defaultValue": "", "omitDefault": true},
+    {"name": "grid_entity", "label": "Grid power", "kind": "text", "defaultValue": "", "omitDefault": true},
+    {"name": "battery_entity", "label": "Battery power", "kind": "text", "defaultValue": "", "omitDefault": true},
+    {"name": "battery_soc_entity", "label": "Battery SOC", "kind": "text", "defaultValue": "", "omitDefault": true},
+    {"name": "invert_grid", "label": "Invert Grid power sign", "kind": "flag", "omitDefault": true},
+    {"name": "invert_battery", "label": "Invert Battery power sign", "kind": "flag", "omitDefault": true},
+    {"name": "exclude_solar", "label": "Exclude Solar component", "kind": "flag", "omitDefault": true},
+    {"name": "exclude_grid", "label": "Exclude Grid component", "kind": "flag", "omitDefault": true},
+    {"name": "exclude_battery", "label": "Exclude Battery component", "kind": "flag", "omitDefault": true}
+  ],
+  "normalization": {
+    "fields": {
+      "entity": {"policy": "keep"},
+      "label": {"policy": "default_if_empty", "value": "Power Dashboard"},
+      "icon": {"policy": "default_if_empty", "value": "Auto"},
+      "icon_on": {"policy": "default", "value": "Auto"},
+      "sensor": {"policy": "clear"},
+      "unit": {"policy": "clear"},
+      "type": {"policy": "default", "value": "power"},
+      "precision": {"policy": "allowed", "values": ["", "0", "1", "2"], "fallback": ""},
+      "options": {"policy": "hook", "hook": "normalize_power_options"}
+    },
+    "unknownOptions": "drop",
+    "canonicalOptionOrder": ["solar_entity", "grid_entity", "battery_entity", "battery_soc_entity", "invert_grid", "invert_battery", "exclude_solar", "exclude_grid", "exclude_battery"],
+    "optionHook": "normalize_power_options"
+  },
+  "default": {
+    "entity": "", "label": "Power Dashboard", "icon": "Auto", "icon_on": "Auto",
+    "sensor": "", "unit": "", "type": "power", "precision": "", "options": ""
+  }
+}
