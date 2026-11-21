@@ -526,3 +526,7 @@
 - "\U000F407C"  # material-symbol-window-sensor
 - "\U000F407D"  # material-symbol-nest-cam-wired-stand
 # --- GENERATED:ICONS END ---
+
+# Filled Material Symbols for the cover art screensaver playback button.
+- "\U000F5000"  # play_arrow
+- "\U000F5001"  # pause
