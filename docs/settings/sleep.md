@@ -157,7 +157,11 @@ Enable **Screen > Appearance > Clock Bar > Show Night Mode Icon** to see a moon 
 
 Touch the sleeping panel or press its **Screen: Wake** button in Home Assistant. Screen Off and Clock modes temporarily wake using the saved wake brightness and idle time, then return to night behaviour. Waking does not change the schedule. [PIN protection](/settings/sleep#pin-protection-after-wake) still applies.
 
-Press and hold a touchscreen button for three seconds to sleep manually. It stays asleep even during normal-use hours until you wake it. See [Wake from Home Assistant](/settings/sleep#wake-from-home-assistant) for an automation example.
+Press and hold a touchscreen button for three seconds to sleep manually. By default, it stays asleep even during normal-use hours until you wake it. To resume normal display behaviour when the time-based Night Schedule next enters Daytime hours, enable **Screen: Resume at Schedule On Hour** under **Configuration** on the panel’s Home Assistant device page.
+
+Turning **Display Backlight** off directly during a temporary night wake ends the wake early. The panel returns to its scheduled Screen Off or Clock mode. A direct off command during normal hours requests manual sleep. See [Wake from Home Assistant](/settings/sleep#wake-from-home-assistant) for an automation example.
+
+Under **Diagnostic** on the panel’s Home Assistant device page, **Screen: Display Source** shows which rule is controlling the display. For example, `manual_sleep` means the display is sleeping on request, `screen_schedule` means the night schedule is in charge, and `idle_timer` means the screensaver timer has taken over.
 
 ## PIN Protection {#pin-protection-after-wake}
 

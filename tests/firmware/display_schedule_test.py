@@ -25,7 +25,9 @@ def generate(root):
         scripts.update({s["id"]: s for s in yaml.load(text[text.index("script:\n"):], Loader)["script"]})
     selected = {"display_mode_reconcile", "screen_schedule_check", "screen_schedule_wake",
                 "display_mode_apply_transition", "display_mode_effect_active",
-                "display_active_finalize", "screensaver_idle_check"}
+                "display_active_finalize", "screensaver_idle_check",
+                "display_backlight_handle_off", "screen_schedule_manual_sleep",
+                "screen_schedule_wake_timeout_check", "screen_schedule_observe_timed_window"}
     # Exercise the entire ACTIVE branch, including the guarded completion and
     # finalizer call. Other presentation modes are hardware doubles below.
     adapter = scripts["display_mode_apply_transition"]["then"][0]["if"]["then"]
