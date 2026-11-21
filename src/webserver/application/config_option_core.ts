@@ -35,6 +35,7 @@ import {
     var ACTION_SCRIPT_FIELDS_OPTION: any = "script_fields";
     var ALARM_PIN_ARM_OPTION: any = cardContractOptionName("pin_arm");
     var ALARM_PIN_DISARM_OPTION: any = cardContractOptionName("pin_disarm");
+    const ALARM_PIN_SCRAMBLE_OPTION = cardContractOptionName("pin_scramble");
     var ALARM_ACTIONS_OPTION: any = cardContractOptionName("actions");
     var ALARM_ICON_DISPLAY_OPTION: any = cardContractOptionName("icon_display");
     var ALARM_LABEL_DISPLAY_OPTION: any = cardContractOptionName("label_display");
@@ -131,6 +132,7 @@ export {
     ACTION_SCRIPT_FIELDS_OPTION,
     ALARM_PIN_ARM_OPTION,
     ALARM_PIN_DISARM_OPTION,
+    ALARM_PIN_SCRAMBLE_OPTION,
     ALARM_ACTIONS_OPTION,
     ALARM_ICON_DISPLAY_OPTION,
     ALARM_LABEL_DISPLAY_OPTION,

@@ -1051,7 +1051,8 @@ inline void alarm_pin_open_modal(AlarmActionCtx *action) {
 
   ui.pin_lbl = pin_keypad_create(ui.panel, layout, pin_label_font, key_label_font,
                                 icon_font, action->card->width_compensation_percent,
-                                alarm_pin_key_cb);
+                                alarm_pin_key_cb,
+                                cfg_option_value(action->card->options, "pin_scramble") == "1");
   alarm_pin_update_display();
 
   lv_obj_move_foreground(ui.back_btn);

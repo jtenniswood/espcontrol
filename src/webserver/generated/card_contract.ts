@@ -772,6 +772,13 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "omitDefault": true
       },
       {
+        "name": "pin_scramble",
+        "label": "Scramble PIN keypad",
+        "kind": "flag",
+        "defaultValue": "0",
+        "omitDefault": true
+      },
+      {
         "name": "actions",
         "label": "Visible Actions",
         "kind": "choice",
@@ -846,6 +853,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "canonicalOptionOrder": [
         "pin_arm",
         "pin_disarm",
+        "pin_scramble",
         "actions",
         "icon_display",
         "label_display"
@@ -5031,6 +5039,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "pass64": "pass64",
   "pin_arm": "pin_arm",
   "pin_disarm": "pin_disarm",
+  "pin_scramble": "pin_scramble",
   "playlist_content_id": "playlist_content_id",
   "playlist_content_type": "playlist_content_type",
   "playlist_player_source": "playlist_player_source",

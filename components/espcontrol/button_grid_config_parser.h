@@ -987,6 +987,10 @@ inline std::string alarm_card_options_normalized(const std::string &options) {
     if (!out.empty()) out += ",";
     out += "pin_disarm=0";
   }
+  if (cfg_option_value(options, "pin_scramble") == "1") {
+    if (!out.empty()) out += ",";
+    out += "pin_scramble=1";
+  }
   std::string actions = cfg_option_value(options, "actions");
   if (!actions.empty()) {
     std::vector<std::string> filtered;
