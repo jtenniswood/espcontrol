@@ -451,6 +451,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-btn-group-right{display:flex;gap:8px}" +
         ".sp-toggle-row{display:flex;align-items:center;justify-content:space-between;" +
         "min-height:36px;margin-bottom:14px}" +
+        ".sp-alarm-pin-divider{border:0;border-top:1px solid var(--border);margin:0 0 16px}" +
         ".sp-toggle-row:last-child{margin-bottom:0}" +
         ".sp-cond-field+.sp-toggle-row{margin-top:16px}" +
         ".sp-toggle-label{font-size:.875rem;cursor:pointer}" +

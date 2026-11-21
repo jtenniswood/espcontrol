@@ -4040,12 +4040,22 @@ async function assertAlarmSettingsPanels(page, label) {
 
   await modalSettings.locator("> .sp-disclosure-button").click();
   assert(await modalSettings.getByText("Visible Actions", { exact: true }).isVisible(), `${label}: alarm modal settings panel should contain visible actions controls`);
-  const pinSettings = modalSettings.locator(".sp-disclosure").filter({ hasText: "PIN Settings" }).first();
-  assert(await pinSettings.isVisible(), `${label}: alarm modal settings panel should contain PIN settings`);
-  assert(!(await pinSettings.getAttribute("class")).includes("sp-open"), `${label}: alarm PIN settings panel should start collapsed`);
-  await pinSettings.locator("> .sp-disclosure-button").click();
-  assert(await pinSettings.getByText("PIN required for arming", { exact: true }).isVisible(), `${label}: alarm PIN settings panel should contain arming PIN controls`);
-  assert(await pinSettings.getByText("PIN required for disarming", { exact: true }).isVisible(), `${label}: alarm PIN settings panel should contain disarming PIN controls`);
+  const pinSettings = modalSettings.locator("> .sp-disclosure-body");
+  const divider = pinSettings.getByRole("separator");
+  const armPin = pinSettings.getByText("PIN required for arming", { exact: true });
+  const disarmPin = pinSettings.getByText("PIN required for disarming", { exact: true });
+  assert(await divider.isVisible(), `${label}: a divider separates alarm actions from PIN settings`);
+  assert(await armPin.isVisible(), `${label}: arming PIN control is visible without expanding PIN settings`);
+  assert(await disarmPin.isVisible(), `${label}: disarming PIN control is visible without expanding PIN settings`);
+  const scrambleLabel = pinSettings.getByText("Scramble PIN keypad", { exact: true });
+  const scramble = pinSettings.getByLabel("Scramble PIN keypad", { exact: true });
+  assert(!(await scramble.isChecked()), `${label}: alarm PIN scrambling is off by default`);
+  await scrambleLabel.click();
+  await modalSettings.locator("> .sp-disclosure-button").click();
+  await modalSettings.locator("> .sp-disclosure-button").click();
+  assert(await scramble.isChecked(), `${label}: alarm PIN scrambling can be enabled`);
+  await scrambleLabel.click();
+  assert(!(await scramble.isChecked()), `${label}: alarm PIN scrambling can be disabled`);
 
   await page.locator(".sp-settings-close").click();
   await page.waitForFunction(() => {
