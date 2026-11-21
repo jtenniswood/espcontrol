@@ -7,6 +7,7 @@
 #include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "mbedtls/sha256.h"
 #endif
 
 #include "esphome/core/version.h"
@@ -14,6 +15,7 @@
 #include "cover_art.h"
 #include "../artwork_image/image_pipeline_policy.h"
 #include <cstring>
+#include <string_view>
 
 constexpr uint32_t IMAGE_CARD_STARTUP_RETRY_MS = 45000;
 constexpr uint32_t IMAGE_CARD_RETRY_INTERVAL_MS = 2000;
@@ -86,6 +88,7 @@ struct ImageCardCtx {
   uint32_t fit_background_color = 0;
   bool diagnostics_enabled = false;
   bool access_token_request_pending = false;
+  bool camera_auth_refresh_pending = false;
   uint32_t access_token_request_started_ms = 0;
   bool camera_refresh_pending = false;
   bool scheduled_tile_request = false;
@@ -1014,6 +1017,10 @@ inline void image_card_handle_modal_download_error(ImageCardCtx *ctx) {
 
 inline bool image_card_context_visible_on_active_screen(ImageCardCtx *ctx);
 
+inline void image_card_refresh_rejected_camera_url(ImageCardCtx *ctx,
+                                                   int status,
+                                                   const std::string &url);
+
 inline void image_card_bind_callbacks(ImageCardCtx *ctx) {
   if (!ctx || !ctx->image) return;
   auto *bound_image = ctx->image;
@@ -1026,8 +1033,11 @@ inline void image_card_bind_callbacks(ImageCardCtx *ctx) {
   }
   if (image_changed || !bound_image->has_on_error_callbacks()) {
     bound_image->add_on_error_callback([ctx, bound_image]() {
-      if (ctx->image == bound_image && !image_card_pipeline_suspended())
+      if (ctx->image == bound_image && !image_card_pipeline_suspended()) {
         image_card_handle_download_error(ctx);
+        image_card_refresh_rejected_camera_url(
+          ctx, bound_image->get_last_http_status(), bound_image->get_url());
+      }
     });
   }
   ctx->callbacks_bound_image = bound_image;
@@ -1071,8 +1081,11 @@ inline void image_card_bind_modal_callbacks(
   });
   modal_image->add_on_error_callback([modal_image]() {
     ImageCardCtx *ctx = image_card_modal_ui().active;
-    if (ctx && ctx->modal_image == modal_image && !image_card_pipeline_suspended())
+    if (ctx && ctx->modal_image == modal_image && !image_card_pipeline_suspended()) {
       image_card_handle_modal_download_error(ctx);
+      image_card_refresh_rejected_camera_url(
+        ctx, modal_image->get_last_http_status(), modal_image->get_url());
+    }
   });
 }
 
@@ -1143,6 +1156,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].modal_fit = false;
     contexts[i].diagnostics_enabled = false;
     contexts[i].access_token_request_pending = false;
+    contexts[i].camera_auth_refresh_pending = false;
     contexts[i].access_token_request_started_ms = 0;
     contexts[i].camera_refresh_pending = false;
     contexts[i].refresh_schedule = {};
@@ -1731,7 +1745,9 @@ inline bool image_card_valid_access_token(const std::string &token) {
   return !token.empty() && token != "unknown" && token != "unavailable";
 }
 
-inline bool image_card_query_has_param(const std::string &url, const std::string &param) {
+inline bool image_card_query_has_param(const std::string &url,
+                                       const std::string &param,
+                                       std::string_view *value = nullptr) {
   size_t query = url.find('?');
   if (query == std::string::npos) return false;
   size_t fragment = url.find('#', query + 1);
@@ -1744,11 +1760,57 @@ inline bool image_card_query_has_param(const std::string &url, const std::string
     if (eq != std::string::npos && eq < next &&
         eq - pos == param.size() &&
         url.compare(pos, param.size(), param) == 0) {
+      if (value) *value = std::string_view(url).substr(eq + 1, next - eq - 1);
       return true;
     }
     pos = next + 1;
   }
   return false;
+}
+
+inline bool image_card_camera_proxy_for_entity(const std::string &url,
+                                                const std::string &entity_id) {
+  if (entity_id.rfind("camera.", 0) != 0) return false;
+  const size_t scheme = url.find("://");
+  if (scheme == std::string::npos) return false;
+  const size_t path = url.find('/', scheme + 3);
+  if (path == std::string::npos) return false;
+  const size_t query = url.find('?', path);
+  return url.compare(path, query - path, image_card_entity_proxy_path(entity_id)) == 0;
+}
+
+inline void image_card_refresh_rejected_camera_url(ImageCardCtx *ctx,
+                                                   int status,
+                                                   const std::string &url) {
+  if (!ctx || !ctx->active || ctx->media_artwork || status != 403 ||
+      !image_card_camera_proxy_for_entity(url, ctx->entity_id)) return;
+  ctx->camera_auth_refresh_pending = true;
+  ha_schedule_metadata_refresh(ctx->entity_id, {"entity_picture"}, HA_SUBSCRIPTION_SCOPE_DEFAULT);
+#ifdef ESP_PLATFORM
+  std::string_view token;
+  unsigned char digest[32];
+  if (image_card_query_has_param(url, "token", &token) && !token.empty() &&
+      mbedtls_sha256(reinterpret_cast<const unsigned char *>(token.data()),
+                     token.size(), digest, 0) == 0) {
+    ESP_LOGD("image_card", "Camera proxy rejected %s: token_sha256_prefix=%02x%02x%02x%02x%02x%02x",
+             ctx->entity_id.c_str(), unsigned(digest[0]), unsigned(digest[1]), unsigned(digest[2]),
+             unsigned(digest[3]), unsigned(digest[4]), unsigned(digest[5]));
+  }
+#endif
+}
+
+inline bool image_card_apply_camera_auth_refresh(ImageCardCtx *ctx, esphome::StringRef picture) {
+  if (!ctx->camera_auth_refresh_pending) return false;
+  std::string url = image_card_join_url(image_card_base_url(ctx), string_ref_limited(picture, 4096));
+  std::string_view token;
+  if (image_card_camera_proxy_for_entity(url, ctx->entity_id) &&
+      image_card_query_has_param(url, "token", &token) && !token.empty()) {
+    // Leave the next download to the existing tile or expanded-view retry.
+    ctx->camera_auth_refresh_pending = false;
+    ctx->access_token.assign(token);
+    ctx->source_url = std::move(url);
+  }
+  return true;
 }
 
 inline std::string image_card_append_query_param(const std::string &url,
@@ -3171,6 +3233,7 @@ inline void image_card_suspend_pipeline() {
     ctx->last_download_completed_ms = 0;
     ctx->access_token.clear();
     ctx->access_token_request_pending = false;
+    ctx->camera_auth_refresh_pending = false;
     ctx->access_token_request_started_ms = 0;
     ctx->camera_refresh_pending = false;
     ctx->startup_download_errors = 0;
@@ -3364,7 +3427,7 @@ inline bool image_card_bind_runtime(BtnSlot &s, const ParsedCfg &p,
     std::function<void(esphome::StringRef)>(
       [ctx, image_card_entity_id, image_card_generation](esphome::StringRef picture) {
         if (!image_card_context_current(ctx, image_card_entity_id, image_card_generation)) return;
-        image_card_handle_picture(ctx, picture);
+        if (!image_card_apply_camera_auth_refresh(ctx, picture)) image_card_handle_picture(ctx, picture);
       }),
     HA_SUBSCRIPTION_SCOPE_DEFAULT,
     true
