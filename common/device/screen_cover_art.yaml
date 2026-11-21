@@ -415,7 +415,7 @@ lvgl:
                   - label:
                       id: cover_art_playback_icon
                       align: center
-                      text: "\U000F03E4"
+                      text: "\U000F5001"
                       text_font: font_icon_main
                       text_color: 0xFFFFFF
                       clickable: false
@@ -548,7 +548,7 @@ script:
           auto &control = id(cover_art_playback_control);
           control.expire(millis());
           const bool paused = id(cover_art_last_playback_state) == "paused";
-          lv_label_set_text(id(cover_art_playback_icon), paused ? "\U000F040A" : "\U000F03E4");
+          lv_label_set_text(id(cover_art_playback_icon), paused ? "\U000F5000" : "\U000F5001");
           lv_obj_set_style_opa(id(cover_art_playback_button),
                               control.pending() ? LV_OPA_50 : LV_OPA_COVER, 0);
 
