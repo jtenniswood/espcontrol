@@ -1,0 +1,49 @@
+name: P4-86 JD9365 Test Firmware
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/p4-86-jd9365-test.yml
+      - builds/esp32-p4-86-jd9365-test.factory.yaml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Compile the experimental P4-86 firmware
+        run: |
+          source .github/esphome.env
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/config \
+            -v "$PWD:/config" \
+            "ghcr.io/esphome/esphome:${ESPHOME_VERSION}" \
+            compile /config/builds/esp32-p4-86-jd9365-test.factory.yaml
+
+      - name: Package the factory and OTA binaries
+        run: |
+          build_root=builds/.esphome/build/espcontrol-p4-86
+          factory=$(find "$build_root" -name firmware.factory.bin -print -quit)
+          test -s "$factory"
+          build_dir=$(dirname "$factory")
+          mkdir -p test-firmware
+          cp "$factory" test-firmware/esp32-p4-86-jd9365-test.factory.bin
+          cp "$build_dir/firmware.ota.bin" test-firmware/esp32-p4-86-jd9365-test.ota.bin
+          cd test-firmware
+          sha256sum ./*.bin > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: esp32-p4-86-jd9365-test-firmware
+          path: test-firmware/
+          if-no-files-found: error
