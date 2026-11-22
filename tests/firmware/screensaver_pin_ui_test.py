@@ -140,7 +140,14 @@ int main() {
   lv_event_t clear{"back"};
   screensaver_pin_key_cb(&clear);
   assert(ui.entry.empty() && ui.label->text == "Enter Pin");
-  assert(deferred.empty() && ui.label); // X with digits only clears the entry.
+  assert(deferred.empty() && ui.label);
+  auto *wake_overlay = ui.overlay;
+  screensaver_pin_key_cb(&clear);
+  screensaver_pin_refresh(true, nullptr, nullptr, nullptr, false);
+  assert(pin.locked() && pin.keypad_requested());
+  assert(ui.overlay == wake_overlay && ui.label->text == "Enter Pin" && deferred.empty());
+  screensaver_pin_key_cb(&submit);
+  assert(pin.locked() && ui.label->text == "Incorrect PIN" && deferred.empty());
   screensaver_pin_key_cb(&zero);
   lv_event_t four{"4"};
   screensaver_pin_key_cb(&four);
@@ -166,13 +173,6 @@ int main() {
   card.flags = other_card.flags = LV_OBJ_FLAG_CLICKABLE;
   screen_lock_card_refs().push_back({&card, &icon, &label, "locked", "unlocked"});
   show_screen_lock_pin() = [] { screensaver_pin_refresh(true, nullptr, nullptr, nullptr, false); };
-  espcontrol::DisplayModeController controller;
-  return_screen_lock_view() = [&] {
-    if (screensaver_pin_restore_previous_mode(controller)) {
-      pin.arm(pin.return_mode());
-      screensaver_pin_refresh(false, nullptr, nullptr, nullptr, false);
-    } else screensaver_pin_refresh(true, nullptr, nullptr, nullptr, false);
-  };
   screen_lock_activate();
   assert(ui.overlay && !ui.label && screen_lock_enabled() && label.text == "Screen Locked");
   assert(card.flags == LV_OBJ_FLAG_CLICKABLE && other_card.flags == LV_OBJ_FLAG_CLICKABLE);
@@ -192,14 +192,9 @@ int main() {
   assert(ui.label && ui.entry.empty());
   auto *keypad = ui.overlay;
   screensaver_pin_key_cb(&clear);
-  assert(pin.locked() && !pin.keypad_requested() && ui.overlay == keypad && deferred.size() == 1);
-  deferred.front()(nullptr); deferred.clear();
-  assert(ui.overlay && !ui.label && pin.locked()); // Empty X returns to locked cards.
   screensaver_pin_refresh(true, nullptr, nullptr, nullptr, false);
-  assert(!ui.label); // Periodic refresh must not reopen the dismissed keypad.
-  ui.overlay->on_release(&released);
-  deferred.front()(nullptr); deferred.clear();
-  assert(ui.label && ui.entry.empty());
+  assert(pin.locked() && pin.keypad_requested() && ui.overlay == keypad && ui.label);
+  assert(ui.entry.empty() && deferred.empty());
   screensaver_pin_key_cb(&zero);
   screensaver_pin_key_cb(&submit);
   assert(screen_lock_enabled() && ui.overlay);
@@ -228,30 +223,6 @@ int main() {
   screensaver_pin_key_cb(&submit);
   deferred.front()(nullptr); deferred.clear();
   assert(!pin.locked() && !ui.overlay);
-  // Cancel restores the actual previous mode, rather than the current
-  // configured screensaver preference. Unlocking is still required on wake.
-  for (auto mode : {espcontrol::DisplayMode::CLOCK, espcontrol::DisplayMode::DIMMED,
-                    espcontrol::DisplayMode::CAMERA, espcontrol::DisplayMode::DISPLAY_OFF,
-                    espcontrol::DisplayMode::COVER_ART}) {
-    assert(pin.lock());
-    pin.arm(mode);
-    controller.request(espcontrol::DisplayRequestSource::USER_WAKE, espcontrol::DisplayMode::ACTIVE);
-    screensaver_pin_refresh(true, nullptr, nullptr, nullptr, false);
-    assert(ui.label && pin.return_mode() == mode);
-    screensaver_pin_key_cb(&clear);
-    assert(pin.locked() && deferred.size() == 1);
-    deferred.front()(nullptr); deferred.clear();
-    assert(!ui.overlay && pin.locked() && controller.target_mode() == mode);
-    controller.clear(espcontrol::DisplayRequestSource::MANUAL_SLEEP);
-    controller.clear(espcontrol::DisplayRequestSource::MEDIA_PLAYBACK);
-    screensaver_pin_refresh(true, nullptr, nullptr, nullptr, false);
-    assert(ui.label && ui.entry.empty());
-    screensaver_pin_key_cb(&zero);
-    screensaver_pin_key_cb(&four);
-    screensaver_pin_key_cb(&submit);
-    deferred.front()(nullptr); deferred.clear();
-    assert(!pin.locked() && !ui.overlay);
-  }
   screen_lock_activate();
   assert(pin.locked());
   screen_lock_reset_registry();
@@ -334,4 +305,4 @@ with tempfile.TemporaryDirectory() as directory:
                     '-I', str(ROOT / 'tests/firmware/screensaver_pin_stubs'), str(source),
                     str(ROOT / 'components/espcontrol/screensaver_pin.cpp'), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)
-print('PIN interaction, cancellation, Settings lock visibility and shared-PIN unlock checks passed')
+print('PIN entry, clearing, Settings lock visibility and shared-PIN unlock checks passed')
