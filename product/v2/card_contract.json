@@ -1281,6 +1281,13 @@
           "omitDefault": true
         },
         {
+          "name": "pin_scramble",
+          "label": "Scramble PIN keypad",
+          "kind": "flag",
+          "defaultValue": "0",
+          "omitDefault": true
+        },
+        {
           "name": "actions",
           "label": "Visible Actions",
           "kind": "choice",
@@ -1355,6 +1362,7 @@
         "canonicalOptionOrder": [
           "pin_arm",
           "pin_disarm",
+          "pin_scramble",
           "actions",
           "icon_display",
           "label_display"
