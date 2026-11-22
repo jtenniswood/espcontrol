@@ -6,6 +6,7 @@
     { "name": "alarm_card_type", "label": "Type", "kind": "choice", "values": ["control_panel", "away", "home", "night", "vacation", "disarm"], "defaultValue": "control_panel", "storageField": "type", "omitDefault": false },
     { "name": "pin_arm", "label": "PIN required for arming", "kind": "flag", "defaultValue": "1", "omitDefault": true },
     { "name": "pin_disarm", "label": "PIN required for disarming", "kind": "flag", "defaultValue": "1", "omitDefault": true },
+    { "name": "pin_scramble", "label": "Scramble PIN keypad", "kind": "flag", "defaultValue": "0", "omitDefault": true },
     { "name": "actions", "label": "Visible Actions", "kind": "choice", "values": ["away", "home", "night", "vacation", "disarm"], "defaultValue": "away|home|disarm", "omitDefault": true },
     { "name": "icon_display", "label": "Icon Display", "kind": "choice", "values": ["static", "status"], "defaultValue": "status", "omitDefault": true },
     { "name": "label_display", "label": "Label Display", "kind": "choice", "values": ["name", "status"], "defaultValue": "status", "omitDefault": true }
@@ -20,7 +21,7 @@
       "options": { "policy": "hook", "hook": "normalize_security_options" }
     },
     "unknownOptions": "drop",
-    "canonicalOptionOrder": ["pin_arm", "pin_disarm", "actions", "icon_display", "label_display"],
+    "canonicalOptionOrder": ["pin_arm", "pin_disarm", "pin_scramble", "actions", "icon_display", "label_display"],
     "optionHook": "normalize_security_options"
   },
   "behavior": {

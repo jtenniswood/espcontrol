@@ -24,6 +24,7 @@ GOOGLE_SOURCE = (
 )
 ASSETS = ROOT / "common" / "assets"
 AXES = {"FILL": 0, "wght": 400, "GRAD": 0, "opsz": 24}
+FILLED_SYMBOLS = {0xF5000: "play_arrow", 0xF5001: "pause"}
 
 
 def icon_slots():
@@ -56,10 +57,13 @@ def generate(source, output):
         replacements[slot] = google_codepoints[symbol]
 
     mdi = TTFont(ASSETS / "fonts" / f"materialdesignicons-webfont-{MDI_VERSION}.ttf")
-    google = instantiateVariableFont(TTFont(source / "symbols.ttf"), AXES, inplace=True)
+    variable_font = TTFont(source / "symbols.ttf")
+    google = instantiateVariableFont(variable_font, AXES)
+    filled = instantiateVariableFont(variable_font, {**AXES, "FILL": 1}, inplace=True)
     mdi_cmap = mdi.getBestCmap()
     google_cmap = google.getBestCmap()
     google_glyphs = google.getGlyphSet()
+    filled_glyphs = filled.getGlyphSet()
     em = mdi["head"].unitsPerEm
     descent = mdi["hhea"].descent
     scale = em / google["head"].unitsPerEm
@@ -68,10 +72,16 @@ def generate(source, output):
     metrics = {".notdef": (em, 0)}
     cmap = {}
     for codepoint in sorted(set(slots.values())):
-        if codepoint in replacements:
+        if codepoint in replacements or codepoint in FILLED_SYMBOLS:
             name = mdi_cmap.get(codepoint, f"materialSymbol{codepoint:X}")
-            pen = TTGlyphPen(google_glyphs)
-            symbol = google_glyphs[google_cmap[replacements[codepoint]]]
+            if codepoint in FILLED_SYMBOLS:
+                glyph_set = filled_glyphs
+                symbol_codepoint = google_codepoints[FILLED_SYMBOLS[codepoint]]
+            else:
+                glyph_set = google_glyphs
+                symbol_codepoint = replacements[codepoint]
+            pen = TTGlyphPen(glyph_set)
+            symbol = glyph_set[google_cmap[symbol_codepoint]]
             # Google draws from the bottom of the em square. Match the panel
             # font's baseline and advance so existing label layouts still fit.
             symbol.draw(TransformPen(pen, (scale, 0, 0, scale, 0, descent)))
@@ -119,7 +129,8 @@ def generate(source, output):
     font.font["head"].modified = 3786912000
     font.font.recalcTimestamp = False
     font.save(output)
-    print(f"{len(replacements)} Material Symbols and {len(cmap) - len(replacements)} MDI glyphs")
+    material_count = len(replacements) + len(FILLED_SYMBOLS)
+    print(f"{material_count} Material Symbols and {len(cmap) - material_count} MDI glyphs")
 
 
 def main():

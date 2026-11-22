@@ -57,11 +57,12 @@ These modes still track the alarm state so the card can react to the selected al
 
 Alarm cards can require a PIN for arming and disarming. The PIN is entered on the panel when the action is used.
 
-Use the PIN settings to match how you want the wall panel to behave:
+In **All Controls**, the PIN settings are directly below **Visible Actions** in **Modal Settings**.
 
 - Leave **PIN required for arming** on if you do not want accidental arm actions.
 - Leave **PIN required for disarming** on for panels in shared spaces.
 - Turn off the arming PIN only when quick arming is safe for that panel location.
+- **Scramble PIN keypad** is off by default. Turn it on to shuffle the digits each time the alarm keypad opens. One-tap alarm cards have the same switch.
 
 ## How It Works on the Panel
 
