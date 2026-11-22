@@ -17,10 +17,10 @@ export function firmwareVersionsSame(this: any, a?: any, b?: any) {
             String(b == null ? "" : b).trim().toLowerCase();
     }
 export function publicFirmwareManifestUrl(this: any) {
-        return FIRMWARE_PUBLIC_MANIFEST_BASE + encodeURIComponent(deviceId) + "/manifest.json";
+        return FIRMWARE_PUBLIC_MANIFEST_BASE + encodeURIComponent(deviceId) + "/native.json";
     }
 export function publicFirmwareVersionsUrl(this: any) {
-        return FIRMWARE_PUBLIC_MANIFEST_BASE + encodeURIComponent(deviceId) + "/versions.json";
+        return FIRMWARE_PUBLIC_MANIFEST_BASE + encodeURIComponent(deviceId) + "/native-versions.json";
     }
 export function publicFirmwareAssetUrl(this: any, assetPath?: any, baseUrl?: any) {
         assetPath = String(assetPath || "").trim();
@@ -38,24 +38,11 @@ export function publicFirmwareAssetUrl(this: any, assetPath?: any, baseUrl?: any
 export function firmwareInfoFromPublicManifest(this: any, data?: any, baseUrl?: any) {
         if (!data || typeof data !== "object")
             return null;
-        var version: any = String(data.version || "").trim();
-        if (!isSpecificFirmwareVersion(version))
-            return null;
-        var builds: any = Array.isArray(data.builds) ? data.builds : [];
-        var expectedOta: any = deviceId + ".ota.bin";
-        for (var i: any = 0; i < builds.length; i++) {
-            var build: any = builds[i] || {};
-            var ota: any = build.ota || {};
-            var otaPath: any = String(ota.path || "").trim();
-            if (otaPath === expectedOta) {
-                return {
-                    latest_version: version,
-                    release_url: String(ota.release_url || "").trim(),
-                    ota_url: publicFirmwareAssetUrl(otaPath, baseUrl || publicFirmwareManifestUrl()),
-                    ota_filename: expectedOta,
-                    ota_md5: String(ota.md5 || "").trim(),
-                };
-            }
+        const builds = Array.isArray(data.builds) ? data.builds : [];
+        for (const build of builds) {
+            const info = firmwareInfoFromPublicVersionEntry(
+                { version: data.version, ota: build?.ota }, baseUrl || publicFirmwareManifestUrl());
+            if (info) return info;
         }
         return null;
     }

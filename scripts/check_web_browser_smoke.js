@@ -215,12 +215,12 @@ function routeContentType(url) {
   return "text/plain";
 }
 
-function publicFirmwareManifest(slug) {
+function publicFirmwareManifest(slug, native = true) {
   return {
-    version: "v1.13.0",
+    version: native ? "v1.13.0" : "v1.12.0",
     builds: [{
       ota: {
-        path: `${slug}.ota.bin`,
+        path: native ? `versions/v1.13.0/${slug}.ota.bin` : `${slug}.ota.bin`,
         md5: "0123456789abcdef0123456789abcdef",
       },
     }],
@@ -230,10 +230,10 @@ function publicFirmwareManifest(slug) {
 function publicFirmwareVersions(slug) {
   return {
     device: slug,
-    versions: ["v1.13.0", "v1.12.0", "v1.11.0"].map((version, index) => ({
+    versions: ["v1.13.0", "v1.12.0", "v1.11.0"].map(version => ({
       version,
       ota: {
-        path: index === 0 ? `${slug}.ota.bin` : `versions/${version}/${slug}.ota.bin`,
+        path: version === "v1.12.0" ? `${slug}.ota.bin` : `versions/${version}/${slug}.ota.bin`,
         md5: "0123456789abcdef0123456789abcdef",
       },
     })),
@@ -495,16 +495,16 @@ async function installRoutes(context, slug, options = {}) {
       return;
     }
     if (requestUrl.hostname === "jtenniswood.github.io") {
-      if (requestUrl.pathname.endsWith("/manifest.json")) {
+      if (/\/(native|manifest)\.json$/.test(requestUrl.pathname)) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
           headers: { "Access-Control-Allow-Origin": "*" },
-          body: JSON.stringify(publicFirmwareManifest(slug)),
+          body: JSON.stringify(publicFirmwareManifest(slug, requestUrl.pathname.endsWith("/native.json"))),
         });
         return;
       }
-      if (requestUrl.pathname.endsWith("/versions.json")) {
+      if (requestUrl.pathname.endsWith("/native-versions.json")) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -6871,9 +6871,11 @@ async function assertHostedCompatibility(browser) {
     await page.waitForSelector("#sp-app");
     await page.waitForFunction(() => window.__eventSources?.length > 0);
     await page.evaluate(events => window.__seedEspState(events), seededEvents());
-    await page.waitForFunction(() => ["manifest.json", "versions.json"].every(name =>
+    await page.waitForFunction(() => ["native.json", "native-versions.json"].every(name =>
       window.__compatRequests.some(item => item.url.startsWith("https://jtenniswood.github.io/espcontrol/firmware/") && item.url.endsWith(name) && item.status === 200)));
     const requests = await page.evaluate(() => window.__compatRequests);
+    assert(!requests.some(item => item.url.startsWith("https://jtenniswood.github.io/espcontrol/firmware/") && item.url.endsWith("/manifest.json")),
+      "the editor must not treat the installer gateway as the latest release");
     for (const request of requests.filter(item => item.url.startsWith("https://jtenniswood.github.io/espcontrol/firmware/"))) {
       assert.equal(request.credentials, "omit", "public metadata must not include browser credentials");
     }

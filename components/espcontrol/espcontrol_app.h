@@ -5,13 +5,16 @@
 #include <cstdint>
 #include <memory>
 
-#include "esphome/components/text/text.h"
 #include "esphome/core/component.h"
 
 #include "espcontrol_app_core.h"
 #include "panel_identity.h"
 #include "home_assistant_endpoint_resolver.h"
 namespace espcontrol {
+
+namespace configuration {
+class PanelConfigField;
+}
 
 // The main ESPHome component boundary for EspControl runtime services.
 // PanelIdentity runs separately because network identity must be restored earlier.
@@ -30,8 +33,8 @@ class EspControlApp : public esphome::Component {
   void on_safe_shutdown() override;
   void on_shutdown() override;
   float get_setup_priority() const override {
-    // The native configuration wiring binds restored ESPHome text entities.
-    // Those entities, and the P4 display services they can refresh, are only
+    // The native configuration wiring can refresh the display.
+    // P4 display services are only
     // ready once Wifi setup has completed. Starting the owner earlier makes
     // P4 firmware reset before ESPHome can confirm a new OTA boot.
     return esphome::setup_priority::AFTER_WIFI;
@@ -45,16 +48,16 @@ class EspControlApp : public esphome::Component {
   }
 
   void set_panel_config_device_profile(const char *device_profile);
-  void set_panel_config_button_order(esphome::text::Text *button_order);
-  void set_panel_config_button_on_color(esphome::text::Text *button_on_color);
+  void set_panel_config_button_order(configuration::PanelConfigField *button_order);
+  void set_panel_config_button_on_color(configuration::PanelConfigField *button_on_color);
   void set_panel_config_button(
-      uint8_t slot, esphome::text::Text *button,
-      esphome::text::Text *subpage_0, esphome::text::Text *subpage_1,
-      esphome::text::Text *subpage_2, esphome::text::Text *subpage_3,
-      esphome::text::Text *subpage_4 = nullptr,
-      esphome::text::Text *subpage_5 = nullptr,
-      esphome::text::Text *subpage_6 = nullptr,
-      esphome::text::Text *subpage_7 = nullptr);
+      uint8_t slot, configuration::PanelConfigField *button,
+      configuration::PanelConfigField *subpage_0, configuration::PanelConfigField *subpage_1,
+      configuration::PanelConfigField *subpage_2, configuration::PanelConfigField *subpage_3,
+      configuration::PanelConfigField *subpage_4 = nullptr,
+      configuration::PanelConfigField *subpage_5 = nullptr,
+      configuration::PanelConfigField *subpage_6 = nullptr,
+      configuration::PanelConfigField *subpage_7 = nullptr);
   void set_panel_config_card_images_storage(bool enabled) {
     panel_config_card_images_storage_ = enabled;
   }
@@ -73,13 +76,13 @@ class EspControlApp : public esphome::Component {
   bool create_native_configuration_runtime();
 
   struct PanelConfigTextSources {
-    esphome::text::Text *button{nullptr};
-    std::array<esphome::text::Text *, 8> subpages{};
+    configuration::PanelConfigField *button{nullptr};
+    std::array<configuration::PanelConfigField *, 8> subpages{};
   };
 
   const char *panel_config_device_profile_{nullptr};
-  esphome::text::Text *panel_config_button_order_{nullptr};
-  esphome::text::Text *panel_config_button_on_color_{nullptr};
+  configuration::PanelConfigField *panel_config_button_order_{nullptr};
+  configuration::PanelConfigField *panel_config_button_on_color_{nullptr};
   std::array<PanelConfigTextSources, 32> panel_config_button_texts_{};
   bool panel_config_card_images_storage_{false};
   // This owns every non-trivial configuration object. Keeping it separate

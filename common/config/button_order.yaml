@@ -11,28 +11,18 @@
 # =============================================================================
 
 text:
-  - platform: template
-    name: "${entity_button_order}"
-    internal: true
+  - platform: espcontrol
     id: button_order
-    optimistic: true
-    restore_value: true
     initial_value: ""
-    min_length: 0
-    max_length: 120
-    mode: text
-    entity_category: config
-    icon: "mdi:order-numeric-ascending"
-    update_interval: never
-    web_server:
-      sorting_group_id: sg_button
     on_value:
       then:
         - if:
             condition:
               lambda: |-
                 return !id(button_order).state.empty() &&
-                       lv_scr_act() == id(button_setup_page)->obj;
+                       (lv_scr_act() == id(button_setup_page)->obj ||
+                        lv_scr_act() == id(ha_setup_page)->obj ||
+                        lv_scr_act() == id(ha_actions_page)->obj);
             then:
               - delay: 750ms
               - script.execute: refresh_button_grid

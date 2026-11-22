@@ -4,6 +4,7 @@ import { createFirmwareUpdateFeature } from "../../src/webserver/application/fir
 import { createStateLoaderFeature } from "../../src/webserver/application/state_loader_api";
 import { createFirmwareVersionFeature } from "../../src/webserver/application/firmware_version_state";
 import { createPublicFirmwareInstallFeature } from "../../src/webserver/application/public_firmware_install";
+import { firmwareInfoFromPublicManifest, publicFirmwareManifestUrl } from "../../src/webserver/application/firmware_metadata";
 
 function equal(actual: unknown, expected: unknown, message: string) {
   if (actual !== expected) throw new Error(`${message}: expected ${expected}, got ${actual}`);
@@ -15,6 +16,13 @@ export async function runFirmwareUpdateTests() {
   globals.__ESPCONTROL_TIMEZONE_OPTIONS__ = [];
   initializeDeviceConfig();
   initializeAppState();
+  const publicBase = "https://jtenniswood.github.io/espcontrol/firmware/test/";
+  equal(publicFirmwareManifestUrl(), `${publicBase}native.json`, "editor uses the native release feed");
+  const nativeRelease = firmwareInfoFromPublicManifest({
+    version: "v2.16.0",
+    builds: [{ ota: { path: "versions/v2.16.0/test.ota.bin" } }],
+  });
+  equal(nativeRelease?.ota_url, `${publicBase}versions/v2.16.0/test.ota.bin`, "manifest accepts a versioned native OTA image");
   const realTimeout = globalThis.setTimeout;
   const realClearTimeout = globalThis.clearTimeout;
   const realNow = Date.now;

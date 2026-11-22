@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD_SCRIPT = ROOT / "scripts" / "build.py"
+RELEASE_CONTRACT = ROOT / "product" / "release_contract.json"
 RELEASE_TAG_RE = re.compile(r"^v\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$")
 VERSION_LIST_RE = re.compile(
     r"(?ms)^(WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = \(\n)(.*?)(^\))"
@@ -75,6 +76,12 @@ def supported_versions(tag: str, releases: list[dict]) -> list[str]:
     else:
         stable = [tag, *stable]
     stable = list(dict.fromkeys(stable))[:MAX_STABLE_RELEASES]
+    # Panels following the compatibility feed still need their immutable editor
+    # after the gateway release ages out of the ordinary compatibility window.
+    policy = json.loads(RELEASE_CONTRACT.read_text(encoding="utf-8")).get("panelConfigCompatibility", {})
+    gateway_tag = policy.get("legacyGatewayRelease")
+    if gateway_tag and gateway_tag not in stable:
+        stable.append(gateway_tag)
     prereleases = list(dict.fromkeys(prereleases))[:1]
     return ["dev", *stable, *prereleases]
 
