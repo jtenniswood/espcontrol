@@ -22,12 +22,10 @@ using espcontrol::DisplayMode;
 struct Widget { bool hidden = true; int raised = 0; };
 using lv_obj_t = Widget;
 constexpr int LV_OBJ_FLAG_HIDDEN = 1;
-Widget overlay, shadow, label, metadata, metadata_shadow;
+Widget overlay, label, metadata;
 auto *clock_image_overlay = &overlay;
-auto *clock_image_overlay_shadow = &shadow;
 auto *clock_image_overlay_label = &label;
 auto *photo_metadata_label = &metadata;
-auto *photo_metadata_shadow = &metadata_shadow;
 void lv_obj_add_flag(Widget *w, int) { w->hidden = true; }
 void lv_obj_clear_flag(Widget *w, int) { w->hidden = false; }
 bool lv_obj_has_flag(Widget *w, int) { return w->hidden; }
@@ -45,7 +43,14 @@ bool ha_api_state_connected() { return true; }
 bool clock_format_12h = false;
 void format_clock_time_without_suffix(char *b, size_t, int, int, bool) { b[0] = 0; }
 void apply_clock_screensaver_text_color(Widget *, const std::string &) {}
-void position_clock_image_overlay(Widget *, Widget *, Widget *, Widget *, Widget *, bool, bool) {}
+void position_clock_image_overlay(Widget *, Widget *, Widget *, bool, bool) {}
+struct HideOverlay {
+  void execute() { lv_obj_add_flag(&overlay, LV_OBJ_FLAG_HIDDEN); }
+} clock_overlay_hide;
+struct UpdateShadows {
+  unsigned calls = 0;
+  void execute() { ++calls; }
+} clock_overlay_update_shadows;
 struct App {
   DisplayMode mode = DisplayMode::CAMERA;
   App &display() { return *this; }
@@ -62,6 +67,7 @@ int main() {
   // Camera and image entities both use CAMERA; media playback uses COVER_ART.
   apply(static_cast<int>(DisplayMode::CAMERA));
   assert(!overlay.hidden && !label.hidden);
+  assert(clock_overlay_update_shadows.calls == 1);
   keep_on_top();
   assert(!overlay.hidden);
   for (auto mode : {DisplayMode::COVER_ART, DisplayMode::ACTIVE,

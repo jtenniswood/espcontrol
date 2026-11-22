@@ -23,6 +23,7 @@ assert entry.index({'script.execute': 'camera_screensaver_apply_dimming'}) < ent
 parent = camera['lvgl']['top_layer']['widgets'][0]['obj']
 assert parent['bg_color'] == 0 and parent['bg_opa'] == '100%'
 render = scripts['camera_screensaver_apply_dimming']['then'][0]['lambda']
+refresh_shadows = scripts['camera_screensaver_refresh_shadows']['then'][0]['lambda']
 source = r'''
 #include <algorithm>
 #include <cassert>
@@ -32,8 +33,21 @@ source = r'''
 #define id(x) x
 using lv_opa_t = unsigned char;
 constexpr int LV_PART_MAIN = 0;
-struct Widget { int opacity = 255; } image, clock_label, metadata, dashboard, cover_art;
+constexpr int LV_OBJ_FLAG_HIDDEN = 1;
+constexpr int LV_OPA_MIN = 2;
+#define LVGL_VERSION_MAJOR 9
+#define LV_USE_SNAPSHOT 1
+struct Widget { int opacity = 255; bool hidden = true; } image, camera, clock_label, metadata, dashboard, cover_art;
 Widget *camera_screensaver_image = &image;
+Widget *camera_screensaver = &camera;
+bool camera_screensaver_image_available = false;
+bool photo_overlay_image_visible = false;
+struct UpdateShadows {
+  int calls = 0;
+  void execute() { ++calls; }
+} clock_overlay_update_shadows;
+bool lv_obj_has_flag(Widget *widget, int) { return widget->hidden; }
+int lv_obj_get_style_image_opa(Widget *widget, int) { return widget->opacity; }
 struct Number { float state = 0; } screensaver_camera_dimming;
 #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026,4,0)
 void lv_obj_set_style_image_opa(Widget *widget, lv_opa_t opacity, int) { widget->opacity = opacity; }
@@ -42,6 +56,9 @@ void lv_obj_set_style_img_opa(Widget *widget, lv_opa_t opacity, int) { widget->o
 #endif
 void apply() {
 ''' + render + r'''
+}
+void refresh() {
+''' + refresh_shadows + r'''
 }
 int main() {
   for (const auto &test : {std::pair<float, int>{0,255}, {25,191}, {50,128}, {100,0}, {-20,255}, {120,0}}) {
@@ -57,6 +74,24 @@ int main() {
   camera_screensaver_image = nullptr; apply(); // Restore may run before widgets are ready.
   camera_screensaver_image = &image;
   screensaver_camera_dimming.state = 50; apply(); assert(image.opacity == 128); // Entry reapplies the restored value.
+  camera.hidden = false;
+  refresh();
+  assert(!photo_overlay_image_visible && clock_overlay_update_shadows.calls == 0); // Loading.
+  camera_screensaver_image_available = true;
+  refresh();
+  assert(!photo_overlay_image_visible && clock_overlay_update_shadows.calls == 0); // Still hidden.
+  image.hidden = false;
+  refresh();
+  assert(photo_overlay_image_visible && clock_overlay_update_shadows.calls == 1);
+  refresh();
+  assert(clock_overlay_update_shadows.calls == 1); // Photo replaced in place.
+  screensaver_camera_dimming.state = 100; apply(); refresh();
+  assert(!photo_overlay_image_visible && clock_overlay_update_shadows.calls == 2);
+  screensaver_camera_dimming.state = 0; apply(); refresh();
+  assert(photo_overlay_image_visible && clock_overlay_update_shadows.calls == 3);
+  camera.hidden = true;
+  refresh();
+  assert(!photo_overlay_image_visible && clock_overlay_update_shadows.calls == 4);
 }
 '''
 with tempfile.TemporaryDirectory(prefix='camera-dimming-') as directory:
@@ -66,4 +101,4 @@ with tempfile.TemporaryDirectory(prefix='camera-dimming-') as directory:
         binary = Path(directory) / str(version)
         subprocess.run(['c++', '-std=c++17', '-Wall', '-Wextra', '-Werror', f'-DESPHOME_VERSION_CODE={version}', str(cpp), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
-print('Camera dimming endpoints, restored state, overlay isolation and both LVGL APIs passed.')
+print('Camera dimming endpoints, restored state, photo shadow visibility and both LVGL APIs passed.')

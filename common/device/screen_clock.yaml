@@ -7,16 +7,17 @@
 # drift it for burn-in prevention.
 #
 # The transparent image overlay below is independent from the black clock
-# screensaver. It is hidden by default and only shown over cover art/camera
-# views when the optional clock overlay setting is enabled. Photo metadata
-# can appear independently in camera mode and reuses the existing body font.
-# Both use matching text shadows instead of blur to keep S3 overhead low.
+# screensaver. The clock and metadata can appear independently in camera
+# mode. Their soft shadows are drawn only while an image is visible.
 # =============================================================================
 
 substitutions:
   clock_date_font: font_text_title
 
 globals:
+  - id: photo_overlay_image_visible
+    type: bool
+    initial_value: 'false'
   - id: photo_metadata_subscribed_entity
     type: std::string
     initial_value: '""'
@@ -85,24 +86,10 @@ lvgl:
           hidden: true
           widgets:
             - label:
-                id: clock_image_overlay_shadow
-                text_font: font_clock_display
-                text_color: 0x000000
-                text_opa: 20%
-                text: "00:00"
-            - label:
                 id: clock_image_overlay_label
                 text_font: font_clock_display
                 text_color: 0xFFFFFF
                 text: "00:00"
-            - label:
-                id: photo_metadata_shadow
-                text_font: font_text_body
-                text_color: 0x000000
-                text_opa: 20%
-                long_mode: DOT
-                text: ""
-                hidden: true
             - label:
                 id: photo_metadata_label
                 text_font: font_text_body

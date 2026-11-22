@@ -19,6 +19,7 @@
 #include "clock_bar.h"
 #include "backlight_fade.h"
 #include "photo_metadata.h"
+#include "photo_text_shadow.h"
 #include "display_mode_controller.h"
 #include "sun_calc.h"
 #include "temperature_unit.h"
@@ -401,11 +402,10 @@ inline void position_clock_screensaver_label(lv_obj_t *overlay, lv_obj_t *label,
   lv_obj_set_pos(date_label, left + (block_w - date_w) / 2, top + h + gap);
 }
 
-inline void position_clock_image_overlay(lv_obj_t *overlay, lv_obj_t *shadow,
-                                         lv_obj_t *label, lv_obj_t *metadata,
-                                         lv_obj_t *metadata_shadow,
+inline void position_clock_image_overlay(lv_obj_t *overlay, lv_obj_t *label,
+                                         lv_obj_t *metadata,
                                          bool clock_visible, bool metadata_visible) {
-  if (!overlay || !shadow || !label) return;
+  if (!overlay || !label) return;
   screensaver_fill_screen(overlay);
   lv_obj_update_layout(overlay);
 
@@ -433,24 +433,13 @@ inline void position_clock_image_overlay(lv_obj_t *overlay, lv_obj_t *shadow,
     lv_obj_update_layout(metadata);
     metadata_height = std::min<int>(lv_obj_get_height(metadata), max_height);
     lv_obj_set_height(metadata, metadata_height);
-    lv_obj_set_size(metadata_shadow, initial.metadata_width, metadata_height);
-    lv_obj_set_style_text_align(metadata_shadow, LV_TEXT_ALIGN_RIGHT, 0);
   }
   const auto layout = espcontrol::photo_overlay_layout(
       screen_w, screen_h, lv_obj_get_width(label), lv_obj_get_height(label),
       metadata_height, clock_visible);
-  constexpr lv_coord_t shadow_offset_x = 1;
-  constexpr lv_coord_t shadow_offset_y = 2;
-  const lv_coord_t x = layout.margin;
-  const lv_coord_t y = layout.clock_y;
-  // Give the large clock shadow one extra pixel of separation on each axis.
-  lv_obj_set_pos(shadow, x + shadow_offset_x + 1, y + shadow_offset_y + 1);
-  lv_obj_set_pos(label, x, y);
-  if (metadata_visible) {
-    lv_obj_set_pos(metadata, layout.metadata_x, layout.metadata_y);
-    lv_obj_set_pos(metadata_shadow, layout.metadata_x + shadow_offset_x,
-                   layout.metadata_y + shadow_offset_y);
-  }
+  lv_obj_set_pos(label, layout.margin, layout.clock_y);
+  if (metadata_visible) lv_obj_set_pos(metadata, layout.metadata_x, layout.metadata_y);
+  lv_obj_update_layout(overlay);
 }
 
 // ── Firmware update interval ─────────────────────────────────────────

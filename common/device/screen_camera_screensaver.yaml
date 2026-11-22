@@ -4,6 +4,11 @@
 # Kept separate from the card image pool: this resource belongs to the display
 # mode, so enabling it never takes one of the dashboard camera-card slots.
 
+esp32:
+  framework:
+    sdkconfig_options:
+      CONFIG_LV_USE_SNAPSHOT: "y"
+
 globals:
   - id: camera_screensaver_transition_generation
     type: uint32_t
@@ -84,6 +89,7 @@ artwork_image:
             - lvgl.widget.hide: camera_screensaver_unavailable
             - lvgl.widget.hide: camera_screensaver_loading
             - lvgl.widget.show: camera_screensaver_image
+            - script.execute: camera_screensaver_refresh_shadows
     on_error:
       - lambda: |-
           if (!id(espcontrol_app).display().target_mode_is(espcontrol::DisplayMode::CAMERA)) return;
@@ -161,6 +167,20 @@ lvgl:
                 hidden: true
 
 script:
+  - id: camera_screensaver_refresh_shadows
+    mode: restart
+    then:
+      - lambda: |-
+          #if defined(LVGL_VERSION_MAJOR) && LVGL_VERSION_MAJOR >= 9 && LV_USE_SNAPSHOT
+          const bool visible = id(camera_screensaver_image_available) &&
+              !lv_obj_has_flag(id(camera_screensaver), LV_OBJ_FLAG_HIDDEN) &&
+              !lv_obj_has_flag(id(camera_screensaver_image), LV_OBJ_FLAG_HIDDEN) &&
+              lv_obj_get_style_image_opa(id(camera_screensaver_image), LV_PART_MAIN) >= LV_OPA_MIN;
+          if (id(photo_overlay_image_visible) == visible) return;
+          id(photo_overlay_image_visible) = visible;
+          id(clock_overlay_update_shadows).execute();
+          #endif
+
   - id: camera_screensaver_apply_dimming
     mode: restart
     then:
@@ -175,6 +195,7 @@ script:
           #else
           lv_obj_set_style_img_opa(id(camera_screensaver_image), opacity, LV_PART_MAIN);
           #endif
+      - script.execute: camera_screensaver_refresh_shadows
 
   - id: camera_screensaver_text_refresh
     mode: restart
@@ -197,6 +218,7 @@ script:
       - globals.set: { id: camera_screensaver_image_available, value: 'false' }
       - globals.set: { id: camera_screensaver_entity_unavailable, value: 'false' }
       - lvgl.widget.hide: camera_screensaver_image
+      - script.execute: camera_screensaver_refresh_shadows
       - lvgl.widget.show: camera_screensaver_unavailable
       - globals.set: { id: camera_screensaver_access_token, value: '""' }
       - globals.set: { id: camera_screensaver_request_pending, value: 'false' }
@@ -364,6 +386,7 @@ script:
             lambda: 'return !id(camera_screensaver_image_available);'
           then:
             - lvgl.widget.hide: camera_screensaver_image
+            - script.execute: camera_screensaver_refresh_shadows
             - lvgl.widget.hide: camera_screensaver_loading
             - lvgl.widget.show: camera_screensaver_unavailable
 
@@ -432,3 +455,4 @@ script:
           lv_obj_add_flag(id(camera_screensaver_image), LV_OBJ_FLAG_HIDDEN);
           lv_obj_clear_flag(id(camera_screensaver_unavailable), LV_OBJ_FLAG_HIDDEN);
       - lvgl.widget.hide: camera_screensaver
+      - script.execute: camera_screensaver_refresh_shadows
