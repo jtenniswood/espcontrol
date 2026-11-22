@@ -35,7 +35,7 @@ struct lv_obj_t {
 };
 int lv_label_class;
 constexpr int LV_DRAW_TASK_TYPE_LABEL=1, LV_EVENT_DRAW_TASK_ADDED=2, LV_EVENT_CHILD_CREATED=3;
-constexpr int LV_OBJ_FLAG_HIDDEN=8, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS=16, LV_PART_MAIN=0, LV_OPA_COVER=255, LV_OPA_80=204;
+constexpr int LV_OBJ_FLAG_HIDDEN=8, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS=16, LV_PART_MAIN=0, LV_OPA_COVER=255;
 struct lv_layer_t { lv_area_t _clip_area; };
 struct lv_draw_label_dsc_t {
   struct { lv_layer_t *layer; lv_obj_t *obj; } base;
@@ -145,14 +145,19 @@ void render(lv_obj_t *label){
  lv_draw_label(&layer,&descriptor,&label->area);
  emit(label,LV_EVENT_DRAW_TASK_ADDED,tasks.front().get());
 }
-void check_pair(lv_obj_t *label){
- render(label);assert(tasks.size()==2);
- const auto &shadow=*tasks[0],&foreground=*tasks[1];
- assert(shadow.owned_text==label->text && foreground.owned_text==label->text);
- assert(shadow.descriptor.color==0 && shadow.descriptor.opa==LV_OPA_80);
+void check_shadow(lv_obj_t *label){
+ render(label);assert(tasks.size()==6);
+ const auto &foreground=*tasks.back();
+ assert(foreground.owned_text==label->text);
  assert(foreground.descriptor.color==0xFFFFFF && foreground.descriptor.opa==LV_OPA_COVER);
- assert(shadow.area.x1==label->area.x1+1 && shadow.area.y1==label->area.y1+1);
- assert(shadow._real_area.x2==shadow.area.x2 && shadow._real_area.y2==shadow.area.y2);
+ const int offsets[][2]={{1,2},{-1,2},{3,2},{1,0},{1,4}};
+ for(size_t i=0;i<5;++i){
+  const auto &shadow=*tasks[i];
+  assert(shadow.owned_text==label->text && shadow.descriptor.color==0);
+  assert(shadow.descriptor.opa==(i==0?128:41));
+  assert(shadow.area.x1==label->area.x1+offsets[i][0] && shadow.area.y1==label->area.y1+offsets[i][1]);
+  assert(shadow._real_area.x2==shadow.area.x2 && shadow._real_area.y2==shadow.area.y2);
+ }
  assert(foreground.area.x1==label->area.x1 && foreground.area.y1==label->area.y1);
  assert(foreground.area.x2==label->area.x2 && foreground.area.y2==label->area.y2);
  for(const auto &t:tasks){
@@ -176,27 +181,27 @@ source += r'''
   title.text="Loading";value.text="--";unit.text="°C";icon.text="weather-icon";
   enable(&owner);enable(&owner);
   assert(owner.events.size()==1 && title.events.size()==1 && value.events.size()==1);
-  for(auto *label:{&title,&value,&unit,&icon})check_pair(label);
+  for(auto *label:{&title,&value,&unit,&icon})check_shadow(label);
   // Direct text replacement, units, fonts, wrapping and scroll offsets all use
   // the live descriptor; no special text setter or per-card shadow update.
   title.text="Updated\nsecond line";value.text="11°/6°";unit.text="%";
   title.font=32;title.align=2;title.line_space=4;title.letter_space=1;title.offset=-17;
   title.color=0; // A saved pale card colour must not make image text black.
   title.area={10,12,219,80};
-  for(auto *label:{&title,&value,&unit})check_pair(label);
-  attach(&late,&container,true);late.text="Late forecast column";check_pair(&late);
+  for(auto *label:{&title,&value,&unit})check_shadow(label);
+  attach(&late,&container,true);late.text="Late forecast column";check_shadow(&late);
   const auto children=container.children.size();
-  for(int i=0;i<30;++i){value.text=std::to_string(i);check_pair(&value);}
+  for(int i=0;i<30;++i){value.text=std::to_string(i);check_shadow(&value);}
   assert(container.children.size()==children && value.events.size()==1);
   value.text.clear();render(&value);assert(tasks.empty());
   value.text="Unavailable";value.hidden=true;render(&value);assert(tasks.empty());
   value.hidden=false;container.hidden=true;render(&value);assert(tasks.empty());
-  container.hidden=false;check_pair(&value);
+  container.hidden=false;check_shadow(&value);
   lv_obj_t image;refs.front().widget=&image;
   image.hidden=true;render(&value);assert(tasks.size()==1 && tasks.front()->descriptor.opa==178);
-  image.hidden=false;check_pair(&value);
+  image.hidden=false;check_shadow(&value);
   refs.front().widget=nullptr;render(&value);assert(tasks.size()==1);
-  refs.front().widget=&image;check_pair(&value);
+  refs.front().widget=&image;check_shadow(&value);
   refs.clear();card_background_unbind_text_tree(&owner);
   assert(owner.events.empty() && value.events.empty() && late.events.empty());
   render(&value);assert(tasks.size()==1 && tasks.front()->descriptor.opa==178);
@@ -214,18 +219,18 @@ source += r'''
   slider_bind_text_contrast(&label,&fill);enable(&owner);
   assert(label.events.size()==1); // No duplicate generic shadow callback.
   render(&label);
-  assert(tasks.size()>=2 && tasks[0]->descriptor.opa==LV_OPA_80);
+  assert(tasks.size()>=6 && tasks[0]->descriptor.opa==128);
   for(int y=0;y<100;++y)for(int x=0;x<100;++x){
    int matches=0;
    const bool filled=x>=fill.area.x1 && x<=fill.area.x2 && y>=fill.area.y1 && y<=fill.area.y2;
-   for(size_t i=1;i<tasks.size();++i){const auto &t=*tasks[i];const auto &c=t.clip_area;
+   for(size_t i=5;i<tasks.size();++i){const auto &t=*tasks[i];const auto &c=t.clip_area;
     if(x>=c.x1 && x<=c.x2 && y>=c.y1 && y<=c.y2){
      ++matches;assert(t.descriptor.opa==LV_OPA_COVER && t.descriptor.color==(filled?0u:0xFFFFFFu));
     }
    }
    assert(matches==1);
   }
-  slider_bind_text_contrast(&label,nullptr);assert(label.events.size()==1);check_pair(&label);
+  slider_bind_text_contrast(&label,nullptr);assert(label.events.size()==1);check_shadow(&label);
   refs.clear();card_background_unbind_text_tree(&owner);render(&label);assert(tasks.size()==1);
  }
  refs.clear();tasks.clear();

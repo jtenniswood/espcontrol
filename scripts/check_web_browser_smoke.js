@@ -8537,7 +8537,8 @@ async function assertAllImageCardText(browser, testCase) {
             if (image) {
               assert.strictEqual(style.color, 'rgb(255, 255, 255)', item.name + ' ' + style.className);
               assert.strictEqual(style.opacity, '1', item.name + ' ' + style.className);
-              assert.notStrictEqual(style.shadow, 'none', item.name + ' ' + style.className);
+              const shadowLayers = style.shadow.match(/rgba?\(/g) || [];
+              assert.strictEqual(shadowLayers.length, 5, item.name + ' ' + style.className);
             } else assert.strictEqual(style.shadow, 'none', item.name + ' preserves solid-card styling');
           }
         }

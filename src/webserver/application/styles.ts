@@ -103,7 +103,8 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-btn-has-bg .sp-btn-icon,.sp-btn-has-bg .sp-btn-label,.sp-btn-has-bg .sp-sensor-badge,.sp-btn-has-bg .sp-subpage-badge," +
         ".sp-btn-has-bg .sp-sensor-preview,.sp-btn-has-bg .sp-sensor-unit,.sp-btn-has-bg .sp-media-now-title,.sp-btn-has-bg .sp-media-now-artist," +
         ".sp-btn-has-bg .sp-weather-days,.sp-btn-has-bg .sp-weather-temperature-high,.sp-btn-has-bg .sp-weather-wind-speed,.sp-btn-has-bg .sp-rainfall-value{" +
-        "color:#fff;opacity:1;text-shadow:1px 1px rgba(0,0,0,.8)}" +
+        "color:#fff;opacity:1;text-shadow:1px 2px rgba(0,0,0,.5),-1px 2px rgba(0,0,0,.16)," +
+        "3px 2px rgba(0,0,0,.16),1px 0 rgba(0,0,0,.16),1px 4px rgba(0,0,0,.16)}" +
         ".sp-btn-icon{position:absolute;left:var(--btn-pad);top:var(--btn-pad);" +
         "font-size:var(--btn-icon);line-height:1;color:var(--card-text-color,var(--preview-text-primary));z-index:1}" +
         ".sp-btn>.sp-btn-label,.sp-btn>.sp-btn-label-row{margin-top:auto}" +

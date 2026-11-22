@@ -18,21 +18,32 @@ inline lv_draw_task_t *card_background_prepare_text_task(lv_draw_task_t *task) {
   foreground.color = lv_color_hex(0xFFFFFF);
   foreground.opa = LV_OPA_COVER;
   foreground.text_local = 1;
+
+  auto shadow = foreground;
+  shadow.color = lv_color_hex(0x000000);
+  shadow.opa = 41;
   auto *layer = descriptor->base.layer;
   const auto clip = layer->_clip_area;
   const auto area = task->area;
+  layer->_clip_area = task->clip_area;
+  // Surround the stronger centre with four faint samples. This softens the
+  // edge without allocating an offscreen buffer for every live card label.
+  const int offsets[][2] = {{-1, 2}, {3, 2}, {1, 0}, {1, 4}};
+  for (const auto &offset : offsets) {
+    const lv_area_t sample = {area.x1 + offset[0], area.y1 + offset[1],
+                              area.x2 + offset[0], area.y2 + offset[1]};
+    lv_draw_label(layer, &shadow, &sample);
+  }
   auto *tail = task;
   while (tail->next) tail = tail->next;
-  layer->_clip_area = task->clip_area;
-  // LVGL suppresses recursive draw-task events for tasks added in this event.
-  // The existing task draws the shadow first; the new task draws the foreground.
+  // LVGL suppresses recursive draw-task events for these additional tasks.
   lv_draw_label(layer, &foreground, &area);
   layer->_clip_area = clip;
   if (!tail->next) return task;
-  descriptor->color = lv_color_hex(0x000000);
-  descriptor->opa = LV_OPA_80;
-  ++task->area.x1; ++task->area.x2;
-  ++task->area.y1; ++task->area.y2;
+
+  descriptor->color = shadow.color;
+  descriptor->opa = 128;
+  task->area = {area.x1 + 1, area.y1 + 2, area.x2 + 1, area.y2 + 2};
   task->_real_area = task->area;
   return tail->next;
 }
