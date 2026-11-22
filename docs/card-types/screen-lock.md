@@ -27,7 +27,7 @@ After saving a PIN, you can also lock the screen from the **Screen Lock** button
 - **Screensaver on lock**, in the card's **Screensaver** panel below **Pin Protection**, is off by default. Tapping the card locks the controls while keeping the current screen visible. The normal return-to-home timeout still applies. Any touch opens the PIN keypad instead of activating a control; that first touch does not enter a digit.
 - Turn **Screensaver on lock** on to start the configured screensaver immediately when locking. Wake the panel to show the PIN keypad.
 - Enter the shared PIN and press the checkmark to unlock.
-- **X** clears entered digits. With no digits entered, it returns to the previous cards or screensaver view while keeping the screen locked.
+- **X** clears the entry and keeps the keypad open.
 - A wrong PIN keeps the panel locked. Tapping the card cannot bypass PIN entry.
 - If the screensaver starts while manually locked, waking shows the same keypad. A successful PIN entry releases both the screensaver lock and the card lock.
 - The lock state is local to the panel.
