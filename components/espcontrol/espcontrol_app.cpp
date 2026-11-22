@@ -269,7 +269,6 @@ void EspControlApp::initialize_native_configuration() {
     register_panel_config_endpoints();
     return;
   }
-  panel_config_service->set_runtime_adapter(&runtime.runtime_config);
   if (!runtime.text_bindings.configured()) {
     ESP_LOGW(TAG, "Native configuration sources are not configured");
   } else {
@@ -338,8 +337,31 @@ void EspControlApp::initialize_native_configuration() {
     runtime.document_buffer =
         runtime.memory + runtime.slot_capacity * 3;
     runtime.boot_buffer = runtime.memory + runtime.slot_capacity * 4;
-    const configuration::ServiceLoadResult loaded = panel_config_service->load(
+    configuration::ServiceLoadResult loaded = panel_config_service->load(
         runtime.document_buffer, runtime.slot_capacity);
+    if (configuration::PANEL_CONFIG_LEGACY_MODE ==
+            configuration::LegacyConfigurationMode::NATIVE_ONLY &&
+        loaded.status == configuration::ServiceStatus::EMPTY) {
+      // Seed the renderer defaults before exposing the document and its ETag.
+      // The runtime adapter stays detached until setup can defer grid updates.
+      size_t document_size = 0;
+      if (runtime.text_bindings.write_document(runtime.document_buffer,
+                                              runtime.slot_capacity,
+                                              &document_size)) {
+        const auto seeded = panel_config_service->save_if_generation(
+            0, configuration::PANEL_CONFIG_DOCUMENT_VERSION,
+            runtime.document_buffer, document_size);
+        if (seeded.ok()) {
+          loaded = panel_config_service->load(runtime.document_buffer,
+                                              runtime.slot_capacity);
+        } else {
+          loaded.status = seeded.status;
+        }
+      } else {
+        loaded.status = configuration::ServiceStatus::INVALID_DOCUMENT;
+      }
+    }
+    panel_config_service->set_runtime_adapter(&runtime.runtime_config);
     if (!configuration::panel_config_load_allows_native_endpoints(loaded.status)) {
       ESP_LOGW(TAG,
                "Native configuration initial load failed (%u)",

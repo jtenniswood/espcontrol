@@ -99,15 +99,16 @@ std::vector<uint8_t> bytes(const char *value) {
   return std::vector<uint8_t>(value, value + std::strlen(value));
 }
 
-std::vector<uint8_t> panel_config_document() {
+std::vector<uint8_t> panel_config_document(bool include_button = true) {
   std::array<uint8_t, 128> buffer{};
   PanelConfigWriter writer(buffer.data(), buffer.size());
   if (writer.begin() != PanelConfigStatus::OK ||
       writer.append_device_profile(
           reinterpret_cast<const uint8_t *>("esp32-p4-86"), 11) !=
           PanelConfigStatus::OK ||
-      writer.append_button(1, reinterpret_cast<const uint8_t *>("light.kitchen"),
-                           13) != PanelConfigStatus::OK) {
+      (include_button &&
+       writer.append_button(1, reinterpret_cast<const uint8_t *>("light.kitchen"),
+                            13) != PanelConfigStatus::OK)) {
     return {};
   }
   size_t document_size = 0;
@@ -303,24 +304,34 @@ bool native_only_ignores_legacy_storage_and_preserves_native_rollback() {
   FakeLegacy legacy;
   legacy.value = bytes("old-layout");
   FakeRuntime runtime;
-  ConfigurationService native(store, legacy, nullptr, nullptr, 0,
+  PanelConfigDocumentValidator validator;
+  ConfigurationService native(store, legacy, &validator, nullptr, 0,
                               LegacyConfigurationMode::NATIVE_ONLY);
-  native.set_runtime_adapter(&runtime);
 
   std::array<uint8_t, 64> output{};
   if (native.load(output.data(), output.size()).status != ServiceStatus::EMPTY ||
       native.refresh_legacy_shadow(output.data(), output.size()).status != ServiceStatus::EMPTY ||
       legacy.load_calls != 0) return false;
 
-  const auto layout = bytes("restored-layout");
-  if (!native.save_if_generation(0, CURRENT_CONFIGURATION_DOCUMENT_VERSION,
+  const auto defaults = panel_config_document(false);
+  if (defaults.empty() ||
+      !native.save_if_generation(0, PANEL_CONFIG_DOCUMENT_VERSION,
+                                 defaults.data(), defaults.size()).ok()) return false;
+  const auto initial = native.load(output.data(), output.size());
+  if (!initial.ok() || initial.generation != 1 ||
+      initial.document_size != defaults.size() ||
+      !std::equal(defaults.begin(), defaults.end(), output.begin())) return false;
+
+  native.set_runtime_adapter(&runtime);
+  const auto layout = panel_config_document();
+  if (!native.save_if_generation(initial.generation, PANEL_CONFIG_DOCUMENT_VERSION,
                                  layout.data(), layout.size()).ok() ||
       runtime.applied != layout || legacy.mirror_calls != 0) return false;
 
   ConfigurationService rollback(store, legacy, nullptr, nullptr, 0,
                                 LegacyConfigurationMode::READ_IMPORT_ONLY);
   const auto loaded = rollback.load(output.data(), output.size());
-  return loaded.status == ServiceStatus::OK && loaded.generation == 1 &&
+  return loaded.status == ServiceStatus::OK && loaded.generation == 2 &&
          loaded.document_size == layout.size() &&
          std::equal(layout.begin(), layout.end(), output.begin()) &&
          legacy.load_calls == 0;

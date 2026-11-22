@@ -19,8 +19,11 @@ text:
         - if:
             condition:
               lambda: |-
+                const auto *page = lv_scr_act();
                 return !id(button_order).state.empty() &&
-                       lv_scr_act() == id(button_setup_page)->obj;
+                       (page == id(button_setup_page)->obj ||
+                        page == id(ha_setup_page)->obj ||
+                        page == id(ha_actions_page)->obj);
             then:
               - delay: 750ms
               - script.execute: refresh_button_grid
