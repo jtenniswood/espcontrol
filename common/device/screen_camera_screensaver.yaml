@@ -4,10 +4,10 @@
 # Kept separate from the card image pool: this resource belongs to the display
 # mode, so enabling it never takes one of the dashboard camera-card slots.
 
-esp32:
-  framework:
-    sdkconfig_options:
-      CONFIG_LV_USE_SNAPSHOT: "y"
+esphome:
+  # ESPHome's generated LVGL config leaves snapshots unset and ignores Kconfig.
+  build_flags:
+    - "-DLV_USE_SNAPSHOT=1"
 
 globals:
   - id: camera_screensaver_transition_generation

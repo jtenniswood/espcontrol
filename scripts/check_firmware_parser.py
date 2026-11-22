@@ -1108,6 +1108,7 @@ def main() -> int:
         shutil.copy2(CLOCK_BAR_HEADER, tmp_path / "clock_bar.h")
         shutil.copy2(BACKLIGHT_HEADER, tmp_path / "backlight.h")
         shutil.copy2(BACKLIGHT_HEADER.with_name("photo_metadata.h"), tmp_path / "photo_metadata.h")
+        shutil.copy2(BACKLIGHT_HEADER.with_name("photo_text_shadow.h"), tmp_path / "photo_text_shadow.h")
         shutil.copy2(BACKLIGHT_FADE_HEADER, tmp_path / "backlight_fade.h")
         shutil.copy2(DISPLAY_MODE_CONTROLLER_HEADER, tmp_path / "display_mode_controller.h")
         shutil.copy2(LAYOUT_HEADER, tmp_path / "button_grid_layout.h")
