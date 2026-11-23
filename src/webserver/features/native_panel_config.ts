@@ -130,6 +130,19 @@ export class NativePanelConfigClient {
     return this.discovery_;
   }
 
+  async readDocument(): Promise<PanelConfigDocument | "unavailable" | "legacy"> {
+    if (!await this.discover()) return "legacy";
+    try {
+      const response = await this.fetch_("/api/v1/config", { cache: "no-store" });
+      // Earlier firmware can have a native endpoint and an empty native store.
+      if (response.status === 404) return "legacy";
+      if (response.ok) return decodePanelConfig(new Uint8Array(await response.arrayBuffer()));
+    } catch {
+      return "unavailable";
+    }
+    return "unavailable";
+  }
+
   async save(update: (document: PanelConfigDocument) => PanelConfigDocument): Promise<NativePanelConfigSaveResult> {
     if (!await this.discover()) return "unsupported";
     for (let attempt = 0; attempt < 2; attempt += 1) {

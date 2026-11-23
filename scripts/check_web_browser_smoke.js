@@ -6322,6 +6322,32 @@ async function assertGuestWifiSettings(page, label) {
   await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
 }
 
+async function assertNativeLayoutStartup(browser, testCase) {
+  const nativeState = nativeConfigState(testCase.slug);
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(context, testCase.slug, { nativeState });
+  const missingEntities = [];
+  await context.route(/\/text\/(Button(%20|_)Order|Button(%20|_)On(%20|_)Color|(?:Button|Subpage)(%20|_)\d+(%20|_)Config[^/?]*)\b/i, route => {
+    missingEntities.push(new URL(route.request().url()).pathname);
+    return route.fulfill({ status: 404, body: "Not found" });
+  });
+  // The API may advertise support just before a rebooting panel can serve the document.
+  await context.route("**/api/v1/config", route => route.fulfill({ status: 503, body: "Starting up" }), { times: 1 });
+  try {
+    const page = await context.newPage();
+    await page.goto(`http://espcontrol.test/${testCase.slug}`, { waitUntil: "domcontentloaded" });
+    await page.locator(".sp-banner.sp-offline").waitFor({ state: "visible" });
+    await page.locator('.sp-main [data-slot="2"]').getByText("Energy", { exact: true }).waitFor();
+    assert.strictEqual(await page.locator(".sp-banner.sp-offline").count(), 0);
+    await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+    await page.locator(".sp-main").getByText("Kitchen", { exact: true }).waitFor();
+    assert.deepStrictEqual(missingEntities, [], `${testCase.name}: native startup does not request removed entities`);
+    assert.strictEqual(nativeState.puts.length, 0, `${testCase.name}: startup leaves the saved layout intact`);
+  } finally {
+    await context.close();
+  }
+}
+
 async function assertNativeProfileJourney(browser, testCase) {
   const nativeState = nativeConfigState(testCase.slug);
   const context = await browser.newContext({ viewport: testCase.viewport });
@@ -8199,6 +8225,11 @@ async function assertWeatherReadingEditors(browser) {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_NATIVE_LAYOUT_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) await assertNativeLayoutStartup(browser, testCase);
+      console.log(`Native layout startup and retry passed for ${ACTIVE_CASES.length} generated layouts.`);
+      return;
+    }
     if (process.env.ESPCONTROL_CONTEXT_COLOUR_ONLY === "1") {
       for (const testCase of ACTIVE_CASES) await assertContextColourPicker(browser, testCase);
       console.log(`Drag selection and context colour checks passed for ${ACTIVE_CASES.length} layouts, native and legacy saves.`);
@@ -8332,6 +8363,7 @@ async function assertWeatherReadingEditors(browser) {
         await runCase(browser, testCase);
         await assertMediaModalSettingsJourney(browser, testCase);
       }
+      await assertNativeLayoutStartup(browser, testCase);
       await assertNativeProfileJourney(browser, testCase);
       await assertLegacyProfileFallback(browser, testCase);
       if (testCase.exerciseInteractions) await assertLegacyRestoreVerificationFailure(browser, testCase);
