@@ -7926,9 +7926,15 @@ async function assertSensorValueScreensaver(browser, testCase) {
     const timerEntity = card.locator("#sp-set-clock-mode-sensor-entity");
     const timerLabel = card.locator("#sp-set-clock-mode-sensor-label");
     const timerUnit = card.locator("#sp-set-clock-mode-sensor-unit");
+    assert.strictEqual(await timerLabel.getAttribute("placeholder"), "");
+    assert.strictEqual(await timerUnit.getAttribute("placeholder"), "");
     assert.strictEqual(await timerEntity.inputValue(), "sensor.ev_battery");
     assert.strictEqual(await timerLabel.inputValue(), "EV battery");
     assert.strictEqual(await timerUnit.inputValue(), "%");
+    const unitBox = await timerUnit.boundingBox();
+    const brightnessLabel = card.getByText("Daytime Brightness", { exact: true }).filter({ visible: true });
+    const brightnessBox = await brightnessLabel.boundingBox();
+    assert(brightnessBox.y - (unitBox.y + unitBox.height) >= 28, "Unit and brightness controls have a visible gap");
     const dateRow = card.locator("#sp-set-clock-date").locator("..").locator("..");
     assert.strictEqual(await dateRow.isVisible(), false);
     const beforeEdit = posts.length;

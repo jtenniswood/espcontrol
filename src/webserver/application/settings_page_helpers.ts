@@ -597,11 +597,12 @@ export function createSettingsPageHelpersFeature(
         });
         clockField.appendChild(clockSelect);
         const sensorFields = document.createElement("div");
+        sensorFields.className = "sp-screensaver-sensor-fields";
         sensorFields.hidden = !state.screensaverSensorSupported || state.screensaverAction !== "sensor_value";
         const sensorSettings = [
             { key: "entity", title: "Sensor entity", placeholder: "sensor.ev_battery", maxLength: 100 },
-            { key: "label", title: "Label (optional)", placeholder: "EV battery", maxLength: 64 },
-            { key: "unit", title: "Unit (optional)", placeholder: "%", maxLength: 16 },
+            { key: "label", title: "Label (optional)", placeholder: "", maxLength: 64 },
+            { key: "unit", title: "Unit (optional)", placeholder: "", maxLength: 16 },
         ] as const;
         for (const { key, title, placeholder, maxLength } of sensorSettings) {
             const id = `${selectId}-sensor-${key}`;
