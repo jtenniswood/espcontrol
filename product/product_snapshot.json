@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 10,
     "cardTypes": 44,
-    "entityNames": 113,
+    "entityNames": 116,
     "icons": 500,
     "structuralIcons": 28,
     "compatibilityFixtureGroups": 2
@@ -7427,6 +7427,45 @@
           "screen_saver__action",
           "screen_saver_action",
           "screensaver_action"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_sensor_entity",
+        "domain": "text",
+        "name": "Screen Saver: Sensor Entity",
+        "objectIds": [
+          "screen_saver__sensor_entity",
+          "screen_saver_sensor_entity",
+          "screensaver_sensor_entity"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_sensor_label",
+        "domain": "text",
+        "name": "Screen Saver: Sensor Label",
+        "objectIds": [
+          "screen_saver__sensor_label",
+          "screen_saver_sensor_label",
+          "screensaver_sensor_label"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_sensor_unit",
+        "domain": "text",
+        "name": "Screen Saver: Sensor Unit",
+        "objectIds": [
+          "screen_saver__sensor_unit",
+          "screen_saver_sensor_unit",
+          "screensaver_sensor_unit"
         ],
         "groups": [
           "settings"
