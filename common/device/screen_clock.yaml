@@ -108,7 +108,7 @@ lvgl:
                       layout:
                         type: flex
                         flex_flow: ROW
-                        flex_align_cross: center
+                        flex_align_cross: end
                         pad_column: 6
                       widgets:
                         - label:

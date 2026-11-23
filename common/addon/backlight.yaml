@@ -1706,6 +1706,9 @@ script:
           lv_label_set_display_text(id(screensaver_sensor_value_label), value.c_str());
 
           if (show_unit) {
+            // Flex aligns the label bottoms. Offset the smaller label so the text baselines match.
+            lv_obj_set_style_margin_bottom(id(screensaver_sensor_unit_label),
+                                           value_font->base_line - caption_font->base_line, LV_PART_MAIN);
             lv_label_set_display_text(id(screensaver_sensor_unit_label), configured_unit.c_str());
             lv_obj_clear_flag(id(screensaver_sensor_unit_label), LV_OBJ_FLAG_HIDDEN);
           } else {
