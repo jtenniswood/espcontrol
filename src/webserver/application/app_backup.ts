@@ -285,6 +285,11 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 ntp_server_3: state.ntpServer3,
                 screensaver_mode: getActiveScreensaverMode(),
                 presence_sensor_entity: state.presenceEntity,
+                ...(state.screensaverSensorSupported ? {
+                    screensaver_sensor_entity: state.screensaverSensor.entity,
+                    screensaver_sensor_label: state.screensaverSensor.label,
+                    screensaver_sensor_unit: state.screensaverSensor.unit,
+                } : {}),
                 screensaver_camera_entity: state.screensaverCameraEntity,
                 screensaver_metadata_entity: state.screensaverMetadataEntity,
                 metadata_overlay: state.metadataOverlayOn,
@@ -547,6 +552,19 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     var importedScreensaverMode: any = importedSettings.screensaverMode;
                     postScreensaverMode(importedScreensaverMode);
                     postPresenceSensorEntity(importedSettings.presenceSensorEntity);
+                    if (state.screensaverSensorSupported) {
+                        const readings = {
+                            entity: importedSettings.screensaverSensorEntity,
+                            label: importedSettings.screensaverSensorLabel,
+                            unit: importedSettings.screensaverSensorUnit,
+                        };
+                        for (const key of ["entity", "label", "unit"] as const) {
+                            const value = readings[key];
+                            if (value === undefined) continue;
+                            postText(entityName(`screen_saver_sensor_${key}`), value);
+                            state.screensaverSensor[key] = value;
+                        }
+                    }
                     if (controllers.layout.config.features?.cameraScreensaver && state.screensaverCameraSupported)
                         postText(entityName("screen_saver_camera_entity"), importedSettings.screensaverCameraEntity);
                     if (controllers.layout.config.features?.cameraScreensaver && state.screensaverCameraSupported)
@@ -581,6 +599,8 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     var importedScreensaverAction: any = importedSettings.screensaverAction;
                     if (importedScreensaverAction === "camera" &&
                         (!controllers.layout.config.features?.cameraScreensaver || !state.screensaverCameraSupported))
+                        importedScreensaverAction = "off";
+                    if (importedScreensaverAction === "sensor_value" && !state.screensaverSensorSupported)
                         importedScreensaverAction = "off";
                     var importedScreensaverDimmedBrightness: any = importedSettings.screensaverDimmedBrightness;
                     var importedScreensaverDimmedBrightnessDay: any = importedSettings.screensaverDimmedBrightnessDay;

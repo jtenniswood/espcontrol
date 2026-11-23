@@ -456,6 +456,8 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         timerPanel.appendChild(timeoutControl.field);
         var timerClockControls: any = createScreensaverThenControls("sp-set-clock-mode");
         timerPanel.appendChild(timerClockControls.clockField);
+        timerPanel.appendChild(timerClockControls.sensorFields);
+        els.setScreensaverSensorFields = timerClockControls.sensorFields;
         timerPanel.appendChild(timerClockControls.dimBrightnessField);
         timerPanel.appendChild(timerClockControls.brightnessField);
         els.setClockSelect = timerClockControls.clockSelect;
@@ -496,6 +498,8 @@ export function createSettingsPageFeature(codec: Pick<ConfigCodecFeature, "bindT
         });
         var sensorClockControls: any = createScreensaverThenControls("sp-set-sensor-clock-mode");
         sensorPanel.appendChild(sensorClockControls.clockField);
+        sensorPanel.appendChild(sensorClockControls.sensorFields);
+        els.setPresenceScreensaverSensorFields = sensorClockControls.sensorFields;
         sensorPanel.appendChild(sensorClockControls.dimBrightnessField);
         sensorPanel.appendChild(sensorClockControls.brightnessField);
         ssBody.appendChild(sensorPanel);

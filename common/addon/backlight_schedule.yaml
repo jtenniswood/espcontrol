@@ -477,10 +477,9 @@ text:
                         id(clock_overlay_enabled).state);
             then:
               - lambda: |-
-                  apply_clock_screensaver_text_color(
-                      id(clock_label), id(schedule_clock_text_color).state);
-                  apply_clock_screensaver_text_color(
-                      id(clock_date_label), id(schedule_clock_text_color).state);
+                  if (id(espcontrol_app).display().current_mode_is(espcontrol::DisplayMode::CLOCK)) {
+                    id(clock_screensaver_refresh_presentation).execute();
+                  }
                   apply_clock_screensaver_text_color(
                       id(clock_image_overlay_label), id(schedule_clock_text_color).state);
 

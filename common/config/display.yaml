@@ -631,6 +631,7 @@ select:
       - "Screen Dimmed"
       - "Clock"
       - "Camera"
+      - "Sensor Value"
     web_server:
       sorting_group_id: sg_screensaver
     on_value:
@@ -638,9 +639,11 @@ select:
         - lambda: |-
             std::string action = id(screensaver_action).current_option();
             id(screensaver_action_clock) = screensaver_action_clock_mode(action);
+            id(screensaver_action_sensor_value) = screensaver_action_sensor_value_mode(action);
             id(screensaver_action_dimmed) = screensaver_action_dimmed_mode(action);
             id(screensaver_action_camera) =
                 ${screensaver_camera_supported} && screensaver_action_camera_mode(action);
+        - script.execute: screensaver_sensor_refresh_subscription
         - if:
             condition:
               lambda: |-
@@ -867,6 +870,63 @@ text:
     on_value:
       then:
         - script.execute: camera_screensaver_config_changed
+
+  - platform: template
+    name: "${entity_screen_saver_sensor_entity}"
+    internal: true
+    id: screensaver_sensor_entity
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 100
+    mode: text
+    entity_category: config
+    icon: "mdi:gauge"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - script.execute: screensaver_sensor_refresh_subscription
+
+  - platform: template
+    name: "${entity_screen_saver_sensor_label}"
+    internal: true
+    id: screensaver_sensor_label
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 64
+    mode: text
+    entity_category: config
+    icon: "mdi:label-outline"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - script.execute: screensaver_sensor_render
+
+  - platform: template
+    name: "${entity_screen_saver_sensor_unit}"
+    internal: true
+    id: screensaver_sensor_unit
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 16
+    mode: text
+    entity_category: config
+    icon: "mdi:percent-outline"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - script.execute: screensaver_sensor_render
 
   - platform: template
     name: "${entity_screen_saver_metadata_entity}"

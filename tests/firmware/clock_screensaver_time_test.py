@@ -31,7 +31,8 @@ for source in time['time']:
 refresh = next((a['if'] for a in scripts['time_update']['then'] if 'if' in a and
                 {'script.execute': 'clock_screensaver_update_time'} in a['if']['then']), None)
 assert refresh is not None, 'Minute-boundary time_update does not refresh the screensaver'
-assert 'clock_screensaver_update_time' in str(scripts['show_clock_view'])
+assert 'clock_screensaver_refresh_presentation' in str(scripts['show_clock_view'])
+assert 'clock_screensaver_update_time' in str(scripts['clock_screensaver_refresh_presentation'])
 assert 'clock_label' not in str(backlight['interval']), 'Clock rendering must not depend on a periodic interval'
 assert 'clock_screensaver_update_time' not in str(backlight['interval'])
 
@@ -62,6 +63,7 @@ void lv_obj_add_flag(Widget *widget, int) { widget->hidden = true; }
 const char *espcontrol_i18n(const char *text) { return text; }
 struct Setting { std::string state = "FFFFFF"; } schedule_clock_text_color;
 bool clock_format_12h = false;
+bool screensaver_sensor_presentation_active = false;
 int drift_minute = -1;
 void lv_label_set_text(Widget *widget, const char *text) { widget->text = text; ++widget->writes; }
 void lv_label_set_display_text(Widget *widget, const char *text) { lv_label_set_text(widget, text); }
@@ -127,6 +129,13 @@ int main() {
   espcontrol_app.mode = DisplayMode::CLOCK;
   time_update();
   assert(label.text == "08:02" && drift_minute == 2);
+  screensaver_sensor_presentation_active = true;
+  panel_time.value = {8, 3, true};
+  time_update();
+  assert(label.text == "08:02" && drift_minute == 2);
+  screensaver_sensor_presentation_active = false;
+  time_update();
+  assert(label.text == "08:03" && drift_minute == 3);
 }
 '''
 with tempfile.TemporaryDirectory(prefix='clock-screensaver-time-') as directory:
