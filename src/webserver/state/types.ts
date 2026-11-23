@@ -150,6 +150,8 @@ export interface AppState {
   temperatureDegreeSymbolOn: boolean;
   subpageChevronsOn: boolean;
   presenceEntity: string;
+  screensaverSensorSupported: boolean;
+  screensaverSensor: { entity: string; label: string; unit: string };
   screensaverCameraEntity: string;
   screensaverCameraSupported: boolean;
   clockDateSupported: boolean;

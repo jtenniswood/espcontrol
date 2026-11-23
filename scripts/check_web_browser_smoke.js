@@ -7891,6 +7891,84 @@ async function assertS3ForecastEditorLayout(browser) {
 }
 
 
+async function assertSensorValueScreensaver(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  const nativeState = nativeConfigState(testCase.slug);
+  await installRoutes(context, testCase.slug, { nativeState });
+  const page = await context.newPage();
+  const posts = [];
+  page.on("request", request => {
+    if (request.method() === "POST" && new URL(request.url()).hostname === "espcontrol.test") posts.push(postRecord(request.url()));
+  });
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await seedNativeDocument(page, nativeState);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await page.getByRole("tab", { name: "Screen", exact: true }).click();
+    const card = page.locator("#sp-settings .card").filter({ has: page.locator(".card-header h3", { hasText: /^Screensaver$/ }) }).first();
+    await card.locator(".card-header").click();
+    await card.getByRole("button", { name: "Timer", exact: true }).click();
+    const action = card.locator("#sp-set-clock-mode");
+    assert.strictEqual(await action.locator('option[value="sensor_value"]').count(), 0,
+      "older firmware hides Sensor value");
+    await page.evaluate(() => window.__seedEspState([
+      { id: "text-screen_saver__sensor_entity", state: "sensor.ev_battery" },
+      { id: "text-screen_saver__sensor_label", state: "EV battery" },
+      { id: "text-screen_saver__sensor_unit", state: "%" },
+      { id: "switch-screen_saver__show_date", state: "ON", value: true },
+    ]));
+    const start = posts.length;
+    await action.selectOption("sensor_value");
+    await waitForPost(posts, { domain: "select", name: "screen_saver__action", action: "set", option: "Sensor Value" },
+      "Sensor value action saves", start);
+    const timerEntity = card.locator("#sp-set-clock-mode-sensor-entity");
+    const timerLabel = card.locator("#sp-set-clock-mode-sensor-label");
+    const timerUnit = card.locator("#sp-set-clock-mode-sensor-unit");
+    assert.strictEqual(await timerLabel.getAttribute("placeholder"), "");
+    assert.strictEqual(await timerUnit.getAttribute("placeholder"), "");
+    assert.strictEqual(await timerEntity.inputValue(), "sensor.ev_battery");
+    assert.strictEqual(await timerLabel.inputValue(), "EV battery");
+    assert.strictEqual(await timerUnit.inputValue(), "%");
+    const unitBox = await timerUnit.boundingBox();
+    const brightnessLabel = card.getByText("Daytime Brightness", { exact: true }).filter({ visible: true });
+    const brightnessBox = await brightnessLabel.boundingBox();
+    assert(brightnessBox.y - (unitBox.y + unitBox.height) >= 28, "Unit and brightness controls have a visible gap");
+    const dateRow = card.locator("#sp-set-clock-date").locator("..").locator("..");
+    assert.strictEqual(await dateRow.isVisible(), false);
+    const beforeEdit = posts.length;
+    await timerLabel.fill("Car charge");
+    await timerLabel.press("Enter");
+    await waitForPost(posts, { domain: "text", name: "screen_saver__sensor_label", action: "set", value: "Car charge" },
+      "sensor label saves", beforeEdit);
+    await card.getByRole("button", { name: "Sensor", exact: true }).click();
+    assert.strictEqual(await card.locator("#sp-set-sensor-clock-mode").inputValue(), "sensor_value");
+    assert.strictEqual(await card.locator("#sp-set-sensor-clock-mode-sensor-label").inputValue(), "Car charge");
+    await card.getByRole("button", { name: "Timer", exact: true }).click();
+    await action.selectOption("clock");
+    assert.strictEqual(await timerEntity.isVisible(), false, "Clock hides the sensor fields");
+    assert.strictEqual(await dateRow.isVisible(), true);
+    await action.selectOption("sensor_value");
+    await openBackupControls(page);
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const backup = JSON.parse(fs.readFileSync(await (await download).path(), "utf8"));
+    assert.strictEqual(backup.settings.screensaver_action, "sensor_value");
+    assert.strictEqual(backup.settings.screensaver_sensor_entity, "sensor.ev_battery");
+    assert.strictEqual(backup.settings.screensaver_sensor_label, "Car charge");
+    assert.strictEqual(backup.settings.screensaver_sensor_unit, "%");
+    backup.settings.screensaver_sensor_label = "Battery charge";
+    const beforeRestore = posts.length;
+    await importBackup(page, backup, `sensor-value-${testCase.slug}`);
+    await page.waitForSelector(".sp-banner.sp-success", { timeout: 15000 });
+    await waitForPost(posts, { domain: "text", name: "screen_saver__sensor_label", action: "set", value: "Battery charge" },
+      "backup restores the sensor label", beforeRestore);
+    assert.strictEqual(await timerLabel.inputValue(), "Battery charge");
+  } finally { await context.close(); }
+}
+
+
 async function assertCameraScreensaverDimming(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
   const nativeState = nativeConfigState(testCase.slug);
@@ -8256,6 +8334,11 @@ async function assertWeatherReadingEditors(browser) {
       console.log("Clock bar editor checks passed.");
       return;
     }
+    if (process.env.ESPCONTROL_SENSOR_VALUE_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) await assertSensorValueScreensaver(browser, testCase);
+      console.log(`Sensor value screensaver browser checks passed for ${ACTIVE_CASES.length} layouts.`);
+      return;
+    }
     if (process.env.ESPCONTROL_PIN_ONLY === "1") {
       await assertScreensaverPinSettings(browser);
       console.log("PIN settings browser checks passed.");
@@ -8358,6 +8441,7 @@ async function assertWeatherReadingEditors(browser) {
     await assertFirmwareRetryFeedback(browser);
     await assertResetControls(browser);
     for (const testCase of ACTIVE_CASES) {
+      await assertSensorValueScreensaver(browser, testCase);
       await assertCameraScreensaverDimming(browser, testCase);
       if (!acceptanceOnly) {
         await runCase(browser, testCase);
