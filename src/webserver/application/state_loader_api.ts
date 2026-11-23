@@ -1,5 +1,7 @@
 import { state } from "../state/app_instance";
+import { WEB_UI_COLORS } from "../state/ui_tokens";
 import { ENTITY_CATALOG } from "../generated/entity_catalog";
+import type { PanelConfigDocument } from "../model";
 import type { UiRuntimeState } from "./state";
 import type { ApplicationLayoutState } from "./application_context";
 import {
@@ -21,6 +23,8 @@ import type { GridMigrationFeature } from "./grid_migration";
 export interface StateLoaderDependencies {
     readonly subpageEntityKeys: () => string[];
     readonly connectEvents: () => void;
+    readonly readNativeLayout: () => Promise<PanelConfigDocument | "unavailable" | "legacy">;
+    readonly applyNativeLayout: (document: PanelConfigDocument) => void;
 }
 
 export interface StateLoaderFeature {
@@ -29,7 +33,7 @@ export interface StateLoaderFeature {
     settingsStateEntities(): any[];
     subpageStateEntities(): any[];
     loadStateItems(items?: any[], handleState?: (state: any) => void, concurrency?: number): Promise<number>;
-    loadInitialState(handleState?: (state: any) => void, onLoaded?: () => void): void;
+    loadInitialState(handleState: (event: unknown) => void, onLoaded: () => void): Promise<void>;
     refreshFirmwareVersion(): Promise<void>;
     refreshScreensaverTimeout(): void;
     waitForReboot(): void;
@@ -109,24 +113,30 @@ export function createStateLoaderFeature(runtime: UiRuntimeState, layout: Applic
             run();
         });
     }
-    function loadInitialState(this: any, handleState?: any, onLoaded?: any) {
-        loadStateItems(cardStateEntities(), handleState, 4).then(function (this: any, loadedCount?: any) {
-            if (loadedCount === 0) {
-                setConfigLocked(true, "Reconnecting to device\u2026");
-                showBanner("Reconnecting to device\u2026", "offline");
-                setTimeout(dependencies.connectEvents, 5000);
-                return;
-            }
-            if (onLoaded)
-                onLoaded();
-            clearTimeout(runtime.migrationTimer as any);
-            runtime.migrationTimer = setTimeout(gridMigration.schedule, 5000);
-            clearTimeout(runtime.sliderMigrationTimer as any);
-            runtime.pendingSliderSubpageMigrations = {};
-            loadStateItems(settingsStateEntities(), handleState, 2).then(function (this: any) {
-                loadStateItems(subpageStateEntities(), handleState, 2);
-            });
-        });
+    async function loadInitialState(handleState: (event: unknown) => void, onLoaded: () => void) {
+        const nativeLayout = await dependencies.readNativeLayout();
+        const legacy = nativeLayout === "legacy";
+        const available = legacy
+            ? (await loadStateItems(cardStateEntities(), handleState, 4)) > 0
+            : nativeLayout !== "unavailable" && nativeLayout.deviceProfile === layout.deviceId;
+        if (!available) {
+            setConfigLocked(true, "Reconnecting to device\u2026");
+            showBanner("Reconnecting to device\u2026", "offline");
+            setTimeout(dependencies.connectEvents, 5000);
+            return;
+        }
+        onLoaded();
+        clearTimeout(runtime.migrationTimer as any);
+        runtime.migrationTimer = setTimeout(gridMigration.schedule, 5000);
+        clearTimeout(runtime.sliderMigrationTimer as any);
+        runtime.pendingSliderSubpageMigrations = {};
+        if (nativeLayout !== "legacy" && nativeLayout !== "unavailable") {
+            dependencies.applyNativeLayout(nativeLayout);
+            handleState({ id: "text-button_order", state: nativeLayout.settings.button_order || "" });
+            handleState({ id: "text-button_on_color", state: nativeLayout.settings.button_on_color || WEB_UI_COLORS.primary });
+        }
+        await loadStateItems(settingsStateEntities(), handleState, 2);
+        if (legacy) await loadStateItems(subpageStateEntities(), handleState, 2);
     }
     function refreshFirmwareVersion(this: any): Promise<void> {
         var pending: any = 13;

@@ -141,7 +141,8 @@ export async function runFirmwareUpdateTests() {
     const loader = createStateLoaderFeature(runtime, {} as any, {} as any, version, updates, {} as any,
       { entityLookupNames: () => [], rememberEntityPostPath() {} } as any, {} as any,
       { getJsonQuietly: request, getJsonFirst: request, entityDetailPaths: () => [] } as any,
-      {} as any, { subpageEntityKeys: () => [], connectEvents() {} });
+      {} as any, { subpageEntityKeys: () => [], connectEvents() {},
+        readNativeLayout: async () => "legacy", applyNativeLayout() {} });
     state.firmwareInstallTargetVersion = "v2.8.6";
     updates.startInstallRefresh();
     let refreshed = false;
