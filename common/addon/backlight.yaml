@@ -1692,8 +1692,11 @@ script:
           const lv_coord_t unit_width = show_unit ? width / 4 : 0;
           const lv_coord_t value_width = show_unit ? width - unit_width - 6 : width;
           const auto *large_font = id(font_clock_display)->get_lv_font();
-          const bool use_large_font = !available || (numeric &&
-              lv_text_get_width(value.c_str(), value.size(), large_font, 0, LV_TEXT_FLAG_NONE) <= value_width);
+          lv_point_t measured{};
+          if (numeric) {
+            lv_text_get_size(&measured, value.c_str(), large_font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+          }
+          const bool use_large_font = !available || (numeric && measured.x <= value_width);
           const auto *caption_font = id(${clock_date_font})->get_lv_font();
           const auto *value_font = use_large_font ? large_font : caption_font;
           lv_obj_set_style_text_font(id(screensaver_sensor_value_label), value_font, LV_PART_MAIN);
