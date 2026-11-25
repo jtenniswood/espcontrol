@@ -188,6 +188,7 @@ export function normalizeScreensaverAction(value: unknown): string {
   const action = String(value || "").toLowerCase().replace(/[\s-]+/g, "_");
   if (action === "screen_dimmed" || action === "dimmed" || action === "dim") return "dim";
   if (action === "clock") return "clock";
+  if (action === "sensor_value") return "sensor_value";
   if (action === "camera") return "camera";
   return "off";
 }
@@ -196,6 +197,7 @@ export function screensaverActionOption(value: unknown): string {
   const action = normalizeScreensaverAction(value);
   if (action === "dim") return "Screen Dimmed";
   if (action === "clock") return "Clock";
+  if (action === "sensor_value") return "Sensor Value";
   if (action === "camera") return "Camera";
   return "Display Off";
 }
@@ -408,6 +410,9 @@ export interface BackupPanelSettingsState {
   ntpServer3: string;
   screensaverMode: string;
   presenceSensorEntity: string;
+  screensaverSensorEntity: string | undefined;
+  screensaverSensorLabel: string | undefined;
+  screensaverSensorUnit: string | undefined;
   screensaverCameraEntity: string;
   screensaverMetadataEntity: string;
   metadataOverlay: boolean;
@@ -564,6 +569,9 @@ export function normalizeBackupPanelSettings(
       : current.ntpServer3,
     screensaverMode: normalizeScreensaverMode(settings.screensaver_mode),
     presenceSensorEntity: String(settings.presence_sensor_entity || ""),
+    screensaverSensorEntity: typeof settings.screensaver_sensor_entity === "string" ? settings.screensaver_sensor_entity : undefined,
+    screensaverSensorLabel: typeof settings.screensaver_sensor_label === "string" ? settings.screensaver_sensor_label : undefined,
+    screensaverSensorUnit: typeof settings.screensaver_sensor_unit === "string" ? settings.screensaver_sensor_unit : undefined,
     screensaverCameraEntity: String(settings.screensaver_camera_entity || ""),
     screensaverCameraDimming: normalizeScreensaverCameraDimming(settings.screensaver_camera_dimming),
     screensaverMetadataEntity: String(settings.screensaver_metadata_entity || ""),

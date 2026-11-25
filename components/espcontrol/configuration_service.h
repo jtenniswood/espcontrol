@@ -18,6 +18,7 @@ constexpr size_t CONFIGURATION_DOCUMENT_HEADER_SIZE = 8;
 enum class LegacyConfigurationMode : uint8_t {
   DUAL_WRITE,
   READ_IMPORT_ONLY,
+  NATIVE_ONLY,
 };
 
 enum class LegacyStatus : uint8_t {

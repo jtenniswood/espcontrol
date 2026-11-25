@@ -18,7 +18,7 @@
 #include "configuration_store.h"
 #include "panel_config_read_endpoint.h"
 #include "panel_config_espidf_storage.h"
-#include "panel_config_esphome_text.h"
+#include "panel_config_field.h"
 #include "panel_config_legacy_adapter.h"
 #include "panel_config_runtime_adapter.h"
 #include "panel_config_service_validator.h"
@@ -61,13 +61,6 @@ constexpr uint32_t NATIVE_CONFIGURATION_INITIALIZATION_DELAY_MS = 5000;
 
 class EspControlApp::NativeConfigurationRuntime {
  public:
-  struct LegacyButtonTextSources {
-    configuration::EspHomePanelConfigTextValue button;
-    std::array<configuration::EspHomePanelConfigTextValue,
-               configuration::PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS>
-        subpages{};
-  };
-
   NativeConfigurationRuntime()
       : legacy_config(text_bindings), runtime_config(text_bindings),
         backend(blobs), store(backend) {}
@@ -85,10 +78,6 @@ class EspControlApp::NativeConfigurationRuntime {
   uint8_t *boot_buffer{nullptr};
   size_t slot_capacity{0};
   bool boot_configuration_pending{false};
-  configuration::EspHomePanelConfigTextValue button_order{};
-  configuration::EspHomePanelConfigTextValue button_on_color{};
-  std::array<LegacyButtonTextSources, configuration::PANEL_CONFIG_MAX_SLOT_COUNT>
-      buttons{};
 };
 
 EspControlApp::EspControlApp() = default;
@@ -100,21 +89,21 @@ void EspControlApp::set_panel_config_device_profile(const char *device_profile) 
 }
 
 void EspControlApp::set_panel_config_button_order(
-    esphome::text::Text *button_order) {
+    configuration::PanelConfigField *button_order) {
   panel_config_button_order_ = button_order;
 }
 
 void EspControlApp::set_panel_config_button_on_color(
-    esphome::text::Text *button_on_color) {
+    configuration::PanelConfigField *button_on_color) {
   panel_config_button_on_color_ = button_on_color;
 }
 
 void EspControlApp::set_panel_config_button(
-    uint8_t slot, esphome::text::Text *button,
-    esphome::text::Text *subpage_0, esphome::text::Text *subpage_1,
-      esphome::text::Text *subpage_2, esphome::text::Text *subpage_3,
-      esphome::text::Text *subpage_4, esphome::text::Text *subpage_5,
-      esphome::text::Text *subpage_6, esphome::text::Text *subpage_7) {
+    uint8_t slot, configuration::PanelConfigField *button,
+    configuration::PanelConfigField *subpage_0, configuration::PanelConfigField *subpage_1,
+      configuration::PanelConfigField *subpage_2, configuration::PanelConfigField *subpage_3,
+      configuration::PanelConfigField *subpage_4, configuration::PanelConfigField *subpage_5,
+      configuration::PanelConfigField *subpage_6, configuration::PanelConfigField *subpage_7) {
   if (slot == 0 || slot > panel_config_button_texts_.size()) return;
   panel_config_button_texts_[slot - 1] = {
       button, {subpage_0, subpage_1, subpage_2, subpage_3, subpage_4,
@@ -136,30 +125,23 @@ bool EspControlApp::create_native_configuration_runtime() {
   }
   native_configuration_runtime_.reset(runtime);
   runtime->text_bindings.set_device_profile(panel_config_device_profile_);
-  runtime->button_order.bind(panel_config_button_order_);
-  runtime->text_bindings.set_button_order(&runtime->button_order);
-  runtime->button_on_color.bind(panel_config_button_on_color_);
-  runtime->text_bindings.set_button_on_color(&runtime->button_on_color);
+  runtime->text_bindings.set_button_order(panel_config_button_order_);
+  runtime->text_bindings.set_button_on_color(panel_config_button_on_color_);
   for (size_t index = 0; index < panel_config_button_texts_.size(); ++index) {
     const PanelConfigTextSources &sources = panel_config_button_texts_[index];
     // Device profiles only provide text entities for their real panel slots.
-    // Do not register placeholder wrappers for the remaining fixed-capacity
+    // Do not register placeholder fields for the remaining fixed-capacity
     // entries: a restored document would correctly try to clear them, but the
-    // wrappers have no ESPHome text object to update.
+    // placeholders cannot accept a value.
     if (sources.button == nullptr) continue;
-    NativeConfigurationRuntime::LegacyButtonTextSources &legacy_sources =
-        runtime->buttons[index];
-    legacy_sources.button.bind(sources.button);
     std::array<configuration::PanelConfigTextValue *,
                configuration::PanelConfigTextBindings::MAX_SUBPAGE_CHUNKS>
-        legacy_subpages{};
+        subpages{};
     for (size_t subpage = 0; subpage < sources.subpages.size(); ++subpage) {
-      if (sources.subpages[subpage] == nullptr) continue;
-      legacy_sources.subpages[subpage].bind(sources.subpages[subpage]);
-      legacy_subpages[subpage] = &legacy_sources.subpages[subpage];
+      subpages[subpage] = sources.subpages[subpage];
     }
     runtime->text_bindings.set_button(static_cast<uint8_t>(index + 1),
-                                      &legacy_sources.button, legacy_subpages);
+                                      sources.button, subpages);
   }
   return true;
 }
@@ -249,10 +231,8 @@ void EspControlApp::setup() {
     ESP_LOGE(TAG, "Application core failed to start");
   }
 
-  // NVS work and the legacy snapshot can be expensive on a populated panel.
-  // Give the display and restored text entities time to come up before
-  // collecting the first legacy snapshot, while preserving the OTA rollback
-  // window for every supported device.
+  // Let the display settle before loading and applying the native layout.
+  // Keep enough time in the OTA rollback window to detect startup failure.
   ESP_LOGI(TAG, "Deferring native configuration initialization for %" PRIu32 " ms",
            NATIVE_CONFIGURATION_INITIALIZATION_DELAY_MS);
   this->set_timeout(NATIVE_CONFIGURATION_INITIALIZATION_DELAY_MS,
@@ -289,8 +269,7 @@ void EspControlApp::initialize_native_configuration() {
     register_panel_config_endpoints();
     return;
   }
-  panel_config_service->set_runtime_adapter(&runtime.runtime_config);
-  if (!runtime.legacy_config.configured()) {
+  if (!runtime.text_bindings.configured()) {
     ESP_LOGW(TAG, "Native configuration sources are not configured");
   } else {
     const configuration::PanelConfigStorageSelection storage =
@@ -358,29 +337,38 @@ void EspControlApp::initialize_native_configuration() {
     runtime.document_buffer =
         runtime.memory + runtime.slot_capacity * 3;
     runtime.boot_buffer = runtime.memory + runtime.slot_capacity * 4;
-    const configuration::ServiceLoadResult loaded = panel_config_service->load(
+    configuration::ServiceLoadResult loaded = panel_config_service->load(
         runtime.document_buffer, runtime.slot_capacity);
+    if (configuration::PANEL_CONFIG_LEGACY_MODE ==
+            configuration::LegacyConfigurationMode::NATIVE_ONLY &&
+        loaded.status == configuration::ServiceStatus::EMPTY) {
+      // Seed the renderer defaults before exposing the document and its ETag.
+      // The runtime adapter stays detached until setup can defer grid updates.
+      size_t document_size = 0;
+      if (runtime.text_bindings.write_document(runtime.document_buffer,
+                                              runtime.slot_capacity,
+                                              &document_size)) {
+        const auto seeded = panel_config_service->save_if_generation(
+            0, configuration::PANEL_CONFIG_DOCUMENT_VERSION,
+            runtime.document_buffer, document_size);
+        if (seeded.ok()) {
+          loaded = panel_config_service->load(runtime.document_buffer,
+                                              runtime.slot_capacity);
+        } else {
+          loaded.status = seeded.status;
+        }
+      } else {
+        loaded.status = configuration::ServiceStatus::INVALID_DOCUMENT;
+      }
+    }
+    panel_config_service->set_runtime_adapter(&runtime.runtime_config);
     if (!configuration::panel_config_load_allows_native_endpoints(loaded.status)) {
       ESP_LOGW(TAG,
-               "Native configuration initial load failed (%u); keeping legacy configuration endpoints active",
+               "Native configuration initial load failed (%u)",
                static_cast<unsigned>(loaded.status));
       runtime.document_buffer = nullptr;
     }
-    if (loaded.status == configuration::ServiceStatus::IMPORTED_LEGACY) {
-      ESP_LOGI(TAG, "Imported legacy panel configuration into generation %" PRIu32,
-               loaded.generation);
-    } else if (!loaded.ok() && loaded.status != configuration::ServiceStatus::EMPTY) {
-      ESP_LOGE(TAG, "Native configuration load failed (%u)",
-               static_cast<unsigned>(loaded.status));
-    }
-    // Once a durable native document exists it is authoritative. Its legacy
-    // mirror is persisted asynchronously by ESPHome and can still contain the
-    // previous layout after a quick reboot. Re-importing that stale mirror here
-    // would silently undo a successful card move, resize, or backup restore.
-    // ConfigurationService::load() already imports legacy values when native
-    // storage is empty, so no second boot-time shadow refresh is required.
-    const configuration::ServiceLoadResult live_document = loaded;
-    if (live_document.ok()) {
+    if (loaded.ok()) {
       // Publishing the restored values triggers the existing grid-refresh
       // automations. Run that only after every ESPHome component has completed
       // setup: on P4 panels the grid and LVGL objects are not safe to refresh

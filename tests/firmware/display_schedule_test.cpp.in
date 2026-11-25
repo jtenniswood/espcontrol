@@ -91,7 +91,7 @@ bool connectivity_setup_display_active = false, schedule_presence_detected = fal
      clock_bar_night_mode_active = false, cover_art_media_playing = false,
      media_player_playing = false, presence_detected = false;
 bool screensaver_action_clock = false, screensaver_action_dimmed = false,
-     screensaver_action_camera = false;
+     screensaver_action_camera = false, screensaver_action_sensor_value = false;
 uint32_t manual_wake_ms = 0, cover_art_transition_generation = 0, cover_art_download_generation = 0;
 uint32_t camera_screensaver_transition_generation = 0;
 std::string cover_art_active_media_player_entity;
@@ -120,6 +120,7 @@ void reset(DisplayMode night_mode = DisplayMode::CLOCK) {
   schedule_mode_always_on = night_mode == DisplayMode::ACTIVE;
   manual_wake_ms = 0; presence_detected = false; screensaver_mode.state = "timer";
   screensaver_action_clock = screensaver_action_dimmed = screensaver_action_camera = false;
+  screensaver_action_sensor_value = false;
   cover_art_screensaver_enabled.state = media_player_sleep_prevention_enabled.state = false;
   media_player_playing = false;
   espcontrol_app.controller = {};
@@ -186,11 +187,14 @@ int main() {
   // must never brighten and no fresh five-minute countdown may start.
   for (bool fast_first : {false, true}) {
     for (bool sensor : {false, true}) {
-      for (auto action : {DisplayMode::DISPLAY_OFF, DisplayMode::CLOCK,
-                          DisplayMode::DIMMED, DisplayMode::CAMERA}) {
+      for (auto [action, show_sensor_value] : {
+               std::pair{DisplayMode::DISPLAY_OFF, false}, std::pair{DisplayMode::CLOCK, false},
+               std::pair{DisplayMode::DIMMED, false}, std::pair{DisplayMode::CAMERA, false},
+               std::pair{DisplayMode::CLOCK, true}}) {
         reset();
         screensaver_mode.state = sensor ? "sensor" : "timer";
-        screensaver_action_clock = action == DisplayMode::CLOCK;
+        screensaver_action_clock = action == DisplayMode::CLOCK && !show_sensor_value;
+        screensaver_action_sensor_value = show_sensor_value;
         screensaver_action_dimmed = action == DisplayMode::DIMMED;
         screensaver_action_camera = action == DisplayMode::CAMERA;
         const int active_effects = display_mode_effect_active.calls;

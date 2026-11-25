@@ -490,6 +490,7 @@ export function createWebStyles(dragAnimation: boolean): string {
         ".sp-segment button.active{background:var(--accent);color:#fff}" +
         ".sp-brightness-mode-segment{margin-bottom:28px}" +
         ".sp-screensaver-mode{margin-bottom:24px}" +
+        ".sp-screensaver-sensor-fields{padding-bottom:12px}" +
         ".sp-clock-brightness-field{margin:18px 0 22px}" +
         ".sp-clock-brightness-field>.sp-toggle-row{padding:12px 0}" +
         ".sp-cond-field{padding:0 0 4px;display:none}" +

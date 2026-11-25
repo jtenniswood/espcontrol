@@ -80,11 +80,18 @@ In Timer or Sensor mode, set **Then**:
 | **Display Off** | Turns the backlight off. Default action. |
 | **Screen Dimmed** | Keeps your cards visible at a lower brightness. The first tap wakes instead of pressing a card. |
 | **Clock** | Shows a drifting clock. Set daytime/nighttime clock brightness; optionally enable **Show date**. |
+| **Sensor value** | Shows a live Home Assistant sensor reading and label on a black screen. |
 | **Camera** | Shows a `camera.*` or `image.*` entity full-screen on supported P4 and 4-inch 4848S040 S3 panels. |
 
 For Screen Dimmed, set its brightness. Automatic and Timed [Backlight](/settings/display#backlight) modes offer separate daytime and nighttime dimmed levels.
 
 Choose **Apply Configuration**, wait for the panel to reconnect, and test both sleep and wake. With Sensor mode, clear and trigger the sensor to check each state.
+
+### Show a Sensor Value
+
+Select **Then > Sensor value** and choose a Home Assistant `sensor.*` entity. For an EV battery, enter **EV battery** as the label and **%** as the unit. If you leave the label blank, the panel drops the `sensor.` prefix and displays the rest of the ID with spaces in place of underscores. The optional unit is shown with numeric readings.
+
+The reading updates while the screensaver is visible. An unavailable reading appears as **—**. Sensor value and Clock share the daytime and nighttime brightness settings.
 
 ### Show Photos or a Camera
 

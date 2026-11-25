@@ -183,6 +183,10 @@ ServiceLoadResult ConfigurationService::load_unlocked(uint8_t *output,
     return {ServiceStatus::STORE_FAILED, stored.status};
   }
 
+  if (legacy_mode_ == LegacyConfigurationMode::NATIVE_ONLY) {
+    return {ServiceStatus::EMPTY, StoreStatus::EMPTY};
+  }
+
   const LegacyLoadResult legacy = legacy_.load(output, output_capacity);
   if (legacy.status == LegacyStatus::EMPTY) {
     return {ServiceStatus::EMPTY, stored.status};
@@ -235,6 +239,10 @@ ServiceLoadResult ConfigurationService::refresh_legacy_shadow_unlocked(
     uint8_t *output, size_t output_capacity) {
   if (output == nullptr && output_capacity > 0) {
     return {ServiceStatus::INVALID_ARGUMENT, StoreStatus::INVALID_ARGUMENT};
+  }
+
+  if (legacy_mode_ == LegacyConfigurationMode::NATIVE_ONLY) {
+    return {ServiceStatus::EMPTY, StoreStatus::EMPTY};
   }
 
   const LegacyLoadResult legacy = legacy_.load(output, output_capacity);

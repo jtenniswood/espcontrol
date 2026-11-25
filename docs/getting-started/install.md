@@ -68,6 +68,10 @@ Once the display is on your WiFi network, Home Assistant should discover it auto
 
 This connection provides device states and controls. The clock normally uses network time, with Home Assistant as a fallback. After adding the device, you need to [allow it to perform Home Assistant actions](/getting-started/home-assistant-actions) so the touchscreen can control your devices.
 
+## Updating from Firmware Older than v2.15.0
+
+Install v2.15.0 first and let the panel boot once with its saved layout. It imports the layout into native storage. You can then use the panel’s firmware update controls to install a newer release. Save a backup from **System > Backup** before upgrading.
+
 ## Configure Your Panel
 
 With the display connected to WiFi and paired with Home Assistant, you're ready to set it up.
