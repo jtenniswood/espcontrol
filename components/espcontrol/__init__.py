@@ -6,8 +6,8 @@ EspControlApp owns long-lived firmware services while YAML continues to supply
 device-specific wiring.
 """
 import esphome.codegen as cg
-from esphome.components.esp32 import VARIANT_ESP32P4, VARIANT_ESP32S3, get_esp32_variant
 from esphome.components import text
+from esphome.components.esp32 import VARIANT_ESP32P4, VARIANT_ESP32S3, get_esp32_variant
 import esphome.config_validation as cv
 from esphome.const import CONF_ID, __version__
 from esphome.core import CORE, CoroPriority, Version, coroutine_with_priority
@@ -31,13 +31,14 @@ CONF_WEB_AUTH_PASSWORD = "web_auth_password"
 espcontrol_ns = cg.global_ns.namespace("espcontrol")
 EspControlApp = espcontrol_ns.class_("EspControlApp", cg.Component)
 PanelIdentity = espcontrol_ns.class_("PanelIdentity", cg.Component)
+PanelConfigField = espcontrol_ns.namespace("configuration").class_("PanelConfigField", text.Text, cg.Component)
 ResetBoot = espcontrol_ns.namespace("reset").class_("ResetBoot", cg.Component)
 
 PANEL_CONFIG_BUTTON_SCHEMA = cv.Schema(
     {
-        cv.Required(CONF_CONFIG): cv.use_id(text.Text),
+        cv.Required(CONF_CONFIG): cv.use_id(PanelConfigField),
         cv.Required(CONF_SUBPAGE_CHUNKS): cv.All(
-            cv.ensure_list(cv.use_id(text.Text)), cv.Length(min=4, max=8)
+            cv.ensure_list(cv.use_id(PanelConfigField)), cv.Length(min=4, max=8)
         ),
     }
 )
@@ -45,8 +46,8 @@ PANEL_CONFIG_BUTTON_SCHEMA = cv.Schema(
 PANEL_CONFIG_SCHEMA = cv.Schema(
     {
         cv.Required(CONF_DEVICE_PROFILE): cv.string_strict,
-        cv.Required(CONF_BUTTON_ORDER): cv.use_id(text.Text),
-        cv.Optional(CONF_BUTTON_ON_COLOR): cv.use_id(text.Text),
+        cv.Required(CONF_BUTTON_ORDER): cv.use_id(PanelConfigField),
+        cv.Optional(CONF_BUTTON_ON_COLOR): cv.use_id(PanelConfigField),
         cv.Required(CONF_BUTTONS): cv.All(
             cv.ensure_list(PANEL_CONFIG_BUTTON_SCHEMA), cv.Length(min=1, max=32)
         ),

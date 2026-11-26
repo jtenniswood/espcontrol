@@ -12,7 +12,7 @@
 substitutions:
   espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
   espcontrol_component_ref: "main"
-  mdi_font_file: "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf"
+  icon_font_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/${espcontrol_component_ref}/common/assets/fonts/espcontrol-icons.ttf"
 
 # ---------------------------------------------------------------------------
 # ESP32-P4 platform (16MB flash, ESP-IDF framework)
@@ -245,6 +245,7 @@ light:
     name: Display Backlight
     icon: mdi:lightbulb-on
     id: display_backlight
+    entity_category: config
     restore_mode: RESTORE_DEFAULT_ON
     default_transition_length: 0s
     gamma_correct: 1.0

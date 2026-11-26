@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress'
+import { usbInstallerReset } from './usb-installer-reset.mjs'
 import { faqSchema, hostname, jsonLd, writeRedirects } from './discovery'
 
 const defaultImage = {
@@ -175,6 +176,7 @@ const screenProducts: Record<string, Record<string, string>> = {
 }
 
 export default defineConfig({
+  vite: { plugins: [usbInstallerReset()] },
   title: 'EspControl',
   description:
     'Touchscreen control panel for Home Assistant on supported ESP32 panels — card-based controls, web configuration, automatic updates.',
@@ -298,6 +300,10 @@ export default defineConfig({
         articleSchema['@type'] = 'FAQPage'
         articleSchema.mainEntity = pageData.frontmatter.faqAnswers
         delete pageData.frontmatter.faqAnswers
+      }
+      if (pageData.relativePath === 'reference/icons.md') {
+        articleSchema['@type'] = 'CollectionPage'
+        articleSchema.about = { '@id': `${hostname}#software` }
       }
       const screenProduct = screenProducts[pageData.relativePath]
       if (screenProduct) {
@@ -433,6 +439,7 @@ export default defineConfig({
         text: 'Reference',
         items: [
           { text: 'FAQ', link: '/reference/faq' },
+          { text: 'Icon Gallery', link: '/reference/icons' },
           { text: 'Troubleshooting', link: '/getting-started/troubleshooting' },
           { text: 'Collect USB Logs', link: '/reference/collect-usb-logs' },
           { text: 'Device Runtime Tests', link: '/reference/device-runtime-tests' },

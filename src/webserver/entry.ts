@@ -527,6 +527,8 @@ function composeApplicationContext(): ApplicationContext {
     {
       subpageEntityKeys: configurationPersistence.subpageEntityKeys,
       connectEvents: () => appEvents.connect(),
+      readNativeLayout: () => nativePanelConfig.client?.readDocument() ?? Promise.resolve("legacy"),
+      applyNativeLayout: (document) => configEvents.applyNativeLayout(document),
     },
   );
   const clockBar = createClockBarController();

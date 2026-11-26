@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from itertools import dropwhile
 import json
 import os
 import re
@@ -19,6 +20,11 @@ WEB_MANIFEST = ROOT / "docs" / "public" / "webserver" / "web-assets.json"
 DOCUMENT_HEADER = ROOT / "components" / "espcontrol" / "panel_config_document.h"
 CAPABILITIES_HEADER = ROOT / "components" / "espcontrol" / "panel_config_capabilities.h"
 COMPATIBILITY_POLICY = ROOT / "components" / "espcontrol" / "configuration_release_policy.h"
+FIRMWARE_MODES = {
+    "dual-write": "DUAL_WRITE",
+    "read-import-only": "READ_IMPORT_ONLY",
+    "native-only": "NATIVE_ONLY",
+}
 
 
 def read_json(path: Path) -> dict:
@@ -35,7 +41,7 @@ def constant(path: Path, name: str) -> int:
 def compatibility_policy(contract: dict) -> dict:
     compatibility = contract.get("panelConfigCompatibility")
     assert isinstance(compatibility, dict), "release contract lacks PanelConfig compatibility policy"
-    assert compatibility.get("phase") in {"dual-write", "read-import-only"}, (
+    assert compatibility.get("phase") in FIRMWARE_MODES, (
         "PanelConfig compatibility phase is invalid"
     )
     assert compatibility.get("dualWriteStableReleases") == 2, (
@@ -44,13 +50,19 @@ def compatibility_policy(contract: dict) -> dict:
     assert compatibility.get("readImportOnlyStableReleases") == 1, (
         "PanelConfig compatibility policy must retain one read/import-only stable release"
     )
+    if compatibility["phase"] == "native-only":
+        gateway = compatibility.get("legacyGatewayRelease")
+        assert isinstance(gateway, str) and re.fullmatch(r"v\d+\.\d+\.\d+", gateway), (
+            "native-only requires a stable legacy gateway version"
+        )
     return compatibility
 
 
 def validate_release_history(contract: dict, releases: list[dict]) -> None:
-    """Require published manifests before advancing past the dual-write window."""
+    """Require published manifests for the preceding compatibility phase."""
     policy = compatibility_policy(contract)
-    if policy["phase"] == "dual-write":
+    phase = policy["phase"]
+    if phase == "dual-write":
         return
 
     matching = [
@@ -64,13 +76,26 @@ def validate_release_history(contract: dict, releases: list[dict]) -> None:
         release["manifest"]["releaseContract"].get("panelConfigCompatibility", {}).get("phase")
         for release in matching
     ]
-    if phases[0] == "read-import-only":
-        phases = phases[1:]
-    required = policy["dualWriteStableReleases"]
-    assert phases[:required] == ["dual-write"] * required, (
-        f"read-import-only requires {required} consecutive published dual-write releases "
+    preceding = list(dropwhile(lambda published_phase: published_phase == phase, phases))
+    if phase == "native-only":
+        previous_phase = "read-import-only"
+        required = policy["readImportOnlyStableReleases"]
+    else:
+        previous_phase = "dual-write"
+        required = policy["dualWriteStableReleases"]
+    assert preceding[:required] == [previous_phase] * required, (
+        f"{phase} requires {required} consecutive published {previous_phase} releases "
         "with the current PanelConfig document version"
     )
+    if phase == "native-only":
+        gateway = next(
+            (release for release in matching if release.get("tagName") == policy["legacyGatewayRelease"]),
+            None,
+        )
+        assert gateway is not None and (
+            gateway["manifest"]["releaseContract"].get("panelConfigCompatibility", {}).get("phase")
+            == "read-import-only"
+        ), "legacy gateway must be a published read/import-only release"
 
 
 def github_release_history(repository: str) -> list[dict]:
@@ -139,10 +164,7 @@ def verify() -> dict:
         "web-asset device profiles disagree with generated device manifest"
     )
     compatibility = compatibility_policy(contract)
-    expected_mode = {
-        "dual-write": "LegacyConfigurationMode::DUAL_WRITE",
-        "read-import-only": "LegacyConfigurationMode::READ_IMPORT_ONLY",
-    }[compatibility["phase"]]
+    expected_mode = "LegacyConfigurationMode::" + FIRMWARE_MODES[compatibility["phase"]]
     assert expected_mode in COMPATIBILITY_POLICY.read_text(encoding="utf-8"), (
         "firmware PanelConfig compatibility policy disagrees with release contract"
     )
@@ -176,13 +198,33 @@ def self_test() -> None:
         assert "2 consecutive published dual-write" in str(error)
     else:
         raise AssertionError("read/import-only accepted non-consecutive dual-write releases")
+    native_only_contract = json.loads(json.dumps(contract))
+    native_only_policy = native_only_contract["panelConfigCompatibility"]
+    native_only_policy["phase"] = "native-only"
+    native_only_policy["legacyGatewayRelease"] = "v2.15.0"
+    gateway = {**published("read-import-only"), "tagName": "v2.15.0"}
+    validate_release_history(native_only_contract, [gateway])
+    validate_release_history(
+        native_only_contract,
+        [published("native-only"), published("native-only"), gateway],
+    )
+    try:
+        validate_release_history(native_only_contract, [published("native-only"), published("dual-write")])
+    except AssertionError as error:
+        assert "1 consecutive published read-import-only" in str(error)
+    else:
+        raise AssertionError("native-only accepted release history without a read/import-only release")
+    try:
+        validate_release_history(native_only_contract, [published("read-import-only")])
+    except AssertionError as error:
+        assert "legacy gateway must be a published" in str(error)
+    else:
+        raise AssertionError("native-only accepted an unpublished gateway release")
     original = PRODUCT_MODEL.read_text(encoding="utf-8")
     original_policy = COMPATIBILITY_POLICY.read_text(encoding="utf-8")
-    current_mode, other_mode = (
-        ("DUAL_WRITE", "READ_IMPORT_ONLY")
-        if contract["panelConfigCompatibility"]["phase"] == "dual-write"
-        else ("READ_IMPORT_ONLY", "DUAL_WRITE")
-    )
+    current_phase = contract["panelConfigCompatibility"]["phase"]
+    current_mode = FIRMWARE_MODES[current_phase]
+    other_mode = next(mode for phase, mode in FIRMWARE_MODES.items() if phase != current_phase)
     try:
         product_model = json.loads(original)
         product_model["modelVersion"] = int(product_model["modelVersion"]) + 1

@@ -2,7 +2,7 @@
   "alarm": [
     {
       "name": "default alarm options are omitted",
-      "input": "alarm_control_panel.house;House;Security;Auto;;;alarm;;actions=away%7Chome%7Cdisarm,icon_display=status,label_display=status",
+      "input": "alarm_control_panel.house;House;Security;Auto;;;alarm;;pin_scramble=0,actions=away%7Chome%7Cdisarm,icon_display=status,label_display=status",
       "expected": {
         "entity": "alarm_control_panel.house",
         "label": "House",
@@ -16,8 +16,8 @@
       }
     },
     {
-      "name": "custom pin options are preserved",
-      "input": "alarm_control_panel.house;House;Security;Auto;;;alarm;;pin_arm=0,pin_disarm=0",
+      "name": "custom pin options and scrambling are preserved",
+      "input": "alarm_control_panel.house;House;Security;Auto;;;alarm;;pin_arm=0,pin_disarm=0,pin_scramble=1",
       "expected": {
         "entity": "alarm_control_panel.house",
         "label": "House",
@@ -27,7 +27,7 @@
         "unit": "",
         "type": "alarm",
         "precision": "",
-        "options": "pin_arm=0,pin_disarm=0"
+        "options": "pin_arm=0,pin_disarm=0,pin_scramble=1"
       }
     },
     {
@@ -92,7 +92,7 @@
     },
     {
       "name": "legacy alarm action icon is updated",
-      "input": "alarm_control_panel.house;Arm Home;Home;Auto;home;;alarm_action;;pin_arm=0",
+      "input": "alarm_control_panel.house;Arm Home;Home;Auto;home;;alarm_action;;pin_arm=0,pin_scramble=1",
       "expected": {
         "entity": "alarm_control_panel.house",
         "label": "Arm Home",
@@ -102,7 +102,7 @@
         "unit": "",
         "type": "alarm_action",
         "precision": "",
-        "options": "pin_arm=0"
+        "options": "pin_arm=0,pin_scramble=1"
       }
     }
   ]

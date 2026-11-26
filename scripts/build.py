@@ -39,8 +39,9 @@ from product_model_v2 import load_product_model_v2, source_directory, source_pat
 
 ROOT = Path(__file__).resolve().parent.parent
 MDI_VERSION = "7.4.47"
+MATERIAL_SYMBOL_SLUG_PREFIX = "material-symbol-"
 MDI_CSS_URL = f"https://cdn.jsdelivr.net/npm/@mdi/font@{MDI_VERSION}/css/materialdesignicons.css"
-MDI_WEB_FONT = ROOT / "common" / "assets" / "fonts" / f"materialdesignicons-webfont-{MDI_VERSION}.ttf"
+ASSET_ICON_FONT = ROOT / "common" / "assets" / "fonts" / "espcontrol-icons.ttf"
 INTER_WEB_FONT = ROOT / "node_modules" / "vitepress" / "dist" / "client" / "theme-default" / "fonts" / "inter-roman-latin.woff2"
 ROBOTO_WEB_FONT = ROOT / "common" / "assets" / "fonts" / "roboto-latin.woff2"
 SUPPORT_BUTTON_IMAGE = ROOT / "common" / "assets" / "images" / "buy-me-a-coffee-button.png"
@@ -3730,8 +3731,8 @@ def embedded_web_mdi_styles():
     stylesheet or font after the editor has started. This matters when a display
     is reachable on the local network but cannot reach the Internet.
     """
-    if not MDI_WEB_FONT.exists():
-        raise BuildError(f"Missing bundled web icon font: {MDI_WEB_FONT.relative_to(ROOT)}")
+    if not ASSET_ICON_FONT.exists():
+        raise BuildError(f"Missing bundled web icon font: {ASSET_ICON_FONT.relative_to(ROOT)}")
     if not INTER_WEB_FONT.exists():
         raise BuildError(f"Missing bundled web interface font: {INTER_WEB_FONT.relative_to(ROOT)}")
     if not ROBOTO_WEB_FONT.exists():
@@ -3749,7 +3750,7 @@ def embedded_web_mdi_styles():
     interface_font_data = base64.b64encode(INTER_WEB_FONT.read_bytes()).decode("ascii")
     preview_font_data = base64.b64encode(ROBOTO_WEB_FONT.read_bytes()).decode("ascii")
     support_button_image_data = base64.b64encode(SUPPORT_BUTTON_IMAGE.read_bytes()).decode("ascii")
-    icon_font_data = base64.b64encode(MDI_WEB_FONT.read_bytes()).decode("ascii")
+    icon_font_data = base64.b64encode(ASSET_ICON_FONT.read_bytes()).decode("ascii")
     css = [
         "@font-face{font-family:'Roboto';src:url(data:font/woff2;base64,",
         preview_font_data,
@@ -3760,10 +3761,10 @@ def embedded_web_mdi_styles():
         "@font-face{font-family:'Inter';src:url(data:font/woff2;base64,",
         interface_font_data,
         ") format('woff2');font-weight:100 900;font-style:normal;font-display:swap}",
-        "@font-face{font-family:'Material Design Icons';src:url(data:font/ttf;base64,",
+        "@font-face{font-family:'EspControl Icons';src:url(data:font/ttf;base64,",
         icon_font_data,
         ") format('truetype');font-weight:normal;font-style:normal;font-display:block}",
-        ".mdi{display:inline-block;font-family:'Material Design Icons';font-weight:normal;font-style:normal;line-height:1;text-rendering:auto;-webkit-font-smoothing:antialiased}",
+        ".mdi{display:inline-block;font-family:'EspControl Icons';font-weight:normal;font-style:normal;line-height:1;text-rendering:auto;-webkit-font-smoothing:antialiased}",
         ".mdi::before{display:inline-block}",
     ]
     css.extend(
@@ -3812,7 +3813,7 @@ def check_firmware_icon_literals(data):
 
 
 def check_mdi_versions():
-    """Make sure the browser CSS and device font URLs stay on the same MDI version."""
+    """Check any MDI references against the pinned fallback release."""
     files = [
         ROOT / "src" / "webserver" / "application" / "app.ts",
         ROOT / "common" / "assets" / "icons.yaml",
@@ -3834,17 +3835,29 @@ def check_mdi_versions():
 
 
 def validate_icon_data(data):
-    """Verify icons.json matches the pinned Material Design Icons release."""
+    """Verify legacy MDI codepoints and reserved slots for Google-only icons."""
     errors = []
     errors.extend(check_duplicate_icon_fields(data))
     errors.extend(check_mdi_versions())
     errors.extend(check_firmware_icon_literals(data))
 
     mdi_codepoints = load_mdi_codepoints()
+    material_symbols = load_json(ROOT / "common" / "assets" / "material_symbols.json")
+    material_slots = set()
     for item in icon_items(data):
         mdi = item["mdi"]
-        expected = mdi_codepoints.get(mdi)
         actual = item["codepoint"].upper()
+        if mdi.startswith(MATERIAL_SYMBOL_SLUG_PREFIX):
+            symbol = material_symbols.get(mdi, "")
+            if not re.fullmatch(r"[a-z0-9_]+", symbol) or mdi != MATERIAL_SYMBOL_SLUG_PREFIX + symbol.replace("_", "-"):
+                errors.append(f"{item['name']} needs a matching Material Symbols entry for {mdi}")
+            if not re.fullmatch(r"F4[0-9A-F]{3}", actual):
+                errors.append(f"{item['name']} must use a Material Symbols slot from F4000 to F4FFF")
+            elif actual in material_slots:
+                errors.append(f"{item['name']} reuses Material Symbols slot {actual}")
+            material_slots.add(actual)
+            continue
+        expected = mdi_codepoints.get(mdi)
         if expected is None:
             errors.append(f"{item['name']} references missing mdi-{mdi}")
         elif actual != expected:
@@ -3875,7 +3888,7 @@ def assert_icon_data_valid(data):
     if not errors:
         return
 
-    print(f"Icon data does not match Material Design Icons {MDI_VERSION}:")
+    print("Icon catalog contains invalid entries:")
     for error in errors:
         print(f"  {error}")
     raise BuildError("Icon validation failed.")
@@ -3902,7 +3915,9 @@ def gen_icon_glyphs(data):
             continue
         seen_codepoints.add(icon["codepoint"])
         cp = icon["codepoint"]
-        lines.append(f'- "\\U{cp:>08s}"  # mdi-{icon["mdi"]}\n')
+        slug = icon["mdi"]
+        comment = slug if slug.startswith(MATERIAL_SYMBOL_SLUG_PREFIX) else f"mdi-{slug}"
+        lines.append(f'- "\\U{cp:>08s}"  # {comment}\n')
     return "".join(lines)
 
 

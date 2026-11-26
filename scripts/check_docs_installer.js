@@ -40,6 +40,99 @@ async function checkFlashPower(revision, romPowered = false) {
   }
 }
 
+async function checkPostFlashReset() {
+  const { usbInstallerReset } = await import('../docs/.vitepress/usb-installer-reset.mjs');
+  const flashPath = path.join(path.dirname(require.resolve('esp-web-tools')), 'flash.js');
+  const source = fs.readFileSync(flashPath, 'utf8');
+  const installer = usbInstallerReset();
+  const flashSource = installer.transform(source, flashPath);
+  assert.equal(installer.transform(source, flashPath + '?v=dev'), flashSource);
+  const runFlash = new Function('Transport', 'ESPLoader', 'window', 'location', 'console', flashSource
+    .replace(/^import .*;$/gm, '')
+    .replace('export const flash', 'const sleep = async () => {}; const flash') + '\nreturn flash;');
+
+  const v3 = 'guition-esp32-p4-jc1060p470-v3';
+  for (const scenario of [
+    { label: 'V3 manually booted over native USB', expected: 'watchdog' },
+    { label: 'V3 booted into download mode by USB', straps: 0x8, expected: 'normal' },
+    { label: 'V3 on a USB-to-UART adapter', nativeUsb: false, expected: 'normal' },
+    { label: 'V2 manually booted over native USB', slug: 'guition-esp32-p4-jc1060p470-v2', expected: 'normal' },
+    { label: 'V3 with a failed write', writeFails: true, expected: 'normal' },
+  ]) {
+    const calls = [];
+    const chip = new ESP32P4ROM();
+    chip.usesUsbJtagSerial = async () => scenario.nativeUsb !== false;
+    chip.watchdogReset = async () => calls.push('watchdog');
+    class Transport {
+      async setRTS() { calls.push('RTS'); }
+      async disconnect() { calls.push('disconnect'); }
+    }
+    class Loader {
+      chip = chip;
+      async main() {}
+      async flashId() {}
+      async readReg(address) {
+        assert.equal(address, chip.GPIO_STRAP_REG);
+        return scenario.straps ?? 0;
+      }
+      async writeFlash() {
+        calls.push('write');
+        if (scenario.writeFails) throw new Error('Write failed');
+      }
+      async after() { calls.push('normal'); }
+    }
+    const location = new URL('https://example.com/espcontrol/getting-started/install');
+    const flash = runFlash(Transport, Loader, {}, location, { log() {} });
+    const manifest = { builds: [{ chipFamily: 'ESP32-P4', parts: [] }] };
+    const events = [];
+    await flash(event => events.push(event), { getInfo: () => ({}) },
+      `/espcontrol/firmware/${scenario.slug ?? v3}/manifest.json`, manifest, false);
+    assert.deepEqual(calls, ['write', ...(scenario.expected === 'normal' ? ['RTS'] : []),
+      scenario.expected, 'disconnect'], scenario.label);
+    assert.equal(events.at(-1).state, scenario.writeFails ? 'error' : 'finished', scenario.label);
+    if (!scenario.writeFails) {
+      assert.equal(events.at(-1).restartedWithWatchdog, scenario.expected === 'watchdog', scenario.label);
+    }
+  }
+  console.log('7-inch V3 post-flash reset checks passed.');
+
+  const dialogPath = path.join(path.dirname(flashPath), 'install-dialog.js');
+  const dialogSource = installer.transform(fs.readFileSync(dialogPath, 'utf8'), dialogPath + '?v=dev');
+  const confirmInstall = dialogSource.match(/    async _confirmInstall\(\) \{([\s\S]+?)\n    \}/)[1];
+  for (const { restartedWithWatchdog, improvWait, shouldReopen } of [
+    { restartedWithWatchdog: true, improvWait: 0, shouldReopen: false },
+    { restartedWithWatchdog: true, improvWait: 10, shouldReopen: true },
+    { restartedWithWatchdog: false, improvWait: 0, shouldReopen: true },
+  ]) {
+    const calls = [];
+    const state = { state: 'finished', restartedWithWatchdog };
+    let reopen;
+    const runConfirmInstall = new Function('flash', 'sleep', `return async function () {${confirmInstall}}`)(
+      onEvent => onEvent(state), () => new Promise(resolve => { reopen = resolve; }));
+    const dialog = {
+      _manifest: { new_install_improv_wait_time: improvWait },
+      port: {
+        async close() { calls.push('close'); },
+        async open() { calls.push('reopen'); },
+      },
+      async _initialize(justInstalled) { assert.equal(justInstalled, true); calls.push('initialize'); },
+      requestUpdate() { calls.push('update'); },
+    };
+    await runConfirmInstall.call(dialog);
+    assert.equal(dialog._installState, state);
+    assert.equal(Boolean(reopen), shouldReopen);
+    if (shouldReopen) {
+      reopen();
+      await new Promise(resolve => setImmediate(resolve));
+      assert.deepEqual(calls, ['close', 'reopen', 'initialize', 'update']);
+    } else {
+      assert.deepEqual(calls, ['close']);
+      assert.equal(dialog._client, null, 'Show completion without checking for serial Wi-Fi setup');
+    }
+  }
+  console.log('7-inch V3 installer completion checks passed.');
+}
+
 async function checkBrowser() {
   const { chromium } = require('playwright');
   const { createServer } = require('node:http');
@@ -127,5 +220,6 @@ async function checkBrowser() {
   for (const revision of [100, 300, 301, 302]) await checkFlashPower(revision);
   await checkFlashPower(302, true);
   console.log('P4 flash-power regression checks passed for the resolved installer dependency.');
+  await checkPostFlashReset();
   if (process.argv.includes('--browser')) await checkBrowser();
 })().catch(error => { console.error(error); process.exitCode = 1; });

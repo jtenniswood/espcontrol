@@ -11,7 +11,7 @@ substitutions:
   name: "espcontrol-jc8012p4a1-v2"
   friendly_name: "EspControl 10inch V2"
   espcontrol_component_url: "file:///config"
-  mdi_font_file: "/config/common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
+  icon_font_file: "/config/common/assets/fonts/espcontrol-icons.ttf"
   espcontrol_component_ref: "HEAD"
 
 esp32:
