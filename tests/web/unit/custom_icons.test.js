@@ -4,7 +4,7 @@ const { describe, test } = require("node:test");
 const assert = require("node:assert/strict");
 const { loadTypescriptTest } = require("./helpers/load_typescript_test");
 
-const { customIconCodepoint, normalizeCustomIcon, iconSlug } =
+const { customIconCodepoint, normalizeCustomIcon, iconSlug, CUSTOM_ICON_FONT_URL } =
   loadTypescriptTest("src/webserver/application/ui_primitives.ts");
 
 describe("custom MDI icons", () => {
@@ -55,6 +55,34 @@ describe("custom MDI icons", () => {
     assert.equal(iconSlug("mdi:F0F92"), "custom-f0f92");
     assert.equal(iconSlug("mdi:f0f92"), "custom-f0f92");
     assert.equal(iconSlug("mdi:10FFFD"), "custom-10fffd");
+  });
+
+  test("previews custom icons from the bundled font first, then Material Design Icons", () => {
+    const appended = [];
+    const fakeStyle = {
+      text: "",
+      appendChild(node) { this.text += node.text; },
+    };
+    globalThis.document = {
+      head: { appendChild(node) { appended.push(node); } },
+      createElement(tag) { assert.equal(tag, "style"); return fakeStyle; },
+      createTextNode(text) { return { text }; },
+    };
+    try {
+      assert.equal(iconSlug("mdi:F1234"), "custom-f1234");
+      assert.equal(iconSlug("mdi:F1235"), "custom-f1235");
+      assert.equal(iconSlug("mdi:F1234"), "custom-f1234");
+    } finally {
+      delete globalThis.document;
+    }
+    assert.equal(appended.length, 1);
+    const css = fakeStyle.text;
+    assert.equal(css.split("@font-face").length - 1, 1);
+    assert.ok(css.includes("src:url(" + CUSTOM_ICON_FONT_URL + ")"));
+    assert.ok(css.includes(
+      ".mdi-custom-f1234::before{content:'\\f1234';font-family:'EspControl Icons','EspControl Custom Icons'}"));
+    assert.ok(css.includes(".mdi-custom-f1235::before"));
+    assert.equal(css.split(".mdi-custom-f1234").length - 1, 1);
   });
 
   test("shows the cog for malformed custom values, like the firmware", () => {

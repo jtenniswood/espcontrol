@@ -49,7 +49,7 @@ export function escAttr(value: unknown): string {
 const CUSTOM_ICON_RE = /^mdi:([0-9A-Fa-f]{5,6})$/;
 
 function isIconCodepoint(codepoint: number): boolean {
-  // The bundled MDI font only uses the supplementary Private Use Areas.
+  // Material Design Icons only use the supplementary Private Use Areas.
   return codepoint >= 0xF0000 && codepoint <= 0x10FFFD;
 }
 
@@ -73,19 +73,31 @@ export function normalizeCustomIcon(input: unknown): string | null {
 const customIconRules = new Set<string>();
 let customIconStyle: HTMLStyleElement | null = null;
 
-// The bundled icon font contains every MDI glyph, but CSS classes exist only
-// for built-in icons. Add a class for each custom codepoint the first time
-// it is shown so every existing preview renders it unchanged.
+// The same Material Design Icons font the custom icon docs tell people to
+// compile in through `extras`.
+export const CUSTOM_ICON_FONT_URL =
+  "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.woff2";
+
+// The bundled icon font only has the built-in icons, and CSS classes exist
+// only for those. Add a class for each custom codepoint the first time it is
+// shown so every existing preview renders it unchanged. The bundled font stays
+// first, so a built-in codepoint looks the same as on the display; the browser
+// only downloads the Material Design Icons font for glyphs the bundled font
+// lacks, so pages without custom icons never fetch it.
 function customIconSlug(codepoint: number): string {
   const hex = codepoint.toString(16);
   const slug = "custom-" + hex;
   if (!customIconRules.has(slug) && typeof document !== "undefined" && document.head) {
     if (!customIconStyle) {
       customIconStyle = document.createElement("style");
+      customIconStyle.appendChild(document.createTextNode(
+        "@font-face{font-family:'EspControl Custom Icons';src:url(" + CUSTOM_ICON_FONT_URL +
+        ") format('woff2');font-weight:normal;font-style:normal;font-display:block}"));
       document.head.appendChild(customIconStyle);
     }
     customIconStyle.appendChild(document.createTextNode(
-      ".mdi-" + slug + "::before{content:'\\" + hex + "'}"));
+      ".mdi-" + slug + "::before{content:'\\" + hex +
+      "';font-family:'EspControl Icons','EspControl Custom Icons'}"));
     customIconRules.add(slug);
   }
   return slug;

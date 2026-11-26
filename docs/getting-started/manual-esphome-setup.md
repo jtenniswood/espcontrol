@@ -152,6 +152,8 @@ The **Custom icon** option only appears for icons that are in that display's fir
 
 Add the icon to every display where you want to use it. If a card uses a custom icon that isn't in that display's YAML, the web page preview still shows it, but the display shows an empty space where the icon should be.
 
+The web page preview loads custom icons from the same Material Design Icons font online, so the computer or phone you open the web page on needs internet access to preview them. The display itself does not.
+
 ESPHome stops with `Found duplicate glyph` if an icon is already built in. Remove that line and pick it from the normal icon list instead.
 
 Each extra icon uses a little firmware space. This is rarely a concern on the P4 displays. On the 4-inch S3 display, keep the list short.
