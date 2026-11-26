@@ -27,11 +27,11 @@ A Climate card controls a Home Assistant `climate` entity, such as a thermostat,
 6. Choose **Temperature Display**:
    - **10** shows whole numbers.
    - **10.2** shows one decimal place.
-7. Choose **Temperature Step**:
-   - **1 degree** changes the target by whole degrees.
+7. In **Advanced**, choose **Temperature Step** for this card.
+   - **1 degree** is the default and changes the target by whole degrees.
    - **0.5 degree** changes the target by half degrees.
-   Home Assistant limits still apply, and larger Home Assistant `target_temp_step` values are respected.
-8. Use **Advanced** only if you want to override the minimum or maximum temperature range shown on the panel. Negative values are supported, for example `-25` to `5` for a freezer thermostat.
+   - **0.1 degree** shows the target to one decimal place and changes it by tenths. For example, one tap of **+** changes 20.0°C to 20.1°C on a compatible thermostat. If Home Assistant reports a larger `target_temp_step`, this option uses that step.
+8. **Advanced** also lets you override the minimum or maximum temperature shown on the panel. Negative values are supported, for example `-25` to `5` for a freezer thermostat.
 
 ## How It Works on the Panel
 
