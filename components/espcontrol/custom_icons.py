@@ -9,25 +9,25 @@ import re
 from pathlib import Path
 
 ICON_FONT_ID = "font_icon_main"
-# The cog is the fallback icon and is always in the font (see icon_glyphs.yaml).
-FALLBACK_ICON_CODEPOINT = 0xF0493
 # Matches the custom icon range accepted by find_icon() in icons.h.
 CUSTOM_ICON_MIN = 0xF0000
 CUSTOM_ICON_MAX = 0x10FFFD
-_ICONS_H = Path(__file__).with_name("icons.h")
+# Every device builds font_icon_main from this list: the icon table plus a few
+# glyphs the firmware draws itself, such as the screensaver's play and pause.
+_ICON_GLYPHS_YAML = Path(__file__).resolve().parents[2] / "common" / "assets" / "icon_glyphs.yaml"
 
 
-def builtin_icon_codepoints(icons_h_text=None):
-    """Codepoints of the generated built-in icon table plus the cog fallback."""
-    text = _ICONS_H.read_text(encoding="utf-8") if icons_h_text is None else icons_h_text
-    try:
-        block = text.split("GENERATED:ICONS START", 1)[1].split("GENERATED:ICONS END", 1)[0]
-    except IndexError as exc:
-        raise ValueError("icons.h is missing the generated icon table") from exc
-    codepoints = {int(value, 16) for value in re.findall(r"\\U([0-9A-Fa-f]{8})", block)}
+def builtin_icon_codepoints(icon_glyphs_text=None):
+    """Codepoints of every glyph the official icon font already contains."""
+    if icon_glyphs_text is None:
+        try:
+            icon_glyphs_text = _ICON_GLYPHS_YAML.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise ValueError(f"Cannot read the shipped icon glyph list: {_ICON_GLYPHS_YAML}") from exc
+    codepoints = {int(value, 16) for value in re.findall(r"\\U([0-9A-Fa-f]{8})", icon_glyphs_text)}
     if not codepoints:
-        raise ValueError("icons.h generated icon table is empty")
-    return codepoints | {FALLBACK_ICON_CODEPOINT}
+        raise ValueError("The shipped icon glyph list is empty")
+    return codepoints
 
 
 def _font_id(font):

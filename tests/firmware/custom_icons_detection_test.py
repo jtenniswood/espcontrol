@@ -23,9 +23,16 @@ def builtin_glyphs():
 
 
 class CustomIconDetectionTest(unittest.TestCase):
-    def test_builtin_set_matches_the_shipped_icon_font(self):
-        shipped = {ord(glyph) for glyph in builtin_glyphs()}
-        self.assertEqual(custom_icons.builtin_icon_codepoints(), shipped)
+    def test_builtin_set_covers_every_icon_the_font_ships(self):
+        builtin = custom_icons.builtin_icon_codepoints()
+        icons_h = (ROOT / "components/espcontrol/icons.h").read_text(encoding="utf-8")
+        table = icons_h.split("GENERATED:ICONS START", 1)[1].split("GENERATED:ICONS END", 1)[0]
+        selectable = {int(value, 16) for value in re.findall(r"\\U([0-9A-Fa-f]{8})", table)}
+        self.assertTrue(selectable)
+        self.assertLessEqual(selectable, builtin)
+        # The cog fallback and the screensaver's play and pause glyphs are in
+        # the font without being selectable icons.
+        self.assertLessEqual({0xF0493, 0xF5000, 0xF5001}, builtin)
 
     def test_official_font_has_no_custom_icons(self):
         fonts = [{"id": FontId("font_icon_main"), "glyphs": builtin_glyphs()}]
@@ -69,9 +76,9 @@ class CustomIconDetectionTest(unittest.TestCase):
         self.assertEqual(custom_icons.custom_icon_codepoints([]), [])
         self.assertEqual(custom_icons.custom_icon_codepoints(None), [])
 
-    def test_missing_generated_table_is_an_error(self):
+    def test_empty_glyph_list_is_an_error(self):
         with self.assertRaises(ValueError):
-            custom_icons.builtin_icon_codepoints("no table here")
+            custom_icons.builtin_icon_codepoints("no glyphs here")
 
 
 if __name__ == "__main__":

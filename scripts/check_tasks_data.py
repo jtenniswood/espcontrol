@@ -137,6 +137,7 @@ TASKS = (
              "components/espcontrol/backup.py",
              "components/espcontrol/icons.h",
              "components/espcontrol/custom_icons.py",
+             "common/assets/icon_glyphs.yaml",
              "components/espcontrol/button_grid_climate.h",
              "components/espcontrol/climate_state_logic.h",
              "components/espcontrol/button_grid_media_slider_lifecycle.h",
