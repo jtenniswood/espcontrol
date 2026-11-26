@@ -826,20 +826,17 @@ def firmware_climate_step_errors(root: Path) -> list[str]:
         re.S,
     )
     if helper is None:
-        errors.append(f"{rel}: keep climate controls at a 0.5C minimum step")
+        errors.append(f"{rel}: use the configured climate temperature step")
     else:
         body = helper.group("body")
         if (
-            "CLIMATE_DEFAULT_STEP_TENTHS" not in body
-            or "CLIMATE_WHOLE_NUMBER_STEP_TENTHS" not in body
-            or "ctx->configured_step_tenths" not in body
+            "return CLIMATE_WHOLE_NUMBER_STEP_TENTHS" not in body
             or "return ctx->configured_step_tenths" not in body
-            or "ctx->step_tenths > minimum" in body
         ):
             errors.append(f"{rel}: use the configured climate temperature step")
 
     required = (
-        "constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 5;",
+        "constexpr int CLIMATE_HALF_DEGREE_STEP_TENTHS = 5;",
         "constexpr int CLIMATE_WHOLE_NUMBER_STEP_TENTHS = 10;",
         "int configured_step_tenths = CLIMATE_WHOLE_NUMBER_STEP_TENTHS;",
         'cfg_option_value(p.options, "temperature_step")',
@@ -858,13 +855,12 @@ def firmware_climate_step_errors(root: Path) -> list[str]:
             break
 
     forbidden = (
-        "constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 1;",
-        "climate_selected_target(ui.active) - ui.active->step_tenths",
-        "climate_selected_target(ui.active) + ui.active->step_tenths",
+        "climate_selected_target(ui.active) - ui.active->reported_step_tenths",
+        "climate_selected_target(ui.active) + ui.active->reported_step_tenths",
     )
     for needle in forbidden:
         if needle in text:
-            errors.append(f"{rel}: do not allow 0.1C climate modal temperature steps")
+            errors.append(f"{rel}: route climate buttons through the effective temperature step")
             break
 
     cooling_drag_required = (
@@ -2122,42 +2118,39 @@ def run_self_test() -> int:
         ),
     )
     expect_climate_step_errors(
-        "climate modal allows 0.1C steps",
+        "climate modal bypasses the configured temperature step",
         (
-            "constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 1;\n"
+            "constexpr int CLIMATE_HALF_DEGREE_STEP_TENTHS = 1;\n"
             "constexpr int CLIMATE_WHOLE_NUMBER_STEP_TENTHS = 10;\n"
             "inline int climate_effective_step_tenths(ClimateControlCtx *ctx) {\n"
-            "  if (!ctx) return CLIMATE_DEFAULT_STEP_TENTHS;\n"
-            "  return ctx->step_tenths;\n"
+            "  if (!ctx) return CLIMATE_HALF_DEGREE_STEP_TENTHS;\n"
+            "  return ctx->reported_step_tenths;\n"
             "}\n"
             "inline int climate_round_to_step(ClimateControlCtx *ctx, int value) {\n"
-            "  int step = ctx->step_tenths;\n"
+            "  int step = ctx->reported_step_tenths;\n"
             "  int base = ctx->min_tenths;\n"
             "  return value;\n"
             "}\n"
             "inline void climate_control_open_modal(ClimateControlCtx *ctx) {\n"
-            "  climate_selected_target(ui.active) - ui.active->step_tenths;\n"
-            "  climate_selected_target(ui.active) + ui.active->step_tenths;\n"
+            "  climate_selected_target(ui.active) - ui.active->reported_step_tenths;\n"
+            "  climate_selected_target(ui.active) + ui.active->reported_step_tenths;\n"
             "}\n"
         ),
         (
             "use the configured climate temperature step",
             "route climate modal temperature changes through step rounding",
-            "do not allow 0.1C climate modal temperature steps",
+            "route climate buttons through the effective temperature step",
         ),
     )
     expect_climate_step_errors(
         "climate modal uses configured step increment",
         (
-            "constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 5;\n"
+            "constexpr int CLIMATE_HALF_DEGREE_STEP_TENTHS = 5;\n"
             "constexpr int CLIMATE_WHOLE_NUMBER_STEP_TENTHS = 10;\n"
             "int configured_step_tenths = CLIMATE_WHOLE_NUMBER_STEP_TENTHS;\n"
             "inline int climate_effective_step_tenths(ClimateControlCtx *ctx) {\n"
-            "  if (!ctx) return CLIMATE_DEFAULT_STEP_TENTHS;\n"
-            "  if (ctx->configured_step_tenths == CLIMATE_DEFAULT_STEP_TENTHS ||\n"
-            "      ctx->configured_step_tenths == CLIMATE_WHOLE_NUMBER_STEP_TENTHS)\n"
-            "    return ctx->configured_step_tenths;\n"
-            "  return CLIMATE_WHOLE_NUMBER_STEP_TENTHS;\n"
+            "  if (!ctx) return CLIMATE_WHOLE_NUMBER_STEP_TENTHS;\n"
+            "  return ctx->configured_step_tenths;\n"
             "}\n"
             "inline int climate_round_to_step(ClimateControlCtx *ctx, int value) {\n"
             "  int step = climate_effective_step_tenths(ctx);\n"
@@ -2170,7 +2163,7 @@ def run_self_test() -> int:
             "inline ClimateControlCtx *create_climate_control_context(const ParsedCfg &p) {\n"
             "  ctx->configured_step_tenths = normalize_climate_temperature_step(\n"
             "    cfg_option_value(p.options, \"temperature_step\")) == \"0.5\"\n"
-            "      ? CLIMATE_DEFAULT_STEP_TENTHS\n"
+            "      ? CLIMATE_HALF_DEGREE_STEP_TENTHS\n"
             "      : CLIMATE_WHOLE_NUMBER_STEP_TENTHS;\n"
             "}\n"
             "inline int climate_target_from_modal_arc_value(ClimateControlCtx *ctx, int value) {\n"
