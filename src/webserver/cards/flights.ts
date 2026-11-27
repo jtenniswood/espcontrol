@@ -55,7 +55,7 @@ export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiS
           idSuffix: "flights-area",
           options: Object.entries(FLIGHTS_TITLES.en),
           value: area,
-          onChange(this: HTMLSelectElement, button, cardHelpers) {
+          onChange(this: HTMLSelectElement, button: typeof b, cardHelpers: typeof helpers) {
             const useDefault = usesViewTitle(button.label, button.options, area);
             button.options = setConfigOptionValue(button.options, "area",
               this.value === "current" ? "" : this.value);
