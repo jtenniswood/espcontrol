@@ -21,10 +21,11 @@ auto&ha_read_coordinator(){return coordinator;}
 bool accept=true;
 std::vector<std::vector<std::pair<const char*,std::string>>> commands;
 bool climate_send_action(const std::string&,const char*,const std::vector<std::pair<const char*,std::string>>&data){if(!accept)return false;commands.push_back(data);return true;}
-int climate_round_to_step(ClimateControlCtx*,int v){return v;}int climate_constrain_selected_target(ClimateControlCtx*,int v){return v;}int climate_clamp_tenths(ClimateControlCtx*,int v){return v;}
 '''
 text=(ROOT/"components/espcontrol/button_grid_climate.h").read_text()
-for name in ["climate_range_target","climate_modal_temperature_controls_enabled","climate_service_temp_value","climate_cancel_temperature_send","climate_send_temperature","climate_debounce_timer_cb","climate_schedule_temperature_send","climate_apply_selected_target"]:
+for name in ["climate_clamp_tenths", "climate_effective_step_tenths", "climate_round_to_step",
+             "climate_range_target", "climate_constrain_selected_target", "climate_format_tenths",
+             "climate_target_display_precision", "climate_modal_temperature_controls_enabled","climate_service_temp_value","climate_cancel_temperature_send","climate_send_temperature","climate_debounce_timer_cb","climate_schedule_temperature_send","climate_apply_selected_target"]:
     matches=re.findall(r"^inline [^\n]*\b"+name+r"\([^;{]*\)\s*\{.*?^}",text,re.M|re.S)
     assert len(matches)==1,name
     source+=matches[0]+"\n"
@@ -53,6 +54,44 @@ int main(){
  assert(!ctx->pending_low_edit&&!ctx->pending_high_edit);
  climate_apply_selected_target(ctx,270,false,true);publish("","off");assert(!ctx->pending_temp_send);
  climate_apply_selected_target(ctx,270,false,true);publish("target_temp_high","unavailable");assert(!ctx->pending_temp_send);
+ // Existing cards use their selected steps even when HA reports a finer step.
+ publish("", "heat");
+ publish("supported_features", "1");
+ publish("temperature", "20");
+ publish("target_temp_step", "0.1");
+ assert(climate_effective_step_tenths(ctx) == 10);
+ ctx->configured_step_tenths = CLIMATE_HALF_DEGREE_STEP_TENTHS;
+ climate_apply_selected_target(ctx, 200 + climate_effective_step_tenths(ctx), false, true);
+ fire();
+ assert(commands.back()[0].second == "20.5");
+
+ // Exercise both taps and display formatting with whole-number display selected.
+ ctx->configured_step_tenths = CLIMATE_TENTH_DEGREE_STEP_TENTHS;
+ for (int direction : {1, -1}) {
+   climate_apply_selected_target(ctx, ctx->target_tenths + direction * climate_effective_step_tenths(ctx), false, true);
+   fire();
+   const std::string expected = direction > 0 ? "20.6" : "20.5";
+   assert(commands.back()[0].second == expected);
+   assert(climate_format_tenths(ctx->target_tenths, climate_target_display_precision(ctx)) == expected);
+ }
+
+ publish("target_temp_low", "18.3");
+ publish("target_temp_high", "18.5");
+ publish("supported_features", "2");
+ ctx->edit_high = false;
+ climate_apply_selected_target(ctx, 185, false, true);
+ fire();
+ assert(commands.back()[0].second == "18.4" && commands.back()[1].second == "18.5");
+
+ publish("supported_features", "1");
+ publish("min_temp", "5.2");
+ publish("temperature", "20.2");
+ publish("target_temp_step", "0.5");
+ climate_apply_selected_target(ctx, ctx->target_tenths + climate_effective_step_tenths(ctx), false, true);
+ fire();
+ assert(commands.back()[0].second == "20.7");
+ publish("target_temp_step", "unavailable");
+ assert(climate_effective_step_tenths(ctx) == 1);
  remove_card(ctx);assert(coordinator.subscription_count()==0);
 }
 '''
