@@ -179,6 +179,33 @@ export const ENTITY_CATALOG = {
         "screensaver_action"
       ]
     },
+    "screen_saver_sensor_entity": {
+      "domain": "text",
+      "name": "Screen Saver: Sensor Entity",
+      "objectIds": [
+        "screen_saver__sensor_entity",
+        "screen_saver_sensor_entity",
+        "screensaver_sensor_entity"
+      ]
+    },
+    "screen_saver_sensor_label": {
+      "domain": "text",
+      "name": "Screen Saver: Sensor Label",
+      "objectIds": [
+        "screen_saver__sensor_label",
+        "screen_saver_sensor_label",
+        "screensaver_sensor_label"
+      ]
+    },
+    "screen_saver_sensor_unit": {
+      "domain": "text",
+      "name": "Screen Saver: Sensor Unit",
+      "objectIds": [
+        "screen_saver__sensor_unit",
+        "screen_saver_sensor_unit",
+        "screensaver_sensor_unit"
+      ]
+    },
     "screen_saver_camera_entity": {
       "domain": "text",
       "name": "Screen Saver: Camera Entity",
@@ -816,6 +843,9 @@ export const ENTITY_CATALOG = {
       "outdoor_temp_entity",
       "screensaver_mode",
       "screen_saver_action",
+      "screen_saver_sensor_entity",
+      "screen_saver_sensor_label",
+      "screen_saver_sensor_unit",
       "screen_saver_camera_entity",
       "screen_saver_metadata_entity",
       "screen_saver_metadata_overlay",

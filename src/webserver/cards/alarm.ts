@@ -29,6 +29,8 @@ export function registerAlarmCardTypes(
         alarmActionInfo,
         alarmPinRequired,
         setAlarmPinRequired,
+        alarmPinScrambleEnabled,
+        setAlarmPinScramble,
         alarmVisibleActions,
         setAlarmVisibleActions,
         alarmIconDisplayMode,
@@ -215,6 +217,28 @@ export function registerAlarmCardTypes(
         panel.appendChild(field);
         return field;
     }
+    function renderAlarmPinRequiredToggle(panel: HTMLElement, button: any, helpers: any, mode: string, label: string, idSuffix: string) {
+        helpers.renderCardOptionToggle(panel, button, helpers, {
+            label,
+            idSuffix,
+            checked: () => alarmPinRequired(button, mode),
+            onChange: (_button: any, _helpers: any, checked: boolean) => {
+                setAlarmPinRequired(button, mode, checked);
+                helpers.saveField("options", button.options);
+            },
+        });
+    }
+    function renderAlarmPinScrambleToggle(panel: HTMLElement, button: any, helpers: any) {
+        helpers.renderCardOptionToggle(panel, button, helpers, {
+            label: "Scramble PIN keypad",
+            idSuffix: "alarm-pin-scramble",
+            checked: () => alarmPinScrambleEnabled(button),
+            onChange: (_button: any, _helpers: any, checked: boolean) => {
+                setAlarmPinScramble(button, checked);
+                helpers.saveField("options", button.options);
+            },
+        });
+    }
     registry.register("alarm", {
         label: function (this: any) { return cardContractCardLabel("alarm"); },
         allowInSubpage: function (this: any) { return cardContractAllowInSubpage("alarm"); },
@@ -308,26 +332,12 @@ export function registerAlarmCardTypes(
             cardSettings.appendChild(labelHost);
             panel.appendChild(cardSettingsDisclosure.panel);
             renderAlarmVisibleActionsField(modalSettings, b, helpers);
-            function savePinOptions(this: any) {
-                setAlarmPinRequired(b, "arm", armPinToggle.input.checked);
-                setAlarmPinRequired(b, "disarm", disarmPinToggle.input.checked);
-                helpers.saveField("options", b.options);
-            }
-            var pinSettingsDisclosure: any = helpers.disclosureSection("PIN Settings", helpers.idPrefix + "alarm-pin-settings", false);
-            var pinSettings: any = pinSettingsDisclosure.section;
-            var armPinToggle: any = helpers.renderCardOptionToggle(pinSettings, b, helpers, {
-                label: "PIN required for arming",
-                idSuffix: "alarm-pin-arm",
-                checked: function (this: any) { return alarmPinRequired(b, "arm"); },
-                onChange: savePinOptions,
-            });
-            var disarmPinToggle: any = helpers.renderCardOptionToggle(pinSettings, b, helpers, {
-                label: "PIN required for disarming",
-                idSuffix: "alarm-pin-disarm",
-                checked: function (this: any) { return alarmPinRequired(b, "disarm"); },
-                onChange: savePinOptions,
-            });
-            modalSettings.appendChild(pinSettingsDisclosure.panel);
+            const divider = document.createElement("hr");
+            divider.className = "sp-alarm-pin-divider";
+            modalSettings.appendChild(divider);
+            renderAlarmPinRequiredToggle(modalSettings, b, helpers, "arm", "PIN required for arming", "alarm-pin-arm");
+            renderAlarmPinRequiredToggle(modalSettings, b, helpers, "disarm", "PIN required for disarming", "alarm-pin-disarm");
+            renderAlarmPinScrambleToggle(modalSettings, b, helpers);
             panel.appendChild(modalSettingsDisclosure.panel);
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
@@ -386,16 +396,9 @@ export function registerAlarmCardTypes(
                 fallback: function (this: any) { return alarmActionInfo(b.sensor).icon; },
                 label: "Icon",
             });
-            var pinMode: any = b.sensor === "disarm" ? "disarm" : "arm";
-            helpers.renderCardOptionToggle(panel, b, helpers, {
-                label: "PIN required",
-                idSuffix: "alarm-action-pin",
-                checked: function (this: any) { return alarmPinRequired(b, pinMode); },
-                onChange: function (this: any, button?: any, cardHelpers?: any, checked?: any) {
-                    setAlarmPinRequired(button, pinMode, checked);
-                    cardHelpers.saveField("options", button.options);
-                },
-            });
+            const pinMode = b.sensor === "disarm" ? "disarm" : "arm";
+            renderAlarmPinRequiredToggle(panel, b, helpers, pinMode, "PIN required", "alarm-action-pin");
+            renderAlarmPinScrambleToggle(panel, b, helpers);
         },
         renderPreview: function (this: any, b?: any, helpers?: any) {
             var info: any = alarmActionInfo(b.sensor) || alarmActionSpecs()[0];

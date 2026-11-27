@@ -59,6 +59,10 @@ export class NativePanelConfigController {
     return this.client_?.maxConfigValueBytes() ?? null;
   }
 
+  customIcons(): readonly string[] {
+    return this.client_?.customIcons() ?? [];
+  }
+
   supported(): boolean {
     return this.client_?.supported() ?? false;
   }

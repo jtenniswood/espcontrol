@@ -82,6 +82,9 @@ globals:
   - id: screensaver_action_clock
     type: bool
     initial_value: 'false'
+  - id: screensaver_action_sensor_value
+    type: bool
+    initial_value: 'false'
   - id: screensaver_action_dimmed
     type: bool
     initial_value: 'false'
@@ -101,22 +104,10 @@ esphome:
       - lambda: |-
           force_screensaver_action() = []() { id(force_screensaver).execute(); };
           show_screen_lock_pin() = []() { id(screensaver_pin_refresh_ui).execute(); };
-          return_screen_lock_view() = []() {
-            if (!screensaver_pin_restore_previous_mode(id(espcontrol_app).display())) {
-              id(screensaver_pin_refresh_ui).execute();
-              return;
-            }
-            id(manual_wake_ms) = 0;
-            id(screen_schedule_wake_timeout_check).stop();
-            id(cover_art_delay_timer).stop();
-            if (espcontrol::screensaver_pin().return_mode() == espcontrol::DisplayMode::COVER_ART) {
-              id(cover_art_manual_pause_until_ms) = 0;
-            }
-            id(display_mode_reconcile).execute();
-          };
           auto update_screensaver_action_cache = []() {
             std::string action = id(screensaver_action).current_option();
             id(screensaver_action_clock) = screensaver_action_clock_mode(action);
+            id(screensaver_action_sensor_value) = screensaver_action_sensor_value_mode(action);
             id(screensaver_action_dimmed) = screensaver_action_dimmed_mode(action);
             id(screensaver_action_camera) =
                 ${screensaver_camera_supported} && screensaver_action_camera_mode(action);
@@ -197,7 +188,7 @@ script:
           const auto &controller = id(espcontrol_app).display();
           const bool active = controller.target_mode_is(espcontrol::DisplayMode::ACTIVE);
           if (!active && !controller.target_mode_is(espcontrol::DisplayMode::SETUP_DIMMED)) {
-            espcontrol::screensaver_pin().arm(controller.target_mode());
+            espcontrol::screensaver_pin().arm();
           }
           screensaver_pin_refresh(active, id(${cover_art_title_font})->get_lv_font(),
                                  id(${media_title_font})->get_lv_font(),
@@ -225,7 +216,7 @@ script:
                 const auto mode = static_cast<espcontrol::DisplayMode>(target_mode);
                 if (mode != espcontrol::DisplayMode::ACTIVE &&
                     mode != espcontrol::DisplayMode::SETUP_DIMMED) {
-                  espcontrol::screensaver_pin().arm(mode);
+                  espcontrol::screensaver_pin().arm();
                   screensaver_pin_hide();
                 }
 
@@ -559,7 +550,7 @@ script:
             if (leaving_scheduled_clock && !onboarding &&
                 (id(screensaver_mode).state == "timer" || sensor_idle) &&
                 !playback_prevents_sleep) {
-              const auto idle_mode = id(screensaver_action_clock)
+              const auto idle_mode = (id(screensaver_action_clock) || id(screensaver_action_sensor_value))
                   ? espcontrol::DisplayMode::CLOCK
                   : (id(screensaver_action_dimmed) ? espcontrol::DisplayMode::DIMMED
                      : (id(screensaver_action_camera) ? espcontrol::DisplayMode::CAMERA
@@ -896,7 +887,7 @@ script:
                 else:
                   - if:
                       condition:
-                        lambda: 'return id(screensaver_action_clock);'
+                        lambda: 'return id(screensaver_action_clock) || id(screensaver_action_sensor_value);'
                       then:
                         - script.execute:
                             id: display_mode_request_automatic
@@ -1168,7 +1159,7 @@ script:
     then:
       - script.stop: screensaver_idle_check
       - lambda: |-
-          const auto mode = id(screensaver_action_clock) ? espcontrol::DisplayMode::CLOCK
+          const auto mode = (id(screensaver_action_clock) || id(screensaver_action_sensor_value)) ? espcontrol::DisplayMode::CLOCK
               : id(screensaver_action_dimmed) ? espcontrol::DisplayMode::DIMMED
               : id(screensaver_action_camera) ? espcontrol::DisplayMode::CAMERA
               : espcontrol::DisplayMode::DISPLAY_OFF;
@@ -1657,6 +1648,7 @@ script:
   - id: clock_screensaver_update_time
     then:
       - lambda: |-
+          if (id(screensaver_sensor_presentation_active)) return;
           apply_clock_screensaver_text_color(id(clock_label), id(schedule_clock_text_color).state);
           apply_clock_screensaver_text_color(id(clock_date_label), id(schedule_clock_text_color).state);
           auto time = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
@@ -1680,6 +1672,83 @@ script:
                                              show_date ? id(clock_date_label) : nullptr);
           }
 
+  - id: screensaver_sensor_render
+    then:
+      - lambda: |-
+          if (!id(screensaver_sensor_presentation_active)) return;
+
+          const auto &state = id(screensaver_sensor_state);
+          const auto &configured_unit = id(screensaver_sensor_unit).state;
+          const bool available = !state.empty() && ha_api_state_connected();
+          const bool numeric = available && state.find_first_not_of("0123456789.+-eE") == std::string::npos &&
+              esphome::parse_number<float>(state).has_value();
+          const bool inline_percent = numeric && configured_unit == "%";
+          const std::string value = available ? state + (inline_percent ? "%" : "") : "—";
+          screensaver_fill_screen(id(clock_screensaver));
+          lv_obj_update_layout(id(clock_screensaver));
+          // Reserve room for the existing burn-in drift and constrain long readings.
+          const lv_coord_t width = std::max<lv_coord_t>(16, lv_obj_get_width(id(clock_screensaver)) - 64);
+          const bool show_unit = numeric && !inline_percent && !configured_unit.empty();
+          const lv_coord_t unit_width = show_unit ? width / 4 : 0;
+          const lv_coord_t value_width = show_unit ? width - unit_width - 6 : width;
+          const auto *large_font = id(font_clock_display)->get_lv_font();
+          lv_point_t measured{};
+          if (numeric) {
+            lv_text_get_size(&measured, value.c_str(), large_font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+          }
+          const bool use_large_font = !available || (numeric && measured.x <= value_width);
+          const auto *caption_font = id(${clock_date_font})->get_lv_font();
+          const auto *value_font = use_large_font ? large_font : caption_font;
+          lv_obj_set_style_text_font(id(screensaver_sensor_value_label), value_font, LV_PART_MAIN);
+          lv_obj_set_height(id(screensaver_sensor_value_label), lv_font_get_line_height(value_font));
+          lv_obj_set_height(id(screensaver_sensor_unit_label), lv_font_get_line_height(caption_font));
+          lv_obj_set_height(id(screensaver_sensor_caption), lv_font_get_line_height(caption_font));
+          lv_label_set_display_text(id(screensaver_sensor_value_label), value.c_str());
+
+          if (show_unit) {
+            // Flex aligns the label bottoms. Offset the smaller label so the text baselines match.
+            lv_obj_set_style_margin_bottom(id(screensaver_sensor_unit_label),
+                                           value_font->base_line - caption_font->base_line, LV_PART_MAIN);
+            lv_label_set_display_text(id(screensaver_sensor_unit_label), configured_unit.c_str());
+            lv_obj_clear_flag(id(screensaver_sensor_unit_label), LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_obj_add_flag(id(screensaver_sensor_unit_label), LV_OBJ_FLAG_HIDDEN);
+          }
+
+          std::string caption = id(screensaver_sensor_label).state;
+          if (caption.empty()) {
+            const auto &entity = id(screensaver_sensor_entity).state;
+            if (entity.rfind("sensor.", 0) == 0) {
+              caption = entity.substr(7);
+              std::replace(caption.begin(), caption.end(), '_', ' ');
+            }
+          }
+          lv_label_set_display_text(id(screensaver_sensor_caption), caption.c_str());
+          for (auto *label : {id(screensaver_sensor_value_label), id(screensaver_sensor_unit_label),
+                              id(screensaver_sensor_caption)}) {
+            apply_clock_screensaver_text_color(label, id(schedule_clock_text_color).state);
+          }
+
+          lv_obj_set_style_max_width(id(screensaver_sensor_value_label), value_width, LV_PART_MAIN);
+          lv_obj_set_style_max_width(id(screensaver_sensor_unit_label), unit_width, LV_PART_MAIN);
+          lv_obj_set_width(id(screensaver_sensor_caption), width);
+          position_clock_screensaver_label(id(clock_screensaver), id(screensaver_sensor_reading),
+                                           (millis() / 60000) % 60);
+
+  - id: clock_screensaver_refresh_presentation
+    then:
+      - if:
+          condition:
+            lambda: 'return id(screensaver_sensor_presentation_active);'
+          then:
+            - lvgl.widget.hide: [clock_label, clock_date_label]
+            - lvgl.widget.show: screensaver_sensor_reading
+            - script.execute: screensaver_sensor_render
+          else:
+            - lvgl.widget.hide: screensaver_sensor_reading
+            - lvgl.widget.show: clock_label
+            - script.execute: clock_screensaver_update_time
+
   # Show the clock screensaver overlay
   - id: show_clock_view
     mode: restart
@@ -1696,7 +1765,8 @@ script:
           then:
             - lambda: 'navigation_return_home(id(main_page)->obj);'
             - lvgl.widget.hide: dim_screensaver_touch_guard
-            - script.execute: clock_screensaver_update_time
+            - script.execute: screensaver_sensor_refresh_subscription
+            - script.execute: clock_screensaver_refresh_presentation
             - script.execute: clock_bar_hide
             - script.wait: clock_bar_hide
             - lambda: |-
@@ -1743,6 +1813,7 @@ script:
     mode: single
     then:
       - lvgl.widget.hide: clock_screensaver
+      - script.execute: screensaver_sensor_refresh_subscription
       - script.execute: clock_overlay_hide
       - script.execute: clock_bar_apply
 

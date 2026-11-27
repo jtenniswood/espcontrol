@@ -215,12 +215,12 @@ function routeContentType(url) {
   return "text/plain";
 }
 
-function publicFirmwareManifest(slug) {
+function publicFirmwareManifest(slug, native = true) {
   return {
-    version: "v1.13.0",
+    version: native ? "v1.13.0" : "v1.12.0",
     builds: [{
       ota: {
-        path: `${slug}.ota.bin`,
+        path: native ? `versions/v1.13.0/${slug}.ota.bin` : `${slug}.ota.bin`,
         md5: "0123456789abcdef0123456789abcdef",
       },
     }],
@@ -230,10 +230,10 @@ function publicFirmwareManifest(slug) {
 function publicFirmwareVersions(slug) {
   return {
     device: slug,
-    versions: ["v1.13.0", "v1.12.0", "v1.11.0"].map((version, index) => ({
+    versions: ["v1.13.0", "v1.12.0", "v1.11.0"].map(version => ({
       version,
       ota: {
-        path: index === 0 ? `${slug}.ota.bin` : `versions/${version}/${slug}.ota.bin`,
+        path: version === "v1.12.0" ? `${slug}.ota.bin` : `versions/${version}/${slug}.ota.bin`,
         md5: "0123456789abcdef0123456789abcdef",
       },
     })),
@@ -495,16 +495,16 @@ async function installRoutes(context, slug, options = {}) {
       return;
     }
     if (requestUrl.hostname === "jtenniswood.github.io") {
-      if (requestUrl.pathname.endsWith("/manifest.json")) {
+      if (/\/(native|manifest)\.json$/.test(requestUrl.pathname)) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
           headers: { "Access-Control-Allow-Origin": "*" },
-          body: JSON.stringify(publicFirmwareManifest(slug)),
+          body: JSON.stringify(publicFirmwareManifest(slug, requestUrl.pathname.endsWith("/native.json"))),
         });
         return;
       }
-      if (requestUrl.pathname.endsWith("/versions.json")) {
+      if (requestUrl.pathname.endsWith("/native-versions.json")) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -4040,12 +4040,22 @@ async function assertAlarmSettingsPanels(page, label) {
 
   await modalSettings.locator("> .sp-disclosure-button").click();
   assert(await modalSettings.getByText("Visible Actions", { exact: true }).isVisible(), `${label}: alarm modal settings panel should contain visible actions controls`);
-  const pinSettings = modalSettings.locator(".sp-disclosure").filter({ hasText: "PIN Settings" }).first();
-  assert(await pinSettings.isVisible(), `${label}: alarm modal settings panel should contain PIN settings`);
-  assert(!(await pinSettings.getAttribute("class")).includes("sp-open"), `${label}: alarm PIN settings panel should start collapsed`);
-  await pinSettings.locator("> .sp-disclosure-button").click();
-  assert(await pinSettings.getByText("PIN required for arming", { exact: true }).isVisible(), `${label}: alarm PIN settings panel should contain arming PIN controls`);
-  assert(await pinSettings.getByText("PIN required for disarming", { exact: true }).isVisible(), `${label}: alarm PIN settings panel should contain disarming PIN controls`);
+  const pinSettings = modalSettings.locator("> .sp-disclosure-body");
+  const divider = pinSettings.getByRole("separator");
+  const armPin = pinSettings.getByText("PIN required for arming", { exact: true });
+  const disarmPin = pinSettings.getByText("PIN required for disarming", { exact: true });
+  assert(await divider.isVisible(), `${label}: a divider separates alarm actions from PIN settings`);
+  assert(await armPin.isVisible(), `${label}: arming PIN control is visible without expanding PIN settings`);
+  assert(await disarmPin.isVisible(), `${label}: disarming PIN control is visible without expanding PIN settings`);
+  const scrambleLabel = pinSettings.getByText("Scramble PIN keypad", { exact: true });
+  const scramble = pinSettings.getByLabel("Scramble PIN keypad", { exact: true });
+  assert(!(await scramble.isChecked()), `${label}: alarm PIN scrambling is off by default`);
+  await scrambleLabel.click();
+  await modalSettings.locator("> .sp-disclosure-button").click();
+  await modalSettings.locator("> .sp-disclosure-button").click();
+  assert(await scramble.isChecked(), `${label}: alarm PIN scrambling can be enabled`);
+  await scrambleLabel.click();
+  assert(!(await scramble.isChecked()), `${label}: alarm PIN scrambling can be disabled`);
 
   await page.locator(".sp-settings-close").click();
   await page.waitForFunction(() => {
@@ -6312,6 +6322,32 @@ async function assertGuestWifiSettings(page, label) {
   await page.waitForFunction(() => !document.querySelector(".sp-settings-overlay.sp-visible"));
 }
 
+async function assertNativeLayoutStartup(browser, testCase) {
+  const nativeState = nativeConfigState(testCase.slug);
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  await installRoutes(context, testCase.slug, { nativeState });
+  const missingEntities = [];
+  await context.route(/\/text\/(Button(%20|_)Order|Button(%20|_)On(%20|_)Color|(?:Button|Subpage)(%20|_)\d+(%20|_)Config[^/?]*)\b/i, route => {
+    missingEntities.push(new URL(route.request().url()).pathname);
+    return route.fulfill({ status: 404, body: "Not found" });
+  });
+  // The API may advertise support just before a rebooting panel can serve the document.
+  await context.route("**/api/v1/config", route => route.fulfill({ status: 503, body: "Starting up" }), { times: 1 });
+  try {
+    const page = await context.newPage();
+    await page.goto(`http://espcontrol.test/${testCase.slug}`, { waitUntil: "domcontentloaded" });
+    await page.locator(".sp-banner.sp-offline").waitFor({ state: "visible" });
+    await page.locator('.sp-main [data-slot="2"]').getByText("Energy", { exact: true }).waitFor();
+    assert.strictEqual(await page.locator(".sp-banner.sp-offline").count(), 0);
+    await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+    await page.locator(".sp-main").getByText("Kitchen", { exact: true }).waitFor();
+    assert.deepStrictEqual(missingEntities, [], `${testCase.name}: native startup does not request removed entities`);
+    assert.strictEqual(nativeState.puts.length, 0, `${testCase.name}: startup leaves the saved layout intact`);
+  } finally {
+    await context.close();
+  }
+}
+
 async function assertNativeProfileJourney(browser, testCase) {
   const nativeState = nativeConfigState(testCase.slug);
   const context = await browser.newContext({ viewport: testCase.viewport });
@@ -6861,9 +6897,11 @@ async function assertHostedCompatibility(browser) {
     await page.waitForSelector("#sp-app");
     await page.waitForFunction(() => window.__eventSources?.length > 0);
     await page.evaluate(events => window.__seedEspState(events), seededEvents());
-    await page.waitForFunction(() => ["manifest.json", "versions.json"].every(name =>
+    await page.waitForFunction(() => ["native.json", "native-versions.json"].every(name =>
       window.__compatRequests.some(item => item.url.startsWith("https://jtenniswood.github.io/espcontrol/firmware/") && item.url.endsWith(name) && item.status === 200)));
     const requests = await page.evaluate(() => window.__compatRequests);
+    assert(!requests.some(item => item.url.startsWith("https://jtenniswood.github.io/espcontrol/firmware/") && item.url.endsWith("/manifest.json")),
+      "the editor must not treat the installer gateway as the latest release");
     for (const request of requests.filter(item => item.url.startsWith("https://jtenniswood.github.io/espcontrol/firmware/"))) {
       assert.equal(request.credentials, "omit", "public metadata must not include browser credentials");
     }
@@ -7853,6 +7891,84 @@ async function assertS3ForecastEditorLayout(browser) {
 }
 
 
+async function assertSensorValueScreensaver(browser, testCase) {
+  const context = await browser.newContext({ viewport: testCase.viewport });
+  const nativeState = nativeConfigState(testCase.slug);
+  await installRoutes(context, testCase.slug, { nativeState });
+  const page = await context.newPage();
+  const posts = [];
+  page.on("request", request => {
+    if (request.method() === "POST" && new URL(request.url()).hostname === "espcontrol.test") posts.push(postRecord(request.url()));
+  });
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${testCase.slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await seedNativeDocument(page, nativeState);
+    await page.evaluate(events => window.__seedEspState(events), seededEvents());
+    await page.getByRole("tab", { name: "Screen", exact: true }).click();
+    const card = page.locator("#sp-settings .card").filter({ has: page.locator(".card-header h3", { hasText: /^Screensaver$/ }) }).first();
+    await card.locator(".card-header").click();
+    await card.getByRole("button", { name: "Timer", exact: true }).click();
+    const action = card.locator("#sp-set-clock-mode");
+    assert.strictEqual(await action.locator('option[value="sensor_value"]').count(), 0,
+      "older firmware hides Sensor value");
+    await page.evaluate(() => window.__seedEspState([
+      { id: "text-screen_saver__sensor_entity", state: "sensor.ev_battery" },
+      { id: "text-screen_saver__sensor_label", state: "EV battery" },
+      { id: "text-screen_saver__sensor_unit", state: "%" },
+      { id: "switch-screen_saver__show_date", state: "ON", value: true },
+    ]));
+    const start = posts.length;
+    await action.selectOption("sensor_value");
+    await waitForPost(posts, { domain: "select", name: "screen_saver__action", action: "set", option: "Sensor Value" },
+      "Sensor value action saves", start);
+    const timerEntity = card.locator("#sp-set-clock-mode-sensor-entity");
+    const timerLabel = card.locator("#sp-set-clock-mode-sensor-label");
+    const timerUnit = card.locator("#sp-set-clock-mode-sensor-unit");
+    assert.strictEqual(await timerLabel.getAttribute("placeholder"), "");
+    assert.strictEqual(await timerUnit.getAttribute("placeholder"), "");
+    assert.strictEqual(await timerEntity.inputValue(), "sensor.ev_battery");
+    assert.strictEqual(await timerLabel.inputValue(), "EV battery");
+    assert.strictEqual(await timerUnit.inputValue(), "%");
+    const unitBox = await timerUnit.boundingBox();
+    const brightnessLabel = card.getByText("Daytime Brightness", { exact: true }).filter({ visible: true });
+    const brightnessBox = await brightnessLabel.boundingBox();
+    assert(brightnessBox.y - (unitBox.y + unitBox.height) >= 28, "Unit and brightness controls have a visible gap");
+    const dateRow = card.locator("#sp-set-clock-date").locator("..").locator("..");
+    assert.strictEqual(await dateRow.isVisible(), false);
+    const beforeEdit = posts.length;
+    await timerLabel.fill("Car charge");
+    await timerLabel.press("Enter");
+    await waitForPost(posts, { domain: "text", name: "screen_saver__sensor_label", action: "set", value: "Car charge" },
+      "sensor label saves", beforeEdit);
+    await card.getByRole("button", { name: "Sensor", exact: true }).click();
+    assert.strictEqual(await card.locator("#sp-set-sensor-clock-mode").inputValue(), "sensor_value");
+    assert.strictEqual(await card.locator("#sp-set-sensor-clock-mode-sensor-label").inputValue(), "Car charge");
+    await card.getByRole("button", { name: "Timer", exact: true }).click();
+    await action.selectOption("clock");
+    assert.strictEqual(await timerEntity.isVisible(), false, "Clock hides the sensor fields");
+    assert.strictEqual(await dateRow.isVisible(), true);
+    await action.selectOption("sensor_value");
+    await openBackupControls(page);
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const backup = JSON.parse(fs.readFileSync(await (await download).path(), "utf8"));
+    assert.strictEqual(backup.settings.screensaver_action, "sensor_value");
+    assert.strictEqual(backup.settings.screensaver_sensor_entity, "sensor.ev_battery");
+    assert.strictEqual(backup.settings.screensaver_sensor_label, "Car charge");
+    assert.strictEqual(backup.settings.screensaver_sensor_unit, "%");
+    backup.settings.screensaver_sensor_label = "Battery charge";
+    const beforeRestore = posts.length;
+    await importBackup(page, backup, `sensor-value-${testCase.slug}`);
+    await page.waitForSelector(".sp-banner.sp-success", { timeout: 15000 });
+    await waitForPost(posts, { domain: "text", name: "screen_saver__sensor_label", action: "set", value: "Battery charge" },
+      "backup restores the sensor label", beforeRestore);
+    assert.strictEqual(await timerLabel.inputValue(), "Battery charge");
+  } finally { await context.close(); }
+}
+
+
 async function assertCameraScreensaverDimming(browser, testCase) {
   const context = await browser.newContext({ viewport: testCase.viewport });
   const nativeState = nativeConfigState(testCase.slug);
@@ -8187,6 +8303,11 @@ async function assertWeatherReadingEditors(browser) {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_NATIVE_LAYOUT_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) await assertNativeLayoutStartup(browser, testCase);
+      console.log(`Native layout startup and retry passed for ${ACTIVE_CASES.length} generated layouts.`);
+      return;
+    }
     if (process.env.ESPCONTROL_CONTEXT_COLOUR_ONLY === "1") {
       for (const testCase of ACTIVE_CASES) await assertContextColourPicker(browser, testCase);
       console.log(`Drag selection and context colour checks passed for ${ACTIVE_CASES.length} layouts, native and legacy saves.`);
@@ -8211,6 +8332,11 @@ async function assertWeatherReadingEditors(browser) {
         } finally { await context.close(); }
       }
       console.log("Clock bar editor checks passed.");
+      return;
+    }
+    if (process.env.ESPCONTROL_SENSOR_VALUE_ONLY === "1") {
+      for (const testCase of ACTIVE_CASES) await assertSensorValueScreensaver(browser, testCase);
+      console.log(`Sensor value screensaver browser checks passed for ${ACTIVE_CASES.length} layouts.`);
       return;
     }
     if (process.env.ESPCONTROL_PIN_ONLY === "1") {
@@ -8315,11 +8441,13 @@ async function assertWeatherReadingEditors(browser) {
     await assertFirmwareRetryFeedback(browser);
     await assertResetControls(browser);
     for (const testCase of ACTIVE_CASES) {
+      await assertSensorValueScreensaver(browser, testCase);
       await assertCameraScreensaverDimming(browser, testCase);
       if (!acceptanceOnly) {
         await runCase(browser, testCase);
         await assertMediaModalSettingsJourney(browser, testCase);
       }
+      await assertNativeLayoutStartup(browser, testCase);
       await assertNativeProfileJourney(browser, testCase);
       await assertLegacyProfileFallback(browser, testCase);
       if (testCase.exerciseInteractions) await assertLegacyRestoreVerificationFailure(browser, testCase);

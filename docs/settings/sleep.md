@@ -80,11 +80,18 @@ In Timer or Sensor mode, set **Then**:
 | **Display Off** | Turns the backlight off. Default action. |
 | **Screen Dimmed** | Keeps your cards visible at a lower brightness. The first tap wakes instead of pressing a card. |
 | **Clock** | Shows a drifting clock. Set daytime/nighttime clock brightness; optionally enable **Show date**. |
+| **Sensor value** | Shows a live Home Assistant sensor reading and label on a black screen. |
 | **Camera** | Shows a `camera.*` or `image.*` entity full-screen on supported P4 and 4-inch 4848S040 S3 panels. |
 
 For Screen Dimmed, set its brightness. Automatic and Timed [Backlight](/settings/display#backlight) modes offer separate daytime and nighttime dimmed levels.
 
 Choose **Apply Configuration**, wait for the panel to reconnect, and test both sleep and wake. With Sensor mode, clear and trigger the sensor to check each state.
+
+### Show a Sensor Value
+
+Select **Then > Sensor value** and choose a Home Assistant `sensor.*` entity. For an EV battery, enter **EV battery** as the label and **%** as the unit. If you leave the label blank, the panel drops the `sensor.` prefix and displays the rest of the ID with spaces in place of underscores. The optional unit is shown with numeric readings.
+
+The reading updates while the screensaver is visible. An unavailable reading appears as **—**. Sensor value and Clock share the daytime and nighttime brightness settings.
 
 ### Show Photos or a Camera
 
@@ -168,6 +175,6 @@ In **Screen > Sleep & Schedule > Pin Protection**, enable **Require PIN after wa
 - **Allow Cover Art play/pause while locked** lets anyone pause or resume music using the artwork button without entering the PIN (off by default). Other touchscreen controls still require the PIN. On square panels, **Persistent Play/Pause Control** must also be enabled. This preference is shared with the Screen Lock card and saved on the panel.
 - The [Screen Lock card](/card-types/screen-lock) shares this PIN and keypad setting, and works with automatic wake protection off.
 
-After a screensaver or manual sleep, enter the PIN and press the checkmark to unlock. An incorrect PIN keeps the panel locked. **X** clears digits; with no digits entered, it closes the keypad without unlocking. All wake methods use this protection, and the Cover Art playback button is hidden until unlocked unless **Allow Cover Art play/pause while locked** is enabled.
+After a screensaver or manual sleep, enter the PIN and press the checkmark to unlock. An incorrect PIN keeps the panel locked. **X** clears the entry and keeps the keypad open. All wake methods use this protection, and the Cover Art playback button is hidden until unlocked unless **Allow Cover Art play/pause while locked** is enabled.
 
 The PIN protects local touchscreen controls only. Secure web setup separately with [web authentication](/getting-started/manual-esphome-setup#advanced-password-protect-the-web-page), as anyone with setup access can change or clear the PIN. PINs persist across restarts but are excluded from backups; importing a backup clears the destination panel's PIN, so set it again afterward.

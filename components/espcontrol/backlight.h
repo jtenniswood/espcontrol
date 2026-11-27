@@ -316,6 +316,10 @@ inline bool screensaver_action_clock_mode(const std::string &action) {
   return action == "Clock" || action == "clock";
 }
 
+inline bool screensaver_action_sensor_value_mode(const std::string &action) {
+  return action == "Sensor Value" || action == "sensor_value";
+}
+
 inline bool screensaver_action_dimmed_mode(const std::string &action) {
   return action == "Screen Dimmed" || action == "screen_dimmed" ||
          action == "Dimmed" || action == "dimmed" || action == "dim";
