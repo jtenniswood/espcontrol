@@ -286,11 +286,17 @@ def main() -> int:
         raise SystemExit("Local speaker volume targets must persist in the group cache")
     for reset in (
         "ctx->speaker_helper_members.clear();",
-        "ctx->speaker_discovery.clear();",
         "ctx->speaker_discovery_available = false;",
     ):
         if reset not in media_header:
             raise SystemExit("Media route changes must clear stale speaker discovery data")
+    # Speaker readings are rebuilt on every update, from discovery (or nothing)
+    # plus each grouped speaker's own live readings.
+    if ("discovery ? discovery->items : std::vector<MediaGroupDiscoveryItem>()"
+            not in media_header):
+        raise SystemExit("Media route changes must clear stale speaker discovery data")
+    if "media_playback_subscribe_group_member(state, member)" not in media_header:
+        raise SystemExit("Grouped speakers must report their own volume without a discovery sensor")
     if 'media_control_set_speaker_status(espcontrol_i18n("Updating speakers"), false, true);' in media_header:
         raise SystemExit("Pending speaker group changes must not show temporary status text")
     if "media_control_refresh_speaker_state(ctx, row);" in media_header:

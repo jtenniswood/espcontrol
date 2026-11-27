@@ -724,6 +724,7 @@ struct MediaPlaybackState {
     espcontrol::media::MediaItemKind::UNKNOWN;
   std::vector<std::string> group_members;
   std::vector<MediaSpeakerDiscoveryState> speaker_discoveries;
+  std::vector<MediaGroupMemberReading> member_readings;
   bool has_state = false;
   bool available = true;
   bool playing = false;
@@ -890,6 +891,7 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->current_content_kind = espcontrol::media::MediaItemKind::UNKNOWN;
   std::vector<std::string>().swap(state->group_members);
   std::vector<MediaSpeakerDiscoveryState>().swap(state->speaker_discoveries);
+  std::vector<MediaGroupMemberReading>().swap(state->member_readings);
   state->has_state = false;
   state->available = true;
   state->playing = false;
@@ -1458,7 +1460,6 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
     ? (ctx->speaker_helper_members != discovery->members ||
        ctx->speaker_discovery_available != discovery->available)
     : (!ctx->speaker_helper_members.empty() ||
-       !ctx->speaker_discovery.empty() ||
        ctx->speaker_discovery_available);
   bool grouping_changed = ctx->grouping_supported != media_grouping_supported(state->supported_features) ||
                           ctx->group_members != state->group_members ||
@@ -1467,13 +1468,14 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
   ctx->group_members = state->group_members;
   if (discovery) {
     ctx->speaker_helper_members = discovery->members;
-    ctx->speaker_discovery = discovery->items;
     ctx->speaker_discovery_available = discovery->available;
   } else {
     ctx->speaker_helper_members.clear();
-    ctx->speaker_discovery.clear();
     ctx->speaker_discovery_available = false;
   }
+  ctx->speaker_discovery = media_group_merge_member_readings(
+    discovery ? discovery->items : std::vector<MediaGroupDiscoveryItem>(),
+    state->member_readings);
   ctx->duration = state->duration;
   ctx->volume_known = state->volume_known;
   ctx->supported_features_known = state->supported_features_known;
@@ -2204,6 +2206,75 @@ inline void media_playback_subscribe_friendly_name(MediaPlaybackState *state) {
   );
 }
 
+inline MediaGroupMemberReading *media_playback_find_member_reading(
+    MediaPlaybackState *state, const std::string &entity_id) {
+  if (!state) return nullptr;
+  for (MediaGroupMemberReading &reading : state->member_readings) {
+    if (reading.entity_id == entity_id) return &reading;
+  }
+  return nullptr;
+}
+
+// Follow each grouped speaker's own volume and availability so the Group
+// volume and Speakers tab work without a discovery sensor. Subscriptions stay
+// for the life of this state, so a speaker that rejoins is already current.
+inline bool media_playback_subscribe_group_member(MediaPlaybackState *state,
+                                                  const std::string &member) {
+  if (!state || member.empty() || member == state->entity_id ||
+      !media_group_valid_entity_id(member) ||
+      media_playback_find_member_reading(state, member) ||
+      state->member_readings.size() >= MEDIA_GROUP_MEMBER_READINGS_MAX) {
+    return false;
+  }
+  MediaGroupMemberReading reading;
+  reading.entity_id = member;
+  state->member_readings.push_back(std::move(reading));
+  const uint32_t generation = state->generation;
+  ha_subscribe_attribute(
+    member, std::string("volume_level"),
+    std::function<void(esphome::StringRef)>(
+      [state, generation, member](esphome::StringRef value) {
+        if (!media_playback_generation_valid(state, generation)) return;
+        MediaGroupMemberReading *reading = media_playback_find_member_reading(state, member);
+        if (!reading) return;
+        int pct = 0;
+        reading->volume_reported = true;
+        reading->volume_known = media_group_parse_volume_level(
+          string_ref_limited(value, HA_SHORT_STATE_MAX_LEN), &pct);
+        if (reading->volume_known) reading->volume_pct = pct;
+        media_playback_apply_state_to_controls(state);
+      })
+  );
+  ha_subscribe_state(
+    member,
+    std::function<void(esphome::StringRef)>(
+      [state, generation, member](esphome::StringRef value) {
+        if (!media_playback_generation_valid(state, generation)) return;
+        MediaGroupMemberReading *reading = media_playback_find_member_reading(state, member);
+        if (!reading) return;
+        reading->state_known = true;
+        reading->available = media_group_state_available(
+          string_ref_limited(value, HA_SHORT_STATE_MAX_LEN));
+        media_playback_apply_state_to_controls(state);
+      })
+  );
+  ha_subscribe_attribute(
+    member, std::string("friendly_name"),
+    std::function<void(esphome::StringRef)>(
+      [state, generation, member](esphome::StringRef value) {
+        if (!media_playback_generation_valid(state, generation)) return;
+        MediaGroupMemberReading *reading = media_playback_find_member_reading(state, member);
+        if (!reading) return;
+        std::string name = media_group_trim(
+          string_ref_limited(value, HA_STATE_TEXT_MAX_LEN));
+        if (name == "None" || name == "unknown" || name == "unavailable") name.clear();
+        reading->friendly_name = name;
+        media_playback_apply_state_to_controls(state);
+      })
+  );
+  return true;
+}
+
 inline void media_playback_subscribe_grouping(MediaPlaybackState *state) {
   if (!state || state->grouping_subscribed || state->entity_id.empty()) return;
   state->grouping_subscribed = true;
@@ -2226,6 +2297,11 @@ inline void media_playback_subscribe_grouping(MediaPlaybackState *state) {
         if (!media_playback_generation_valid(state, generation)) return;
         state->group_members = media_group_parse_entity_list(value.c_str(), value.size());
         if (state->group_members.empty()) media_group_append_unique(state->group_members, state->entity_id);
+        bool subscription_added = false;
+        for (const std::string &member : state->group_members) {
+          if (media_playback_subscribe_group_member(state, member)) subscription_added = true;
+        }
+        if (subscription_added) ha_reannounce_state_subscriptions();
         media_playback_apply_state_to_controls(state);
       })
   );
