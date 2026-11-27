@@ -15,6 +15,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace espcontrol::flights {
@@ -23,6 +24,13 @@ constexpr size_t MAX_FLIGHTS = 10;
 constexpr size_t MAX_FIELD_LEN = 48;
 constexpr size_t MAX_LIST_TEXT_LEN = MAX_FLIGHTS * 10 * (MAX_FIELD_LEN + 1);
 constexpr float MISSING = NAN;
+
+inline bool uses_compact_flight_list(std::string_view entity_id) {
+  // Built-in Flightradar24 sensors send full tracks in this attribute. They
+  // can exceed the native API receive limit before the card can parse them.
+  constexpr std::string_view integration_prefix = "sensor.flightradar24_";
+  return entity_id.substr(0, integration_prefix.size()) != integration_prefix;
+}
 
 enum class Vertical { UNKNOWN, ON_GROUND, CLIMBING, DESCENDING, LEVEL };
 

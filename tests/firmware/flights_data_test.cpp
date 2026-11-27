@@ -6,6 +6,15 @@
 
 using namespace espcontrol::flights;
 
+static void only_subscribes_to_compact_lists() {
+  assert(!uses_compact_flight_list("sensor.flightradar24_current_in_area"));
+  assert(!uses_compact_flight_list("sensor.flightradar24_entered_area"));
+  assert(!uses_compact_flight_list("sensor.flightradar24_exited_area_2"));
+  assert(uses_compact_flight_list("sensor.espcontrol_flights_entered"));
+  assert(uses_compact_flight_list("sensor.espcontrol_flights_exited"));
+  assert(uses_compact_flight_list("sensor.custom_flight_template"));
+}
+
 static void parses_template_output() {
   const auto flights = parse_list(
     "BA123|British Airways|Airbus A320neo|London|Madrid|12.3|10500|440|1200|0;"
@@ -94,6 +103,7 @@ static void detects_changes() {
 }
 
 int main() {
+  only_subscribes_to_compact_lists();
   parses_template_output();
   tolerates_missing_and_bad_values();
   caps_list_and_field_lengths();

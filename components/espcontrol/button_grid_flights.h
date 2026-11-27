@@ -3,11 +3,9 @@
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
 // ── Flights card ──────────────────────────────────────────────────────
-// Shows aircraft near home from a Home Assistant template sensor built on the
-// Flightradar24 integration (see docs/card-types/flights.md). The sensor state
-// is the number of flights in the area; its `flights` attribute is the compact
-// list parsed by flights_data.h. Tapping the card opens a list of the nearest
-// flights.
+// Shows the count from a Flightradar24 sensor or a Home Assistant template
+// sensor. The template sensor also supplies the compact flight list parsed by
+// flights_data.h (see docs/card-types/flights.md).
 
 #include "flights_data.h"
 
@@ -22,6 +20,7 @@ struct FlightsModalRow {
 
 struct FlightsModalUi {
   lv_obj_t *overlay = nullptr;
+  lv_obj_t *title = nullptr;
   lv_obj_t *list = nullptr;
   lv_obj_t *empty_lbl = nullptr;
   FlightsCardCtx *active = nullptr;
@@ -179,7 +178,8 @@ inline void flights_refresh_modal(FlightsCardCtx *ctx) {
     lv_obj_scroll_to_y(ui.list, scroll_y, LV_ANIM_OFF);
   }
   if (ui.empty_lbl) {
-    const char *key = ctx->available ? "No flights" : "Flight data unavailable";
+    const bool no_flights = ctx->available && espcontrol::flights::parse_number(ctx->count) == 0;
+    const char *key = no_flights ? "No flights" : "Flight data unavailable";
     lv_label_set_display_text(ui.empty_lbl, espcontrol_i18n(key));
   }
   for (size_t i = 0; i < count; ++i) {
@@ -212,10 +212,10 @@ inline void flights_open_modal(FlightsCardCtx *ctx) {
   lv_coord_t list_h = layout.panel_h - list_y - layout.inset;
   if (list_h < 60) list_h = 60;
 
-  lv_obj_t *title = control_modal_create_title(
+  ui.title = control_modal_create_title(
     shell.panel, flights_card_title(ctx), shell.content_w - layout.back_size - gap,
     ctx->label_font, width_compensation);
-  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, title_y - layout.back_size / 2);
+  lv_obj_align(ui.title, LV_ALIGN_TOP_MID, 0, title_y - layout.back_size / 2);
 
   ui.list = control_modal_create_scroll_list(shell.panel, shell.content_w, list_h, gap);
   lv_obj_align(ui.list, LV_ALIGN_TOP_LEFT, layout.inset, list_y);
@@ -235,10 +235,29 @@ inline void subscribe_flights_card(FlightsCardCtx *ctx) {
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
       ctx->available = !ha_entity_state_unavailable_ref(ctx->entity_id, state);
       ctx->count = ctx->available ? string_ref_limited(state, 8) : "";
+      ESP_LOGD("flights", "%s count: %s", ctx->entity_id.c_str(),
+               ctx->available ? ctx->count.c_str() : "unavailable");
       flights_apply_card_text(ctx);
       flights_refresh_modal(ctx);
-    })
+    }), HA_SUBSCRIPTION_SCOPE_DEFAULT, true
   );
+  if (ctx->configured_label.empty()) {
+    ha_subscribe_attribute(
+      ctx->entity_id, "friendly_name",
+      std::function<void(esphome::StringRef)>([ctx](esphome::StringRef name) {
+        ctx->friendly_name = string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN);
+        ESP_LOGD("flights", "%s sensor name received", ctx->entity_id.c_str());
+        flights_apply_card_text(ctx);
+        FlightsModalUi &ui = flights_modal_ui();
+        if (ui.active == ctx && ui.title) {
+          const std::string title = flights_card_title(ctx);
+          lv_label_set_display_text(ui.title, title.c_str());
+          set_clock_bar_modal_label(title);
+        }
+      }), HA_SUBSCRIPTION_SCOPE_DEFAULT, true
+    );
+  }
+  if (!espcontrol::flights::uses_compact_flight_list(ctx->entity_id)) return;
   ha_subscribe_attribute(
     ctx->entity_id, std::string("flights"),
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef list) {
@@ -247,13 +266,6 @@ inline void subscribe_flights_card(FlightsCardCtx *ctx) {
       if (next == ctx->flights) return;
       ctx->flights = std::move(next);
       flights_refresh_modal(ctx);
-    })
-  );
-  ha_subscribe_attribute(
-    ctx->entity_id, std::string("friendly_name"),
-    std::function<void(esphome::StringRef)>([ctx](esphome::StringRef name) {
-      ctx->friendly_name = string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN);
-      flights_apply_card_text(ctx);
     })
   );
 }

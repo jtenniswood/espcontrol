@@ -6,18 +6,18 @@ description:
 
 # Flights
 
-A Flights card shows aircraft currently in your monitored area, or aircraft that just entered or exited it. The tile shows the count and the card title, with the Home Assistant sensor name as the default. Tap the card for the flight list.
+A Flights card shows the number of aircraft currently in your monitored area, or aircraft that just entered or exited it. The tile shows the count and the card title, with the Home Assistant sensor name as the default. To see individual flights when you tap the card, point it at a template sensor.
 
 The data comes from the [Flightradar24 integration](https://github.com/AlexandrErohin/home-assistant-flightradar24) for Home Assistant, through a small template sensor that you add once.
 
 ## Before You Start
 
 1. Install the **Flightradar24** integration from HACS and set up the area you want to watch. It creates a sensor called `sensor.flightradar24_current_in_area`.
-2. Add the template sensor below to Home Assistant.
+2. For a count and sensor name, use the integration’s sensor directly. For the flight list too, add the template sensor below to Home Assistant.
 
-### Why a Template Sensor Is Needed
+### Why the Flight List Needs a Template Sensor
 
-The integration stores every flight in the area with dozens of details and a flight-path history. With a busy sky, that is far more data than the panel can receive in one update. The template keeps only the nearest 10 flights and the details the card shows, so the card keeps working however busy it gets.
+The integration stores every flight in the area with dozens of details and a flight-path history. That can exceed the ESPHome API’s message size limit and interrupt sensor updates. When you select a built-in `sensor.flightradar24_*` entity, the panel only reads its count and name. The template sensor supplies the nearest 10 flights and the details the card shows.
 
 ### Add the Template Sensor
 
@@ -38,16 +38,16 @@ template:
             {%- for f in source | selectattr('distance', 'number') | sort(attribute='distance') -%}
               {%- if loop.index <= 10 -%}
                 {%- set fields = [
-                  f.flight_number or f.callsign,
-                  f.airline_short or f.airline,
-                  f.aircraft_model or f.aircraft_code,
-                  f.airport_origin_city or f.airport_origin_code_iata,
-                  f.airport_destination_city or f.airport_destination_code_iata,
+                  f.get('flight_number') or f.get('callsign'),
+                  f.get('airline_short') or f.get('airline'),
+                  f.get('aircraft_model') or f.get('aircraft_code'),
+                  f.get('airport_origin_city') or f.get('airport_origin_code_iata'),
+                  f.get('airport_destination_city') or f.get('airport_destination_code_iata'),
                   f.distance | round(1),
-                  f.altitude,
-                  f.ground_speed,
-                  f.vertical_speed,
-                  1 if f.on_ground else 0
+                  f.get('altitude'),
+                  f.get('ground_speed'),
+                  f.get('vertical_speed'),
+                  1 if f.get('on_ground') else 0
                 ] -%}
                 {%- set ns.rows = ns.rows + [fields | map('string') | map('replace', '|', '/') | map('replace', ';', ',') | join('|')] -%}
               {%- endif -%}
@@ -69,7 +69,7 @@ For **Entered area** or **Exited area**, duplicate the sensor entry under the sa
 
 1. Add a new card and select **Flights**.
 2. Choose **Area view**. Existing cards use **Current in area**.
-3. Set **Flights Sensor** to the matching template entity. The editor suggests `sensor.espcontrol_flights`, `sensor.espcontrol_flights_entered`, or `sensor.espcontrol_flights_exited` when you switch views.
+3. Set **Flights Sensor** to the built-in entity from the table for the count, or its template counterpart for the count and flight list. Use the entity ID shown in Home Assistant. The editor suggests `sensor.espcontrol_flights`, `sensor.espcontrol_flights_entered`, or `sensor.espcontrol_flights_exited` when you switch views.
 4. Set a **Title** (optional). It appears below the count on the tile and above the flight list. If left blank, the sensor’s name from Home Assistant is used.
 5. Choose **Units**:
    - **Metric** shows distance in km, altitude in metres, and speed in km/h.
@@ -79,7 +79,7 @@ For **Entered area** or **Exited area**, duplicate the sensor entry under the sa
 
 - The card shows the count for the selected view, with the title beneath it.
 - The card keeps its sensor background as the flight count changes.
-- Tap the card to open the flight list. It shows up to 10 flights, closest first, and updates while it is open:
+- With a template sensor selected, tap the card to see up to 10 flights. The list shows the closest first and updates while open:
   - flight number and aircraft type
   - airline and route
   - distance, altitude, speed, and whether the aircraft is climbing, descending, level, or on the ground
