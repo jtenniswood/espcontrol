@@ -8403,6 +8403,26 @@ async function assertFlightsPreviewLayout(browser) {
     await page.waitForSelector("#sp-app");
     await seedNativeDocument(page, nativeState);
     await checkTile(page, 1, "material-symbol-airplanemode-inactive", "Departures from home");
+    await page.locator(".sp-main .sp-empty-cell").first().click();
+    await page.getByRole("button", { name: "Flights card type", exact: true }).click();
+    async function checkDraftTitle(expected) {
+      if (!(await title.isVisible())) {
+        await page.getByRole("button", { name: "Card Settings", exact: true }).click();
+      }
+      assert.strictEqual(await title.inputValue(), expected);
+    }
+    await checkDraftTitle("Current in area");
+    const area = page.locator('select[id$="flights-area"]');
+    await area.selectOption("entered");
+    await checkDraftTitle("Entered area");
+    await area.selectOption("exited");
+    await checkDraftTitle("Exited area");
+    await title.fill("My flight sensor");
+    await area.selectOption("current");
+    await checkDraftTitle("My flight sensor");
+    await title.fill("");
+    await area.selectOption("entered");
+    await checkDraftTitle("");
     console.log("Flights previews match Weather, use custom titles, and retain the title and view after save and reload.");
   } finally {
     await context.close();

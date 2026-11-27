@@ -22,7 +22,7 @@
     "canonicalOptionOrder": ["area", "units"]
   },
   "default": {
-    "entity": "", "label": "", "icon": "Travel", "icon_on": "Auto",
+    "entity": "", "label": "Current in area", "icon": "Travel", "icon_on": "Auto",
     "sensor": "", "unit": "", "type": "flights", "precision": "", "options": ""
   }
 }

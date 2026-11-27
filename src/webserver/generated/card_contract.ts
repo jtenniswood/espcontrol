@@ -4375,7 +4375,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     },
     "default": {
       "entity": "",
-      "label": "",
+      "label": "Current in area",
       "icon": "Travel",
       "icon_on": "Auto",
       "sensor": "",

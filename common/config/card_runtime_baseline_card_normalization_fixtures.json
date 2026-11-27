@@ -1,10 +1,10 @@
 [
   {
     "name": "flights: metric",
-    "input": "~sensor.espcontrol_flights,,Travel,Auto,,,flights,,",
+    "input": "~sensor.espcontrol_flights,Current%20in%20area,Travel,Auto,,,flights,,",
     "expected": {
       "entity": "sensor.espcontrol_flights",
-      "label": "",
+      "label": "Current in area",
       "icon": "Travel",
       "icon_on": "Auto",
       "sensor": "",
@@ -16,10 +16,10 @@
   },
   {
     "name": "flights: imperial",
-    "input": "~sensor.espcontrol_flights,,Travel,Auto,,,flights,,units%3Dimperial",
+    "input": "~sensor.espcontrol_flights,Current%20in%20area,Travel,Auto,,,flights,,units%3Dimperial",
     "expected": {
       "entity": "sensor.espcontrol_flights",
-      "label": "",
+      "label": "Current in area",
       "icon": "Travel",
       "icon_on": "Auto",
       "sensor": "",
@@ -31,10 +31,10 @@
   },
   {
     "name": "flights: entered area",
-    "input": "~sensor.espcontrol_flights_entered,,Travel,Auto,,,flights,,area%3Dentered",
+    "input": "~sensor.espcontrol_flights_entered,Current%20in%20area,Travel,Auto,,,flights,,area%3Dentered",
     "expected": {
       "entity": "sensor.espcontrol_flights_entered",
-      "label": "",
+      "label": "Current in area",
       "icon": "Travel",
       "icon_on": "Auto",
       "sensor": "",
@@ -46,10 +46,10 @@
   },
   {
     "name": "flights: exited area in imperial units",
-    "input": "~sensor.espcontrol_flights_exited,,Travel,Auto,,,flights,,area%3Dexited%2Cunits%3Dimperial",
+    "input": "~sensor.espcontrol_flights_exited,Current%20in%20area,Travel,Auto,,,flights,,area%3Dexited%2Cunits%3Dimperial",
     "expected": {
       "entity": "sensor.espcontrol_flights_exited",
-      "label": "",
+      "label": "Current in area",
       "icon": "Travel",
       "icon_on": "Auto",
       "sensor": "",

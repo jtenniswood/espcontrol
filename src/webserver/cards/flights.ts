@@ -48,8 +48,13 @@ export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiS
           onChange(this: HTMLSelectElement, button, cardHelpers) {
             button.options = setConfigOptionValue(button.options, "area",
               this.value === "current" ? "" : this.value);
+            const selectedView = AREA_VIEWS[flightsArea(button.options)];
+            if (button.label === AREA_VIEWS[area].label) {
+              button.label = selectedView.label;
+              cardHelpers.saveField("label", button.label);
+            }
             if (!button.entity || button.entity === AREA_VIEWS[area].sensor) {
-              button.entity = AREA_VIEWS[flightsArea(button.options)].sensor;
+              button.entity = selectedView.sensor;
               cardHelpers.saveField("entity", button.entity);
             }
             cardHelpers.saveField("options", button.options);
@@ -74,7 +79,7 @@ export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiS
         label: "Title",
         idSuffix: "label",
         field: "label",
-        placeholder: "e.g. Flights",
+        placeholder: "Home Assistant sensor name",
       });
 
       helpers.renderCardSegmentControl(panel, b, helpers, {

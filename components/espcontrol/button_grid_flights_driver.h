@@ -13,6 +13,14 @@ inline bool flights_driver_matches(const Context &context) {
   return context.runtime.driver == card_runtime::CardDriverId::FLIGHTS;
 }
 
+inline std::string flights_driver_configured_title(const ParsedCfg &config) {
+  if (config.label.empty()) return {};
+  const auto area = cfg_option_value(config.options, "area");
+  const char *key = area == "entered" ? "flights_entered_area"
+    : area == "exited" ? "flights_exited_area" : "flights_current_in_area";
+  return config.label == espcontrol_i18n_key_en(key) ? espcontrol_i18n_key(key) : config.label;
+}
+
 inline bool flights_driver_setup_visual(
     BtnSlot &slot, const ParsedCfg &config, const Context &context) {
   if (!flights_driver_matches(context)) return false;
@@ -30,8 +38,8 @@ inline bool flights_driver_setup_visual(
   lv_obj_t *name = lv_label_create(slot.btn);
   lv_label_set_long_mode(name, LV_LABEL_LONG_DOT);
   lv_obj_set_width(name, lv_pct(100));
-  lv_label_set_display_text(name, config.label.empty()
-    ? espcontrol_i18n("Flights") : config.label.c_str());
+  const std::string title = flights_driver_configured_title(config);
+  lv_label_set_display_text(name, title.empty() ? espcontrol_i18n("Flights") : title.c_str());
   apply_text_width_compensation(name);
   lv_obj_set_user_data(slot.sensor_container, name);
   apply_push_button_transition(slot.btn);
@@ -70,7 +78,7 @@ inline bool flights_driver_bind_data(
   if (config.entity.compare(0, 7, "sensor.") != 0) return true;
   auto *flights = grid_track_runtime_allocation(slot.btn, new FlightsCardCtx());
   flights->entity_id = config.entity;
-  flights->configured_label = config.label;
+  flights->configured_label = flights_driver_configured_title(config);
   flights->btn = slot.btn;
   flights->count_lbl = slot.text_lbl;
   flights->name_lbl = static_cast<lv_obj_t *>(lv_obj_get_user_data(slot.sensor_container));

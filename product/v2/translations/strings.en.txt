@@ -261,6 +261,9 @@ timer=Timer
 timer_confirm=Confirm
 # Flights card
 flights=Flights
+flights_current_in_area=Current in area
+flights_entered_area=Entered area
+flights_exited_area=Exited area
 flights_none=No flights
 flights_unavailable=Flight data unavailable
 flights_unknown_aircraft=Unknown aircraft
