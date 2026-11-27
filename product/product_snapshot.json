@@ -2723,9 +2723,9 @@
           "capabilities": {
             "informationOnly": true,
             "subscriptions": true,
-            "actions": true,
+            "actions": false,
             "numericControl": false,
-            "modal": true,
+            "modal": false,
             "runtimeAllocation": true,
             "subpage": true
           }
@@ -6895,17 +6895,6 @@
             "omitDefault": true
           },
           {
-            "name": "units",
-            "label": "Units",
-            "kind": "choice",
-            "values": [
-              "metric",
-              "imperial"
-            ],
-            "defaultValue": "metric",
-            "omitDefault": true
-          },
-          {
             "name": "title_source",
             "label": "Title source",
             "kind": "choice",
@@ -6953,7 +6942,6 @@
           "unknownOptions": "drop",
           "canonicalOptionOrder": [
             "area",
-            "units",
             "title_source"
           ]
         },

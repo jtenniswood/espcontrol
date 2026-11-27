@@ -455,9 +455,7 @@ export function createConfigCodecFeature(
     }
     function normalizeFlightsOptions(options: string): string {
         const area = configOptionValue(options, "area");
-        const units = configOptionValue(options, "units");
         return [area === "entered" || area === "exited" ? "area=" + area : "",
-            units === "imperial" ? "units=imperial" : "",
             configOptionValue(options, "title_source") === "sensor" ? "title_source=sensor" : ""].filter(Boolean).join(",");
     }
     function normalizeButtonConfig(this: any, b?: any) {

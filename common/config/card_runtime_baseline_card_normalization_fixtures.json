@@ -1,9 +1,9 @@
 [
   {
-    "name": "flights: metric",
-    "input": "~sensor.espcontrol_flights,Current%20in%20area,Travel,Auto,,,flights,,",
+    "name": "flights: current in area",
+    "input": "~sensor.flightradar24_current_in_area,Current%20in%20area,Travel,Auto,,,flights,,",
     "expected": {
-      "entity": "sensor.espcontrol_flights",
+      "entity": "sensor.flightradar24_current_in_area",
       "label": "Current in area",
       "icon": "Travel",
       "icon_on": "Auto",
@@ -15,7 +15,7 @@
     }
   },
   {
-    "name": "flights: imperial",
+    "name": "flights: legacy units",
     "input": "~sensor.espcontrol_flights,Current%20in%20area,Travel,Auto,,,flights,,units%3Dimperial",
     "expected": {
       "entity": "sensor.espcontrol_flights",
@@ -26,7 +26,7 @@
       "unit": "",
       "type": "flights",
       "precision": "",
-      "options": "units=imperial"
+      "options": ""
     }
   },
   {
@@ -45,8 +45,8 @@
     }
   },
   {
-    "name": "flights: exited area in imperial units",
-    "input": "~sensor.espcontrol_flights_exited,Current%20in%20area,Travel,Auto,,,flights,,area%3Dexited%2Cunits%3Dimperial",
+    "name": "flights: exited area with sensor title",
+    "input": "~sensor.espcontrol_flights_exited,Current%20in%20area,Travel,Auto,,,flights,,area%3Dexited%2Cunits%3Dimperial%2Ctitle_source%3Dsensor",
     "expected": {
       "entity": "sensor.espcontrol_flights_exited",
       "label": "Current in area",
@@ -56,7 +56,7 @@
       "unit": "",
       "type": "flights",
       "precision": "",
-      "options": "area=exited,units=imperial"
+      "options": "area=exited,title_source=sensor"
     }
   },
   {

@@ -1501,7 +1501,6 @@ inline void grid_prepare_flights_visual_reset(lv_obj_t *owner) {
     if (allocation.owner == owner &&
         allocation.deleter == grid_delete_runtime_ptr<FlightsCardCtx>) {
       auto *flights = static_cast<FlightsCardCtx *>(allocation.ptr);
-      if (lv_obj_get_user_data(owner) == flights) lv_obj_set_user_data(owner, nullptr);
       flights->detach();
     }
   }

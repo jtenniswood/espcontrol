@@ -9,14 +9,12 @@ import {
   cardContractDomains,
 } from "../generated/card_contract";
 
-// Flights card: aircraft near home from a Home Assistant template sensor built
-// on the Flightradar24 integration (see docs/card-types/flights.md).
-// The selected template sensor supplies both the count and flight list.
+// Shows a flight count from a Home Assistant sensor.
 
 const AREA_VIEWS = {
-  current: { sensor: "sensor.espcontrol_flights", icon: "material-symbol-travel" },
-  entered: { sensor: "sensor.espcontrol_flights_entered", icon: "material-symbol-connecting-airports" },
-  exited: { sensor: "sensor.espcontrol_flights_exited", icon: "material-symbol-airplanemode-inactive" },
+  current: { sensor: "sensor.flightradar24_current_in_area", template: "sensor.espcontrol_flights", icon: "material-symbol-travel" },
+  entered: { sensor: "sensor.flightradar24_entered_area", template: "sensor.espcontrol_flights_entered", icon: "material-symbol-connecting-airports" },
+  exited: { sensor: "sensor.flightradar24_exited_area", template: "sensor.espcontrol_flights_exited", icon: "material-symbol-airplanemode-inactive" },
 };
 
 function flightsViewTitles() {
@@ -30,10 +28,6 @@ function usesViewTitle(label: string, options: string, area: keyof typeof AREA_V
 function flightsArea(options: string): keyof typeof AREA_VIEWS {
   const area = configOptionValue(options, "area");
   return area === "entered" || area === "exited" ? area : "current";
-}
-
-function flightsUnits(options: string): "metric" | "imperial" {
-  return configOptionValue(options, "units") === "imperial" ? "imperial" : "metric";
 }
 
 export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiServices): void {
@@ -65,8 +59,13 @@ export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiS
               button.label = FLIGHTS_TITLES.en[nextArea];
               cardHelpers.saveField("label", button.label);
             }
-            if (!button.entity || button.entity === AREA_VIEWS[area].sensor) {
+            const previousEntity = button.entity;
+            if (previousEntity === AREA_VIEWS[area].template) {
+              button.entity = AREA_VIEWS[nextArea].template;
+            } else if (!previousEntity || previousEntity === AREA_VIEWS[area].sensor) {
               button.entity = AREA_VIEWS[nextArea].sensor;
+            }
+            if (button.entity !== previousEntity) {
               cardHelpers.saveField("entity", button.entity);
             }
             cardHelpers.saveField("options", button.options);
@@ -82,7 +81,7 @@ export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiS
           idSuffix: "entity",
           placeholder: "e.g. " + AREA_VIEWS[area].sensor,
           domains: cardContractDomains("flights"),
-          requiredMessage: "Add the flights template sensor before saving.",
+          requiredMessage: "Add the Flights sensor before saving.",
         },
       });
       helpers.requireEntityDomain(entity.input, ["sensor"], "Choose a sensor entity (sensor.*).");
@@ -104,18 +103,6 @@ export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiS
       title.input.addEventListener("input", updateTitle);
       title.input.addEventListener("change", updateTitle);
 
-      helpers.renderCardSegmentControl(panel, b, helpers, {
-        label: "Units",
-        options: [
-          ["metric", "Metric"],
-          ["imperial", "Imperial"],
-        ],
-        value: () => flightsUnits(b.options),
-        onSelect: function (button: any, cardHelpers: any, value: string) {
-          button.options = setConfigOptionValue(button.options, "units", value === "imperial" ? "imperial" : "");
-          cardHelpers.saveField("options", button.options);
-        },
-      });
     },
     renderPreview: function (b, helpers) {
       const entityName = b.entity?.replace(/^sensor\./, "").replace(/_/g, " ");

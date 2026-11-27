@@ -9,7 +9,7 @@ It records the pre-migration baseline; it does not move executable behaviour int
 
 | Contract type | Classification | Runtime driver | Capabilities | Canonical saved type | Web registration | Firmware family | Cases |
 |---|---|---|---|---|---|---|---:|
-| flights | canonical | flights | informationOnly, subscriptions, actions, modal, runtimeAllocation, subpage | flights | flights | FLIGHTS | 4 |
+| flights | canonical | flights | informationOnly, subscriptions, runtimeAllocation, subpage | flights | flights | FLIGHTS | 4 |
 | timer | canonical | timer | subscriptions, actions, runtimeAllocation, subpage | timer | timer | TIMER | 2 |
 | (switch) | canonical | toggle | subscriptions, actions, subpage | (switch) | (switch) | TOGGLE | 1 |
 | action | canonical | action | subscriptions, actions, runtimeAllocation, subpage | action | action | ACTION | 2 |
@@ -69,4 +69,4 @@ The inventory records broad observable responsibilities so later family migratio
 
 - Subscriptions: none, state, attributes, local, time, action_response, http
 - Actions: none, home_assistant_service, local, http, navigation, modal
-- Modal owners: none, alarm, climate, cover, image, media, wifi_qr, weather, flights
+- Modal owners: none, alarm, climate, cover, image, media, wifi_qr, weather

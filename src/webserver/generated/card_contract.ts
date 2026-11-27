@@ -4323,17 +4323,6 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "omitDefault": true
       },
       {
-        "name": "units",
-        "label": "Units",
-        "kind": "choice",
-        "values": [
-          "metric",
-          "imperial"
-        ],
-        "defaultValue": "metric",
-        "omitDefault": true
-      },
-      {
         "name": "title_source",
         "label": "Title source",
         "kind": "choice",
@@ -4381,7 +4370,6 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "unknownOptions": "drop",
       "canonicalOptionOrder": [
         "area",
-        "units",
         "title_source"
       ]
     },
@@ -4958,9 +4946,9 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
     "capabilities": {
       "informationOnly": true,
       "subscriptions": true,
-      "actions": true,
+      "actions": false,
       "numericControl": false,
-      "modal": true,
+      "modal": false,
       "runtimeAllocation": true,
       "subpage": true
     }
@@ -5177,7 +5165,6 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "temperature_step": "temperature_step",
   "time_unit": "time_unit",
   "title_source": "title_source",
-  "units": "units",
   "vacuum_mode": "vacuum_mode",
   "volume_max": "volume_max",
   "weather_mode": "weather_mode",

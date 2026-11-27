@@ -224,7 +224,7 @@ inline CardRuntimeSpec card_runtime_spec(CardTypeId type) {
     case CardTypeId::WIFI_QR: return {type, CardDriverId::WIFI_QR, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_SUBPAGE)};
     case CardTypeId::WIFI_QR_CARD: return {type, CardDriverId::WIFI_QR, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_SUBPAGE)};
     case CardTypeId::WEATHER_FORECAST: return {type, CardDriverId::WEATHER, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
-    case CardTypeId::FLIGHTS: return {type, CardDriverId::FLIGHTS, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
+    case CardTypeId::FLIGHTS: return {type, CardDriverId::FLIGHTS, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     default: return {};
   }
 }
@@ -377,7 +377,6 @@ constexpr const char *CARD_CONTRACT_OPTION_NAME_TEMPERATURE_SOURCE = "temperatur
 constexpr const char *CARD_CONTRACT_OPTION_NAME_TEMPERATURE_STEP = "temperature_step";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_TIME_UNIT = "time_unit";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_TITLE_SOURCE = "title_source";
-constexpr const char *CARD_CONTRACT_OPTION_NAME_UNITS = "units";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_VACUUM_MODE = "vacuum_mode";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_VOLUME_MAX = "volume_max";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_WEATHER_MODE = "weather_mode";

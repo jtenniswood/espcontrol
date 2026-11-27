@@ -19,7 +19,6 @@ enum class ControlModalKind {
   LIGHT_CONTROL,
   MEDIA_CONTROL,
   WEATHER_FORECAST,
-  FLIGHTS,
 };
 
 using ControlModalCloseCallback = void (*)();

@@ -54,7 +54,6 @@ inline ControlModalDefinition control_modal_definition(ControlModalKind kind) {
               ControlModalDismissPolicy::DISMISS};
     case ControlModalKind::OPTION_SELECT:
     case ControlModalKind::FAN_PRESET:
-    case ControlModalKind::FLIGHTS:
       return {ControlModalPresentation::LIST, ControlModalChrome::CLOSE,
               ControlModalDismissPolicy::DISMISS};
     case ControlModalKind::WEATHER_FORECAST:

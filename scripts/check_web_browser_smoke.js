@@ -8302,7 +8302,7 @@ async function assertWeatherReadingEditors(browser) {
 async function assertFlightsPreviewLayout(browser) {
   const slug = "guition-esp32-p4-jc8012p4a1-v3";
   const nativeState = nativeConfigState(slug);
-  nativeState.document.buttons[1] = "sensor.espcontrol_flights;;Travel;Auto;;;flights;;";
+  nativeState.document.buttons[1] = "sensor.espcontrol_flights;;Travel;Auto;;;flights;;units=imperial";
   const longTitle = "FlightRadar24 Entered the monitored area this afternoon";
   nativeState.document.buttons[2] = `sensor.espcontrol_flights_entered;${longTitle};Travel;Auto;;;flights;;area=entered`;
   nativeState.document.buttons[4] = "sensor.espcontrol_flights_exited;;Travel;Auto;;;flights;;area=exited";
@@ -8360,6 +8360,8 @@ async function assertFlightsPreviewLayout(browser) {
     await page.goto("http://espcontrol.test/" + slug + "?events=1");
     await page.waitForSelector("#sp-app");
     await seedNativeDocument(page, nativeState);
+    await waitForNativeState(nativeState, () => !nativeState.document.buttons[1].includes("units"), "Legacy Flights units removed");
+    const initialWrites = nativeState.puts.length;
     const current = await checkTile(page, 1, "material-symbol-travel", "Current in area");
     const entered = await checkTile(page, 2, "material-symbol-connecting-airports", longTitle);
     assert.strictEqual(current.sublabelLines, 1);
@@ -8381,7 +8383,7 @@ async function assertFlightsPreviewLayout(browser) {
     await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
     const exitedSubpage = await checkTile(page, 1, "material-symbol-airplanemode-inactive", longTitle);
     assert.strictEqual(exitedSubpage.sublabelLines, 2);
-    assert.strictEqual(nativeState.puts.length, 0, "Previewing Flights leaves the saved layout alone");
+    assert.strictEqual(nativeState.puts.length, initialWrites, "Previewing Flights leaves the saved layout alone");
     await page.locator(".sp-main .sp-back-btn .sp-back-hit").click();
     await page.locator('.sp-main [data-slot="1"]').click();
     await page.getByRole("button", { name: "Edit", exact: true }).click();
@@ -8394,11 +8396,13 @@ async function assertFlightsPreviewLayout(browser) {
     if (!(await title.isVisible())) {
       await page.getByRole("button", { name: "Card Settings", exact: true }).click();
     }
+    assert.strictEqual(await page.getByText("Units", { exact: true }).count(), 0);
     await title.fill("Departures from home");
     await checkTile(page, 1, "material-symbol-airplanemode-inactive", "Departures from home");
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await waitForNativeState(nativeState, () => nativeState.document.buttons[1].includes("area") &&
       panelConfigLabel(nativeState.document, 1) === "Departures from home", "Flights area and title saved");
+    assert(!nativeState.document.buttons[1].includes("units"));
     await page.reload();
     await page.waitForSelector("#sp-app");
     await seedNativeDocument(page, nativeState);
@@ -8415,6 +8419,8 @@ async function assertFlightsPreviewLayout(browser) {
     const area = page.locator('select[id$="flights-area"]');
     await area.selectOption("entered");
     await checkDraftTitle("Entered area");
+    assert.strictEqual(await page.locator('.sp-settings-modal input[id$="entity"]').inputValue(),
+      "sensor.flightradar24_entered_area");
     await area.selectOption("exited");
     await checkDraftTitle("Exited area");
     await title.fill("My flight sensor");

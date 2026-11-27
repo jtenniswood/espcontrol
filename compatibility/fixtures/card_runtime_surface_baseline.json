@@ -2,10 +2,10 @@
   "baselineVersion": 1,
   "cases": [
     {
-      "name": "flights: metric",
+      "name": "flights: current in area",
       "sourceKind": "contract",
       "sourceType": "flights",
-      "mode": "metric",
+      "mode": "current in area",
       "canonicalType": "flights",
       "web": {
         "registration": "flights",
@@ -28,16 +28,16 @@
           "attributes"
         ],
         "actions": [
-          "modal"
+          "none"
         ],
-        "modalOwner": "flights"
+        "modalOwner": "none"
       }
     },
     {
-      "name": "flights: imperial",
+      "name": "flights: legacy units",
       "sourceKind": "contract",
       "sourceType": "flights",
-      "mode": "imperial",
+      "mode": "legacy units",
       "canonicalType": "flights",
       "web": {
         "registration": "flights",
@@ -60,9 +60,9 @@
           "attributes"
         ],
         "actions": [
-          "modal"
+          "none"
         ],
-        "modalOwner": "flights"
+        "modalOwner": "none"
       }
     },
     {
@@ -92,16 +92,16 @@
           "attributes"
         ],
         "actions": [
-          "modal"
+          "none"
         ],
-        "modalOwner": "flights"
+        "modalOwner": "none"
       }
     },
     {
-      "name": "flights: exited area in imperial units",
+      "name": "flights: exited area with sensor title",
       "sourceKind": "contract",
       "sourceType": "flights",
-      "mode": "exited area in imperial units",
+      "mode": "exited area with sensor title",
       "canonicalType": "flights",
       "web": {
         "registration": "flights",
@@ -124,9 +124,9 @@
           "attributes"
         ],
         "actions": [
-          "modal"
+          "none"
         ],
-        "modalOwner": "flights"
+        "modalOwner": "none"
       }
     },
     {
