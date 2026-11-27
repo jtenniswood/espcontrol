@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <mutex>
 #include <string>
+#include "display_mode_controller.h"
 
 namespace espcontrol {
 // Local touchscreen policy. The web API exposes status and PIN length, never the PIN.
@@ -23,18 +24,27 @@ class ScreensaverPin {
   }
   bool locked() const { Guard guard(mutex_); return (locked_ || manual_locked_) && !pin_.empty(); }
   bool keypad_requested() const { Guard guard(mutex_); return (locked_ || manual_locked_) && !wait_for_touch_; }
+  DisplayTransition return_view() const { Guard guard(mutex_); return return_view_; }
+  bool dismiss_keypad() {
+    Guard guard(mutex_);
+    if (wait_for_touch_) return false;
+    wait_for_touch_ = true;
+    return true;
+  }
   void request_keypad() { Guard guard(mutex_); wait_for_touch_ = false; }
   bool lock(bool wait_for_touch = false) {
     Guard guard(mutex_);
     if (!ready_ || pin_.empty()) return false;
     manual_locked_ = true;
     wait_for_touch_ = wait_for_touch;
+    return_view_ = {};
     return true;
   }
-  void arm() {
+  void arm(const DisplayTransition &view = {}) {
     Guard guard(mutex_);
     sleeping_ = true;
     wait_for_touch_ = false;
+    return_view_ = view;
     locked_ = enabled_ && !pin_.empty();
   }
   void wake() {
@@ -50,6 +60,7 @@ class ScreensaverPin {
     locked_ = false;
     manual_locked_ = false;
     wait_for_touch_ = false;
+    return_view_ = {};
     return true;
   }
   bool save(bool enabled, const std::string *pin, const bool *randomize_keypad = nullptr,
@@ -66,6 +77,7 @@ class ScreensaverPin {
   bool enabled_{false}, locked_{false}, sleeping_{false}, ready_{false};
   bool manual_locked_{false};
   bool wait_for_touch_{false};
+  DisplayTransition return_view_{};
   bool randomize_keypad_{false};
   bool allow_cover_art_playback_{false};
 };
