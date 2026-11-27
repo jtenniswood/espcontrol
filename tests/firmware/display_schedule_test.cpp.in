@@ -72,7 +72,11 @@ Step branch(Script &owner, std::function<bool()> condition, Steps yes, Steps no)
   return [&owner, condition, yes, no](Next next) { run_branch(owner, owner.epoch, condition() ? yes : no, 0, next); };
 }
 // Hardware/settings boundary; production predicates use these values unchanged.
-struct App { DisplayModeController controller; auto &display() { return controller; } } espcontrol_app;
+struct AppState { DisplayModeController controller; auto &display() { return controller; } } espcontrol_app;
+struct BootState {
+  bool complete = true;
+  bool is_setup_complete() const { return complete; }
+} App;
 struct Time { int hour = 6; bool valid = true; bool is_valid() const { return valid; } } clock_time;
 struct Clock { Time now() { return clock_time; } } panel_time, homeassistant_time;
 Time panel_time_or_fallback(Time primary, Time fallback) { return primary.valid ? primary : fallback; }
@@ -84,8 +88,15 @@ int *lv_scr_act() { return active_page; }
 struct Text { std::string state; std::string current_option() { return state; } };
 Text button_order{"1"}, screen_schedule_trigger{"time"}, screen_schedule_sensor_activation{"Sensor Off"}, screensaver_mode{"timer"};
 Text cover_art_media_player_entity{"media_player.test"};
+struct Diagnostic {
+  std::string state;
+  int updates = 0;
+  void publish_state(const char *source) { state = source; ++updates; }
+} screen_display_source;
 struct Number { float state; } schedule_on_hour{7}, schedule_off_hour{22}, schedule_wake_timeout{60}, screensaver_timeout{300};
 struct Toggle { bool state = false; } schedule_enabled{true}, cover_art_screensaver_enabled{}, media_player_sleep_prevention_enabled{};
+Toggle schedule_resume_manual_sleep;
+bool timed_schedule_was_night = false;
 bool connectivity_setup_display_active = false, schedule_presence_detected = false,
      schedule_mode_always_on = false, schedule_mode_clock = true,
      clock_bar_night_mode_active = false, cover_art_media_playing = false,
@@ -111,6 +122,12 @@ void reset(DisplayMode night_mode = DisplayMode::CLOCK) {
   display_mode_reconcile.stop(); screen_schedule_check.stop(); screen_schedule_wake.stop();
   display_mode_apply_transition.stop(); display_mode_effect_active.stop();
   display_active_finalize.stop(); screensaver_idle_check.stop();
+  display_backlight_handle_off.stop(); screen_schedule_manual_sleep.stop();
+  screen_schedule_wake_timeout_check.stop();
+  App.complete = true;
+  screen_display_source = {};
+  timed_schedule_was_night = false;
+  schedule_resume_manual_sleep.state = false;
   screensaver_idle_check.calls = home_screen_idle_check.calls = 0;
   clock_time = {6, true}; active_page = home.obj;
   schedule_enabled.state = true;
@@ -233,15 +250,96 @@ int main() {
     display_mode_reconcile.execute(); advance(500);
     assert(controller.current_mode_is(DisplayMode::ACTIVE));
   }
-  // Manual sleep is never cleared by either order at the schedule boundary.
+  // Opting in clears manual sleep once at the timed schedule boundary,
+  // whichever callback sees it first, including after a temporary clock outage.
   for (bool fast_first : {false, true}) {
-    reset(); controller.request(DisplayRequestSource::MANUAL_SLEEP, DisplayMode::DISPLAY_OFF);
-    controller.complete_transition(controller.resolve()); clock_time.hour = 7;
-    (fast_first ? display_mode_reconcile : screen_schedule_check).execute();
-    (fast_first ? screen_schedule_check : display_mode_reconcile).execute(); advance(1000);
-    assert(controller.target_source_is(DisplayRequestSource::MANUAL_SLEEP));
-    assert(screensaver_idle_check.calls == 0);
+    for (bool opt_in : {false, true}) {
+      reset();
+      schedule_resume_manual_sleep.state = opt_in;
+      screen_schedule_manual_sleep.execute();
+      assert(screen_display_source.state == "manual_sleep");
+      clock_time.valid = false;
+      screen_schedule_check.execute();
+      assert(screen_display_source.state == "manual_sleep");
+      clock_time = {7, true};
+      (fast_first ? display_mode_reconcile : screen_schedule_check).execute();
+      (fast_first ? screen_schedule_check : display_mode_reconcile).execute();
+      advance(1000);
+      assert(controller.request_active(DisplayRequestSource::MANUAL_SLEEP) == !opt_in);
+      assert(screen_display_source.state == (opt_in ? "default" : "manual_sleep"));
+      assert(screensaver_idle_check.is_running() == opt_in);
+
+      // A deliberate OFF later in the morning still stays latched.
+      display_backlight_handle_off.execute();
+      screen_schedule_check.execute();
+      assert(screen_display_source.state == "manual_sleep");
+    }
   }
+
+  // OFF at the boundary can arrive before either schedule callback. It is a
+  // fresh manual sleep request during daytime and survives that reconciliation.
+  reset(DisplayMode::DISPLAY_OFF);
+  schedule_resume_manual_sleep.state = true;
+  manual_wake_ms = millis();
+  display_mode_reconcile.execute();
+  clock_time.hour = 7;
+  display_backlight_handle_off.execute();
+  screen_schedule_check.execute();
+  assert(screen_display_source.state == "manual_sleep");
+
+  // Sensor changes must never release manual sleep, even with the switch on.
+  reset();
+  schedule_resume_manual_sleep.state = true;
+  screen_schedule_trigger.state = "sensor";
+  screen_schedule_manual_sleep.execute();
+  schedule_presence_detected = true;
+  screen_schedule_check.execute();
+  assert(screen_display_source.state == "manual_sleep");
+
+  // OFF during a temporary wake resumes the scheduled mode. Scheduled and
+  // restored OFF events must never create a manual sleep request.
+  for (auto night_mode : {DisplayMode::DISPLAY_OFF, DisplayMode::CLOCK}) {
+    reset(night_mode);
+    manual_wake_ms = millis();
+    display_mode_reconcile.execute();
+    advance(500);
+    screen_schedule_wake_timeout_check.execute();
+    assert(screen_display_source.state == "user_wake");
+    App.complete = false;
+    display_backlight_handle_off.execute();
+    assert(screen_display_source.state == "user_wake");
+    App.complete = true;
+    display_backlight_handle_off.execute();
+    assert(manual_wake_ms == 0);
+    assert(!screen_schedule_wake_timeout_check.is_running());
+    assert(!controller.request_active(DisplayRequestSource::MANUAL_SLEEP));
+    assert(controller.target_mode_is(night_mode));
+    assert(screen_display_source.state == "screen_schedule");
+    if (night_mode == DisplayMode::DISPLAY_OFF) {
+      display_backlight_handle_off.execute();
+      assert(!controller.request_active(DisplayRequestSource::MANUAL_SLEEP));
+    }
+    const int updates = screen_display_source.updates;
+    display_mode_reconcile.execute();
+    assert(screen_display_source.updates == updates);
+    screensaver_mode.state = "disabled";
+    clock_time.hour = 7;
+    screen_schedule_check.execute();
+    advance(500);
+    assert(controller.current_mode_is(DisplayMode::ACTIVE));
+    assert(screen_display_source.state == "default");
+  }
+
+  // A takeover has its own diagnostic source, even when the mode stays ACTIVE.
+  reset(DisplayMode::ACTIVE);
+  display_mode_reconcile.execute();
+  assert(screen_display_source.state == "screen_schedule");
+  controller.begin_takeover(DisplayTakeoverKind::CRITICAL);
+  display_mode_reconcile.execute();
+  assert(screen_display_source.state == "critical");
+  controller.end_takeover(DisplayTakeoverKind::CRITICAL);
+  display_mode_reconcile.execute();
+  assert(screen_display_source.state == "screen_schedule");
   // Night boot and media ownership must not start a normal idle countdown.
   for (auto mode : {DisplayMode::CLOCK, DisplayMode::DISPLAY_OFF}) {
     reset(mode); display_active_finalize.execute(); advance(100);
