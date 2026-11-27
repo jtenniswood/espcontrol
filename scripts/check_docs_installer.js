@@ -105,12 +105,17 @@ async function checkPostFlashReset() {
     { restartedWithWatchdog: false, improvWait: 0, shouldReopen: true },
   ]) {
     const calls = [];
+    const wakeLockCalls = [];
     const state = { state: 'finished', restartedWithWatchdog };
     let reopen;
     const runConfirmInstall = new Function('flash', 'sleep', `return async function () {${confirmInstall}}`)(
-      onEvent => onEvent(state), () => new Promise(resolve => { reopen = resolve; }));
+      async onEvent => onEvent(state), () => new Promise(resolve => { reopen = resolve; }));
     const dialog = {
       _manifest: { new_install_improv_wait_time: improvWait },
+      _wakeLock: {
+        async acquire() { wakeLockCalls.push('acquire'); },
+        async release() { wakeLockCalls.push('release'); },
+      },
       port: {
         async close() { calls.push('close'); },
         async open() { calls.push('reopen'); },
@@ -119,6 +124,7 @@ async function checkPostFlashReset() {
       requestUpdate() { calls.push('update'); },
     };
     await runConfirmInstall.call(dialog);
+    assert.deepEqual(wakeLockCalls, ['acquire', 'release']);
     assert.equal(dialog._installState, state);
     assert.equal(Boolean(reopen), shouldReopen);
     if (shouldReopen) {
