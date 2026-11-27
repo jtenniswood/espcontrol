@@ -33,6 +33,7 @@ Add your Sonos, Spotify, Apple TV, Plex, Music Assistant, or other player integr
 
 - Playback buttons send the matching Home Assistant media action.
 - Titles and artists display fullwidth Latin characters as ordinary letters (for example, `ＯＳＡＫＡ` becomes `OSAKA`) and omit emoji. This also applies to the Cover Art screensaver. Supported accented, Greek, and Cyrillic text is preserved; other scripts still depend on the panel's font coverage. The original Home Assistant metadata is unchanged.
+- Previous, Play/Pause and Next appear in **All Controls** only when the player advertises support for them, so players such as amplifier zones without track controls show just the now-playing details.
 - Shuffle and Repeat appear in **All Controls** only when the player advertises support for them. A supported control stays disabled until Home Assistant reports its current state, then continues to follow changes made elsewhere.
 - Repeat cycles through **Off**, **All**, and **One**. Its icon changes to Repeat Once in **One** mode, while active Shuffle and Repeat modes use the accent colour.
 - Volume and track position follow changes made elsewhere in Home Assistant. Some players show progress but do not support seeking; some only support volume up and down rather than an exact level.

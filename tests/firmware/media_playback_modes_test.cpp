@@ -13,6 +13,31 @@ int main() {
   using espcontrol::media::repeat_mode_value;
   using espcontrol::media::repeat_supported;
   using espcontrol::media::shuffle_supported;
+  using espcontrol::media::SUPPORT_NEXT_TRACK;
+  using espcontrol::media::SUPPORT_PAUSE;
+  using espcontrol::media::SUPPORT_PLAY;
+  using espcontrol::media::SUPPORT_PREVIOUS_TRACK;
+  using espcontrol::media::next_track_supported;
+  using espcontrol::media::play_pause_supported;
+  using espcontrol::media::previous_track_supported;
+  using espcontrol::media::transport_button_count;
+
+  // Until Home Assistant reports features, keep the full transport row.
+  assert(previous_track_supported(false, 0));
+  assert(play_pause_supported(false, 0));
+  assert(next_track_supported(false, 0));
+  assert(transport_button_count(false, 0) == 3);
+  // A player like an amp zone with volume/source only has no transport.
+  assert(!previous_track_supported(true, 659340));
+  assert(!play_pause_supported(true, 659340));
+  assert(!next_track_supported(true, 659340));
+  assert(transport_button_count(true, 659340) == 0);
+  assert(previous_track_supported(true, SUPPORT_PREVIOUS_TRACK));
+  assert(next_track_supported(true, SUPPORT_NEXT_TRACK));
+  assert(play_pause_supported(true, SUPPORT_PAUSE));
+  assert(play_pause_supported(true, SUPPORT_PLAY));
+  assert(!play_pause_supported(true, SUPPORT_PREVIOUS_TRACK | SUPPORT_NEXT_TRACK));
+  assert(transport_button_count(true, SUPPORT_PLAY | SUPPORT_NEXT_TRACK) == 2);
 
   assert(!shuffle_supported(false, SUPPORT_SHUFFLE_SET));
   assert(!shuffle_supported(true, 0));
@@ -82,6 +107,24 @@ int main() {
   assert(ten_inch.button_size == 146);
   assert(ten_inch_compact.button_size == 112);
   assert(ten_inch_compact.total_width < ten_inch.total_width);
+
+  // Fewer transport buttons narrow and re-centre the first row.
+  const auto one_transport = media_transport_layout(400, 480, false, false, false, 100, 1);
+  assert(one_transport.first_row_width == one_transport.button_size);
+  assert(one_transport.first_row_start_x == (400 - one_transport.button_size) / 2);
+  const auto modes_only = media_transport_layout(400, 480, true, true, false, 100, 0);
+  assert(modes_only.first_row_width == modes_only.button_size * 2 + modes_only.gap);
+  assert(!modes_only.modes_on_second_row);
+  // Stacked portrait keeps modes on the first row when there is no transport.
+  const auto stacked_modes_only = media_transport_layout(400, 480, true, true, true, 100, 0);
+  assert(!stacked_modes_only.modes_on_second_row);
+  assert(stacked_modes_only.total_height == stacked_modes_only.button_size);
+  const auto stacked_two = media_transport_layout(400, 480, true, false, true, 100, 2);
+  assert(stacked_two.modes_on_second_row);
+  assert(stacked_two.first_row_width == stacked_two.button_size * 2 + stacked_two.gap);
+  // No buttons at all: the row takes no height.
+  const auto empty = media_transport_layout(400, 480, false, false, false, 100, 0);
+  assert(empty.total_height == 0 && empty.first_row_width == 0);
 
   return 0;
 }

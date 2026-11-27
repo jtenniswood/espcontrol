@@ -6,6 +6,10 @@
 
 namespace espcontrol::media {
 
+constexpr int SUPPORT_PAUSE = 1;
+constexpr int SUPPORT_PREVIOUS_TRACK = 16;
+constexpr int SUPPORT_NEXT_TRACK = 32;
+constexpr int SUPPORT_PLAY = 16384;
 constexpr int SUPPORT_SHUFFLE_SET = 32768;
 constexpr int SUPPORT_REPEAT_SET = 262144;
 
@@ -26,6 +30,33 @@ inline bool repeat_supported(bool supported_features_known,
                              int supported_features) {
   return supported_features_known &&
          (supported_features & SUPPORT_REPEAT_SET) != 0;
+}
+
+// Transport buttons stay available until Home Assistant publishes the
+// entity's feature flags, preserving the full row for unreported players.
+inline bool previous_track_supported(bool supported_features_known,
+                                     int supported_features) {
+  return !supported_features_known ||
+         (supported_features & SUPPORT_PREVIOUS_TRACK) != 0;
+}
+
+inline bool next_track_supported(bool supported_features_known,
+                                 int supported_features) {
+  return !supported_features_known ||
+         (supported_features & SUPPORT_NEXT_TRACK) != 0;
+}
+
+inline bool play_pause_supported(bool supported_features_known,
+                                 int supported_features) {
+  return !supported_features_known ||
+         (supported_features & (SUPPORT_PAUSE | SUPPORT_PLAY)) != 0;
+}
+
+inline int transport_button_count(bool supported_features_known,
+                                  int supported_features) {
+  return (previous_track_supported(supported_features_known, supported_features) ? 1 : 0) +
+         (play_pause_supported(supported_features_known, supported_features) ? 1 : 0) +
+         (next_track_supported(supported_features_known, supported_features) ? 1 : 0);
 }
 
 inline std::string media_mode_normalize(std::string value) {
@@ -105,13 +136,19 @@ inline MediaTransportLayout media_transport_layout(int content_width,
                                                     bool show_shuffle,
                                                     bool show_repeat,
                                                     bool stack_modes = false,
-                                                    int button_scale_percent = 100) {
+                                                    int button_scale_percent = 100,
+                                                    int transport_count = 3) {
   MediaTransportLayout layout;
   if (content_width < 1) return layout;
+  if (transport_count < 0) transport_count = 0;
+  if (transport_count > 3) transport_count = 3;
   const int mode_count = (show_shuffle ? 1 : 0) + (show_repeat ? 1 : 0);
-  layout.modes_on_second_row = stack_modes && mode_count > 0;
-  const int first_row_count = layout.modes_on_second_row ? 3 : 3 + mode_count;
+  // Mode buttons only move to their own row when transport fills the first.
+  layout.modes_on_second_row = stack_modes && mode_count > 0 && transport_count > 0;
+  const int first_row_count = layout.modes_on_second_row
+    ? transport_count : transport_count + mode_count;
   const int second_row_count = layout.modes_on_second_row ? mode_count : 0;
+  if (first_row_count == 0) return layout;
   const int widest_row_count = first_row_count > second_row_count
     ? first_row_count : second_row_count;
   layout.gap = media_transport_scaled_px(mode_count == 0 ? 16 : 12, short_side);
