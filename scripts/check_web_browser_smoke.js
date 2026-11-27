@@ -8303,10 +8303,11 @@ async function assertFlightsPreviewLayout(browser) {
   const slug = "guition-esp32-p4-jc8012p4a1-v3";
   const nativeState = nativeConfigState(slug);
   nativeState.document.buttons[1] = "sensor.espcontrol_flights;;Travel;Auto;;;flights;;";
-  nativeState.document.buttons[2] = "sensor.espcontrol_flights_entered;;Travel;Auto;;;flights;;area=entered";
+  const longTitle = "FlightRadar24 Entered the monitored area this afternoon";
+  nativeState.document.buttons[2] = `sensor.espcontrol_flights_entered;${longTitle};Travel;Auto;;;flights;;area=entered`;
   nativeState.document.buttons[4] = "sensor.espcontrol_flights_exited;;Travel;Auto;;;flights;;area=exited";
   nativeState.document.buttons[5] = "weather.home;;Auto;Auto;;;weather;today";
-  nativeState.document.subpages[3] = "~B,1|FL,sensor.espcontrol_flights_exited,Recent departures,Travel,Auto,,,,area%3Dexited";
+  nativeState.document.subpages[3] = `~B,1|FL,sensor.espcontrol_flights_exited,${longTitle},Travel,Auto,,,,area%3Dexited`;
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 
   async function checkTile(page, slot, iconClass, sensorLabel) {
@@ -8337,6 +8338,7 @@ async function assertFlightsPreviewLayout(browser) {
         ordered: icon.bottom < titleRect.top && titleRect.bottom <= sublabelRect.top,
         fontSize: getComputedStyle(count).fontSize,
         sublabelSize: getComputedStyle(sublabel).fontSize,
+        sublabelLines: Math.round(sublabelRect.height / parseFloat(getComputedStyle(sublabel).lineHeight)),
         sublabelOpacity: getComputedStyle(sublabel).opacity,
         background: style.backgroundColor,
       };
@@ -8359,7 +8361,9 @@ async function assertFlightsPreviewLayout(browser) {
     await page.waitForSelector("#sp-app");
     await seedNativeDocument(page, nativeState);
     const current = await checkTile(page, 1, "material-symbol-travel", "Espcontrol flights");
-    await checkTile(page, 2, "material-symbol-connecting-airports", "Espcontrol flights entered");
+    const entered = await checkTile(page, 2, "material-symbol-connecting-airports", longTitle);
+    assert.strictEqual(current.sublabelLines, 1);
+    assert.strictEqual(entered.sublabelLines, 2);
     await checkTile(page, 4, "material-symbol-airplanemode-inactive", "Espcontrol flights exited");
     const weather = await page.locator('.sp-main [data-slot="5"] .sp-weather-day').evaluate(day => {
       const value = getComputedStyle(day.querySelector(".sp-weather-temperature-high"));
@@ -8375,7 +8379,8 @@ async function assertFlightsPreviewLayout(browser) {
     assert.strictEqual(current.sublabelOpacity, weather.opacity);
     assert.strictEqual(current.background, weather.background, "Flights uses the sensor background");
     await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
-    await checkTile(page, 1, "material-symbol-airplanemode-inactive", "Recent departures");
+    const exitedSubpage = await checkTile(page, 1, "material-symbol-airplanemode-inactive", longTitle);
+    assert.strictEqual(exitedSubpage.sublabelLines, 2);
     assert.strictEqual(nativeState.puts.length, 0, "Previewing Flights leaves the saved layout alone");
     await page.locator(".sp-main .sp-back-btn .sp-back-hit").click();
     await page.locator('.sp-main [data-slot="1"]').click();

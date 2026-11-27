@@ -172,6 +172,10 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     lv_obj_set_width(col.icon, cell_width);
     lv_obj_set_pos(col.icon, x, icon_y);
     lv_obj_set_width(col.day, cell_width); lv_obj_set_width(col.high, cell_width);
+    // Forecast columns budget one line per label. Ellipsize within the row
+    // when a localized label or a reading is wider than the available column.
+    lv_obj_set_height(col.day, font_height);
+    lv_obj_set_height(col.high, temperature_height);
     lv_obj_set_pos(col.day, x, text_top);
     lv_obj_set_pos(col.high, x, text_top + font_height + 2);
     std::string date = card->view == WeatherForecastView::TOMORROW

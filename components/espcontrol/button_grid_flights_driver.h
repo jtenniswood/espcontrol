@@ -47,6 +47,10 @@ inline bool flights_driver_refresh_layout(
     reading.sensor_lbl = name;
     reading.sensor_container = name;
     weather_reading_layout(reading, display);
+    const auto *font = lv_obj_get_style_text_font(name, LV_PART_MAIN);
+    lv_obj_set_style_max_height(name,
+      2 * font->line_height + lv_obj_get_style_text_line_space(name, LV_PART_MAIN),
+      LV_PART_MAIN);
   }
   return true;
 }
