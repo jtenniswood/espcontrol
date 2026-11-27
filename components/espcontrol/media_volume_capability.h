@@ -1,11 +1,53 @@
 #pragma once
 
+#include <cctype>
 #include <cstdint>
+#include <string>
 
 namespace espcontrol::media {
 
 constexpr int SUPPORT_VOLUME_SET = 4;
 constexpr int SUPPORT_VOLUME_STEP = 1024;
+constexpr int SUPPORT_VOLUME_MUTE = 8;
+
+inline bool volume_mute_supported(bool supported_features_known,
+                                  int supported_features) {
+  return supported_features_known &&
+         (supported_features & SUPPORT_VOLUME_MUTE) != 0;
+}
+
+// Speaker-style card icons keep their family when muted; anything else,
+// including the mode's automatic icon, uses the generic muted volume icon.
+inline const char *volume_mute_card_icon_name(const std::string &icon_name) {
+  return icon_name.rfind("Speaker", 0) == 0 ? "Speaker Off" : "Volume Off";
+}
+
+inline bool parse_volume_mute_state(const std::string &value, bool &muted) {
+  size_t start = 0;
+  while (start < value.size() &&
+         std::isspace(static_cast<unsigned char>(value[start]))) {
+    start++;
+  }
+  size_t end = value.size();
+  while (end > start &&
+         std::isspace(static_cast<unsigned char>(value[end - 1]))) {
+    end--;
+  }
+  std::string normalized = value.substr(start, end - start);
+  for (char &ch : normalized) {
+    ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+  }
+  // Home Assistant's ESPHome bridge forwards boolean attributes as on/off.
+  if (normalized == "true" || normalized == "on") {
+    muted = true;
+    return true;
+  }
+  if (normalized == "false" || normalized == "off") {
+    muted = false;
+    return true;
+  }
+  return false;
+}
 
 enum class VolumeControlMode : uint8_t {
   ABSOLUTE = 0,
