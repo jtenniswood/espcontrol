@@ -4,6 +4,9 @@
 #include "dpi_timing.h"
 #include "esp_clk_tree.h"
 #include "esphome/core/helpers.h"
+#ifdef USE_WAVESHARE_P4_86_LCD_PROBE
+#include "waveshare_p4_86_probe.h"
+#endif
 
 namespace esphome::mipi_dsi {
 
@@ -22,17 +25,7 @@ void MipiDsi::smark_failed(const LogString *message, esp_err_t err) {
   this->mark_failed(message);
 }
 
-void MipiDsi::setup() {
-  ESP_LOGCONFIG(TAG, "Running Setup");
-
-  if (!this->enable_pins_.empty()) {
-    for (auto *pin : this->enable_pins_) {
-      pin->setup();
-      pin->digital_write(true);
-    }
-    delay(10);
-  }
-
+bool MipiDsi::setup_dsi_() {
   esp_lcd_dsi_bus_config_t bus_config = {
       .bus_id = 0,  // index from 0, specify the DSI host to use
       .num_data_lanes =
@@ -46,7 +39,7 @@ void MipiDsi::setup() {
   auto err = esp_lcd_new_dsi_bus(&bus_config, &this->bus_handle_);
   if (err != ESP_OK) {
     this->smark_failed(LOG_STR("lcd_new_dsi_bus failed"), err);
-    return;
+    return false;
   }
   esp_lcd_dbi_io_config_t dbi_config = {
       .virtual_channel = 0,
@@ -56,8 +49,76 @@ void MipiDsi::setup() {
   err = esp_lcd_new_panel_io_dbi(this->bus_handle_, &dbi_config, &this->io_handle_);
   if (err != ESP_OK) {
     this->smark_failed(LOG_STR("new_panel_io_dbi failed"), err);
-    return;
+    esp_lcd_del_dsi_bus(this->bus_handle_);
+    this->bus_handle_ = nullptr;
+    return false;
   }
+  return true;
+}
+
+#ifdef USE_WAVESHARE_P4_86_LCD_PROBE
+bool MipiDsi::detect_waveshare_p4_86_() {
+  this->reset_pin_->setup();
+  this->reset_pin_->digital_write(true);
+  delay(5);
+  this->reset_pin_->digital_write(false);
+  delay(10);
+  this->reset_pin_->digital_write(true);
+  delay(120);
+
+  switch (waveshare_p4_86::probe()) {
+    case waveshare_p4_86::Panel::ST7703:
+      ESP_LOGI(TAG, "Detected P4-86 LCD: ST7703");
+      return true;
+    case waveshare_p4_86::Panel::JD9365DA:
+      ESP_LOGI(TAG, "Detected P4-86 LCD: JD9365DA");
+      this->pclk_frequency_ = 240.0f / 7.0f;
+      this->hsync_back_porch_ = 30;
+      this->hsync_pulse_width_ = 24;
+      this->hsync_front_porch_ = 30;
+      this->vsync_back_porch_ = 16;
+      this->vsync_pulse_width_ = 2;
+      this->vsync_front_porch_ = 12;
+      this->init_sequence_ = std::move(this->jd9365_init_sequence_);
+      return true;
+    case waveshare_p4_86::Panel::UNKNOWN:
+      // A failed read can leave the command engine busy. Recreate it before
+      // attempting the original panel profile, then reset the LCD as usual.
+      ESP_LOGW(TAG, "Could not identify P4-86 LCD; trying original ST7703 profile");
+      auto err = esp_lcd_panel_io_del(this->io_handle_);
+      if (err == ESP_OK) {
+        this->io_handle_ = nullptr;
+        err = esp_lcd_del_dsi_bus(this->bus_handle_);
+      }
+      if (err != ESP_OK) {
+        this->smark_failed(LOG_STR("Could not reset DSI bus after LCD probe"), err);
+        return false;
+      }
+      this->bus_handle_ = nullptr;
+      return this->setup_dsi_();
+  }
+  return false;
+}
+#endif
+
+void MipiDsi::setup() {
+  ESP_LOGCONFIG(TAG, "Running Setup");
+
+  if (!this->enable_pins_.empty()) {
+    for (auto *pin : this->enable_pins_) {
+      pin->setup();
+      pin->digital_write(true);
+    }
+    delay(10);
+  }
+
+  if (!this->setup_dsi_())
+    return;
+#ifdef USE_WAVESHARE_P4_86_LCD_PROBE
+  if (!this->jd9365_init_sequence_.empty() && !this->detect_waveshare_p4_86_())
+    return;
+#endif
+
   // clang-format off
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
   auto color_format = LCD_COLOR_FMT_RGB565;
@@ -97,7 +158,7 @@ void MipiDsi::setup() {
                                            }};
   // clang-format on
   uint32_t source_hz = 0;
-  err = esp_clk_tree_src_get_freq_hz(static_cast<soc_module_clk_t>(dpi_config.dpi_clk_src),
+  auto err = esp_clk_tree_src_get_freq_hz(static_cast<soc_module_clk_t>(dpi_config.dpi_clk_src),
                                     ESP_CLK_TREE_SRC_FREQ_PRECISION_CACHED, &source_hz);
   if (err != ESP_OK) {
     this->smark_failed(LOG_STR("Could not read DPI clock source"), err);

@@ -24,10 +24,13 @@ Two additional fixes address issue #2118:
 
 Panel initialization sequences, models and saved user settings are unchanged.
 
-The JC8012P4A1 V3 and JC4880P443 V3 profiles, plus the separate 10.1-inch
-V3 test package, load this external component; other devices continue to use ESPHome's bundled driver.
+The JC8012P4A1 V3 and JC4880P443 V3 profiles, the separate 10.1-inch V3
+test package, and the P4-86 automatic-detection test build load this component.
+The P4-86 test build opts in with `jd9365_init_sequence`. It reads the LCD ID
+before setting the video timing, then selects the ST7703 or JD9365DA profile.
+It logs a warning and uses ST7703 if the controller ID is unavailable.
 Keep the copy pinned to the tested ESPHome version and remove it when the
-upstream fixes are available.
+upstream driver can replace all of its uses.
 
 Diagnosis and XTAL experiments were supplied by Horstexplorer and
 MichaelMKKelly in https://github.com/jtenniswood/espcontrol/pull/1954.
