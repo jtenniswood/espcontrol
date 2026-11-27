@@ -1,4 +1,5 @@
 import { state } from "../state/app_instance";
+import type { PanelConfigDocument } from "../model";
 import type { ConfigPersistenceFeature } from "./config_post_api";
 import type { ConfigCodecFeature } from "./config_codec";
 import type { ApplicationLayoutState } from "./application_context";
@@ -13,6 +14,7 @@ export interface AppConfigEventsFeature {
     ensureSubpageRaw(slot: number): any;
     applyButtonConfigStateEvent(slot: number, value: string): void;
     applySubpageConfigStateEvent(slot: number, key: string, value: string): void;
+    applyNativeLayout(document: PanelConfigDocument): void;
     patterns(): ConfigEventPattern[];
 }
 
@@ -50,6 +52,17 @@ export function createAppConfigEventsFeature(
     function applySubpageConfigStateEvent(this: any, slot?: any, key?: any, val?: any) {
         ensureSubpageRaw(slot)[key] = val || "";
         applySubpageRaw(slot);
+    }
+    function applyNativeLayout(document: PanelConfigDocument): void {
+        state.subpages = {};
+        state.subpageRaw = {};
+        state.subpageSavePending = {};
+        for (let slot = 1; slot <= layout.totalSlots; slot++) {
+            state.buttons[slot - 1] = parseButtonConfig(document.buttons[slot] || "");
+            const subpage = document.subpages[slot];
+            if (subpage) applySubpageConfigStateEvent(slot, "main", subpage);
+        }
+        renderQueue.schedule();
     }
     function configEventPatterns(this: any) {
         return [
@@ -140,6 +153,7 @@ export function createAppConfigEventsFeature(
         ensureSubpageRaw,
         applyButtonConfigStateEvent,
         applySubpageConfigStateEvent,
+        applyNativeLayout,
         patterns: configEventPatterns,
     };
 }

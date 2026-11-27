@@ -220,6 +220,8 @@ For festive lights, search the card icon picker for **Ornament**, **Pine Tree**,
 
 Search the [EspControl icon gallery](/reference/icons) for all the choices in the configurator. If the one you need isn't there, [open an issue on GitHub](https://github.com/jtenniswood/espcontrol/issues) with the icon name and what you'd use it for.
 
+If you compile the firmware yourself with ESPHome, you can also [add your own icons](/getting-started/manual-esphome-setup#advanced-add-your-own-icons) to your display.
+
 ## Screens, power, and mounting
 
 ### Which 10-inch Revision or 4-inch P4 Variant Should I Buy?

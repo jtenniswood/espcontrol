@@ -99,10 +99,6 @@ int main() {
   assert(pin.save(true, &code) && pin.pin_length() == 4);
   pin.arm(); pin.wake();
   assert(pin.locked());
-  pin.dismiss_keypad();
-  pin.wake();
-  assert(pin.locked() && !pin.keypad_requested());
-  pin.request_keypad();
   assert(pin.keypad_requested());
   assert(!pin.submit("42") && pin.locked());
   assert(!pin.submit("") && pin.locked());
@@ -116,11 +112,9 @@ int main() {
   assert(pin.locked() && !pin.submit("wrong"));
   assert(pin.submit(code) && !pin.locked());
   assert(pin.lock(true) && !pin.keypad_requested());
-  pin.arm(espcontrol::DisplayMode::CLOCK); pin.wake();
+  pin.arm(); pin.wake();
   assert(pin.locked() && pin.keypad_requested());
-  assert(pin.return_mode() == espcontrol::DisplayMode::CLOCK);
   assert(pin.submit(code));
-  assert(pin.return_mode() == espcontrol::DisplayMode::ACTIVE);
   // A screensaver unlock also releases a preceding manual card lock.
   assert(pin.save(true, nullptr) && pin.lock());
   pin.arm(); pin.wake();

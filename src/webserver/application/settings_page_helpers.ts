@@ -44,7 +44,7 @@ export interface SettingsPageHelpersControllers {
     readonly requestApi: Pick<ApplicationApiFeature, "postScreensaverAction" | "postScreensaverDimmedBrightness" | "postScreensaverDimmedBrightnessDay" | "postScreensaverDimmedBrightnessNight" | "postSwitch">;
     readonly statusPreview: Pick<AppStatusPreviewFeature, "syncInput">;
     readonly clockBarPostApi: Pick<ClockBarPostApiFeature, "postClockBrightnessDay" | "postClockBrightnessNight" | "postClockScreensaver" | "postClockDate" | "postAlarmDelayAudio" | "postAlarmDelayTts" | "postAlarmDelayEntryAnnouncement" | "postAlarmDelayExitAnnouncement" | "postAlarmDelayBeepVolume" | "postAlarmDelayFinalCountdown">;
-    readonly fields: Pick<ControlsFieldsFeature, "condField" | "createRangeSlider" | "fieldLabel" | "makeCollapsibleCard" | "toggleRow">;
+    readonly fields: Pick<ControlsFieldsFeature, "condField" | "createRangeSlider" | "fieldLabel" | "makeCollapsibleCard" | "textInput" | "toggleRow">;
     readonly artworkPostApi: Pick<ArtworkPostApiFeature, "postScreensaverCameraEntity" | "postScreensaverCameraImageMode" | "postScreensaverCameraDimming">;
 }
 
@@ -85,7 +85,7 @@ export function createSettingsPageHelpersFeature(
     const { isConfigLocked, switchTab } = controllers.shell;
     const { bindTextPost } = controllers.codec;
     const { syncInput } = controllers.statusPreview;
-    const { condField, createRangeSlider, fieldLabel, makeCollapsibleCard, toggleRow } = controllers.fields;
+    const { condField, createRangeSlider, fieldLabel, makeCollapsibleCard, textInput, toggleRow } = controllers.fields;
     const {
         postClockBrightnessDay,
         postClockBrightnessNight,
@@ -355,7 +355,8 @@ export function createSettingsPageHelpersFeature(
     function syncClockScreensaverControls(this: any) {
         var controlState: any = _screensaverController.uiState(screensaverState());
         var mode: any = controlState.mode;
-        var clockDisplay: any = controlState.clockVisible ? "" : "none";
+        const sensorDisplay = state.screensaverSensorSupported && mode === "sensor_value";
+        var clockDisplay: any = controlState.clockVisible || sensorDisplay ? "" : "none";
         var dimDisplay: any = controlState.dimVisible ? "" : "none";
         var cameraSupported = !!controllers.layout.config.features?.cameraScreensaver && state.screensaverCameraSupported;
         var cameraDisplay: any = cameraSupported && controlState.cameraVisible ? "" : "none";
@@ -364,6 +365,16 @@ export function createSettingsPageHelpersFeature(
             const option = select.querySelector('option[value="camera"]');
             if (cameraSupported && !option) select.add(new Option("Camera", "camera"));
             if (!cameraSupported && option) option.remove();
+            const sensorOption = select.querySelector('option[value="sensor_value"]');
+            if (state.screensaverSensorSupported && !sensorOption) select.add(new Option("Sensor value", "sensor_value"));
+            if (!state.screensaverSensorSupported && sensorOption) sensorOption.remove();
+        }
+        for (const group of [els.setScreensaverSensorFields, els.setPresenceScreensaverSensorFields]) {
+            if (!group) continue;
+            group.hidden = !sensorDisplay;
+            for (const key of ["entity", "label", "unit"] as const) {
+                syncInput(group.querySelector(`[name="screensaver-sensor-${key}"]`), state.screensaverSensor[key]);
+            }
         }
         if (els.setScreensaverCameraPanel)
             els.setScreensaverCameraPanel.style.display = cameraDisplay;
@@ -380,7 +391,7 @@ export function createSettingsPageHelpersFeature(
         for (const toggle of [els.setClockDateToggle, els.setSensorClockDateToggle]) {
             if (!toggle) continue;
             toggle.checked = state.clockDateOn;
-            toggle.closest(".sp-toggle-row").style.display = state.clockDateSupported ? "" : "none";
+            toggle.closest(".sp-toggle-row").style.display = state.clockDateSupported && controlState.clockVisible ? "" : "none";
         }
         if (els.setClockSelect)
             els.setClockSelect.value = mode;
@@ -569,6 +580,7 @@ export function createSettingsPageHelpersFeature(
             { value: "off", label: "Display Off" },
             { value: "dim", label: "Screen Dimmed" },
             { value: "clock", label: "Clock" },
+            ...(state.screensaverSensorSupported ? [{ value: "sensor_value", label: "Sensor value" }] : []),
             ...(controllers.layout.config.features?.cameraScreensaver && state.screensaverCameraSupported ? [{ value: "camera", label: "Camera" }] : []),
         ].forEach(function (this: any, opt?: any) {
             var o: any = document.createElement("option");
@@ -584,6 +596,33 @@ export function createSettingsPageHelpersFeature(
             postClockScreensaver(state.clockScreensaverOn);
         });
         clockField.appendChild(clockSelect);
+        const sensorFields = document.createElement("div");
+        sensorFields.className = "sp-screensaver-sensor-fields";
+        sensorFields.hidden = !state.screensaverSensorSupported || state.screensaverAction !== "sensor_value";
+        const sensorSettings = [
+            { key: "entity", title: "Sensor entity", placeholder: "sensor.ev_battery", maxLength: 100 },
+            { key: "label", title: "Label (optional)", placeholder: "", maxLength: 64 },
+            { key: "unit", title: "Unit (optional)", placeholder: "", maxLength: 16 },
+        ] as const;
+        for (const { key, title, placeholder, maxLength } of sensorSettings) {
+            const id = `${selectId}-sensor-${key}`;
+            const field = document.createElement("div");
+            field.className = "sp-field";
+            const initial = state.screensaverSensor[key];
+            const input = key === "entity"
+                ? entityInput(id, initial, placeholder, ["sensor"])
+                : textInput(id, initial, placeholder);
+            input.name = `screensaver-sensor-${key}`;
+            input.maxLength = maxLength;
+            bindTextPost(input, entityName(`screen_saver_sensor_${key}`), {
+                onBlur(value: string) {
+                    state.screensaverSensor[key] = value;
+                    syncClockScreensaverControls();
+                },
+            });
+            field.append(fieldLabel(title, id), input);
+            sensorFields.appendChild(field);
+        }
         var cameraField: any = document.createElement("div");
         cameraField.className = "sp-field";
         cameraField.style.display = _screensaverController.uiState(screensaverState()).cameraVisible ? "" : "none";
@@ -690,7 +729,7 @@ export function createSettingsPageHelpersFeature(
             postClockDate(state.clockDateOn);
         });
         clockBrightnessField.appendChild(dateToggle.row);
-        var daySlider: any = createRangeSlider("Daytime Clock Brightness", state.clockBrightnessDay, postClockBrightnessDay);
+        var daySlider: any = createRangeSlider("Daytime Brightness", state.clockBrightnessDay, postClockBrightnessDay);
         daySlider.range.min = "1";
         daySlider.range.step = "1";
         daySlider.range.addEventListener("input", function (this: any) {
@@ -698,7 +737,7 @@ export function createSettingsPageHelpersFeature(
             syncClockScreensaverControls();
         });
         clockBrightnessField.appendChild(daySlider.wrap);
-        var nightSlider: any = createRangeSlider("Nighttime Clock Brightness", state.clockBrightnessNight, postClockBrightnessNight);
+        var nightSlider: any = createRangeSlider("Nighttime Brightness", state.clockBrightnessNight, postClockBrightnessNight);
         nightSlider.range.min = "1";
         nightSlider.range.step = "1";
         nightSlider.range.addEventListener("input", function (this: any) {
@@ -710,6 +749,7 @@ export function createSettingsPageHelpersFeature(
             dateToggle: dateToggle.input,
             clockField: clockField,
             clockSelect: clockSelect,
+            sensorFields,
             cameraField: cameraField,
             cameraInput: cameraInput,
             cameraDimmingField: cameraDimming.wrap,

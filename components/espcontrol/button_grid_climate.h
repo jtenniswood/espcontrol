@@ -18,7 +18,8 @@ constexpr int CLIMATE_DEFAULT_LOW_TENTHS = 180;
 constexpr int CLIMATE_DEFAULT_HIGH_TENTHS = 220;
 constexpr int CLIMATE_DEFAULT_MIN_TENTHS = 50;
 constexpr int CLIMATE_DEFAULT_MAX_TENTHS = 350;
-constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 5;
+constexpr int CLIMATE_TENTH_DEGREE_STEP_TENTHS = 1;
+constexpr int CLIMATE_HALF_DEGREE_STEP_TENTHS = 5;
 constexpr int CLIMATE_WHOLE_NUMBER_STEP_TENTHS = 10;
 constexpr uint32_t CLIMATE_TEMP_DEBOUNCE_MS = 450;
 constexpr int CLIMATE_MODAL_ARC_SIZE_PERCENT = 88;
@@ -107,11 +108,12 @@ struct ClimateControlCtx {
   int high_tenths = CLIMATE_DEFAULT_HIGH_TENTHS;
   int min_tenths = CLIMATE_DEFAULT_MIN_TENTHS;
   int max_tenths = CLIMATE_DEFAULT_MAX_TENTHS;
+  int reported_min_tenths = CLIMATE_DEFAULT_MIN_TENTHS;
   bool custom_min = false;
   bool custom_max = false;
   bool received_min = false;
   bool received_max = false;
-  int step_tenths = CLIMATE_DEFAULT_STEP_TENTHS;
+  int reported_step_tenths = 0;
   int configured_step_tenths = CLIMATE_WHOLE_NUMBER_STEP_TENTHS;
   int precision = 0;
   std::string label_display = "label";
@@ -356,17 +358,19 @@ inline int climate_clamp_tenths(ClimateControlCtx *ctx, int value) {
 }
 
 inline int climate_effective_step_tenths(ClimateControlCtx *ctx) {
-  if (!ctx) return CLIMATE_DEFAULT_STEP_TENTHS;
-  if (ctx->configured_step_tenths == CLIMATE_DEFAULT_STEP_TENTHS ||
-      ctx->configured_step_tenths == CLIMATE_WHOLE_NUMBER_STEP_TENTHS)
-    return ctx->configured_step_tenths;
-  return CLIMATE_WHOLE_NUMBER_STEP_TENTHS;
+  if (!ctx) return CLIMATE_WHOLE_NUMBER_STEP_TENTHS;
+  if (ctx->configured_step_tenths == CLIMATE_TENTH_DEGREE_STEP_TENTHS)
+    return std::max(ctx->configured_step_tenths, ctx->reported_step_tenths);
+  return ctx->configured_step_tenths;
 }
 
 inline int climate_round_to_step(ClimateControlCtx *ctx, int value) {
   if (!ctx) return value;
   int step = climate_effective_step_tenths(ctx);
+  // Fine control follows the thermostat's temperature grid from its reported minimum.
   int base = ctx->precision <= 0 ? 0 : ctx->min_tenths;
+  if (ctx->configured_step_tenths == CLIMATE_TENTH_DEGREE_STEP_TENTHS)
+    base = ctx->reported_min_tenths;
   int delta = value - base;
   int rounded = base + ((delta >= 0 ? delta + step / 2 : delta - step / 2) / step) * step;
   return climate_clamp_tenths(ctx, rounded);
@@ -479,7 +483,8 @@ inline std::string climate_format_tenths(int value, int precision) {
 
 inline int climate_target_display_precision(ClimateControlCtx *ctx) {
   if (!ctx) return 0;
-  return ctx->configured_step_tenths == CLIMATE_DEFAULT_STEP_TENTHS && ctx->precision <= 0
+  if (ctx->configured_step_tenths == CLIMATE_TENTH_DEGREE_STEP_TENTHS) return 1;
+  return ctx->configured_step_tenths == CLIMATE_HALF_DEGREE_STEP_TENTHS && ctx->precision <= 0
     ? 1
     : ctx->precision;
 }
@@ -2722,10 +2727,12 @@ inline ClimateControlCtx *create_climate_control_context(
   climate_apply_saved_range(ctx, p.precision);
   ctx->label_display = normalize_climate_label_display(cfg_option_value(p.options, "label_display"));
   ctx->number_display = normalize_climate_number_display(cfg_option_value(p.options, "number_display"));
-  ctx->configured_step_tenths = normalize_climate_temperature_step(
-    cfg_option_value(p.options, "temperature_step")) == "0.5"
-      ? CLIMATE_DEFAULT_STEP_TENTHS
-      : CLIMATE_WHOLE_NUMBER_STEP_TENTHS;
+  const auto temperature_step = normalize_climate_temperature_step(
+    cfg_option_value(p.options, "temperature_step"));
+  if (temperature_step == "0.1")
+    ctx->configured_step_tenths = CLIMATE_TENTH_DEGREE_STEP_TENTHS;
+  else if (temperature_step == "0.5")
+    ctx->configured_step_tenths = CLIMATE_HALF_DEGREE_STEP_TENTHS;
   ctx->options = p.options;
   ctx->configured_tab_mask = espcontrol::climate::configured_climate_tab_mask(
     normalize_climate_control_tabs_value(
@@ -2868,9 +2875,12 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
       [ctx, refresh, active](esphome::StringRef value) {
         if (!active()) return;
         int tenths = 0;
-        if (!ctx->custom_min && climate_parse_tenths(value, tenths)) {
-          ctx->min_tenths = tenths;
-          ctx->received_min = true;
+        if (climate_parse_tenths(value, tenths)) {
+          ctx->reported_min_tenths = tenths;
+          if (!ctx->custom_min) {
+            ctx->min_tenths = tenths;
+            ctx->received_min = true;
+          }
         }
         climate_normalize_range(ctx);
         refresh();
@@ -2897,9 +2907,9 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         if (!active()) return;
         int tenths = 0;
         if (climate_parse_tenths(value, tenths) && tenths > 0 && tenths <= 100)
-          ctx->step_tenths = tenths;
+          ctx->reported_step_tenths = tenths;
         else
-          ctx->step_tenths = CLIMATE_DEFAULT_STEP_TENTHS;
+          ctx->reported_step_tenths = 0;
         refresh();
       })
   );

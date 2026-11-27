@@ -17,6 +17,18 @@ substitutions:
   clock_date_font: font_text_title
 
 globals:
+  - id: screensaver_sensor_subscribed_entity
+    type: std::string
+    initial_value: '""'
+  - id: screensaver_sensor_subscription_generation
+    type: uint32_t
+    initial_value: '0'
+  - id: screensaver_sensor_state
+    type: std::string
+    initial_value: '""'
+  - id: screensaver_sensor_presentation_active
+    type: bool
+    initial_value: 'false'
   - id: photo_metadata_subscribed_entity
     type: std::string
     initial_value: '""'
@@ -28,13 +40,13 @@ globals:
     initial_value: '""'
 
 font:
-  # The small glyph set and 2-bit anti-aliasing limit flash and RAM use.
+  # The clock and numeric sensor reading share this small 2-bit font.
   # The 4.3-inch P4 also reuses these digits for its landscape volume dial.
   - file: "gfonts://Roboto@Light"
     id: font_clock_display
     size: ${clock_font_size}
     bpp: 2
-    glyphs: "0123456789:"
+    glyphs: "0123456789:.+-%eE—"
 
 lvgl:
   top_layer:
@@ -69,6 +81,54 @@ lvgl:
                 text_align: CENTER
                 text: ""
                 hidden: true
+            - obj:
+                id: screensaver_sensor_reading
+                width: SIZE_CONTENT
+                height: SIZE_CONTENT
+                bg_opa: 0%
+                border_width: 0
+                pad_all: 0
+                scrollable: false
+                clickable: false
+                hidden: true
+                layout:
+                  type: flex
+                  flex_flow: COLUMN
+                  flex_align_cross: center
+                  pad_row: 4
+                widgets:
+                  - obj:
+                      width: SIZE_CONTENT
+                      height: SIZE_CONTENT
+                      bg_opa: 0%
+                      border_width: 0
+                      pad_all: 0
+                      scrollable: false
+                      clickable: false
+                      layout:
+                        type: flex
+                        flex_flow: ROW
+                        flex_align_cross: end
+                        pad_column: 6
+                      widgets:
+                        - label:
+                            id: screensaver_sensor_value_label
+                            text_font: font_clock_display
+                            text_align: CENTER
+                            long_mode: DOT
+                            text: "—"
+                        - label:
+                            id: screensaver_sensor_unit_label
+                            text_font: ${clock_date_font}
+                            long_mode: DOT
+                            text: ""
+                            hidden: true
+                  - label:
+                      id: screensaver_sensor_caption
+                      text_font: ${clock_date_font}
+                      text_align: CENTER
+                      long_mode: DOT
+                      text: ""
       - obj:
           id: clock_image_overlay
           x: 0
@@ -143,6 +203,60 @@ lvgl:
           hidden: true
 
 script:
+  - id: screensaver_sensor_refresh_subscription
+    then:
+      - lambda: |-
+          const auto transition = id(espcontrol_app).display().resolve();
+          const bool active = id(screensaver_action_sensor_value) &&
+              transition.target_mode == espcontrol::DisplayMode::CLOCK &&
+              transition.winning_source != espcontrol::DisplayRequestSource::SCREEN_SCHEDULE;
+          static uint32_t last_drift_minute = 0;
+          const uint32_t drift_minute = millis() / 60000;
+          const bool refresh = active != id(screensaver_sensor_presentation_active) ||
+              (active && drift_minute != last_drift_minute);
+          last_drift_minute = drift_minute;
+          id(screensaver_sensor_presentation_active) = active;
+          const auto &configured = id(screensaver_sensor_entity).state;
+          const std::string entity = active && ha_api_state_connected() &&
+              configured.rfind("sensor.", 0) == 0 && configured.size() > 7
+              ? configured : std::string();
+          const uint32_t generation = entity.empty() ? 0 : ha_subscription_generation();
+          if (entity == id(screensaver_sensor_subscribed_entity) &&
+              generation == id(screensaver_sensor_subscription_generation)) {
+            if (refresh) {
+              id(clock_screensaver_refresh_presentation).execute();
+            }
+            return;
+          }
+
+          void *const owner = &id(screensaver_sensor_subscribed_entity);
+          ha_release_callbacks_for_owner(owner);
+          id(screensaver_sensor_subscribed_entity) = entity;
+          id(screensaver_sensor_subscription_generation) = generation;
+          id(screensaver_sensor_state).clear();
+          id(clock_screensaver_refresh_presentation).execute();
+          if (entity.empty()) return;
+          {
+            HaCallbackOwnerScope scope(owner);
+            const bool subscribed = ha_subscribe_state(entity,
+              std::function<void(esphome::StringRef)>([entity, generation](esphome::StringRef value) {
+                if (!id(screensaver_sensor_presentation_active) || !ha_api_state_connected() ||
+                    generation != ha_subscription_generation() ||
+                    generation != id(screensaver_sensor_subscription_generation) ||
+                    entity != id(screensaver_sensor_subscribed_entity)) return;
+                const std::string next = espcontrol::photo_metadata_text(string_ref_limited(value, 260));
+                if (next == id(screensaver_sensor_state)) return;
+                id(screensaver_sensor_state) = next;
+                id(screensaver_sensor_render).execute();
+              }));
+            if (!subscribed) {
+              id(screensaver_sensor_subscribed_entity).clear();
+              id(screensaver_sensor_subscription_generation) = 0;
+              return;
+            }
+          }
+          ha_reannounce_state_subscriptions();
+
   # Subscribe only while camera mode is active. Release the owner on exit,
   # entity changes or disconnect; generation checks discard stale callbacks.
   - id: photo_metadata_refresh_subscription
@@ -190,3 +304,4 @@ interval:
   - interval: 1s
     then:
       - script.execute: photo_metadata_refresh_subscription
+      - script.execute: screensaver_sensor_refresh_subscription

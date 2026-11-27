@@ -64,7 +64,7 @@ inline lv_obj_t *pin_keypad_create(lv_obj_t *panel, const ControlModalLayout &la
                                         const lv_font_t *key_label_font,
                                         const lv_font_t *icon_font,
                                         int width_compensation_percent,
-                                        lv_event_cb_t key_cb, bool randomize = true,
+                                        lv_event_cb_t key_cb, bool randomize,
                                         bool center_prompt = false,
                                         lv_coord_t prompt_top = 0) {
   lv_coord_t pin_button_gap = control_modal_scaled_px(24, layout.short_side);

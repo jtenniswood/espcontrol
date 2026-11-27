@@ -7,6 +7,7 @@ import {
     ALARM_LABEL_DISPLAY_OPTION,
     ALARM_PIN_ARM_OPTION,
     ALARM_PIN_DISARM_OPTION,
+    ALARM_PIN_SCRAMBLE_OPTION,
     CLIMATE_CONTROL_TABS_OPTION,
     CLIMATE_LABEL_DISPLAY_OPTION,
     CLIMATE_NUMBER_DISPLAY_OPTION,
@@ -228,6 +229,14 @@ export function createConfigAccessClimateAlarmOptionsFeature(
         b.options = normalizeAlarmOptions(b.options);
         return b.options;
     }
+    function alarmPinScrambleEnabled(button?: { options?: string }) {
+        return configOptionValue(button?.options, ALARM_PIN_SCRAMBLE_OPTION) === "1";
+    }
+    function setAlarmPinScramble(button: { options?: string }, enabled: boolean) {
+        button.options = normalizeAlarmOptions(setConfigOptionValue(
+            button.options, ALARM_PIN_SCRAMBLE_OPTION, enabled ? "1" : "",
+        ));
+    }
     function normalizeAlarmActionList(this: any, value?: any) {
         var raw: any = String(value || "");
         if (!raw)
@@ -307,6 +316,9 @@ export function createConfigAccessClimateAlarmOptionsFeature(
         }
         if (configOptionValue(options, ALARM_PIN_DISARM_OPTION) === "0") {
             out = setConfigOptionValue(out, ALARM_PIN_DISARM_OPTION, "0");
+        }
+        if (configOptionValue(options, ALARM_PIN_SCRAMBLE_OPTION) === "1") {
+            out = setConfigOptionValue(out, ALARM_PIN_SCRAMBLE_OPTION, "1");
         }
         var rawActions: any = configOptionValue(options, ALARM_ACTIONS_OPTION);
         if (rawActions) {
@@ -418,6 +430,8 @@ export function createConfigAccessClimateAlarmOptionsFeature(
         alarmActionValues,
         alarmPinRequired,
         setAlarmPinRequired,
+        alarmPinScrambleEnabled,
+        setAlarmPinScramble,
         normalizeAlarmActionList,
         alarmVisibleActions,
         alarmActionsAreDefault,
