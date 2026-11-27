@@ -26,7 +26,37 @@
       "unit": "",
       "type": "flights",
       "precision": "",
-      "options": ""
+      "options": "units=imperial"
+    }
+  },
+  {
+    "name": "flights: entered area",
+    "input": "~sensor.espcontrol_flights_entered,,Travel,Auto,,,flights,,area%3Dentered",
+    "expected": {
+      "entity": "sensor.espcontrol_flights_entered",
+      "label": "",
+      "icon": "Travel",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "flights",
+      "precision": "",
+      "options": "area=entered"
+    }
+  },
+  {
+    "name": "flights: exited area in imperial units",
+    "input": "~sensor.espcontrol_flights_exited,,Travel,Auto,,,flights,,area%3Dexited%2Cunits%3Dimperial",
+    "expected": {
+      "entity": "sensor.espcontrol_flights_exited",
+      "label": "",
+      "icon": "Travel",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "flights",
+      "precision": "",
+      "options": "area=exited,units=imperial"
     }
   },
   {

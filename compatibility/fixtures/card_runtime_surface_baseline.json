@@ -16,7 +16,7 @@
         },
         "preview": {
           "available": true,
-          "fingerprint": "42434d17f6fb24f1"
+          "fingerprint": "bc5241536266a0f7"
         }
       },
       "firmware": {
@@ -48,7 +48,71 @@
         },
         "preview": {
           "available": true,
-          "fingerprint": "42434d17f6fb24f1"
+          "fingerprint": "bc5241536266a0f7"
+        }
+      },
+      "firmware": {
+        "family": "FLIGHTS"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "modal"
+        ],
+        "modalOwner": "flights"
+      }
+    },
+    {
+      "name": "flights: entered area",
+      "sourceKind": "contract",
+      "sourceType": "flights",
+      "mode": "entered area",
+      "canonicalType": "flights",
+      "web": {
+        "registration": "flights",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "ccec9a754b6d6171"
+        }
+      },
+      "firmware": {
+        "family": "FLIGHTS"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "modal"
+        ],
+        "modalOwner": "flights"
+      }
+    },
+    {
+      "name": "flights: exited area in imperial units",
+      "sourceKind": "contract",
+      "sourceType": "flights",
+      "mode": "exited area in imperial units",
+      "canonicalType": "flights",
+      "web": {
+        "registration": "flights",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "fb484619f44a27e0"
         }
       },
       "firmware": {

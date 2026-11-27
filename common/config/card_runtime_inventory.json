@@ -34,6 +34,20 @@
             "entity": "sensor.espcontrol_flights",
             "options": "units=imperial"
           }
+        },
+        {
+          "name": "entered area",
+          "config": {
+            "entity": "sensor.espcontrol_flights_entered",
+            "options": "area=entered"
+          }
+        },
+        {
+          "name": "exited area in imperial units",
+          "config": {
+            "entity": "sensor.espcontrol_flights_exited",
+            "options": "area=exited,units=imperial"
+          }
         }
       ]
     },

@@ -96,10 +96,12 @@ export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiS
         ? entityName[0].toUpperCase() + entityName.slice(1)
         : "Flights";
       return {
-        buttonClass: "sp-rainfall-card sp-flights-card",
-        iconHtml: '<span class="sp-btn-icon mdi mdi-' + AREA_VIEWS[flightsArea(b.options)].icon + '"></span>',
-        labelHtml: '<span class="sp-btn-label">3<span class="sp-rainfall-value">' +
-          helpers.escHtml(name) + '</span></span>',
+        buttonClass: "sp-flights-card",
+        iconHtml: '<span class="sp-flights-reading">' +
+          '<span class="mdi mdi-' + AREA_VIEWS[flightsArea(b.options)].icon + '" aria-hidden="true"></span>' +
+          '<span class="sp-flights-count">3</span>' +
+          '<span class="sp-flights-sublabel">' + helpers.escHtml(name) + '</span></span>',
+        labelHtml: "",
         labelEditable: false,
       };
     },
