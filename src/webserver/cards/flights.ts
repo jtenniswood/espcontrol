@@ -54,7 +54,7 @@ export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiS
         mode: {
           label: "Area view",
           idSuffix: "flights-area",
-          options: Object.entries(viewTitles),
+          options: Object.entries(FLIGHTS_TITLES.en),
           value: area,
           onChange(this: HTMLSelectElement, button, cardHelpers) {
             const useDefault = usesViewTitle(button.label, button.options, area);

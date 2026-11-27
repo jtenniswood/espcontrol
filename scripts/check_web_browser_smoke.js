@@ -8431,7 +8431,7 @@ async function assertFlightsPreviewLayout(browser) {
     await page.locator('.sp-main [data-slot="4"]').click();
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await checkDraftTitle("Sortis de la zone");
-    assert.strictEqual(await area.locator("option:checked").textContent(), "Sortis de la zone");
+    assert.strictEqual(await area.locator("option:checked").textContent(), "Exited area");
     await area.selectOption("entered");
     await checkDraftTitle("Entrés dans la zone");
     await title.fill("");
