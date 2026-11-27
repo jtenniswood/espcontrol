@@ -8,6 +8,11 @@
 #include <driver/gpio.h>
 #include <esp_lcd_panel_rgb.h>
 #include <span>
+#ifdef USE_ESP32_VARIANT_ESP32S3
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
+#endif
 
 namespace esphome::mipi_rgb {
 
@@ -129,6 +134,52 @@ void MipiRgb::setup() {
   this->common_setup_();
 }
 
+static esp_err_t setup_rgb_panel(const esp_lcd_rgb_panel_config_t &config, esp_lcd_panel_handle_t &handle) {
+  esp_err_t err = esp_lcd_new_rgb_panel(&config, &handle);
+  if (err != ESP_OK)
+    return err;
+  err = esp_lcd_panel_reset(handle);
+  if (err == ESP_OK)
+    err = esp_lcd_panel_init(handle);
+  if (err != ESP_OK) {
+    // Free the interrupts on the same core that allocated them.
+    esp_lcd_panel_del(handle);
+    handle = nullptr;
+  }
+  return err;
+}
+
+#ifdef USE_ESP32_VARIANT_ESP32S3
+struct RgbPanelSetup {
+  const esp_lcd_rgb_panel_config_t &config;
+  esp_lcd_panel_handle_t &handle;
+  SemaphoreHandle_t done;
+  esp_err_t result;
+};
+
+static void setup_rgb_panel_task(void *arg) {
+  auto &setup = *static_cast<RgbPanelSetup *>(arg);
+  setup.result = setup_rgb_panel(setup.config, setup.handle);
+  xSemaphoreGive(setup.done);
+  vTaskDelete(nullptr);
+}
+
+static esp_err_t setup_rgb_panel_on_core_0(const esp_lcd_rgb_panel_config_t &config,
+                                         esp_lcd_panel_handle_t &handle) {
+  // Allocate the LCD and DMA interrupts on core 0, away from LVGL and image decoding.
+  SemaphoreHandle_t done = xSemaphoreCreateBinary();
+  if (done == nullptr)
+    return ESP_ERR_NO_MEM;
+
+  RgbPanelSetup setup{config, handle, done, ESP_ERR_NO_MEM};
+  if (xTaskCreatePinnedToCore(setup_rgb_panel_task, "rgb_lcd_init", 4096, &setup, 5, nullptr, 0) == pdPASS) {
+    xSemaphoreTake(done, portMAX_DELAY);
+  }
+  vSemaphoreDelete(done);
+  return setup.result;
+}
+#endif
+
 void MipiRgb::common_setup_() {
   esp_lcd_rgb_panel_config_t config{};
   config.flags.fb_in_psram = 1;
@@ -169,14 +220,15 @@ void MipiRgb::common_setup_() {
     config.de_gpio_num = GPIO_NUM_NC;
   }
   config.pclk_gpio_num = static_cast<gpio_num_t>(this->pclk_pin_->get_pin());
-  esp_err_t err = esp_lcd_new_rgb_panel(&config, &this->handle_);
-  if (err == ESP_OK)
-    err = esp_lcd_panel_reset(this->handle_);
-  if (err == ESP_OK)
-    err = esp_lcd_panel_init(this->handle_);
+#ifdef USE_ESP32_VARIANT_ESP32S3
+  esp_err_t err = setup_rgb_panel_on_core_0(config, this->handle_);
+#else
+  esp_err_t err = setup_rgb_panel(config, this->handle_);
+#endif
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "lcd setup failed: %s", esp_err_to_name(err));
     this->mark_failed(LOG_STR("lcd setup failed"));
+    return;
   }
   ESP_LOGCONFIG(TAG, "MipiRgb setup complete: pclk=%" PRIu32 "Hz bounce_rows=%u", this->pclk_frequency_,
                 RGB_BOUNCE_BUFFER_ROWS);
