@@ -1,4 +1,6 @@
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
+import { FLIGHTS_TITLES } from "../generated/flights_titles";
+import { state } from "../state/app_instance";
 import { configOptionValue, setConfigOptionValue } from "../model/config_primitives";
 import {
   cardContractAllowInSubpage,
@@ -12,10 +14,18 @@ import {
 // The selected template sensor supplies both the count and flight list.
 
 const AREA_VIEWS = {
-  current: { label: "Current in area", sensor: "sensor.espcontrol_flights", icon: "material-symbol-travel" },
-  entered: { label: "Entered area", sensor: "sensor.espcontrol_flights_entered", icon: "material-symbol-connecting-airports" },
-  exited: { label: "Exited area", sensor: "sensor.espcontrol_flights_exited", icon: "material-symbol-airplanemode-inactive" },
+  current: { sensor: "sensor.espcontrol_flights", icon: "material-symbol-travel" },
+  entered: { sensor: "sensor.espcontrol_flights_entered", icon: "material-symbol-connecting-airports" },
+  exited: { sensor: "sensor.espcontrol_flights_exited", icon: "material-symbol-airplanemode-inactive" },
 };
+
+function flightsViewTitles() {
+  return FLIGHTS_TITLES[state.language as keyof typeof FLIGHTS_TITLES] ?? FLIGHTS_TITLES.en;
+}
+
+function usesViewTitle(label: string, options: string, area: keyof typeof AREA_VIEWS): boolean {
+  return label === FLIGHTS_TITLES.en[area] || (!label && configOptionValue(options, "title_source") !== "sensor");
+}
 
 function flightsArea(options: string): keyof typeof AREA_VIEWS {
   const area = configOptionValue(options, "area");
@@ -39,22 +49,24 @@ export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiS
     },
     renderSettings: function (panel, b, _slot, helpers) {
       const area = flightsArea(b.options);
+      const viewTitles = flightsViewTitles();
       helpers.renderCardModeSelector(panel, b, helpers, {
         mode: {
           label: "Area view",
           idSuffix: "flights-area",
-          options: Object.entries(AREA_VIEWS).map(([value, view]) => [value, view.label]),
+          options: Object.entries(viewTitles),
           value: area,
           onChange(this: HTMLSelectElement, button, cardHelpers) {
+            const useDefault = usesViewTitle(button.label, button.options, area);
             button.options = setConfigOptionValue(button.options, "area",
               this.value === "current" ? "" : this.value);
-            const selectedView = AREA_VIEWS[flightsArea(button.options)];
-            if (button.label === AREA_VIEWS[area].label) {
-              button.label = selectedView.label;
+            const nextArea = flightsArea(button.options);
+            if (useDefault) {
+              button.label = FLIGHTS_TITLES.en[nextArea];
               cardHelpers.saveField("label", button.label);
             }
             if (!button.entity || button.entity === AREA_VIEWS[area].sensor) {
-              button.entity = selectedView.sensor;
+              button.entity = AREA_VIEWS[nextArea].sensor;
               cardHelpers.saveField("entity", button.entity);
             }
             cardHelpers.saveField("options", button.options);
@@ -75,12 +87,22 @@ export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiS
       });
       helpers.requireEntityDomain(entity.input, ["sensor"], "Choose a sensor entity (sensor.*).");
 
-      helpers.renderCardTextField(panel, b, helpers, {
+      const title = helpers.renderCardTextField(panel, b, helpers, {
         label: "Title",
         idSuffix: "label",
-        field: "label",
+        bindName: "",
+        value: usesViewTitle(b.label, b.options, area) ? viewTitles[area] : b.label,
         placeholder: "Home Assistant sensor name",
       });
+      const updateTitle = () => {
+        const text = title.input.value;
+        b.label = text === viewTitles[area] ? FLIGHTS_TITLES.en[area] : text;
+        b.options = setConfigOptionValue(b.options, "title_source", text ? "" : "sensor");
+        helpers.saveField("label", b.label);
+        cardUi.renderPreview();
+      };
+      title.input.addEventListener("input", updateTitle);
+      title.input.addEventListener("change", updateTitle);
 
       helpers.renderCardSegmentControl(panel, b, helpers, {
         label: "Units",
@@ -97,13 +119,14 @@ export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiS
     },
     renderPreview: function (b, helpers) {
       const entityName = b.entity?.replace(/^sensor\./, "").replace(/_/g, " ");
-      const name = b.label || (entityName
+      const area = flightsArea(b.options);
+      const name = usesViewTitle(b.label, b.options, area) ? flightsViewTitles()[area] : b.label || (entityName
         ? entityName[0].toUpperCase() + entityName.slice(1)
         : "Flights");
       return {
         buttonClass: "sp-flights-card",
         iconHtml: '<span class="sp-flights-reading">' +
-          '<span class="mdi mdi-' + AREA_VIEWS[flightsArea(b.options)].icon + '" aria-hidden="true"></span>' +
+          '<span class="mdi mdi-' + AREA_VIEWS[area].icon + '" aria-hidden="true"></span>' +
           '<span class="sp-flights-count">3</span>' +
           '<span class="sp-flights-sublabel">' + helpers.escHtml(name) + '</span></span>',
         labelHtml: "",

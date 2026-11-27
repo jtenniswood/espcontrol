@@ -14,11 +14,12 @@ inline bool flights_driver_matches(const Context &context) {
 }
 
 inline std::string flights_driver_configured_title(const ParsedCfg &config) {
-  if (config.label.empty()) return {};
+  if (config.label.empty() && cfg_option_value(config.options, "title_source") == "sensor") return {};
   const auto area = cfg_option_value(config.options, "area");
   const char *key = area == "entered" ? "flights_entered_area"
     : area == "exited" ? "flights_exited_area" : "flights_current_in_area";
-  return config.label == espcontrol_i18n_key_en(key) ? espcontrol_i18n_key(key) : config.label;
+  return config.label.empty() || config.label == espcontrol_i18n_key_en(key)
+    ? espcontrol_i18n_key(key) : config.label;
 }
 
 inline bool flights_driver_setup_visual(

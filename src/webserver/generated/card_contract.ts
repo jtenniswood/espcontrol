@@ -4332,6 +4332,17 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         ],
         "defaultValue": "metric",
         "omitDefault": true
+      },
+      {
+        "name": "title_source",
+        "label": "Title source",
+        "kind": "choice",
+        "values": [
+          "view",
+          "sensor"
+        ],
+        "defaultValue": "view",
+        "omitDefault": true
       }
     ],
     "normalization": {
@@ -4370,7 +4381,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "unknownOptions": "drop",
       "canonicalOptionOrder": [
         "area",
-        "units"
+        "units",
+        "title_source"
       ]
     },
     "default": {
@@ -5164,6 +5176,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "temperature_source": "temperature_source",
   "temperature_step": "temperature_step",
   "time_unit": "time_unit",
+  "title_source": "title_source",
   "units": "units",
   "vacuum_mode": "vacuum_mode",
   "volume_max": "volume_max",

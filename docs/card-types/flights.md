@@ -70,7 +70,7 @@ For **Entered area** or **Exited area**, duplicate the sensor entry under the sa
 1. Add a new card and select **Flights**.
 2. Choose **Area view**. Existing cards use **Current in area**.
 3. Set **Flights Sensor** to the built-in entity from the table for the count, or its template counterpart for the count and flight list. Use the entity ID shown in Home Assistant. The editor suggests `sensor.espcontrol_flights`, `sensor.espcontrol_flights_entered`, or `sensor.espcontrol_flights_exited` when you switch views.
-4. **Title** starts with the selected view name. The panel translates that title into its display language. Enter your own title or clear it to use the sensor’s name from Home Assistant. The title appears below the count on the tile and above the flight list.
+4. **Title** starts with the selected view name in the panel’s display language. Enter your own title or clear and save it to use the sensor’s name from Home Assistant. The title appears below the count on the tile and above the flight list.
 5. Choose **Units**:
    - **Metric** shows distance in km, altitude in metres, and speed in km/h.
    - **Imperial** shows distance in miles, altitude in feet, and speed in mph.

@@ -4841,6 +4841,17 @@
           ],
           "defaultValue": "metric",
           "omitDefault": true
+        },
+        {
+          "name": "title_source",
+          "label": "Title source",
+          "kind": "choice",
+          "values": [
+            "view",
+            "sensor"
+          ],
+          "defaultValue": "view",
+          "omitDefault": true
         }
       ],
       "normalization": {
@@ -4879,7 +4890,8 @@
         "unknownOptions": "drop",
         "canonicalOptionOrder": [
           "area",
-          "units"
+          "units",
+          "title_source"
         ]
       },
       "default": {

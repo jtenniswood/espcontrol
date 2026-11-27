@@ -457,7 +457,8 @@ export function createConfigCodecFeature(
         const area = configOptionValue(options, "area");
         const units = configOptionValue(options, "units");
         return [area === "entered" || area === "exited" ? "area=" + area : "",
-            units === "imperial" ? "units=imperial" : ""].filter(Boolean).join(",");
+            units === "imperial" ? "units=imperial" : "",
+            configOptionValue(options, "title_source") === "sensor" ? "title_source=sensor" : ""].filter(Boolean).join(",");
     }
     function normalizeButtonConfig(this: any, b?: any) {
         var cardColorOptions: any = b ? normalizedCardColorOptions(b.options) : "";

@@ -8360,11 +8360,11 @@ async function assertFlightsPreviewLayout(browser) {
     await page.goto("http://espcontrol.test/" + slug + "?events=1");
     await page.waitForSelector("#sp-app");
     await seedNativeDocument(page, nativeState);
-    const current = await checkTile(page, 1, "material-symbol-travel", "Espcontrol flights");
+    const current = await checkTile(page, 1, "material-symbol-travel", "Current in area");
     const entered = await checkTile(page, 2, "material-symbol-connecting-airports", longTitle);
     assert.strictEqual(current.sublabelLines, 1);
     assert.strictEqual(entered.sublabelLines, 2);
-    await checkTile(page, 4, "material-symbol-airplanemode-inactive", "Espcontrol flights exited");
+    await checkTile(page, 4, "material-symbol-airplanemode-inactive", "Exited area");
     const weather = await page.locator('.sp-main [data-slot="5"] .sp-weather-day').evaluate(day => {
       const value = getComputedStyle(day.querySelector(".sp-weather-temperature-high"));
       return {
@@ -8389,7 +8389,7 @@ async function assertFlightsPreviewLayout(browser) {
     assert(await page.getByRole("group", { name: "Card colour presets", exact: true }).isVisible());
     assert.strictEqual(await page.getByRole("group", { name: "Active state colour", exact: true }).count(), 0);
     await page.locator('select[id$="flights-area"]').selectOption("exited");
-    await checkTile(page, 1, "material-symbol-airplanemode-inactive", "Espcontrol flights exited");
+    await checkTile(page, 1, "material-symbol-airplanemode-inactive", "Exited area");
     const title = page.locator('.sp-settings-modal input[id$="label"]');
     if (!(await title.isVisible())) {
       await page.getByRole("button", { name: "Card Settings", exact: true }).click();
@@ -8423,6 +8423,24 @@ async function assertFlightsPreviewLayout(browser) {
     await title.fill("");
     await area.selectOption("entered");
     await checkDraftTitle("");
+    await page.locator(".sp-settings-close").click();
+    await page.evaluate(() => window.__seedEspState([
+      { id: "select-screen__language", state: "fr", value: "fr" },
+    ]));
+    await checkTile(page, 4, "material-symbol-airplanemode-inactive", "Sortis de la zone");
+    await page.locator('.sp-main [data-slot="4"]').click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await checkDraftTitle("Sortis de la zone");
+    assert.strictEqual(await area.locator("option:checked").textContent(), "Sortis de la zone");
+    await area.selectOption("entered");
+    await checkDraftTitle("Entrés dans la zone");
+    await title.fill("");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await waitForNativeState(nativeState, () => nativeState.document.buttons[4].includes("title_source"), "Flights sensor title saved");
+    await page.reload();
+    await page.waitForSelector("#sp-app");
+    await seedNativeDocument(page, nativeState);
+    await checkTile(page, 4, "material-symbol-connecting-airports", "Espcontrol flights entered");
     console.log("Flights previews match Weather, use custom titles, and retain the title and view after save and reload.");
   } finally {
     await context.close();
