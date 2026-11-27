@@ -31,6 +31,9 @@ globals:
   - id: schedule_mode_clock
     type: bool
     initial_value: 'false'
+  - id: timed_schedule_was_night
+    type: bool
+    initial_value: 'false'
   - id: screen_schedule_sensor_entity_migrated
     type: bool
     restore_value: true
@@ -233,6 +236,16 @@ switch:
             - script.execute: screen_schedule_wake
           else:
             - script.execute: backlight_apply_brightness
+
+  - platform: template
+    name: "Screen: Resume at Schedule On Hour"
+    id: schedule_resume_manual_sleep
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    entity_category: config
+    icon: "mdi:alarm-check"
+    web_server:
+      sorting_group_id: sg_brightness
 
 select:
   - platform: template
@@ -584,6 +597,7 @@ number:
       sorting_group_id: sg_brightness
     on_value:
       then:
+        - globals.set: { id: timed_schedule_was_night, value: 'false' }
         - script.execute: screen_schedule_check
 
   - platform: template
@@ -602,6 +616,7 @@ number:
       sorting_group_id: sg_brightness
     on_value:
       then:
+        - globals.set: { id: timed_schedule_was_night, value: 'false' }
         - script.execute: screen_schedule_check
 
   - platform: template
@@ -899,6 +914,30 @@ script:
       - globals.set: { id: manual_wake_ms, value: '0' }
       - script.execute: display_mode_reconcile
       - script.wait: display_mode_apply_transition
+
+  # A fresh manual sleep request consumes any pending boundary before latching.
+  - id: screen_schedule_observe_timed_window
+    mode: single
+    parameters:
+      allow_resume: bool
+    then:
+      - lambda: |-
+          auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+          auto &controller = id(espcontrol_app).display();
+          // Observe the timed window even while another source owns the display.
+          // A sync gap can span the boundary, so hold the last valid observation.
+          if (!id(schedule_enabled).state ||
+              !screen_schedule_time_trigger(id(screen_schedule_trigger).state)) {
+            id(timed_schedule_was_night) = false;
+          } else if (now.is_valid()) {
+            const bool timed_night = !screen_schedule_in_window(
+                now.hour, (int) id(schedule_on_hour).state, (int) id(schedule_off_hour).state);
+            if (id(timed_schedule_was_night) && !timed_night &&
+                allow_resume && id(schedule_resume_manual_sleep).state) {
+              controller.clear(espcontrol::DisplayRequestSource::MANUAL_SLEEP);
+            }
+            id(timed_schedule_was_night) = timed_night;
+          }
 
   # ---------------------------------------------------------------------------
   # Apply the saved screen schedule if local time is valid
