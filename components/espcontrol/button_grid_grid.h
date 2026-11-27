@@ -979,7 +979,15 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
                                 int col_span = 1) {
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   const auto context = card_runtime_context(p);
-  if (cfg.label_lines > 0) {
+  if (cfg.label_lines > 0 && s.text_lbl &&
+      espcontrol::cards::sensor_driver_matches(context) &&
+      espcontrol::cards::sensor_driver_is_text(p, context)) {
+    // Sensor values share the label widget but can use the card's content height.
+    configure_button_label_wrap(s.text_lbl);
+    lv_obj_set_height(s.text_lbl, LV_SIZE_CONTENT);
+    lv_obj_set_style_max_height(s.text_lbl, lv_pct(100), LV_PART_MAIN);
+    lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+  } else if (cfg.label_lines > 0) {
     apply_card_label_line_clamp(s.text_lbl, cfg, row_span);
   } else if (cfg.wrap_tall_labels && row_span > 1) {
     lv_label_set_long_mode(s.text_lbl, LV_LABEL_LONG_WRAP);
