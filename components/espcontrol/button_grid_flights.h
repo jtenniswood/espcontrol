@@ -114,7 +114,6 @@ inline void flights_apply_card_text(FlightsCardCtx *ctx) {
   if (ctx->name_lbl) {
     lv_label_set_display_text(ctx->name_lbl, flights_card_title(ctx).c_str());
   }
-  if (ctx->btn) set_card_checked_state(ctx->btn, ctx->available && !ctx->flights.empty());
 }
 
 inline lv_obj_t *flights_modal_label(lv_obj_t *parent, const lv_font_t *font, uint32_t color) {
@@ -247,7 +246,6 @@ inline void subscribe_flights_card(FlightsCardCtx *ctx) {
         string_ref_limited(list, espcontrol::flights::MAX_LIST_TEXT_LEN));
       if (next == ctx->flights) return;
       ctx->flights = std::move(next);
-      flights_apply_card_text(ctx);
       flights_refresh_modal(ctx);
     })
   );

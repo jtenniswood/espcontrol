@@ -8338,6 +8338,7 @@ async function assertFlightsPreviewLayout(browser) {
         fontSize: getComputedStyle(count).fontSize,
         sublabelSize: getComputedStyle(sublabel).fontSize,
         sublabelOpacity: getComputedStyle(sublabel).opacity,
+        background: style.backgroundColor,
       };
     }, iconClass);
     const aligned = (offset, padding) => Math.abs(offset - padding) <= 1;
@@ -8362,17 +8363,26 @@ async function assertFlightsPreviewLayout(browser) {
     await checkTile(page, 4, "material-symbol-airplanemode-inactive", "Espcontrol flights exited");
     const weather = await page.locator('.sp-main [data-slot="5"] .sp-weather-day').evaluate(day => {
       const value = getComputedStyle(day.querySelector(".sp-weather-temperature-high"));
-      return { label: getComputedStyle(day).fontSize, value: value.fontSize, opacity: value.opacity };
+      return {
+        label: getComputedStyle(day).fontSize,
+        value: value.fontSize,
+        opacity: value.opacity,
+        background: getComputedStyle(day.closest(".sp-btn")).backgroundColor,
+      };
     });
     assert.strictEqual(current.fontSize, weather.label);
     assert.strictEqual(current.sublabelSize, weather.value);
     assert.strictEqual(current.sublabelOpacity, weather.opacity);
+    assert.strictEqual(current.background, weather.background, "Flights uses the sensor background");
     await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
     await checkTile(page, 1, "material-symbol-airplanemode-inactive", "Recent departures");
     assert.strictEqual(nativeState.puts.length, 0, "Previewing Flights leaves the saved layout alone");
     await page.locator(".sp-main .sp-back-btn .sp-back-hit").click();
     await page.locator('.sp-main [data-slot="1"]').click();
     await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.getByRole("button", { name: "Custom Colours", exact: true }).click();
+    assert(await page.getByRole("group", { name: "Card colour presets", exact: true }).isVisible());
+    assert.strictEqual(await page.getByRole("group", { name: "Active state colour", exact: true }).count(), 0);
     await page.locator('select[id$="flights-area"]').selectOption("exited");
     await checkTile(page, 1, "material-symbol-airplanemode-inactive", "Espcontrol flights exited");
     const title = page.locator('.sp-settings-modal input[id$="label"]');

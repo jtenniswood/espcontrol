@@ -2721,7 +2721,7 @@
         "flights": {
           "driver": "flights",
           "capabilities": {
-            "informationOnly": false,
+            "informationOnly": true,
             "subscriptions": true,
             "actions": true,
             "numericControl": false,

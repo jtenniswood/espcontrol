@@ -654,7 +654,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
 
 
   if (espcontrol::cards::timer_driver_setup_visual(s, p, context)) return;
-  if (espcontrol::cards::flights_driver_setup_visual(s, p, context)) return;
+  if (espcontrol::cards::flights_driver_setup_visual(s, p, context)) {
+    espcontrol::cards::sensor_driver_apply_background(s, palette);
+    return;
+  }
   if (espcontrol::cards::image_driver_setup_visual(s, p, context, palette)) {
     espcontrol::cards::image_driver_attach_interaction(s, p, context);
     espcontrol::cards::image_driver_refresh_layout(s, p, context);
@@ -1123,6 +1126,7 @@ inline bool grid_card_uses_sensor_surface(
     case Driver::SENSOR:
     case Driver::STATUS_ENTITY:
     case Driver::WEATHER:
+    case Driver::FLIGHTS:
     case Driver::DATE_TIME:
       return true;
     case Driver::IMAGE:

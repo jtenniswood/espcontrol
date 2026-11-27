@@ -78,7 +78,7 @@ For **Entered area** or **Exited area**, duplicate the sensor entry under the sa
 ## How It Works on the Panel
 
 - The card shows the count for the selected view, with the title beneath it.
-- The card is highlighted while the selected sensor reports flights.
+- The card keeps its sensor background as the flight count changes.
 - Tap the card to open the flight list. It shows up to 10 flights, closest first, and updates while it is open:
   - flight number and aircraft type
   - airline and route

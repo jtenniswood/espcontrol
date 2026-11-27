@@ -866,54 +866,58 @@ export function createButtonSettingsFeature(
             panel.appendChild(patternField.field);
         }
         if (b.type !== "image" && b.type !== "wifi_qr_card") {
+            let refreshActiveColourControls: (() => void) | undefined;
             var colourControls = renderColourSettings(panel, idPrefix, () =>
                 configOptionValue(b.options, "card_off_color") || defaultCardBackgroundColor(b.type || "", state),
                 (hex: string) => {
                     b.options = setCardColor(b.options, hex);
-                    activeColorPicker._syncColor();
+                    refreshActiveColourControls?.();
                     saveField("options", b.options);
                     renderPreview();
                 }, () => {
                     b.options = withoutCardColorOptions(b.options);
-                    customActiveColor = "";
+                    refreshActiveColourControls?.();
+                    saveField("options", b.options);
+                    renderPreview();
+                });
+            if (b.type !== "flights") {
+                var activeColorField = document.createElement("div");
+                activeColorField.className = "sp-field";
+                activeColorField.appendChild(fieldLabel("Active state colour", idPrefix + "active-colour"));
+                var customActiveColor = configOptionValue(b.options, "card_on_color");
+                var activeColorTabs = segmentControl([
+                    ["matching", "Matching"], ["theme", "Global"], ["custom", "Custom"],
+                ], cardActiveColorMode(b.options), function (mode: "matching" | "theme" | "custom") {
+                    b.options = setCardActiveColor(b.options, mode, customActiveColor);
                     syncActiveColorControls();
                     saveField("options", b.options);
                     renderPreview();
                 });
-            var activeColorField = document.createElement("div");
-            activeColorField.className = "sp-field";
-            activeColorField.appendChild(fieldLabel("Active state colour", idPrefix + "active-colour"));
-            var customActiveColor = configOptionValue(b.options, "card_on_color");
-            var activeColorTabs = segmentControl([
-                ["matching", "Matching"], ["theme", "Global"], ["custom", "Custom"],
-            ], cardActiveColorMode(b.options), function (mode: "matching" | "theme" | "custom") {
-                b.options = setCardActiveColor(b.options, mode, customActiveColor);
-                syncActiveColorControls();
-                saveField("options", b.options);
-                renderPreview();
-            });
-            activeColorTabs.segment.id = idPrefix + "active-colour";
-            activeColorTabs.segment.setAttribute("role", "group");
-            activeColorTabs.segment.setAttribute("aria-label", "Active state colour");
-            activeColorField.appendChild(activeColorTabs.segment);
-            var activeColorPicker = createColorSwatches(() => customActiveColor || cardActiveColor(b.options, state.onColor), function (hex) {
-                customActiveColor = hex;
-                b.options = setCardActiveColor(b.options, "custom", hex);
-                saveField("options", b.options);
-                renderPreview();
-            }, "Active state colour presets", "active");
-            activeColorField.appendChild(activeColorPicker);
-            function syncActiveColorControls() {
-                var mode = cardActiveColorMode(b.options);
-                for (var key in activeColorTabs.buttons) {
-                    activeColorTabs.buttons[key].classList.toggle("active", key === mode);
-                    activeColorTabs.buttons[key].setAttribute("aria-pressed", String(key === mode));
+                activeColorTabs.segment.id = idPrefix + "active-colour";
+                activeColorTabs.segment.setAttribute("role", "group");
+                activeColorTabs.segment.setAttribute("aria-label", "Active state colour");
+                activeColorField.appendChild(activeColorTabs.segment);
+                var activeColorPicker = createColorSwatches(() => customActiveColor || cardActiveColor(b.options, state.onColor), function (hex) {
+                    customActiveColor = hex;
+                    b.options = setCardActiveColor(b.options, "custom", hex);
+                    saveField("options", b.options);
+                    renderPreview();
+                }, "Active state colour presets", "active");
+                activeColorField.appendChild(activeColorPicker);
+                function syncActiveColorControls() {
+                    customActiveColor = configOptionValue(b.options, "card_on_color");
+                    var mode = cardActiveColorMode(b.options);
+                    for (var key in activeColorTabs.buttons) {
+                        activeColorTabs.buttons[key].classList.toggle("active", key === mode);
+                        activeColorTabs.buttons[key].setAttribute("aria-pressed", String(key === mode));
+                    }
+                    activeColorPicker.style.display = mode === "custom" ? "" : "none";
+                    activeColorPicker._syncColor();
                 }
-                activeColorPicker.style.display = mode === "custom" ? "" : "none";
-                activeColorPicker._syncColor();
+                refreshActiveColourControls = syncActiveColorControls;
+                syncActiveColorControls();
+                colourControls.editor.appendChild(activeColorField);
             }
-            syncActiveColorControls();
-            colourControls.editor.appendChild(activeColorField);
         }
         groupCardSettingsFields(panel, idPrefix);
         var saveRow: any = document.createElement("div");

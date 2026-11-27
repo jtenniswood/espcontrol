@@ -4944,7 +4944,7 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
   "flights": {
     "driver": "flights",
     "capabilities": {
-      "informationOnly": false,
+      "informationOnly": true,
       "subscriptions": true,
       "actions": true,
       "numericControl": false,

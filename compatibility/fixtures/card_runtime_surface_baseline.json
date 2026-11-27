@@ -12,7 +12,7 @@
         "picker": {
           "main": true,
           "subpage": true,
-          "infoOnly": false
+          "infoOnly": true
         },
         "preview": {
           "available": true,
@@ -44,7 +44,7 @@
         "picker": {
           "main": true,
           "subpage": true,
-          "infoOnly": false
+          "infoOnly": true
         },
         "preview": {
           "available": true,
@@ -76,7 +76,7 @@
         "picker": {
           "main": true,
           "subpage": true,
-          "infoOnly": false
+          "infoOnly": true
         },
         "preview": {
           "available": true,
@@ -108,7 +108,7 @@
         "picker": {
           "main": true,
           "subpage": true,
-          "infoOnly": false
+          "infoOnly": true
         },
         "preview": {
           "available": true,
