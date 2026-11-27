@@ -8,10 +8,20 @@
 #include <vector>
 
 struct lv_font_t { int line_height = 16; };
-struct lv_obj_t { std::string text; bool valid = true; int flags = 1, y = 0, padding = 16, text_color = 0, text_opa = 255; const lv_font_t *font = nullptr; };
+struct lv_event_t;
+struct lv_obj_t {
+  std::string text;
+  bool valid = true;
+  int flags = 1, y = 0, padding = 16, text_color = 0, text_opa = 255, height = 16;
+  const lv_font_t *font = nullptr;
+  void (*resize)(lv_event_t *) = nullptr;
+  void *resize_data = nullptr;
+};
+struct lv_event_t { lv_obj_t *target; void *user_data; };
 struct BtnSlot { lv_obj_t *btn, *icon_lbl, *text_lbl, *sensor_container, *sensor_lbl, *unit_lbl; };
 struct DisplayProfile {};
 constexpr int LV_PART_MAIN=0, LV_OPA_70=178, LV_OBJ_FLAG_HIDDEN=1, LV_ALIGN_BOTTOM_LEFT=0, LV_ALIGN_TOP_LEFT=1;
+constexpr int LV_EVENT_SIZE_CHANGED = 1;
 constexpr size_t HA_SHORT_STATE_MAX_LEN=64;
 lv_font_t font;
 int padding_captures=0;
@@ -26,6 +36,26 @@ void lv_obj_set_style_pad_bottom(lv_obj_t *, int, int) {}
 void lv_obj_clear_flag(lv_obj_t *o, int flag) { o->flags &= ~flag; }
 void lv_obj_add_flag(lv_obj_t *o, int flag) { o->flags |= flag; }
 void lv_obj_align(lv_obj_t *o, int, int, int y) { o->y=y; }
+int lv_obj_get_height(lv_obj_t *obj) { return obj->height; }
+lv_obj_t *lv_event_get_current_target(lv_event_t *event) { return event->target; }
+void *lv_event_get_user_data(lv_event_t *event) { return event->user_data; }
+void lv_obj_remove_event_cb_with_user_data(lv_obj_t *obj, void (*callback)(lv_event_t *), void *data) {
+  if (obj->resize == callback && obj->resize_data == data) {
+    obj->resize = nullptr;
+    obj->resize_data = nullptr;
+  }
+}
+void lv_obj_add_event_cb(lv_obj_t *obj, void (*callback)(lv_event_t *), int event, void *data) {
+  assert(event == LV_EVENT_SIZE_CHANGED && !obj->resize);
+  obj->resize = callback;
+  obj->resize_data = data;
+}
+void resize_weather_reading(lv_obj_t &obj, int height) {
+  obj.height = height;
+  lv_event_t event{&obj, obj.resize_data};
+  assert(obj.resize);
+  obj.resize(&event);
+}
 bool lv_obj_is_valid(lv_obj_t *o) { return o && o->valid; }
 void lv_label_set_display_text(lv_obj_t *o, const char *text) { o->text=text; }
 const char *find_icon(const char *name) { return name; }
