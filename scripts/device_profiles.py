@@ -398,6 +398,12 @@ def validate_layout(slug: str, device: dict[str, Any], errors: list[str]) -> Non
             )
 
 
+def image_card_package_name(capacity: int) -> str | None:
+    if capacity == 0:
+        return None
+    return "image_cards.yaml" if capacity == 4 else f"image_cards_{capacity}.yaml"
+
+
 def validate_capabilities(slug: str, device: dict[str, Any], errors: list[str]) -> None:
     capabilities = require_object(slug, errors, device.get("capabilities"), "capabilities")
     if capabilities is None:

@@ -385,7 +385,8 @@ function composeApplicationContext(): ApplicationContext {
   }, dom.fetch);
   const configurationPersistence = createConfigPersistenceFeature(nativePanelConfig, runtime, layout, entityState, shell);
   const cards = createCardRegistry();
-  const iconPicker = createButtonSettingsIconPickerFeature(dom.document, () => preview.render());
+  const iconPicker = createButtonSettingsIconPickerFeature(dom.document, () => preview.render(),
+    () => nativePanelConfig.customIcons());
   const renderQueue = createButtonSettingsRenderQueueFeature(runtime, {
     document: dom.document,
     requestFrame: (callback) => requestAnimationFrame(callback),
@@ -528,6 +529,8 @@ function composeApplicationContext(): ApplicationContext {
     {
       subpageEntityKeys: configurationPersistence.subpageEntityKeys,
       connectEvents: () => appEvents.connect(),
+      readNativeLayout: () => nativePanelConfig.client?.readDocument() ?? Promise.resolve("legacy"),
+      applyNativeLayout: (document) => configEvents.applyNativeLayout(document),
     },
   );
   const clockBar = createClockBarController();

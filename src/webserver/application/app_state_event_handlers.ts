@@ -398,6 +398,19 @@ export function createAppStateEventHandlersFeature(
                     if (els.setSsMode)
                         els.setSsMode(getActiveScreensaverMode());
             },
+            "text-screen_saver__sensor_entity": function (val: string) {
+                state.screensaverSensorSupported = true;
+                state.screensaverSensor.entity = val;
+                syncClockScreensaverControls();
+            },
+            "text-screen_saver__sensor_label": function (val: string) {
+                state.screensaverSensor.label = val;
+                syncClockScreensaverControls();
+            },
+            "text-screen_saver__sensor_unit": function (val: string) {
+                state.screensaverSensor.unit = val;
+                syncClockScreensaverControls();
+            },
             "text-screen_saver__camera_entity": function (this: any, val?: any) {
                 state.screensaverCameraSupported = true;
                 state.screensaverCameraEntity = val;

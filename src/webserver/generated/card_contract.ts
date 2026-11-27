@@ -1189,7 +1189,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "kind": "choice",
         "values": [
           "1",
-          "0.5"
+          "0.5",
+          "0.1"
         ],
         "defaultValue": "1",
         "omitDefault": true
@@ -1312,7 +1313,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "kind": "choice",
         "values": [
           "1",
-          "0.5"
+          "0.5",
+          "0.1"
         ],
         "defaultValue": "1",
         "omitDefault": true

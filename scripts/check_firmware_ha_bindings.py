@@ -7,7 +7,10 @@ import argparse
 import json
 import re
 from pathlib import Path
+from shutil import copyfile
 from tempfile import TemporaryDirectory
+
+from device_profiles import DeviceProfileError, image_card_package_name, load_device_profiles
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -2468,49 +2471,32 @@ def firmware_camera_refresh_action_errors(root: Path) -> list[str]:
             "common/device/image_cards_2.yaml: keep the unsupported S3 camera refresh action disabled"
         )
 
-    manifest_path = root / "devices" / "manifest.json"
-    if not manifest_path.exists():
-        errors.append("devices/manifest.json: declare the MCU family for each device profile")
-        return errors
     try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        errors.append("devices/manifest.json: parse device MCU families")
-        return errors
-    profiles = manifest.get("devices")
-    if not isinstance(profiles, dict):
-        errors.append("devices/manifest.json: declare device profiles with MCU families")
+        profiles = load_device_profiles(root / "devices" / "manifest.json")
+    except DeviceProfileError as exc:
+        errors.append(f"devices/manifest.json: {exc}")
         return errors
 
-    package_by_mcu = {
-        "ESP32-S3": "image_cards_2.yaml",
-        "ESP32-P4": "image_cards_6.yaml",
-    }
     for package_path in sorted((root / "devices").glob("*/packages.yaml")):
         slug = package_path.parent.name
-        package_text = package_path.read_text(encoding="utf-8")
         profile = profiles.get(slug)
-        firmware = profile.get("firmware") if isinstance(profile, dict) else None
-        build = firmware.get("build") if isinstance(firmware, dict) else None
-        mcu = build.get("chip") if isinstance(build, dict) else None
-        expected = package_by_mcu.get(mcu) if isinstance(mcu, str) else None
-        if expected is None:
-            errors.append(
-                f"{package_path.relative_to(root)}: declare a supported MCU family "
-                "in devices/manifest.json"
-            )
+        if profile is None:
+            errors.append(f"{package_path.relative_to(root)}: declare {slug} in devices/manifest.json")
             continue
 
-        include_match = re.search(
-            r"(?m)^[ \t]*image_cards:[ \t]*!include[ \t]+"
-            r"../../common/device/(image_cards(?:_\d+)?\.yaml)[ \t]*$",
-            package_text,
-        )
-        included = include_match.group(1) if include_match else None
-        if included != expected:
+        capacity = profile["capabilities"]["imageSlots"]
+        expected = image_card_package_name(capacity)
+        package_text = package_path.read_text(encoding="utf-8")
+        include = re.search(r"(?m)^[ \t]*image_cards:[ \t]*(.*)$", package_text)
+        if expected is None:
+            if include:
+                errors.append(
+                    f"{package_path.relative_to(root)}: omit image_cards for capabilities.imageSlots=0"
+                )
+        elif not include or include[1].split() != ["!include", f"../../common/device/{expected}"]:
             errors.append(
-                f"{package_path.relative_to(root)}: include {expected} for the "
-                f"manifest's {mcu} MCU"
+                f"{package_path.relative_to(root)}: include {expected} "
+                f"for capabilities.imageSlots={capacity}"
             )
     return errors
 
@@ -3507,11 +3493,8 @@ def firmware_climate_step_errors(firmware_dir: Path, root: Path) -> list[str]:
     else:
         body = helper.group("body")
         if (
-            "CLIMATE_DEFAULT_STEP_TENTHS" not in body
-            or "CLIMATE_WHOLE_NUMBER_STEP_TENTHS" not in body
-            or "ctx->configured_step_tenths" not in body
+            "return CLIMATE_WHOLE_NUMBER_STEP_TENTHS" not in body
             or "return ctx->configured_step_tenths" not in body
-            or "ctx->step_tenths > minimum" in body
         ):
             errors.append(f"{rel}: use the configured climate temperature step")
     if "int step = climate_effective_step_tenths(ctx);" not in text:
@@ -3520,9 +3503,9 @@ def firmware_climate_step_errors(firmware_dir: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: round whole-number climate targets to whole-degree boundaries")
     if 'cfg_option_value(p.options, "temperature_step")' not in text:
         errors.append(f"{rel}: use the configured climate temperature step")
-    if "climate_selected_target(ui.active) - ui.active->step_tenths" in text:
+    if "climate_selected_target(ui.active) - ui.active->reported_step_tenths" in text:
         errors.append(f"{rel}: use the display-appropriate minimum step for the climate minus button")
-    if "climate_selected_target(ui.active) + ui.active->step_tenths" in text:
+    if "climate_selected_target(ui.active) + ui.active->reported_step_tenths" in text:
         errors.append(f"{rel}: use the display-appropriate minimum step for the climate plus button")
     return errors
 
@@ -5000,65 +4983,64 @@ def expect_camera_screensaver_retained_token_errors(
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
-def test_camera_refresh_package_mcu_errors() -> None:
+def test_camera_refresh_image_card_packages() -> None:
+    from device_profiles import load_catalog_data, slot_device
+    from generate_device_slots import package_file_text
+
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
         firmware_dir = root / "components" / "espcontrol"
         firmware_dir.mkdir(parents=True)
-        (firmware_dir / "button_grid_image.h").write_text("", encoding="utf-8")
+        copyfile(FIRMWARE_DIR / "button_grid_image.h", firmware_dir / "button_grid_image.h")
         common_device = root / "common" / "device"
         common_device.mkdir(parents=True)
         for package in ("image_cards_6.yaml", "image_cards_2.yaml"):
-            (common_device / package).write_text("", encoding="utf-8")
+            copyfile(ROOT / "common" / "device" / package, common_device / package)
 
-        devices = root / "devices"
-        devices.mkdir()
-        profile_mcus = {
-            "p4": "ESP32-P4",
-            "guition-esp32-s3-4848s040": "ESP32-S3",
-            "waveshare-esp32-s3-touch-lcd-4": "ESP32-S3",
-        }
-        (devices / "manifest.json").write_text(
-            json.dumps(
-                {
-                    "devices": {
-                        slug: {"firmware": {"build": {"chip": mcu}}}
-                        for slug, mcu in profile_mcus.items()
-                    }
-                }
-            ),
-            encoding="utf-8",
-        )
-        package_includes = {
-            "p4": "image_cards_6.yaml",
-            "guition-esp32-s3-4848s040": "image_cards_2.yaml",
-            "waveshare-esp32-s3-touch-lcd-4": "image_cards_2.yaml",
-        }
-        for slug, include in package_includes.items():
-            package_dir = devices / slug
-            package_dir.mkdir()
-            package_text = f"  image_cards: !include ../../common/device/{include}\n"
-            (package_dir / "packages.yaml").write_text(package_text, encoding="utf-8")
+        four_slot_p4 = "esp32-p4-86"
+        four_slot_s3 = "guition-esp32-s3-4848s040"
+        zero_slot = "guition-esp32-p4-jc4880p443"
+        manifest = load_catalog_data()
+        capacities = {four_slot_p4: 4, four_slot_s3: 4, zero_slot: 0}
+        for slug, capacity in capacities.items():
+            manifest["devices"][slug]["capabilities"]["imageSlots"] = capacity
+        manifest_path = root / "devices" / "manifest.json"
+        manifest_path.parent.mkdir()
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        for slug, profile in load_device_profiles(manifest_path).items():
+            package_path = manifest_path.parent / slug / "packages.yaml"
+            package_path.parent.mkdir()
+            package_text = package_file_text(slot_device(profile))
+            package_path.write_text(package_text, encoding="utf-8")
+            if capacities.get(slug) == 4:
+                assert "!include ../../common/device/image_cards.yaml" in package_text, (
+                    f"{slug}: the generator must use the unsuffixed four-slot package"
+                )
 
         errors = firmware_camera_refresh_action_errors(root)
-        package_errors = [error for error in errors if error.endswith("MCU")]
-        assert not package_errors, f"expected MCU-matched packages, got {package_errors!r}"
+        assert not errors, f"generated packages must pass validation, got {errors!r}"
 
-        waveshare_packages = devices / "waveshare-esp32-s3-touch-lcd-4" / "packages.yaml"
-        waveshare_packages.write_text(
-            "  image_cards: !include ../../common/device/image_cards_6.yaml\n",
+        package_path = manifest_path.parent / four_slot_s3 / "packages.yaml"
+        package_path.write_text(
+            "  image_cards: !include ../../common/device/image_cards_2.yaml\n",
+            encoding="utf-8",
+        )
+        package_path = manifest_path.parent / zero_slot / "packages.yaml"
+        package_path.write_text(
+            "  image_cards: !include ../../common/device/image_cards_1.yaml\n",
             encoding="utf-8",
         )
         errors = firmware_camera_refresh_action_errors(root)
-        package_errors = [error for error in errors if "packages.yaml:" in error]
-        assert package_errors == [
-            "devices/waveshare-esp32-s3-touch-lcd-4/packages.yaml: "
-            "include image_cards_2.yaml for the manifest's ESP32-S3 MCU"
-        ], f"expected an S3 image-card package error for Waveshare, got {package_errors!r}"
+        assert errors == [
+            f"devices/{zero_slot}/packages.yaml: omit image_cards for capabilities.imageSlots=0",
+            f"devices/{four_slot_s3}/packages.yaml: include image_cards.yaml "
+            "for capabilities.imageSlots=4",
+        ], f"expected capacity mismatches, got {errors!r}"
 
 
 def run_self_test() -> int:
-    test_camera_refresh_package_mcu_errors()
+    test_camera_refresh_image_card_packages()
     for call in (
         "api->get_home_assistant_state(entity, callback);",
         "api.get_home_assistant_state(entity, callback);",
@@ -8031,15 +8013,15 @@ def run_self_test() -> int:
     )
     expect_climate_step_errors(
         "climate ignores whole-number display step",
-        "constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 5;\n"
+        "constexpr int CLIMATE_HALF_DEGREE_STEP_TENTHS = 5;\n"
         "inline int climate_round_to_step(ClimateControlCtx *ctx, int value) {\n"
-        "  int step = ctx->step_tenths;\n"
+        "  int step = ctx->reported_step_tenths;\n"
         "  int base = ctx->min_tenths;\n"
         "  return value;\n"
         "}\n"
         "inline void climate_control_open_modal(ClimateControlCtx *ctx) {\n"
-        "  climate_selected_target(ui.active) - ui.active->step_tenths;\n"
-        "  climate_selected_target(ui.active) + ui.active->step_tenths;\n"
+        "  climate_selected_target(ui.active) - ui.active->reported_step_tenths;\n"
+        "  climate_selected_target(ui.active) + ui.active->reported_step_tenths;\n"
         "}\n",
         (
             "keep climate temperature changes at a display-appropriate minimum",
@@ -8051,15 +8033,12 @@ def run_self_test() -> int:
     )
     expect_climate_step_errors(
         "climate uses configured step increment",
-        "constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 5;\n"
+        "constexpr int CLIMATE_HALF_DEGREE_STEP_TENTHS = 5;\n"
         "constexpr int CLIMATE_WHOLE_NUMBER_STEP_TENTHS = 10;\n"
         "int configured_step_tenths = CLIMATE_WHOLE_NUMBER_STEP_TENTHS;\n"
         "inline int climate_effective_step_tenths(ClimateControlCtx *ctx) {\n"
-        "  if (!ctx) return CLIMATE_DEFAULT_STEP_TENTHS;\n"
-        "  if (ctx->configured_step_tenths == CLIMATE_DEFAULT_STEP_TENTHS ||\n"
-        "      ctx->configured_step_tenths == CLIMATE_WHOLE_NUMBER_STEP_TENTHS)\n"
-        "    return ctx->configured_step_tenths;\n"
-        "  return CLIMATE_WHOLE_NUMBER_STEP_TENTHS;\n"
+        "  if (!ctx) return CLIMATE_WHOLE_NUMBER_STEP_TENTHS;\n"
+        "  return ctx->configured_step_tenths;\n"
         "}\n"
         "inline int climate_round_to_step(ClimateControlCtx *ctx, int value) {\n"
         "  int step = climate_effective_step_tenths(ctx);\n"
@@ -8069,7 +8048,7 @@ def run_self_test() -> int:
         "inline ClimateControlCtx *create_climate_control_context(const ParsedCfg &p) {\n"
         "  ctx->configured_step_tenths = normalize_climate_temperature_step(\n"
         "    cfg_option_value(p.options, \"temperature_step\")) == \"0.5\"\n"
-        "      ? CLIMATE_DEFAULT_STEP_TENTHS\n"
+        "      ? CLIMATE_HALF_DEGREE_STEP_TENTHS\n"
         "      : CLIMATE_WHOLE_NUMBER_STEP_TENTHS;\n"
         "}\n"
         "inline void climate_control_open_modal(ClimateControlCtx *ctx) {\n"

@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD_SCRIPT = ROOT / "scripts" / "build.py"
+RELEASE_CONTRACT = ROOT / "product" / "release_contract.json"
 RELEASE_TAG_RE = re.compile(r"^v\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$")
 VERSION_LIST_RE = re.compile(
     r"(?ms)^(WEB_ASSET_SUPPORTED_FIRMWARE_VERSIONS = \(\n)(.*?)(^\))"
@@ -23,6 +24,15 @@ CURRENT_VERSION_RE = re.compile(
 MAX_STABLE_RELEASES = 5
 BUNDLE_PATH_RE = re.compile(r"bundles/([0-9a-f]{64})/www\.js")
 SOURCE_REVISION_RE = re.compile(r"[0-9a-f]{40}")
+# Match the verified release bundle, including its minified manifest parser.
+V215_EDITOR_PATCHES = (
+    (b'"/manifest.json"', b'"/native.json"'),
+    (b'"/versions.json"', b'"/native-versions.json"'),
+    (
+        b'if(y===i)return{latest_version:r,',
+        b'if(y.split("/").pop()===i)return{latest_version:r,',
+    ),
+)
 
 
 class PrepareReleaseWebAssetsError(RuntimeError):
@@ -75,6 +85,12 @@ def supported_versions(tag: str, releases: list[dict]) -> list[str]:
     else:
         stable = [tag, *stable]
     stable = list(dict.fromkeys(stable))[:MAX_STABLE_RELEASES]
+    # Panels following the compatibility feed still need their immutable editor
+    # after the gateway release ages out of the ordinary compatibility window.
+    policy = json.loads(RELEASE_CONTRACT.read_text(encoding="utf-8")).get("panelConfigCompatibility", {})
+    gateway_tag = policy.get("legacyGatewayRelease")
+    if gateway_tag and gateway_tag not in stable:
+        stable.append(gateway_tag)
     prereleases = list(dict.fromkeys(prereleases))[:1]
     return ["dev", *stable, *prereleases]
 
@@ -167,7 +183,20 @@ def stage_published_bundles(output: Path, versions: list[str]) -> None:
     for version in versions:
         bundle, revision = published_bundle(version)
         path = output / bundle["path"]
-        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != bundle["sha256"]:
+        if version == "v2.15.0":
+            # Keep the published bundle intact for the releases that share it.
+            # Its v2.14.0 users still need the compatibility update feed.
+            content = bundle_bytes(bundle, revision)
+            for original, replacement in V215_EDITOR_PATCHES:
+                if content.count(original) != 1:
+                    raise PrepareReleaseWebAssetsError("Unexpected v2.15.0 firmware code in the published editor")
+                content = content.replace(original, replacement)
+            digest = hashlib.sha256(content).hexdigest()
+            bundle = {**bundle, "id": digest, "sha256": digest, "path": f"bundles/{digest}/www.js"}
+            path = output / bundle["path"]
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(content)
+        elif not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != bundle["sha256"]:
             content = bundle_bytes(bundle, revision)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(content)
@@ -182,7 +211,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("tag", help="New release tag, for example v1.2.3")
     parser.add_argument("--build-script", type=Path, default=BUILD_SCRIPT)
-    parser.add_argument("--published-web-assets", type=Path, help="Stage the exact bundles for older releases")
+    parser.add_argument("--published-web-assets", type=Path, help="Stage compatible editor bundles for older releases")
     parser.add_argument(
         "--releases-json",
         type=Path,

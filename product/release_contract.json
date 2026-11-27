@@ -4,8 +4,9 @@
   "panelConfigDocumentVersion": 1,
   "webAssetVersion": 2,
   "panelConfigCompatibility": {
-    "phase": "read-import-only",
+    "phase": "native-only",
     "dualWriteStableReleases": 2,
-    "readImportOnlyStableReleases": 1
+    "readImportOnlyStableReleases": 1,
+    "legacyGatewayRelease": "v2.15.0"
   }
 }

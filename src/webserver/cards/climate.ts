@@ -74,6 +74,7 @@ export function registerClimateCardTypes(
             options: [
                 ["1", "1 degree"],
                 ["0.5", "0.5 degree"],
+                ["0.1", "0.1 degree"],
             ],
         },
         largeNumbers: {
@@ -236,7 +237,7 @@ export function registerClimateCardTypes(
             var prec: any = parseInt(climateConfig.precision || "0", 10) || 0;
             var unit: any = temperatureUnitSymbol();
             var actualVal: any = (21).toFixed(prec);
-            var targetVal: any = (20).toFixed(prec);
+            var targetVal: any = (20).toFixed(climateTemperatureStep(b) === "0.1" ? 1 : prec);
             var numberMode: any = climateNumberDisplayMode(b);
             var numberVal: any = numberMode === "actual" ? actualVal : targetVal;
             var labelMode: any = climateLabelDisplayMode(b);
