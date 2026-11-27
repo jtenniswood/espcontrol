@@ -26,6 +26,21 @@ inline void screensaver_pin_update_entry_label() {
   for (size_t i = 0; i < ui.entry.size(); ++i) masked += "\u2022";
   lv_label_set_display_text(ui.label, ui.entry.empty() ? espcontrol_i18n("Enter Pin") : masked.c_str());
 }
+inline std::function<void()> &return_screen_lock_view() {
+  static std::function<void()> action;
+  return action;
+}
+inline void screensaver_pin_restore_previous_view(espcontrol::DisplayModeController &controller,
+                                                 const espcontrol::DisplayTransition &view) {
+  using espcontrol::DisplayRequestSource;
+  controller.clear(DisplayRequestSource::USER_WAKE);
+  const auto source = view.winning_source;
+  // Schedule and boot requests are rebuilt from live state by reconciliation.
+  if (source && source != DisplayRequestSource::SCREEN_SCHEDULE &&
+      source != DisplayRequestSource::BOOT_GUARD) {
+    controller.request(*source, view.target_mode);
+  }
+}
 inline void screensaver_pin_key_cb(lv_event_t *event) {
   auto &ui = screensaver_pin_ui();
   const char *key = static_cast<const char *>(lv_event_get_user_data(event));
@@ -44,6 +59,17 @@ inline void screensaver_pin_key_cb(lv_event_t *event) {
     return;
   }
   if (std::strcmp(key, "back") == 0) {
+    if (ui.entry.empty()) {
+      if (!espcontrol::screensaver_pin().dismiss_keypad()) return;
+      // Leave the keypad in place until LVGL finishes dispatching this click.
+      lv_async_call([](void *) {
+        auto &pin = espcontrol::screensaver_pin();
+        if (!pin.locked() || pin.keypad_requested()) return;
+        if (return_screen_lock_view()) return_screen_lock_view()();
+        else if (show_screen_lock_pin()) show_screen_lock_pin()();
+      }, nullptr);
+      return;
+    }
     ui.entry.clear();
   } else if (ui.entry.size() < 16 && key[0] >= '0' && key[0] <= '9') {
     ui.entry += key[0];
