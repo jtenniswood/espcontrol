@@ -59,6 +59,9 @@ class MipiDsi final : public display::Display {
   void set_model(const char *model) { this->model_ = model; }
   void set_lane_bit_rate(float lane_bit_rate) { this->lane_bit_rate_ = lane_bit_rate; }
   void set_lanes(uint8_t lanes) { this->lanes_ = lanes; }
+#ifdef USE_WAVESHARE_P4_86_LCD_PROBE
+  void set_jd9365_init_sequence(const std::vector<uint8_t> &sequence) { this->jd9365_init_sequence_ = sequence; }
+#endif
 
   void smark_failed(const LogString *message, esp_err_t err);
 
@@ -77,6 +80,11 @@ class MipiDsi final : public display::Display {
   void dump_config() override;
 
  protected:
+  bool setup_dsi_();
+#ifdef USE_WAVESHARE_P4_86_LCD_PROBE
+  bool detect_waveshare_p4_86_();
+  std::vector<uint8_t> jd9365_init_sequence_{};
+#endif
   void write_to_display_(int x_start, int y_start, int w, int h, const uint8_t *ptr, int x_offset, int y_offset,
                          int x_pad);
   bool check_buffer_();

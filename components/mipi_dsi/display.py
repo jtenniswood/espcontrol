@@ -70,6 +70,8 @@ ColorBitness = display.display_ns.enum("ColorBitness")
 
 CONF_LANE_BIT_RATE = "lane_bit_rate"
 CONF_LANES = "lanes"
+CONF_JD9365_INIT_SEQUENCE = "jd9365_init_sequence"
+WAVESHARE_P4_86 = "WAVESHARE-P4-86-PANEL"
 
 DsiDriverChip("CUSTOM")
 
@@ -141,6 +143,10 @@ def model_schema(config: ConfigType) -> cv.All:
             model.option(CONF_VSYNC_FRONT_PORCH): cv.int_,
         }
     )
+    if model.name == WAVESHARE_P4_86:
+        schema = schema.extend(
+            {cv.Optional(CONF_JD9365_INIT_SEQUENCE): cv.All(cv.ensure_list(map_sequence), cv.Length(min=1))}
+        )
     return cv.All(
         schema,
         cv.only_on_esp32,
@@ -202,6 +208,14 @@ async def to_code(config: ConfigType) -> None:
     sequence = model.get_sequence(config)
     cg.add(var.set_model(config[CONF_MODEL]))
     cg.add(var.set_init_sequence(sequence))
+    if CONF_JD9365_INIT_SEQUENCE in config:
+        jd9365_config = {
+            **config,
+            CONF_INIT_SEQUENCE: config[CONF_JD9365_INIT_SEQUENCE],
+            CONF_USE_AXIS_FLIPS: False,
+        }
+        cg.add_define("USE_WAVESHARE_P4_86_LCD_PROBE")
+        cg.add(var.set_jd9365_init_sequence(MODELS["CUSTOM"].get_sequence(jd9365_config)))
     cg.add(var.set_invert_colors(config[CONF_INVERT_COLORS]))
     cg.add(var.set_hsync_pulse_width(config[CONF_HSYNC_PULSE_WIDTH]))
     cg.add(var.set_hsync_back_porch(config[CONF_HSYNC_BACK_PORCH]))
