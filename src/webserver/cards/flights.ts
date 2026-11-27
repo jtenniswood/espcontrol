@@ -1,4 +1,5 @@
 import type { CardRegistry, CardUiServices } from "../application/card_registry";
+import { iconSlug } from "../application/ui_primitives";
 import { FLIGHTS_TITLES } from "../generated/flights_titles";
 import { state } from "../state/app_instance";
 import { configOptionValue, setConfigOptionValue } from "../model/config_primitives";
@@ -28,6 +29,10 @@ function usesViewTitle(label: string, options: string, area: keyof typeof AREA_V
 function flightsArea(options: string): keyof typeof AREA_VIEWS {
   const area = configOptionValue(options, "area");
   return area === "entered" || area === "exited" ? area : "current";
+}
+
+function flightsCustomIcon(icon: string, options: string): string {
+  return icon && icon !== "Auto" && configOptionValue(options, "icon_source") === "custom" ? icon : "";
 }
 
 export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiServices): void {
@@ -86,6 +91,15 @@ export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiS
       });
       helpers.requireEntityDomain(entity.input, ["sensor"], "Choose a sensor entity (sensor.*).");
 
+      helpers.renderCardIconPicker(panel, b, helpers, {
+        value: flightsCustomIcon(b.icon, b.options) || "Auto",
+        onChange(button: typeof b, cardHelpers: typeof helpers, icon: string) {
+          button.options = setConfigOptionValue(button.options, "icon_source", icon === "Auto" ? "" : "custom");
+          cardHelpers.saveField("options", button.options);
+          cardUi.renderPreview();
+        },
+      });
+
       const title = helpers.renderCardTextField(panel, b, helpers, {
         label: "Title",
         idSuffix: "label",
@@ -107,13 +121,14 @@ export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiS
     renderPreview: function (b, helpers) {
       const entityName = b.entity?.replace(/^sensor\./, "").replace(/_/g, " ");
       const area = flightsArea(b.options);
+      const customIcon = flightsCustomIcon(b.icon, b.options);
       const name = usesViewTitle(b.label, b.options, area) ? flightsViewTitles()[area] : b.label || (entityName
         ? entityName[0].toUpperCase() + entityName.slice(1)
         : "Flights");
       return {
         buttonClass: "sp-flights-card",
         iconHtml: '<span class="sp-flights-reading">' +
-          '<span class="mdi mdi-' + AREA_VIEWS[area].icon + '" aria-hidden="true"></span>' +
+          '<span class="mdi mdi-' + (customIcon ? iconSlug(customIcon) : AREA_VIEWS[area].icon) + '" aria-hidden="true"></span>' +
           '<span class="sp-flights-count">3</span>' +
           '<span class="sp-flights-sublabel">' + helpers.escHtml(name) + '</span></span>',
         labelHtml: "",

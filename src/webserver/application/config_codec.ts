@@ -456,7 +456,8 @@ export function createConfigCodecFeature(
     function normalizeFlightsOptions(options: string): string {
         const area = configOptionValue(options, "area");
         return [area === "entered" || area === "exited" ? "area=" + area : "",
-            configOptionValue(options, "title_source") === "sensor" ? "title_source=sensor" : ""].filter(Boolean).join(",");
+            configOptionValue(options, "title_source") === "sensor" ? "title_source=sensor" : "",
+            configOptionValue(options, "icon_source") === "custom" ? "icon_source=custom" : ""].filter(Boolean).join(",");
     }
     function normalizeButtonConfig(this: any, b?: any) {
         var cardColorOptions: any = b ? normalizedCardColorOptions(b.options) : "";

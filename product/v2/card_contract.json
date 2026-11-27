@@ -4841,6 +4841,17 @@
           ],
           "defaultValue": "view",
           "omitDefault": true
+        },
+        {
+          "name": "icon_source",
+          "label": "Icon source",
+          "kind": "choice",
+          "values": [
+            "auto",
+            "custom"
+          ],
+          "defaultValue": "auto",
+          "omitDefault": true
         }
       ],
       "normalization": {
@@ -4879,7 +4890,8 @@
         "unknownOptions": "drop",
         "canonicalOptionOrder": [
           "area",
-          "title_source"
+          "title_source",
+          "icon_source"
         ]
       },
       "default": {

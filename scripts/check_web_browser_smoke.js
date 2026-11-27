@@ -8398,7 +8398,19 @@ async function assertFlightsPreviewLayout(browser) {
     }
     assert.strictEqual(await page.getByText("Units", { exact: true }).count(), 0);
     await title.fill("Departures from home");
-    await checkTile(page, 1, "material-symbol-airplanemode-inactive", "Departures from home");
+    const iconInput = page.locator('.sp-settings-modal input[id$="-icon"]');
+    async function selectIcon(name) {
+      if (!(await iconInput.isVisible())) {
+        await page.getByRole("button", { name: "Card Settings", exact: true }).click();
+      }
+      await iconInput.fill(name);
+      await page.locator(".sp-icon-dropdown .sp-icon-option-label").getByText(name, { exact: true }).click();
+    }
+    assert.strictEqual(await iconInput.inputValue(), "Auto");
+    await selectIcon("Home");
+    await checkTile(page, 1, "home", "Departures from home");
+    await page.locator('select[id$="flights-area"]').selectOption("entered");
+    await checkTile(page, 1, "home", "Departures from home");
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await waitForNativeState(nativeState, () => nativeState.document.buttons[1].includes("area") &&
       panelConfigLabel(nativeState.document, 1) === "Departures from home", "Flights area and title saved");
@@ -8406,7 +8418,14 @@ async function assertFlightsPreviewLayout(browser) {
     await page.reload();
     await page.waitForSelector("#sp-app");
     await seedNativeDocument(page, nativeState);
-    await checkTile(page, 1, "material-symbol-airplanemode-inactive", "Departures from home");
+    await checkTile(page, 1, "home", "Departures from home");
+    assert(nativeState.document.buttons[1].includes("icon_source"), "The selected Flights icon is saved");
+    await page.locator('.sp-main [data-slot="1"]').click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await selectIcon("Auto");
+    await checkTile(page, 1, "material-symbol-connecting-airports", "Departures from home");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await waitForNativeState(nativeState, () => !nativeState.document.buttons[1].includes("icon_source"), "Flights icon reset to Auto");
     await page.locator(".sp-main .sp-empty-cell").first().click();
     await page.getByRole("button", { name: "Flights card type", exact: true }).click();
     async function checkDraftTitle(expected) {

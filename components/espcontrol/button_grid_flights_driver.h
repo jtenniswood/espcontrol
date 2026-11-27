@@ -29,6 +29,8 @@ inline bool flights_driver_setup_visual(
   const char *icon = "Travel";
   if (area == "entered") icon = "Connecting Airports";
   if (area == "exited") icon = "Airplane Mode Inactive";
+  if (!config.icon.empty() && config.icon != "Auto" &&
+      cfg_option_value(config.options, "icon_source") == "custom") icon = config.icon.c_str();
   lv_label_set_display_text(slot.icon_lbl, find_icon(icon));
   lv_label_set_display_text(slot.text_lbl, "--");
   lv_obj_add_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN);

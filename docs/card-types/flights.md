@@ -14,6 +14,7 @@ A Flights card shows the number of aircraft currently in your monitored area, or
 2. Add a **Flights** card and choose **Area view**.
 3. Set **Flights Sensor** to the corresponding Home Assistant entity. Use the actual entity ID shown in Home Assistant if it differs from the suggestion.
 4. **Title** starts with the selected view name in the panel’s language. Enter your own title or clear and save it to use the sensor’s name from Home Assistant.
+5. Choose an **Icon**, or leave it on **Auto** to use the icon for the selected view.
 
 | Area view | Flightradar24 sensor |
 | --- | --- |

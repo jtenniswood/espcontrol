@@ -43,10 +43,11 @@
           }
         },
         {
-          "name": "exited area with sensor title",
+          "name": "exited area with sensor title and custom icon",
           "config": {
             "entity": "sensor.espcontrol_flights_exited",
-            "options": "area=exited,units=imperial,title_source=sensor"
+            "icon": "Airplane",
+            "options": "area=exited,units=imperial,title_source=sensor,icon_source=custom"
           }
         }
       ]

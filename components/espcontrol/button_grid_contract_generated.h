@@ -328,6 +328,7 @@ constexpr const char *CARD_CONTRACT_OPTION_NAME_GATE_MODE = "gate_mode";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_HIDDEN = "hidden";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_HUMIDITY_SOURCE = "humidity_source";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ICON_DISPLAY = "icon_display";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_ICON_SOURCE = "icon_source";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_IMAGE_ICON = "image_icon";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_IMAGE_LABEL = "image_label";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_IMAGE_MODAL_MODE = "image_modal_mode";

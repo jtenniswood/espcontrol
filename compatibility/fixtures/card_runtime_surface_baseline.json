@@ -98,10 +98,10 @@
       }
     },
     {
-      "name": "flights: exited area with sensor title",
+      "name": "flights: exited area with sensor title and custom icon",
       "sourceKind": "contract",
       "sourceType": "flights",
-      "mode": "exited area with sensor title",
+      "mode": "exited area with sensor title and custom icon",
       "canonicalType": "flights",
       "web": {
         "registration": "flights",
@@ -112,7 +112,7 @@
         },
         "preview": {
           "available": true,
-          "fingerprint": "8c22a4bd9fcb21af"
+          "fingerprint": "333b9bbdb0f5c7eb"
         }
       },
       "firmware": {

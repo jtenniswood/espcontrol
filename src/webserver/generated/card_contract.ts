@@ -4332,6 +4332,17 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         ],
         "defaultValue": "view",
         "omitDefault": true
+      },
+      {
+        "name": "icon_source",
+        "label": "Icon source",
+        "kind": "choice",
+        "values": [
+          "auto",
+          "custom"
+        ],
+        "defaultValue": "auto",
+        "omitDefault": true
       }
     ],
     "normalization": {
@@ -4370,7 +4381,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "unknownOptions": "drop",
       "canonicalOptionOrder": [
         "area",
-        "title_source"
+        "title_source",
+        "icon_source"
       ]
     },
     "default": {
@@ -5116,6 +5128,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "hidden": "hidden",
   "humidity_source": "humidity_source",
   "icon_display": "icon_display",
+  "icon_source": "icon_source",
   "image_icon": "image_icon",
   "image_label": "image_label",
   "image_modal_mode": "image_modal_mode",
