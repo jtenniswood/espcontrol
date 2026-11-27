@@ -4820,6 +4820,18 @@
       ],
       "options": [
         {
+          "name": "area",
+          "label": "Area view",
+          "kind": "choice",
+          "values": [
+            "current",
+            "entered",
+            "exited"
+          ],
+          "defaultValue": "current",
+          "omitDefault": true
+        },
+        {
           "name": "units",
           "label": "Units",
           "kind": "choice",
@@ -4866,6 +4878,7 @@
         },
         "unknownOptions": "drop",
         "canonicalOptionOrder": [
+          "area",
           "units"
         ]
       },

@@ -14,10 +14,14 @@ inline bool flights_driver_matches(const Context &context) {
 }
 
 inline bool flights_driver_setup_visual(
-    BtnSlot &slot, const Context &context) {
+    BtnSlot &slot, const ParsedCfg &config, const Context &context) {
   if (!flights_driver_matches(context)) return false;
   lv_obj_set_user_data(slot.btn, nullptr);
-  lv_label_set_display_text(slot.icon_lbl, find_icon("Travel"));
+  const auto area = cfg_option_value(config.options, "area");
+  const char *icon = "Travel";
+  if (area == "entered") icon = "Connecting Airports";
+  if (area == "exited") icon = "Airplane Mode Inactive";
+  lv_label_set_display_text(slot.icon_lbl, find_icon(icon));
   lv_label_set_display_text(slot.text_lbl, "--");
   lv_obj_add_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN);
 

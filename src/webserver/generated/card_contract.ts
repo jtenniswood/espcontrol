@@ -4311,6 +4311,18 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     ],
     "options": [
       {
+        "name": "area",
+        "label": "Area view",
+        "kind": "choice",
+        "values": [
+          "current",
+          "entered",
+          "exited"
+        ],
+        "defaultValue": "current",
+        "omitDefault": true
+      },
+      {
         "name": "units",
         "label": "Units",
         "kind": "choice",
@@ -4357,6 +4369,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       },
       "unknownOptions": "drop",
       "canonicalOptionOrder": [
+        "area",
         "units"
       ]
     },
@@ -5080,6 +5093,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "actions": "actions",
   "active_color": "active_color",
   "alarm_card_type": "alarm_card_type",
+  "area": "area",
   "center_clock": "center_clock",
   "climate_tabs": "climate_tabs",
   "confirm_message": "confirm_message",

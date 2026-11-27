@@ -6,7 +6,7 @@ description:
 
 # Flights
 
-A flights card shows how many aircraft are flying near your home and the name of its Home Assistant sensor. Tap the card to see a list of the nearest flights with their route, distance, altitude, speed, and whether they are climbing or descending.
+A Flights card shows aircraft currently in your monitored area, or aircraft that just entered or exited it. The tile shows the count and the Home Assistant sensor name. Tap the card for the flight list.
 
 The data comes from the [Flightradar24 integration](https://github.com/AlexandrErohin/home-assistant-flightradar24) for Home Assistant, through a small template sensor that you add once.
 
@@ -55,29 +55,36 @@ template:
             {{ ns.rows | join(';') }}
 ```
 
-This creates `sensor.espcontrol_flights`. Its state is the number of flights in the area, and its `flights` attribute is the short list the card reads.
+This creates `sensor.espcontrol_flights` for **Current in area**. Its state is the number of flights and its `flights` attribute is the short list the card reads.
 
-If you named your Flightradar24 sensor differently, replace `sensor.flightradar24_current_in_area` in the four places it appears.
+For **Entered area** or **Exited area**, duplicate the sensor entry under the same `sensor:` list. Set the name and unique ID from the table, and replace each occurrence of `sensor.flightradar24_current_in_area` with the matching source. Use the actual entity ID from your Home Assistant installation if it differs.
+
+| Area view | Flightradar24 source | Template sensor name | Unique ID |
+| --- | --- | --- | --- |
+| Current in area | `sensor.flightradar24_current_in_area` | EspControl Flights | `espcontrol_flights` |
+| Entered area | `sensor.flightradar24_entered_area` | EspControl Flights Entered | `espcontrol_flights_entered` |
+| Exited area | `sensor.flightradar24_exited_area` | EspControl Flights Exited | `espcontrol_flights_exited` |
 
 ## Setting Up a Flights Card
 
 1. Add a new card and select **Flights**.
-2. Enter the **Flights Sensor** — the template sensor from above, normally `sensor.espcontrol_flights`.
-3. Set a **List title** (optional). It appears above the flight list. If left blank, the sensor’s name from Home Assistant is used.
-4. Choose **Units**:
+2. Choose **Area view**. Existing cards use **Current in area**.
+3. Set **Flights Sensor** to the matching template entity. The editor suggests `sensor.espcontrol_flights`, `sensor.espcontrol_flights_entered`, or `sensor.espcontrol_flights_exited` when you switch views.
+4. Set a **List title** (optional). It appears above the flight list. If left blank, the sensor’s name from Home Assistant is used.
+5. Choose **Units**:
    - **Metric** shows distance in km, altitude in metres, and speed in km/h.
    - **Imperial** shows distance in miles, altitude in feet, and speed in mph.
 
 ## How It Works on the Panel
 
-- The card shows the number of flights in your area, with the Home Assistant sensor name beneath it.
-- The card is highlighted while at least one flight is nearby.
+- The card shows the count for the selected view, with the Home Assistant sensor name beneath it.
+- The card is highlighted while the selected sensor reports flights.
 - Tap the card to open the flight list. It shows up to 10 flights, closest first, and updates while it is open:
   - flight number and aircraft type
   - airline and route
   - distance, altitude, speed, and whether the aircraft is climbing, descending, level, or on the ground
 
-The card updates whenever the Flightradar24 integration refreshes, which is every 20 seconds by default.
+Entered and exited counts show the flights reported on the latest integration refresh. They do not accumulate over time.
 
 ## Opening the List from Home Assistant
 

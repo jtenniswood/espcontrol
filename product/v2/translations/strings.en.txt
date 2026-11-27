@@ -261,7 +261,7 @@ timer=Timer
 timer_confirm=Confirm
 # Flights card
 flights=Flights
-flights_none=No flights nearby
+flights_none=No flights
 flights_unavailable=Flight data unavailable
 flights_unknown_aircraft=Unknown aircraft
 flights_climbing=Climbing

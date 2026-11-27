@@ -164,7 +164,7 @@ inline void flights_refresh_modal(FlightsCardCtx *ctx) {
   FlightsModalUi &ui = flights_modal_ui();
   if (!ctx || ui.active != ctx || !ui.list) return;
   const size_t count = ctx->available ? ctx->flights.size() : 0;
-  if (ui.rows.size() != count) {
+  if (ui.rows.size() != count || (count == 0 && !ui.empty_lbl)) {
     // Rows only change when flights enter or leave; keep the scroll position.
     const lv_coord_t scroll_y = lv_obj_get_scroll_y(ui.list);
     lv_obj_clean(ui.list);
@@ -181,7 +181,7 @@ inline void flights_refresh_modal(FlightsCardCtx *ctx) {
     lv_obj_scroll_to_y(ui.list, scroll_y, LV_ANIM_OFF);
   }
   if (ui.empty_lbl) {
-    const char *key = ctx->available ? "No flights nearby" : "Flight data unavailable";
+    const char *key = ctx->available ? "No flights" : "Flight data unavailable";
     lv_label_set_display_text(ui.empty_lbl, espcontrol_i18n(key));
   }
   for (size_t i = 0; i < count; ++i) {

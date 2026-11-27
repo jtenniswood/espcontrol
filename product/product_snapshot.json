@@ -12,7 +12,7 @@
     "deviceProfiles": 10,
     "cardTypes": 45,
     "entityNames": 116,
-    "icons": 501,
+    "icons": 503,
     "structuralIcons": 28,
     "compatibilityFixtureGroups": 2
   },
@@ -6883,6 +6883,18 @@
         ],
         "options": [
           {
+            "name": "area",
+            "label": "Area view",
+            "kind": "choice",
+            "values": [
+              "current",
+              "entered",
+              "exited"
+            ],
+            "defaultValue": "current",
+            "omitDefault": true
+          },
+          {
             "name": "units",
             "label": "Units",
             "kind": "choice",
@@ -6929,6 +6941,7 @@
           },
           "unknownOptions": "drop",
           "canonicalOptionOrder": [
+            "area",
             "units"
           ]
         },
@@ -11167,6 +11180,16 @@
         "name": "Travel",
         "codepoint": "F407E",
         "mdi": "material-symbol-travel"
+      },
+      {
+        "name": "Connecting Airports",
+        "codepoint": "F407F",
+        "mdi": "material-symbol-connecting-airports"
+      },
+      {
+        "name": "Airplane Mode Inactive",
+        "codepoint": "F4080",
+        "mdi": "material-symbol-airplanemode-inactive"
       }
     ],
     "domain_defaults": {

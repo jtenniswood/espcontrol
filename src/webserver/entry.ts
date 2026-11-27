@@ -155,7 +155,7 @@ function registerCards(context: ApplicationContext) {
   registerActionCardTypes(registry, context.configuration.confirmationOptions, context.controllers.entityState, fields, cardUi);
   registerAlarmCardTypes(registry, context.configuration.accessClimateAlarm, context.controllers.renderQueue, fields, cardUi);
   registerTimerCardTypes(registry);
-  registerFlightsCardTypes(registry);
+  registerFlightsCardTypes(registry, cardUi);
   registerCalendarCardTypes(registry, context.configuration.dateTimeOptions, fields);
   registerClimateCardTypes(
     registry,

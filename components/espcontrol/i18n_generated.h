@@ -268,7 +268,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Timer") == 0) return "Časovač";
   if (std::strcmp(text, "Confirm") == 0) return "Potvrdit";
   if (std::strcmp(text, "Flights") == 0) return "Lety";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Žádné lety v okolí";
+  if (std::strcmp(text, "No flights") == 0) return "Žádné lety";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Data o letech nejsou k dispozici";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Neznámé letadlo";
   if (std::strcmp(text, "Climbing") == 0) return "Stoupá";
@@ -560,7 +560,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Nattetid";
   if (std::strcmp(text, "Confirm") == 0) return "Bekræft";
   if (std::strcmp(text, "Flights") == 0) return "Fly";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Ingen fly i nærheden";
+  if (std::strcmp(text, "No flights") == 0) return "Ingen flyvninger";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Flydata er ikke tilgængelige";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Ukendt fly";
   if (std::strcmp(text, "Climbing") == 0) return "Stiger";
@@ -849,7 +849,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Nachts";
   if (std::strcmp(text, "Confirm") == 0) return "Bestätigen";
   if (std::strcmp(text, "Flights") == 0) return "Flüge";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Keine Flüge in der Nähe";
+  if (std::strcmp(text, "No flights") == 0) return "Keine Flüge";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Flugdaten nicht verfügbar";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Unbekanntes Flugzeug";
   if (std::strcmp(text, "Climbing") == 0) return "Steigt";
@@ -1144,7 +1144,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Timer") == 0) return "Temporizador";
   if (std::strcmp(text, "Confirm") == 0) return "Confirmar";
   if (std::strcmp(text, "Flights") == 0) return "Vuelos";
-  if (std::strcmp(text, "No flights nearby") == 0) return "No hay vuelos cerca";
+  if (std::strcmp(text, "No flights") == 0) return "No hay vuelos";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Datos de vuelo no disponibles";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Avión desconocido";
   if (std::strcmp(text, "Climbing") == 0) return "Ascendiendo";
@@ -1444,7 +1444,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Timer") == 0) return "Ajastin";
   if (std::strcmp(text, "Confirm") == 0) return "Vahvista";
   if (std::strcmp(text, "Flights") == 0) return "Lennot";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Ei lentoja lähellä";
+  if (std::strcmp(text, "No flights") == 0) return "Ei lentoja";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Lentotiedot eivät ole saatavilla";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Tuntematon kone";
   if (std::strcmp(text, "Climbing") == 0) return "Nousee";
@@ -1734,7 +1734,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Timer") == 0) return "Minuteur";
   if (std::strcmp(text, "Confirm") == 0) return "Confirmer";
   if (std::strcmp(text, "Flights") == 0) return "Vols";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Aucun vol à proximité";
+  if (std::strcmp(text, "No flights") == 0) return "Aucun vol";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Données de vol indisponibles";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Avion inconnu";
   if (std::strcmp(text, "Climbing") == 0) return "En montée";
@@ -2036,7 +2036,7 @@ inline const char *espcontrol_i18n_he(const char *text) {
   if (std::strcmp(text, "Timer") == 0) return "טיימר";
   if (std::strcmp(text, "Confirm") == 0) return "לאישור";
   if (std::strcmp(text, "Flights") == 0) return "טיסות";
-  if (std::strcmp(text, "No flights nearby") == 0) return "אין טיסות בסביבה";
+  if (std::strcmp(text, "No flights") == 0) return "אין טיסות";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "נתוני טיסה אינם זמינים";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "מטוס לא ידוע";
   if (std::strcmp(text, "Climbing") == 0) return "מטפס";
@@ -2336,7 +2336,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Timer") == 0) return "Időzítő";
   if (std::strcmp(text, "Confirm") == 0) return "Megerősítés";
   if (std::strcmp(text, "Flights") == 0) return "Járatok";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Nincs járat a közelben";
+  if (std::strcmp(text, "No flights") == 0) return "Nincsenek járatok";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "A járatadatok nem érhetők el";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Ismeretlen repülőgép";
   if (std::strcmp(text, "Climbing") == 0) return "Emelkedik";
@@ -2629,7 +2629,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Notte";
   if (std::strcmp(text, "Confirm") == 0) return "Confermare";
   if (std::strcmp(text, "Flights") == 0) return "Voli";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Nessun volo nelle vicinanze";
+  if (std::strcmp(text, "No flights") == 0) return "Nessun volo";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Dati di volo non disponibili";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Aereo sconosciuto";
   if (std::strcmp(text, "Climbing") == 0) return "In salita";
@@ -2924,7 +2924,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Timer") == 0) return "Tidtaker";
   if (std::strcmp(text, "Confirm") == 0) return "Bekreft";
   if (std::strcmp(text, "Flights") == 0) return "Fly";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Ingen fly i nærheten";
+  if (std::strcmp(text, "No flights") == 0) return "Ingen flyvninger";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Flydata er ikke tilgjengelig";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Ukjent fly";
   if (std::strcmp(text, "Climbing") == 0) return "Stiger";
@@ -3219,7 +3219,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Nacht";
   if (std::strcmp(text, "Confirm") == 0) return "Bevestigen";
   if (std::strcmp(text, "Flights") == 0) return "Vluchten";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Geen vluchten in de buurt";
+  if (std::strcmp(text, "No flights") == 0) return "Geen vluchten";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Vluchtgegevens niet beschikbaar";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Onbekend vliegtuig";
   if (std::strcmp(text, "Climbing") == 0) return "Stijgend";
@@ -3513,7 +3513,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Timer") == 0) return "Minutnik";
   if (std::strcmp(text, "Confirm") == 0) return "Potwierdzić";
   if (std::strcmp(text, "Flights") == 0) return "Loty";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Brak lotów w pobliżu";
+  if (std::strcmp(text, "No flights") == 0) return "Brak lotów";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Dane lotów niedostępne";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Nieznany samolot";
   if (std::strcmp(text, "Climbing") == 0) return "Wznosi się";
@@ -3810,7 +3810,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Timer") == 0) return "Temporizador";
   if (std::strcmp(text, "Confirm") == 0) return "Confirmar";
   if (std::strcmp(text, "Flights") == 0) return "Voos";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Nenhum voo por perto";
+  if (std::strcmp(text, "No flights") == 0) return "Nenhum voo";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Dados de voo indisponíveis";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Aeronave desconhecida";
   if (std::strcmp(text, "Climbing") == 0) return "Subindo";
@@ -4108,7 +4108,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Timer") == 0) return "Temporizador";
   if (std::strcmp(text, "Confirm") == 0) return "Confirmar";
   if (std::strcmp(text, "Flights") == 0) return "Voos";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Nenhum voo nas proximidades";
+  if (std::strcmp(text, "No flights") == 0) return "Nenhum voo";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Dados de voo indisponíveis";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Aeronave desconhecida";
   if (std::strcmp(text, "Climbing") == 0) return "A subir";
@@ -4408,7 +4408,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Timer") == 0) return "Temporizator";
   if (std::strcmp(text, "Confirm") == 0) return "Confirmați";
   if (std::strcmp(text, "Flights") == 0) return "Zboruri";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Niciun zbor în apropiere";
+  if (std::strcmp(text, "No flights") == 0) return "Niciun zbor";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Datele de zbor nu sunt disponibile";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Aeronavă necunoscută";
   if (std::strcmp(text, "Climbing") == 0) return "Urcă";
@@ -4709,7 +4709,7 @@ inline const char *espcontrol_i18n_ru(const char *text) {
   if (std::strcmp(text, "Timer") == 0) return "Таймер";
   if (std::strcmp(text, "Confirm") == 0) return "Подтвердить";
   if (std::strcmp(text, "Flights") == 0) return "Рейсы";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Рядом нет рейсов";
+  if (std::strcmp(text, "No flights") == 0) return "Нет рейсов";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Данные о рейсах недоступны";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Неизвестный самолёт";
   if (std::strcmp(text, "Climbing") == 0) return "Набор высоты";
@@ -5008,7 +5008,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Timer") == 0) return "Časovač";
   if (std::strcmp(text, "Confirm") == 0) return "Potvrdiť";
   if (std::strcmp(text, "Flights") == 0) return "Lety";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Žiadne lety v okolí";
+  if (std::strcmp(text, "No flights") == 0) return "Žiadne lety";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Údaje o letoch nie sú k dispozícii";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Neznáme lietadlo";
   if (std::strcmp(text, "Climbing") == 0) return "Stúpa";
@@ -5304,7 +5304,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Timer") == 0) return "Časovnik";
   if (std::strcmp(text, "Confirm") == 0) return "Potrdi";
   if (std::strcmp(text, "Flights") == 0) return "Leti";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Ni letov v bližini";
+  if (std::strcmp(text, "No flights") == 0) return "Ni letov";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Podatki o letih niso na voljo";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Neznano letalo";
   if (std::strcmp(text, "Climbing") == 0) return "Se dviga";
@@ -5599,7 +5599,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Nighttime") == 0) return "Nattetid";
   if (std::strcmp(text, "Confirm") == 0) return "Bekräfta";
   if (std::strcmp(text, "Flights") == 0) return "Flyg";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Inga flyg i närheten";
+  if (std::strcmp(text, "No flights") == 0) return "Inga flyg";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Flygdata är inte tillgängliga";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Okänt flygplan";
   if (std::strcmp(text, "Climbing") == 0) return "Stiger";
@@ -5899,7 +5899,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Timer") == 0) return "Zamanlayıcı";
   if (std::strcmp(text, "Confirm") == 0) return "Onayla";
   if (std::strcmp(text, "Flights") == 0) return "Uçuşlar";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Yakında uçuş yok";
+  if (std::strcmp(text, "No flights") == 0) return "Uçuş yok";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Uçuş verileri kullanılamıyor";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Bilinmeyen uçak";
   if (std::strcmp(text, "Climbing") == 0) return "Tırmanıyor";
@@ -6201,7 +6201,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Timer") == 0) return "Таймер";
   if (std::strcmp(text, "Confirm") == 0) return "Підтвердити";
   if (std::strcmp(text, "Flights") == 0) return "Рейси";
-  if (std::strcmp(text, "No flights nearby") == 0) return "Поруч немає рейсів";
+  if (std::strcmp(text, "No flights") == 0) return "Немає рейсів";
   if (std::strcmp(text, "Flight data unavailable") == 0) return "Дані про рейси недоступні";
   if (std::strcmp(text, "Unknown aircraft") == 0) return "Невідомий літак";
   if (std::strcmp(text, "Climbing") == 0) return "Набір висоти";
@@ -6505,7 +6505,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "timer") == 0) return "Timer";
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirm";
   if (std::strcmp(key, "flights") == 0) return "Flights";
-  if (std::strcmp(key, "flights_none") == 0) return "No flights nearby";
+  if (std::strcmp(key, "flights_none") == 0) return "No flights";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Flight data unavailable";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Unknown aircraft";
   if (std::strcmp(key, "flights_climbing") == 0) return "Climbing";
@@ -6811,7 +6811,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "timer") == 0) return "Časovač";
   if (std::strcmp(key, "timer_confirm") == 0) return "Potvrdit";
   if (std::strcmp(key, "flights") == 0) return "Lety";
-  if (std::strcmp(key, "flights_none") == 0) return "Žádné lety v okolí";
+  if (std::strcmp(key, "flights_none") == 0) return "Žádné lety";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Data o letech nejsou k dispozici";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Neznámé letadlo";
   if (std::strcmp(key, "flights_climbing") == 0) return "Stoupá";
@@ -7111,7 +7111,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Nattetid";
   if (std::strcmp(key, "timer_confirm") == 0) return "Bekræft";
   if (std::strcmp(key, "flights") == 0) return "Fly";
-  if (std::strcmp(key, "flights_none") == 0) return "Ingen fly i nærheden";
+  if (std::strcmp(key, "flights_none") == 0) return "Ingen flyvninger";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Flydata er ikke tilgængelige";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Ukendt fly";
   if (std::strcmp(key, "flights_climbing") == 0) return "Stiger";
@@ -7406,7 +7406,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Nachts";
   if (std::strcmp(key, "timer_confirm") == 0) return "Bestätigen";
   if (std::strcmp(key, "flights") == 0) return "Flüge";
-  if (std::strcmp(key, "flights_none") == 0) return "Keine Flüge in der Nähe";
+  if (std::strcmp(key, "flights_none") == 0) return "Keine Flüge";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Flugdaten nicht verfügbar";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Unbekanntes Flugzeug";
   if (std::strcmp(key, "flights_climbing") == 0) return "Steigt";
@@ -7707,7 +7707,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "timer") == 0) return "Temporizador";
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmar";
   if (std::strcmp(key, "flights") == 0) return "Vuelos";
-  if (std::strcmp(key, "flights_none") == 0) return "No hay vuelos cerca";
+  if (std::strcmp(key, "flights_none") == 0) return "No hay vuelos";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Datos de vuelo no disponibles";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Avión desconocido";
   if (std::strcmp(key, "flights_climbing") == 0) return "Ascendiendo";
@@ -8014,7 +8014,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "timer") == 0) return "Ajastin";
   if (std::strcmp(key, "timer_confirm") == 0) return "Vahvista";
   if (std::strcmp(key, "flights") == 0) return "Lennot";
-  if (std::strcmp(key, "flights_none") == 0) return "Ei lentoja lähellä";
+  if (std::strcmp(key, "flights_none") == 0) return "Ei lentoja";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Lentotiedot eivät ole saatavilla";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Tuntematon kone";
   if (std::strcmp(key, "flights_climbing") == 0) return "Nousee";
@@ -8312,7 +8312,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "timer") == 0) return "Minuteur";
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmer";
   if (std::strcmp(key, "flights") == 0) return "Vols";
-  if (std::strcmp(key, "flights_none") == 0) return "Aucun vol à proximité";
+  if (std::strcmp(key, "flights_none") == 0) return "Aucun vol";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Données de vol indisponibles";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Avion inconnu";
   if (std::strcmp(key, "flights_climbing") == 0) return "En montée";
@@ -8621,7 +8621,7 @@ inline const char *espcontrol_i18n_key_he(const char *key) {
   if (std::strcmp(key, "timer") == 0) return "טיימר";
   if (std::strcmp(key, "timer_confirm") == 0) return "לאישור";
   if (std::strcmp(key, "flights") == 0) return "טיסות";
-  if (std::strcmp(key, "flights_none") == 0) return "אין טיסות בסביבה";
+  if (std::strcmp(key, "flights_none") == 0) return "אין טיסות";
   if (std::strcmp(key, "flights_unavailable") == 0) return "נתוני טיסה אינם זמינים";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "מטוס לא ידוע";
   if (std::strcmp(key, "flights_climbing") == 0) return "מטפס";
@@ -8929,7 +8929,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "timer") == 0) return "Időzítő";
   if (std::strcmp(key, "timer_confirm") == 0) return "Megerősítés";
   if (std::strcmp(key, "flights") == 0) return "Járatok";
-  if (std::strcmp(key, "flights_none") == 0) return "Nincs járat a közelben";
+  if (std::strcmp(key, "flights_none") == 0) return "Nincsenek járatok";
   if (std::strcmp(key, "flights_unavailable") == 0) return "A járatadatok nem érhetők el";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Ismeretlen repülőgép";
   if (std::strcmp(key, "flights_climbing") == 0) return "Emelkedik";
@@ -9230,7 +9230,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Notte";
   if (std::strcmp(key, "timer_confirm") == 0) return "Confermare";
   if (std::strcmp(key, "flights") == 0) return "Voli";
-  if (std::strcmp(key, "flights_none") == 0) return "Nessun volo nelle vicinanze";
+  if (std::strcmp(key, "flights_none") == 0) return "Nessun volo";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Dati di volo non disponibili";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Aereo sconosciuto";
   if (std::strcmp(key, "flights_climbing") == 0) return "In salita";
@@ -9532,7 +9532,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "timer") == 0) return "Tidtaker";
   if (std::strcmp(key, "timer_confirm") == 0) return "Bekreft";
   if (std::strcmp(key, "flights") == 0) return "Fly";
-  if (std::strcmp(key, "flights_none") == 0) return "Ingen fly i nærheten";
+  if (std::strcmp(key, "flights_none") == 0) return "Ingen flyvninger";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Flydata er ikke tilgjengelig";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Ukjent fly";
   if (std::strcmp(key, "flights_climbing") == 0) return "Stiger";
@@ -9833,7 +9833,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Nacht";
   if (std::strcmp(key, "timer_confirm") == 0) return "Bevestigen";
   if (std::strcmp(key, "flights") == 0) return "Vluchten";
-  if (std::strcmp(key, "flights_none") == 0) return "Geen vluchten in de buurt";
+  if (std::strcmp(key, "flights_none") == 0) return "Geen vluchten";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Vluchtgegevens niet beschikbaar";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Onbekend vliegtuig";
   if (std::strcmp(key, "flights_climbing") == 0) return "Stijgend";
@@ -10132,7 +10132,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "timer") == 0) return "Minutnik";
   if (std::strcmp(key, "timer_confirm") == 0) return "Potwierdzić";
   if (std::strcmp(key, "flights") == 0) return "Loty";
-  if (std::strcmp(key, "flights_none") == 0) return "Brak lotów w pobliżu";
+  if (std::strcmp(key, "flights_none") == 0) return "Brak lotów";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Dane lotów niedostępne";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Nieznany samolot";
   if (std::strcmp(key, "flights_climbing") == 0) return "Wznosi się";
@@ -10437,7 +10437,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "timer") == 0) return "Temporizador";
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmar";
   if (std::strcmp(key, "flights") == 0) return "Voos";
-  if (std::strcmp(key, "flights_none") == 0) return "Nenhum voo por perto";
+  if (std::strcmp(key, "flights_none") == 0) return "Nenhum voo";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Dados de voo indisponíveis";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Aeronave desconhecida";
   if (std::strcmp(key, "flights_climbing") == 0) return "Subindo";
@@ -10742,7 +10742,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "timer") == 0) return "Temporizador";
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmar";
   if (std::strcmp(key, "flights") == 0) return "Voos";
-  if (std::strcmp(key, "flights_none") == 0) return "Nenhum voo nas proximidades";
+  if (std::strcmp(key, "flights_none") == 0) return "Nenhum voo";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Dados de voo indisponíveis";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Aeronave desconhecida";
   if (std::strcmp(key, "flights_climbing") == 0) return "A subir";
@@ -11049,7 +11049,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "timer") == 0) return "Temporizator";
   if (std::strcmp(key, "timer_confirm") == 0) return "Confirmați";
   if (std::strcmp(key, "flights") == 0) return "Zboruri";
-  if (std::strcmp(key, "flights_none") == 0) return "Niciun zbor în apropiere";
+  if (std::strcmp(key, "flights_none") == 0) return "Niciun zbor";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Datele de zbor nu sunt disponibile";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Aeronavă necunoscută";
   if (std::strcmp(key, "flights_climbing") == 0) return "Urcă";
@@ -11358,7 +11358,7 @@ inline const char *espcontrol_i18n_key_ru(const char *key) {
   if (std::strcmp(key, "timer") == 0) return "Таймер";
   if (std::strcmp(key, "timer_confirm") == 0) return "Подтвердить";
   if (std::strcmp(key, "flights") == 0) return "Рейсы";
-  if (std::strcmp(key, "flights_none") == 0) return "Рядом нет рейсов";
+  if (std::strcmp(key, "flights_none") == 0) return "Нет рейсов";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Данные о рейсах недоступны";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Неизвестный самолёт";
   if (std::strcmp(key, "flights_climbing") == 0) return "Набор высоты";
@@ -11665,7 +11665,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "timer") == 0) return "Časovač";
   if (std::strcmp(key, "timer_confirm") == 0) return "Potvrdiť";
   if (std::strcmp(key, "flights") == 0) return "Lety";
-  if (std::strcmp(key, "flights_none") == 0) return "Žiadne lety v okolí";
+  if (std::strcmp(key, "flights_none") == 0) return "Žiadne lety";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Údaje o letoch nie sú k dispozícii";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Neznáme lietadlo";
   if (std::strcmp(key, "flights_climbing") == 0) return "Stúpa";
@@ -11969,7 +11969,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "timer") == 0) return "Časovnik";
   if (std::strcmp(key, "timer_confirm") == 0) return "Potrdi";
   if (std::strcmp(key, "flights") == 0) return "Leti";
-  if (std::strcmp(key, "flights_none") == 0) return "Ni letov v bližini";
+  if (std::strcmp(key, "flights_none") == 0) return "Ni letov";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Podatki o letih niso na voljo";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Neznano letalo";
   if (std::strcmp(key, "flights_climbing") == 0) return "Se dviga";
@@ -12272,7 +12272,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "nighttime") == 0) return "Nattetid";
   if (std::strcmp(key, "timer_confirm") == 0) return "Bekräfta";
   if (std::strcmp(key, "flights") == 0) return "Flyg";
-  if (std::strcmp(key, "flights_none") == 0) return "Inga flyg i närheten";
+  if (std::strcmp(key, "flights_none") == 0) return "Inga flyg";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Flygdata är inte tillgängliga";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Okänt flygplan";
   if (std::strcmp(key, "flights_climbing") == 0) return "Stiger";
@@ -12578,7 +12578,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "timer") == 0) return "Zamanlayıcı";
   if (std::strcmp(key, "timer_confirm") == 0) return "Onayla";
   if (std::strcmp(key, "flights") == 0) return "Uçuşlar";
-  if (std::strcmp(key, "flights_none") == 0) return "Yakında uçuş yok";
+  if (std::strcmp(key, "flights_none") == 0) return "Uçuş yok";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Uçuş verileri kullanılamıyor";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Bilinmeyen uçak";
   if (std::strcmp(key, "flights_climbing") == 0) return "Tırmanıyor";
@@ -12888,7 +12888,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "timer") == 0) return "Таймер";
   if (std::strcmp(key, "timer_confirm") == 0) return "Підтвердити";
   if (std::strcmp(key, "flights") == 0) return "Рейси";
-  if (std::strcmp(key, "flights_none") == 0) return "Поруч немає рейсів";
+  if (std::strcmp(key, "flights_none") == 0) return "Немає рейсів";
   if (std::strcmp(key, "flights_unavailable") == 0) return "Дані про рейси недоступні";
   if (std::strcmp(key, "flights_unknown_aircraft") == 0) return "Невідомий літак";
   if (std::strcmp(key, "flights_climbing") == 0) return "Набір висоти";

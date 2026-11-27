@@ -2673,6 +2673,16 @@
       "name": "Travel",
       "codepoint": "F407E",
       "mdi": "material-symbol-travel"
+    },
+    {
+      "name": "Connecting Airports",
+      "codepoint": "F407F",
+      "mdi": "material-symbol-connecting-airports"
+    },
+    {
+      "name": "Airplane Mode Inactive",
+      "codepoint": "F4080",
+      "mdi": "material-symbol-airplanemode-inactive"
     }
   ],
   "domain_defaults": {

@@ -3,6 +3,7 @@
   "allowInSubpage": true,
   "domains": ["sensor"],
   "options": [
+    {"name": "area", "label": "Area view", "kind": "choice", "values": ["current", "entered", "exited"], "defaultValue": "current", "omitDefault": true},
     {"name": "units", "label": "Units", "kind": "choice", "values": ["metric", "imperial"], "defaultValue": "metric", "omitDefault": true}
   ],
   "normalization": {
@@ -18,7 +19,7 @@
       "options": {"policy": "keep"}
     },
     "unknownOptions": "drop",
-    "canonicalOptionOrder": ["units"]
+    "canonicalOptionOrder": ["area", "units"]
   },
   "default": {
     "entity": "", "label": "", "icon": "Travel", "icon_on": "Auto",
