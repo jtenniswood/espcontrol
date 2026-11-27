@@ -6,7 +6,7 @@ description:
 
 # Flights
 
-A flights card shows how many aircraft are flying near your home and names the closest one. Tap the card to see a list of the nearest flights with their route, distance, altitude, speed, and whether they are climbing or descending.
+A flights card shows how many aircraft are flying near your home and the name of its Home Assistant sensor. Tap the card to see a list of the nearest flights with their route, distance, altitude, speed, and whether they are climbing or descending.
 
 The data comes from the [Flightradar24 integration](https://github.com/AlexandrErohin/home-assistant-flightradar24) for Home Assistant, through a small template sensor that you add once.
 
@@ -63,15 +63,14 @@ If you named your Flightradar24 sensor differently, replace `sensor.flightradar2
 
 1. Add a new card and select **Flights**.
 2. Enter the **Flights Sensor** — the template sensor from above, normally `sensor.espcontrol_flights`.
-3. Set a **Label** (optional). It is shown when there are no flights nearby. If left blank, the sensor's name from Home Assistant is used.
+3. Set a **List title** (optional). It appears above the flight list. If left blank, the sensor’s name from Home Assistant is used.
 4. Choose **Units**:
    - **Metric** shows distance in km, altitude in metres, and speed in km/h.
    - **Imperial** shows distance in miles, altitude in feet, and speed in mph.
 
 ## How It Works on the Panel
 
-- The card shows the number of flights in your area as a large number.
-- Below it, the card names the closest flight and where it is going, for example `BA123 › Madrid`. When the sky is clear it shows the label instead.
+- The card shows the number of flights in your area, with the Home Assistant sensor name beneath it.
 - The card is highlighted while at least one flight is nearby.
 - Tap the card to open the flight list. It shows up to 10 flights, closest first, and updates while it is open:
   - flight number and aircraft type

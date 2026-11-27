@@ -40,8 +40,8 @@ struct FlightsCardCtx {
   std::string configured_label;
   std::string friendly_name;
   lv_obj_t *btn = nullptr;
-  lv_obj_t *value_lbl = nullptr;
-  lv_obj_t *text_lbl = nullptr;
+  lv_obj_t *count_lbl = nullptr;
+  lv_obj_t *name_lbl = nullptr;
   const lv_font_t *label_font = nullptr;
   const lv_font_t *icon_font = nullptr;
   bool imperial = false;
@@ -62,8 +62,8 @@ inline void FlightsCardCtx::detach() {
   ha_release_callbacks_for_owner(this);
   if (flights_modal_ui().active == this) flights_hide_modal();
   btn = nullptr;
-  value_lbl = nullptr;
-  text_lbl = nullptr;
+  count_lbl = nullptr;
+  name_lbl = nullptr;
 }
 
 inline std::string flights_card_title(const FlightsCardCtx *ctx) {
@@ -106,16 +106,14 @@ inline std::string flights_row_details(const espcontrol::flights::Flight &flight
 
 inline void flights_apply_card_text(FlightsCardCtx *ctx) {
   if (!ctx) return;
-  if (ctx->value_lbl) {
-    const std::string value = ctx->available && !ctx->count.empty() ? ctx->count : "--";
-    lv_label_set_display_text(ctx->value_lbl, value.c_str());
+  if (ctx->count_lbl) {
+    const auto &count = ctx->count;
+    lv_label_set_display_text(
+      ctx->count_lbl, ctx->available && !count.empty() ? count.c_str() : "--");
   }
-  if (ctx->text_lbl) {
-    // The tile names the nearest flight; the label returns when the sky is clear.
-    const std::string text = ctx->available && !ctx->flights.empty()
-      ? espcontrol::flights::tile_summary(ctx->flights.front())
-      : flights_card_title(ctx);
-    lv_label_set_display_text(ctx->text_lbl, text.c_str());
+  if (ctx->name_lbl) {
+    lv_label_set_display_text(ctx->name_lbl, ctx->friendly_name.empty()
+      ? espcontrol_i18n("Flights") : ctx->friendly_name.c_str());
   }
   if (ctx->btn) set_card_checked_state(ctx->btn, ctx->available && !ctx->flights.empty());
 }
@@ -201,6 +199,7 @@ inline void flights_open_modal(FlightsCardCtx *ctx) {
     ControlModalKind::FLIGHTS, ctx->btn, width_compensation,
     ctx->icon_font, flights_hide_modal);
   if (!shell.overlay || !shell.panel) return;
+  set_clock_bar_modal_label(flights_card_title(ctx));
   FlightsModalUi &ui = flights_modal_ui();
   ui.overlay = shell.overlay;
   ui.active = ctx;
@@ -253,23 +252,11 @@ inline void subscribe_flights_card(FlightsCardCtx *ctx) {
       flights_refresh_modal(ctx);
     })
   );
-  if (ctx->configured_label.empty()) {
-    ha_subscribe_attribute(
-      ctx->entity_id, std::string("friendly_name"),
-      std::function<void(esphome::StringRef)>([ctx](esphome::StringRef name) {
-        ctx->friendly_name = string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN);
-        flights_apply_card_text(ctx);
-      })
-    );
-  }
-}
-
-inline void setup_flights_card(BtnSlot &s, const ParsedCfg &p) {
-  lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
-  lv_label_set_display_text(s.sensor_lbl, "--");
-  lv_label_set_display_text(s.unit_lbl, "");
-  lv_label_set_display_text(
-    s.text_lbl, p.label.empty() ? espcontrol_i18n("Flights") : p.label.c_str());
-  apply_push_button_transition(s.btn);
+  ha_subscribe_attribute(
+    ctx->entity_id, std::string("friendly_name"),
+    std::function<void(esphome::StringRef)>([ctx](esphome::StringRef name) {
+      ctx->friendly_name = string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN);
+      flights_apply_card_text(ctx);
+    })
+  );
 }

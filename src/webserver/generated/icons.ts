@@ -167,6 +167,7 @@ export const GENERATED_ICON_EXCEPTIONS: Readonly<Record<string, string>> = {
     "Window Contact Sensor": "material-symbol-sensor-window",
     "Window Sensor": "material-symbol-window-sensor",
     "Wired Camera": "material-symbol-nest-cam-wired-stand",
+    Travel: "material-symbol-travel",
 };
 export const GENERATED_ICON_NAMES: readonly string[] = [
     "Chevron Left", "Chevron Right", "Account", "Air Conditioner", "Air Filter", "Air Purifier",
@@ -252,7 +253,7 @@ export const GENERATED_ICON_NAMES: readonly string[] = [
     "Timer Paused", "Timer Running", "Urgent Motion Alert", "Ventilation Mode", "VOC Monitor", "Voice Shortcut",
     "Wall Switch Off", "Wall-mounted Camera", "Water Conductivity", "Water Heater", "Water Leak", "Water Loss",
     "Water pH", "Water Tap", "Water Valve", "Wi-Fi Device", "Wi-Fi Setup Mode", "Window Contact Sensor",
-    "Window Sensor", "Wired Camera",
+    "Window Sensor", "Wired Camera", "Travel",
   ];
 // --- GENERATED:ICONS END ---
 

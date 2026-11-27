@@ -9,7 +9,7 @@
     "fields": {
       "entity": {"policy": "keep"},
       "label": {"policy": "keep"},
-      "icon": {"policy": "default_if_empty", "value": "Airplane"},
+      "icon": {"policy": "default_if_empty", "value": "Travel"},
       "icon_on": {"policy": "default", "value": "Auto"},
       "sensor": {"policy": "clear"},
       "unit": {"policy": "clear"},
@@ -21,7 +21,7 @@
     "canonicalOptionOrder": ["units"]
   },
   "default": {
-    "entity": "", "label": "", "icon": "Airplane", "icon_on": "Auto",
+    "entity": "", "label": "", "icon": "Travel", "icon_on": "Auto",
     "sensor": "", "unit": "", "type": "flights", "precision": "", "options": ""
   }
 }

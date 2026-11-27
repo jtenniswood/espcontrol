@@ -654,7 +654,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
 
 
   if (espcontrol::cards::timer_driver_setup_visual(s, p, context)) return;
-  if (espcontrol::cards::flights_driver_setup_visual(s, p, context)) return;
+  if (espcontrol::cards::flights_driver_setup_visual(s, context)) return;
   if (espcontrol::cards::image_driver_setup_visual(s, p, context, palette)) {
     espcontrol::cards::image_driver_attach_interaction(s, p, context);
     espcontrol::cards::image_driver_refresh_layout(s, p, context);
@@ -1008,6 +1008,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
   display_apply_main_width(s.icon_lbl, display);
   control_modal_register_card_label(s);
   display_apply_slot_text_width(s, display);
+  if (espcontrol::cards::flights_driver_refresh_layout(s, context, display)) return;
   if (espcontrol::cards::weather_driver_matches(context) &&
       (p.precision == "wind" || p.precision == "rainfall" || weather_metric_mode(p.precision) || espcontrol::cards::weather_driver_shows_forecast(p))) {
     espcontrol::cards::weather_driver_refresh_layout(s, p, context, display, row_span, col_span);

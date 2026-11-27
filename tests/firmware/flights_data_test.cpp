@@ -43,7 +43,6 @@ static void tolerates_missing_and_bad_values() {
   assert(vertical_state(flights[0]) == Vertical::LEVEL);
   assert(format_distance(flights[0].distance_km, false).empty());
   assert(route(flights[0]).empty());
-  assert(tile_summary(flights[0]) == "X1");
 
   const auto unknown = parse_list("X2");
   assert(unknown.size() == 1);
@@ -81,9 +80,6 @@ static void builds_summaries() {
     "BA123|British Airways|A320|London|Madrid;|Air|C172|||;LH9|Lufthansa|A350||Rome");
   assert(flights.size() == 3);
   assert(route(flights[0]) == "London \xE2\x80\xBA Madrid");
-  assert(tile_summary(flights[0]) == "BA123 \xE2\x80\xBA Madrid");
-  assert(flight_title(flights[1]) == "C172");
-  assert(tile_summary(flights[1]) == "C172");
   assert(route(flights[2]) == "? \xE2\x80\xBA Rome");
   assert(join({"a", "", "b"}, " - ") == "a - b");
 }

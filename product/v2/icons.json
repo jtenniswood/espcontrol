@@ -2668,6 +2668,11 @@
       "name": "Wired Camera",
       "codepoint": "F407D",
       "mdi": "material-symbol-nest-cam-wired-stand"
+    },
+    {
+      "name": "Travel",
+      "codepoint": "F407E",
+      "mdi": "material-symbol-travel"
     }
   ],
   "domain_defaults": {

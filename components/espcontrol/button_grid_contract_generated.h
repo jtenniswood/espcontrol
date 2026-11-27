@@ -726,7 +726,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "wifi_qr") return "Wifi";
   if (type == "wifi_qr_card") return "Auto";
   if (type == "weather_forecast") return "Auto";
-  if (type == "flights") return "Airplane";
+  if (type == "flights") return "Travel";
   return "Auto";
 }
 

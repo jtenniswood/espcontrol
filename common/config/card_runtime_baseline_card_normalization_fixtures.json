@@ -1,11 +1,11 @@
 [
   {
     "name": "flights: metric",
-    "input": "~sensor.espcontrol_flights,,Airplane,Auto,,,flights,,",
+    "input": "~sensor.espcontrol_flights,,Travel,Auto,,,flights,,",
     "expected": {
       "entity": "sensor.espcontrol_flights",
       "label": "",
-      "icon": "Airplane",
+      "icon": "Travel",
       "icon_on": "Auto",
       "sensor": "",
       "unit": "",
@@ -16,11 +16,11 @@
   },
   {
     "name": "flights: imperial",
-    "input": "~sensor.espcontrol_flights,,Airplane,Auto,,,flights,,units%3Dimperial",
+    "input": "~sensor.espcontrol_flights,,Travel,Auto,,,flights,,units%3Dimperial",
     "expected": {
       "entity": "sensor.espcontrol_flights",
       "label": "",
-      "icon": "Airplane",
+      "icon": "Travel",
       "icon_on": "Auto",
       "sensor": "",
       "unit": "",

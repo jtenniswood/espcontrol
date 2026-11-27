@@ -4841,7 +4841,7 @@
           },
           "icon": {
             "policy": "default_if_empty",
-            "value": "Airplane"
+            "value": "Travel"
           },
           "icon_on": {
             "policy": "default",
@@ -4872,7 +4872,7 @@
       "default": {
         "entity": "",
         "label": "",
-        "icon": "Airplane",
+        "icon": "Travel",
         "icon_on": "Auto",
         "sensor": "",
         "unit": "",

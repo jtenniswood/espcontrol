@@ -1,6 +1,7 @@
 #pragma once
 
 #include "card_modal_target.h"
+#include "button_grid_weather_reading.h"
 
 // Shared main-grid/subpage lifecycle. The grid releases tracked allocations
 // before rebinding; FlightsCardCtx releases its subscriptions and open modal.
@@ -13,10 +14,35 @@ inline bool flights_driver_matches(const Context &context) {
 }
 
 inline bool flights_driver_setup_visual(
-    BtnSlot &slot, const ParsedCfg &config, const Context &context) {
+    BtnSlot &slot, const Context &context) {
   if (!flights_driver_matches(context)) return false;
   lv_obj_set_user_data(slot.btn, nullptr);
-  setup_flights_card(slot, config);
+  lv_label_set_display_text(slot.icon_lbl, find_icon("Travel"));
+  lv_label_set_display_text(slot.text_lbl, "--");
+  lv_obj_add_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN);
+
+  // A separate label can ellipsize long sensor names without changing the
+  // geometry of the numeric labels reused by other card types.
+  lv_obj_t *name = lv_label_create(slot.btn);
+  lv_label_set_long_mode(name, LV_LABEL_LONG_DOT);
+  lv_obj_set_width(name, lv_pct(100));
+  lv_label_set_display_text(name, espcontrol_i18n("Flights"));
+  apply_text_width_compensation(name);
+  lv_obj_set_user_data(slot.sensor_container, name);
+  apply_push_button_transition(slot.btn);
+  return true;
+}
+
+inline bool flights_driver_refresh_layout(
+    BtnSlot &slot, const Context &context, const DisplayProfile &display) {
+  if (!flights_driver_matches(context)) return false;
+  auto *name = static_cast<lv_obj_t *>(lv_obj_get_user_data(slot.sensor_container));
+  if (name) {
+    BtnSlot reading = slot;
+    reading.sensor_lbl = name;
+    reading.sensor_container = name;
+    weather_reading_layout(reading, display);
+  }
   return true;
 }
 
@@ -37,8 +63,8 @@ inline bool flights_driver_bind_data(
   flights->entity_id = config.entity;
   flights->configured_label = config.label;
   flights->btn = slot.btn;
-  flights->value_lbl = slot.sensor_lbl;
-  flights->text_lbl = slot.text_lbl;
+  flights->count_lbl = slot.text_lbl;
+  flights->name_lbl = static_cast<lv_obj_t *>(lv_obj_get_user_data(slot.sensor_container));
   flights->label_font = slot.text_lbl
     ? lv_obj_get_style_text_font(slot.text_lbl, LV_PART_MAIN) : nullptr;
   flights->icon_font = slot.icon_lbl

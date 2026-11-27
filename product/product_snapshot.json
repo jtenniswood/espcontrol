@@ -12,7 +12,7 @@
     "deviceProfiles": 10,
     "cardTypes": 45,
     "entityNames": 116,
-    "icons": 500,
+    "icons": 501,
     "structuralIcons": 28,
     "compatibilityFixtureGroups": 2
   },
@@ -6904,7 +6904,7 @@
             },
             "icon": {
               "policy": "default_if_empty",
-              "value": "Airplane"
+              "value": "Travel"
             },
             "icon_on": {
               "policy": "default",
@@ -6935,7 +6935,7 @@
         "default": {
           "entity": "",
           "label": "",
-          "icon": "Airplane",
+          "icon": "Travel",
           "icon_on": "Auto",
           "sensor": "",
           "unit": "",
@@ -11162,6 +11162,11 @@
         "name": "Wired Camera",
         "codepoint": "F407D",
         "mdi": "material-symbol-nest-cam-wired-stand"
+      },
+      {
+        "name": "Travel",
+        "codepoint": "F407E",
+        "mdi": "material-symbol-travel"
       }
     ],
     "domain_defaults": {

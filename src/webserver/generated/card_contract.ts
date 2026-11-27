@@ -4332,7 +4332,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         },
         "icon": {
           "policy": "default_if_empty",
-          "value": "Airplane"
+          "value": "Travel"
         },
         "icon_on": {
           "policy": "default",
@@ -4363,7 +4363,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "default": {
       "entity": "",
       "label": "",
-      "icon": "Airplane",
+      "icon": "Travel",
       "icon_on": "Auto",
       "sensor": "",
       "unit": "",

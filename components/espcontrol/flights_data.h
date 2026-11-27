@@ -154,10 +154,6 @@ inline std::string format_speed(float knots, bool imperial) {
   return std::to_string(value) + (imperial ? " mph" : " km/h");
 }
 
-inline std::string flight_title(const Flight &flight) {
-  return flight.flight.empty() ? flight.aircraft : flight.flight;
-}
-
 inline std::string route(const Flight &flight) {
   if (flight.origin.empty() && flight.destination.empty()) return "";
   const std::string from = flight.origin.empty() ? "?" : flight.origin;
@@ -173,14 +169,6 @@ inline std::string join(const std::vector<std::string> &parts, const char *separ
     out += part;
   }
   return out;
-}
-
-// Short summary for the card tile: "BA123 › Madrid", or the flight alone.
-inline std::string tile_summary(const Flight &flight) {
-  const std::string title = flight_title(flight);
-  if (flight.destination.empty()) return title;
-  if (title.empty()) return flight.destination;
-  return title + " \xE2\x80\xBA " + flight.destination;
 }
 
 }  // namespace espcontrol::flights

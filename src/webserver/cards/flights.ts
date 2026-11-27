@@ -20,7 +20,7 @@ export function registerFlightsCardTypes(registry: CardRegistry): void {
     label: () => cardContractCardLabel("flights"),
     allowInSubpage: () => cardContractAllowInSubpage("flights"),
     hideLabel: true,
-    cardMetadata: { preview: { badge: "airplane" } },
+    cardMetadata: { preview: { badge: "material-symbol-travel" } },
     defaultConfig: () => cardContractDefaultConfig("flights"),
     onSelect: function (b) {
       const defaults: any = cardContractDefaultConfig("flights");
@@ -39,7 +39,7 @@ export function registerFlightsCardTypes(registry: CardRegistry): void {
       helpers.requireEntityDomain(entity.input, ["sensor"], "Choose a sensor entity (sensor.*).");
 
       helpers.renderCardTextField(panel, b, helpers, {
-        label: "Label",
+        label: "List title",
         idSuffix: "label",
         field: "label",
         placeholder: "e.g. Flights",
@@ -59,15 +59,16 @@ export function registerFlightsCardTypes(registry: CardRegistry): void {
       });
     },
     renderPreview: function (b, helpers) {
-      const label = b.label || "Flights";
+      const entityName = b.entity?.replace(/^sensor\./, "").replace(/_/g, " ");
+      const name = entityName
+        ? entityName[0].toUpperCase() + entityName.slice(1)
+        : "Flights";
       return {
-        iconHtml:
-          '<span class="sp-sensor-preview">' +
-            '<span class="sp-sensor-value">3</span>' +
-          '</span>',
-        labelHtml:
-          '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(label) + '</span>' +
-          '<span class="sp-type-badge mdi mdi-airplane"></span></span>',
+        buttonClass: "sp-rainfall-card sp-flights-card",
+        iconHtml: '<span class="sp-btn-icon mdi mdi-material-symbol-travel"></span>',
+        labelHtml: '<span class="sp-btn-label">3<span class="sp-rainfall-value">' +
+          helpers.escHtml(name) + '</span></span>',
+        labelEditable: false,
       };
     },
   });
