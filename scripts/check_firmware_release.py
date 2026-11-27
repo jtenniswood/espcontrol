@@ -354,6 +354,40 @@ def test_published_bundle_retention() -> None:
             raise AssertionError("A damaged older editor bundle was accepted")
 
 
+def test_v215_editor_uses_native_firmware_feeds() -> None:
+    with TemporaryDirectory() as tmp:
+        output = Path(tmp)
+        original = (
+            b'function manifest(){return origin+"/manifest.json"}'
+            b'function versions(){return origin+"/versions.json"}'
+            b'if(y===i)return{latest_version:r,ota_url:url(y)}'
+        )
+        digest = hashlib.sha256(original).hexdigest()
+        versions = ["v2.15.0", "v2.14.0"]
+
+        def published_bundle(version):
+            return ({
+                "id": digest,
+                "sha256": digest,
+                "path": f"bundles/{digest}/www.js",
+                "webAssetVersion": 2,
+                "deviceProfiles": [SLUG],
+                "firmwareVersions": [version],
+            }, SOURCE_REVISION)
+
+        with patch.object(prepare_release_web_assets, "published_bundle", side_effect=published_bundle), \
+             patch.object(prepare_release_web_assets, "bundle_bytes", return_value=original):
+            prepare_release_web_assets.stage_published_bundles(output, versions)
+
+        entries, files = load_published_web_bundles(output / "web-assets.json", versions)
+        assert entries["v2.14.0"]["sha256"] == digest
+        assert files[entries["v2.14.0"]["path"]].encode() == original
+        patched = files[entries["v2.15.0"]["path"]]
+        assert '"/native.json"' in patched
+        assert '"/native-versions.json"' in patched
+        assert 'y.split("/").pop()===i' in patched
+
+
 def test_web_bundle_compatibility_aliases() -> None:
     with TemporaryDirectory() as tmp:
         path = web_manifest_for(Path(tmp) / "release", [SLUG])
@@ -839,6 +873,7 @@ def main() -> int:
     test_release_skill_creates_selected_tag_before_draft()
     test_valid_files_and_directory()
     test_published_bundle_retention()
+    test_v215_editor_uses_native_firmware_feeds()
     test_web_bundle_compatibility_aliases()
     test_placeholder_fails()
     test_unrelated_placeholder_strings_pass()

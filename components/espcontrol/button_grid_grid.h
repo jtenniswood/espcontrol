@@ -369,6 +369,7 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
   if (s.icon_lbl) lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   if (s.sensor_container) lv_obj_set_user_data(s.sensor_container, nullptr);
   if (s.text_lbl) {
+    lv_obj_remove_local_style_prop(s.text_lbl, LV_STYLE_MARGIN_TOP, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(s.text_lbl, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_pad_all(s.text_lbl, 0, LV_PART_MAIN);
     lv_obj_set_style_radius(s.text_lbl, 0, LV_PART_MAIN);
@@ -979,7 +980,22 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
                                 int col_span = 1) {
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   const auto context = card_runtime_context(p);
-  if (cfg.label_lines > 0) {
+  if (cfg.label_lines > 0 && s.text_lbl &&
+      espcontrol::cards::sensor_driver_matches(context) &&
+      espcontrol::cards::sensor_driver_is_text(p, context)) {
+    configure_button_label_wrap(s.text_lbl);
+    lv_obj_set_height(s.text_lbl, LV_SIZE_CONTENT);
+    const lv_font_t *icon_font = nullptr;
+    if (s.icon_lbl && !lv_obj_has_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN) &&
+        lv_label_get_text(s.icon_lbl)[0] != '\0') {
+      icon_font = lv_obj_get_style_text_font(s.icon_lbl, LV_PART_MAIN);
+    }
+    // LVGL subtracts the margin from the parent's content height when applying
+    // the percentage limit. Keep the bottom-aligned value below the icon.
+    lv_obj_set_style_margin_top(s.text_lbl, icon_font ? icon_font->line_height : 0, LV_PART_MAIN);
+    lv_obj_set_style_max_height(s.text_lbl, lv_pct(100), LV_PART_MAIN);
+    lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+  } else if (cfg.label_lines > 0) {
     apply_card_label_line_clamp(s.text_lbl, cfg, row_span);
   } else if (cfg.wrap_tall_labels && row_span > 1) {
     lv_label_set_long_mode(s.text_lbl, LV_LABEL_LONG_WRAP);

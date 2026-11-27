@@ -8,6 +8,7 @@ import re
 import sys
 from pathlib import Path
 
+from device_profiles import image_card_package_name
 from product_schema import slot_devices
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -110,6 +111,7 @@ def include_line(key: str, include: str) -> str:
 
 def package_file_text(device: dict) -> str:
     package = package_data(device)
+    image_card_package = image_card_package_name(int(device["image_slot_capacity"]))
     network_suffix = "${network_package_suffix}" if package.get("ethernetSelectable") else ""
     network_screen_key = "screen_network" if package.get("ethernetSelectable") else "screen_wifi"
     network_screen_path = (
@@ -246,12 +248,10 @@ def package_file_text(device: dict) -> str:
                 [
                     include_line(
                         "image_cards",
-                        "!include ../../common/device/image_cards.yaml"
-                        if int(device["image_slot_capacity"]) == 4
-                        else f"!include ../../common/device/image_cards_{int(device['image_slot_capacity'])}.yaml",
+                        f"!include ../../common/device/{image_card_package}",
                     )
                 ]
-                if int(device["image_slot_capacity"]) > 0
+                if image_card_package is not None
                 else []
             ),
             "  # ---------------------------------------------------------------------------",
