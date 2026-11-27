@@ -13,6 +13,7 @@ import device_matrix
 import generate_device_slots
 from device_profiles import (
     ROOT,
+    image_card_package_name,
     load_device_profiles,
     public_device_capabilities,
     public_device_capability,
@@ -345,8 +346,8 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
             f"{slug}: sensors.yaml must use the web preview's tall-card label line limit"
         )
         capacity = image_slot_capacity(profile)
-        if capacity > 0:
-            package_name = "image_cards.yaml" if capacity == 4 else f"image_cards_{capacity}.yaml"
+        package_name = image_card_package_name(capacity)
+        if package_name is not None:
             assert package_name in package, f"{slug}: packages.yaml missing {package_name}"
             assert f"cfg.image_card_image_count = {capacity};" in sensors, (
                 f"{slug}: sensors.yaml missing image-card downloader count"
