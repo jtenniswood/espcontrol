@@ -8306,7 +8306,7 @@ async function assertFlightsPreviewLayout(browser) {
   nativeState.document.buttons[2] = "sensor.espcontrol_flights_entered;;Travel;Auto;;;flights;;area=entered";
   nativeState.document.buttons[4] = "sensor.espcontrol_flights_exited;;Travel;Auto;;;flights;;area=exited";
   nativeState.document.buttons[5] = "weather.home;;Auto;Auto;;;weather;today";
-  nativeState.document.subpages[3] = "~B,1|FL,sensor.espcontrol_flights_exited,,Travel,Auto,,,,area%3Dexited";
+  nativeState.document.subpages[3] = "~B,1|FL,sensor.espcontrol_flights_exited,Recent departures,Travel,Auto,,,,area%3Dexited";
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 
   async function checkTile(page, slot, iconClass, sensorLabel) {
@@ -8368,20 +8368,27 @@ async function assertFlightsPreviewLayout(browser) {
     assert.strictEqual(current.sublabelSize, weather.value);
     assert.strictEqual(current.sublabelOpacity, weather.opacity);
     await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
-    await checkTile(page, 1, "material-symbol-airplanemode-inactive", "Espcontrol flights exited");
+    await checkTile(page, 1, "material-symbol-airplanemode-inactive", "Recent departures");
     assert.strictEqual(nativeState.puts.length, 0, "Previewing Flights leaves the saved layout alone");
     await page.locator(".sp-main .sp-back-btn .sp-back-hit").click();
     await page.locator('.sp-main [data-slot="1"]').click();
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await page.locator('select[id$="flights-area"]').selectOption("exited");
     await checkTile(page, 1, "material-symbol-airplanemode-inactive", "Espcontrol flights exited");
+    const title = page.locator('.sp-settings-modal input[id$="label"]');
+    if (!(await title.isVisible())) {
+      await page.getByRole("button", { name: "Card Settings", exact: true }).click();
+    }
+    await title.fill("Departures from home");
+    await checkTile(page, 1, "material-symbol-airplanemode-inactive", "Departures from home");
     await page.getByRole("button", { name: "Save", exact: true }).click();
-    await waitForNativeState(nativeState, () => nativeState.document.buttons[1].includes("area"), "Flights area view saved");
+    await waitForNativeState(nativeState, () => nativeState.document.buttons[1].includes("area") &&
+      panelConfigLabel(nativeState.document, 1) === "Departures from home", "Flights area and title saved");
     await page.reload();
     await page.waitForSelector("#sp-app");
     await seedNativeDocument(page, nativeState);
-    await checkTile(page, 1, "material-symbol-airplanemode-inactive", "Espcontrol flights exited");
-    console.log("Flights previews match Weather on the grid and subpage, and the selected view survives save and reload.");
+    await checkTile(page, 1, "material-symbol-airplanemode-inactive", "Departures from home");
+    console.log("Flights previews match Weather, use custom titles, and retain the title and view after save and reload.");
   } finally {
     await context.close();
   }

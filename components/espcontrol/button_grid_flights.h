@@ -112,8 +112,7 @@ inline void flights_apply_card_text(FlightsCardCtx *ctx) {
       ctx->count_lbl, ctx->available && !count.empty() ? count.c_str() : "--");
   }
   if (ctx->name_lbl) {
-    lv_label_set_display_text(ctx->name_lbl, ctx->friendly_name.empty()
-      ? espcontrol_i18n("Flights") : ctx->friendly_name.c_str());
+    lv_label_set_display_text(ctx->name_lbl, flights_card_title(ctx).c_str());
   }
   if (ctx->btn) set_card_checked_state(ctx->btn, ctx->available && !ctx->flights.empty());
 }

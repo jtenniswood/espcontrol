@@ -30,7 +30,8 @@ inline bool flights_driver_setup_visual(
   lv_obj_t *name = lv_label_create(slot.btn);
   lv_label_set_long_mode(name, LV_LABEL_LONG_DOT);
   lv_obj_set_width(name, lv_pct(100));
-  lv_label_set_display_text(name, espcontrol_i18n("Flights"));
+  lv_label_set_display_text(name, config.label.empty()
+    ? espcontrol_i18n("Flights") : config.label.c_str());
   apply_text_width_compensation(name);
   lv_obj_set_user_data(slot.sensor_container, name);
   apply_push_button_transition(slot.btn);

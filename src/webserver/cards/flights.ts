@@ -71,7 +71,7 @@ export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiS
       helpers.requireEntityDomain(entity.input, ["sensor"], "Choose a sensor entity (sensor.*).");
 
       helpers.renderCardTextField(panel, b, helpers, {
-        label: "List title",
+        label: "Title",
         idSuffix: "label",
         field: "label",
         placeholder: "e.g. Flights",
@@ -92,9 +92,9 @@ export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiS
     },
     renderPreview: function (b, helpers) {
       const entityName = b.entity?.replace(/^sensor\./, "").replace(/_/g, " ");
-      const name = entityName
+      const name = b.label || (entityName
         ? entityName[0].toUpperCase() + entityName.slice(1)
-        : "Flights";
+        : "Flights");
       return {
         buttonClass: "sp-flights-card",
         iconHtml: '<span class="sp-flights-reading">' +
