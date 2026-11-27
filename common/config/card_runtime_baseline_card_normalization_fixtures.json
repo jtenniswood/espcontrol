@@ -1,5 +1,65 @@
 [
   {
+    "name": "flights: current in area",
+    "input": "~sensor.flightradar24_current_in_area,Current%20in%20area,Travel,Auto,,,flights,,",
+    "expected": {
+      "entity": "sensor.flightradar24_current_in_area",
+      "label": "Current in area",
+      "icon": "Travel",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "flights",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "flights: legacy units",
+    "input": "~sensor.espcontrol_flights,Current%20in%20area,Travel,Auto,,,flights,,units%3Dimperial",
+    "expected": {
+      "entity": "sensor.espcontrol_flights",
+      "label": "Current in area",
+      "icon": "Travel",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "flights",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "flights: entered area",
+    "input": "~sensor.espcontrol_flights_entered,Current%20in%20area,Travel,Auto,,,flights,,area%3Dentered",
+    "expected": {
+      "entity": "sensor.espcontrol_flights_entered",
+      "label": "Current in area",
+      "icon": "Travel",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "flights",
+      "precision": "",
+      "options": "area=entered"
+    }
+  },
+  {
+    "name": "flights: exited area with sensor title and custom icon",
+    "input": "~sensor.espcontrol_flights_exited,Current%20in%20area,Airplane,Auto,,,flights,,area%3Dexited%2Cunits%3Dimperial%2Ctitle_source%3Dsensor%2Cicon_source%3Dcustom",
+    "expected": {
+      "entity": "sensor.espcontrol_flights_exited",
+      "label": "Current in area",
+      "icon": "Airplane",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "flights",
+      "precision": "",
+      "options": "area=exited,title_source=sensor,icon_source=custom"
+    }
+  },
+  {
     "name": "timer: countdown",
     "input": "~timer.example,,Auto,Auto,,3,timer,,",
     "expected": {

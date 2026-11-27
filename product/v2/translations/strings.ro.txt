@@ -258,6 +258,17 @@ nighttime=Noapte
 
 timer=Temporizator
 timer_confirm=Confirmați
+flights=Zboruri
+flights_current_in_area=Acum în zonă
+flights_entered_area=Au intrat în zonă
+flights_exited_area=Au ieșit din zonă
+flights_none=Niciun zbor
+flights_unavailable=Datele de zbor nu sunt disponibile
+flights_unknown_aircraft=Aeronavă necunoscută
+flights_climbing=Urcă
+flights_descending=Coboară
+flights_level=Palier
+flights_on_ground=La sol
 guest_wifi=Wi-Fi pentru oaspeți
 wifi_did_not_change=Starea Wi-Fi nu s-a schimbat
 connect_to_the_wifi_hotspot=Conectați-vă la hotspotul WiFi

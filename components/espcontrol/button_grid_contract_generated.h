@@ -56,6 +56,7 @@ enum class CardTypeId : uint8_t {
   WIFI_QR,
   WIFI_QR_CARD,
   WEATHER_FORECAST,
+  FLIGHTS,
   UNKNOWN,
 };
 
@@ -103,6 +104,7 @@ enum class CardDriverId : uint8_t {
   IMAGE,
   WIFI_QR,
   TIMER,
+  FLIGHTS,
   UNKNOWN,
 };
 
@@ -172,6 +174,7 @@ inline CardTypeId card_type_id(const std::string &type) {
   if (type == "wifi_qr") return CardTypeId::WIFI_QR;
   if (type == "wifi_qr_card") return CardTypeId::WIFI_QR_CARD;
   if (type == "weather_forecast") return CardTypeId::WEATHER_FORECAST;
+  if (type == "flights") return CardTypeId::FLIGHTS;
   return CardTypeId::UNKNOWN;
 }
 
@@ -221,6 +224,7 @@ inline CardRuntimeSpec card_runtime_spec(CardTypeId type) {
     case CardTypeId::WIFI_QR: return {type, CardDriverId::WIFI_QR, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_SUBPAGE)};
     case CardTypeId::WIFI_QR_CARD: return {type, CardDriverId::WIFI_QR, static_cast<uint16_t>(CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_SUBPAGE)};
     case CardTypeId::WEATHER_FORECAST: return {type, CardDriverId::WEATHER, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS | CAPABILITY_MODAL | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
+    case CardTypeId::FLIGHTS: return {type, CardDriverId::FLIGHTS, static_cast<uint16_t>(CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE)};
     default: return {};
   }
 }
@@ -301,6 +305,7 @@ inline const char *const CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS[] = {"today",
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ACTIONS = "actions";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ACTIVE_COLOR = "active_color";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ALARM_CARD_TYPE = "alarm_card_type";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_AREA = "area";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_CENTER_CLOCK = "center_clock";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_CLIMATE_TABS = "climate_tabs";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_CONFIRM_MESSAGE = "confirm_message";
@@ -323,6 +328,7 @@ constexpr const char *CARD_CONTRACT_OPTION_NAME_GATE_MODE = "gate_mode";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_HIDDEN = "hidden";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_HUMIDITY_SOURCE = "humidity_source";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ICON_DISPLAY = "icon_display";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_ICON_SOURCE = "icon_source";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_IMAGE_ICON = "image_icon";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_IMAGE_LABEL = "image_label";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_IMAGE_MODAL_MODE = "image_modal_mode";
@@ -371,6 +377,7 @@ constexpr const char *CARD_CONTRACT_OPTION_NAME_SUBPAGE_KIND = "subpage_kind";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_TEMPERATURE_SOURCE = "temperature_source";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_TEMPERATURE_STEP = "temperature_step";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_TIME_UNIT = "time_unit";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_TITLE_SOURCE = "title_source";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_VACUUM_MODE = "vacuum_mode";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_VOLUME_MAX = "volume_max";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_WEATHER_MODE = "weather_mode";
@@ -623,6 +630,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "wifi_qr") return "Wifi Sharing";
   if (type == "wifi_qr_card") return "QR Card";
   if (type == "weather_forecast") return "Weather Forecast";
+  if (type == "flights") return "Flights";
   return type.empty() ? "Switch" : type.c_str();
 }
 
@@ -671,6 +679,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "wifi_qr") return true;
   if (type == "wifi_qr_card") return true;
   if (type == "weather_forecast") return true;
+  if (type == "flights") return true;
   return false;
 }
 
@@ -719,6 +728,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "wifi_qr") return "Wifi";
   if (type == "wifi_qr_card") return "Auto";
   if (type == "weather_forecast") return "Auto";
+  if (type == "flights") return "Travel";
   return "Auto";
 }
 
@@ -767,6 +777,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "wifi_qr") return "Auto";
   if (type == "wifi_qr_card") return "Auto";
   if (type == "weather_forecast") return "Auto";
+  if (type == "flights") return "Auto";
   return "Auto";
 }
 
@@ -842,6 +853,7 @@ inline const char *card_contract_subpage_type_code(const std::string &type) {
   if (type == "webhook") return "WH";
   if (type == "internal") return "I";
   if (type == "subpage") return "G";
+  if (type == "flights") return "FL";
   return type.c_str();
 }
 
@@ -886,5 +898,6 @@ inline std::string card_contract_subpage_type_from_code(const std::string &code)
   if (code == "WH") return "webhook";
   if (code == "I") return "internal";
   if (code == "G") return "subpage";
+  if (code == "FL") return "flights";
   return code;
 }

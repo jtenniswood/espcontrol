@@ -197,6 +197,13 @@ int main() {
     {"wifi_qr", "", "switch.guest", ControlModalKind::WIFI_QR},
   };
   {
+    lv_obj_t button{};
+    configs["flights"] = {"sensor.flightradar24_current_in_area", "flights", "", "", ""};
+    homes = {{1, 0, "", "flights", &button}};
+    assert(!espcontrol_can_open_modal("sensor.flightradar24_current_in_area", true));
+    assert(!espcontrol_open_modal("sensor.flightradar24_current_in_area", true));
+  }
+  {
     Runtime runtime; runtime.entity_id = "weather.home";
     lv_obj_t button{&runtime};
     configs["daily"] = {"weather.home", "weather", "", "", "daily"};

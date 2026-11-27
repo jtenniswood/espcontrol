@@ -314,7 +314,9 @@ inline void apply_wide_large_date_time_card_layout(const BtnSlot &s,
 }
 
 inline void grid_prepare_timer_visual_reset(lv_obj_t *owner);
+inline void grid_prepare_flights_visual_reset(lv_obj_t *owner);
 #include "button_grid_timer_driver.h"
+#include "button_grid_flights_driver.h"
 #include "button_grid_date_time_driver.h"
 #include "button_grid_sensor_driver.h"
 #include "button_grid_weather_driver.h"
@@ -367,7 +369,11 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
   set_card_disabled_state(s.btn, false);
   lv_obj_set_style_opa(s.btn, LV_OPA_COVER, LV_PART_MAIN);
   if (s.icon_lbl) lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
-  if (s.sensor_container) lv_obj_set_user_data(s.sensor_container, nullptr);
+  if (s.sensor_container) {
+    lv_obj_remove_event_cb_with_user_data(
+      s.sensor_container, weather_reading_sublabel_resized, s.text_lbl);
+    lv_obj_set_user_data(s.sensor_container, nullptr);
+  }
   if (s.text_lbl) {
     lv_obj_remove_local_style_prop(s.text_lbl, LV_STYLE_MARGIN_TOP, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(s.text_lbl, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -604,6 +610,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   const CardPalette palette = card_palette_for_config(default_palette, p, display);
   const auto family = context.family;
   grid_prepare_timer_visual_reset(s.btn);
+  grid_prepare_flights_visual_reset(s.btn);
   espcontrol::cards::status_entity_driver_cleanup(s, p, context);
   espcontrol::cards::date_time_driver_cleanup(s, p, context);
   espcontrol::cards::sensor_driver_cleanup(s, p, context);
@@ -651,6 +658,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
 
 
   if (espcontrol::cards::timer_driver_setup_visual(s, p, context)) return;
+  if (espcontrol::cards::flights_driver_setup_visual(s, p, context)) {
+    espcontrol::cards::sensor_driver_apply_background(s, palette);
+    return;
+  }
   if (espcontrol::cards::image_driver_setup_visual(s, p, context, palette)) {
     espcontrol::cards::image_driver_attach_interaction(s, p, context);
     espcontrol::cards::image_driver_refresh_layout(s, p, context);
@@ -1004,6 +1015,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
   display_apply_main_width(s.icon_lbl, display);
   control_modal_register_card_label(s);
   display_apply_slot_text_width(s, display);
+  if (espcontrol::cards::flights_driver_refresh_layout(s, context, display)) return;
   if (espcontrol::cards::weather_driver_matches(context) &&
       (p.precision == "wind" || p.precision == "rainfall" || weather_metric_mode(p.precision) || espcontrol::cards::weather_driver_shows_forecast(p))) {
     espcontrol::cards::weather_driver_refresh_layout(s, p, context, display, row_span, col_span);
@@ -1118,6 +1130,7 @@ inline bool grid_card_uses_sensor_surface(
     case Driver::SENSOR:
     case Driver::STATUS_ENTITY:
     case Driver::WEATHER:
+    case Driver::FLIGHTS:
     case Driver::DATE_TIME:
       return true;
     case Driver::IMAGE:
@@ -1479,6 +1492,16 @@ inline void grid_prepare_timer_visual_reset(lv_obj_t *owner) {
       auto *timer = static_cast<TimerCardCtx *>(allocation.ptr);
       if (lv_obj_get_user_data(owner) == timer) lv_obj_set_user_data(owner, nullptr);
       timer->detach();
+    }
+  }
+}
+
+inline void grid_prepare_flights_visual_reset(lv_obj_t *owner) {
+  for (const auto &allocation : grid_runtime_allocations()) {
+    if (allocation.owner == owner &&
+        allocation.deleter == grid_delete_runtime_ptr<FlightsCardCtx>) {
+      auto *flights = static_cast<FlightsCardCtx *>(allocation.ptr);
+      flights->detach();
     }
   }
 }
@@ -2072,6 +2095,7 @@ inline void grid_phase2(
     if (espcontrol::cards::media_driver_bind_main(
           s, p, context, media_environment)) continue;
     if (espcontrol::cards::timer_driver_bind_data(s, p, context)) continue;
+    if (espcontrol::cards::flights_driver_bind_data(s, p, context)) continue;
     if (bind_basic_sensor_card(s, p, context, card_palette, col_span)) continue;
     espcontrol::cards::ToggleDriverState toggle_state;
     toggle_state.has_sensor = &has_sensor[idx - 1];
@@ -2321,6 +2345,8 @@ inline void grid_phase2(
             sub_slot, sb_cfg, context, [&](const std::string &entity_id) {
               add_parent_indicator(entity_id, timer_card_state_active_ref);
             })) continue;
+      if (espcontrol::cards::flights_driver_bind_data(
+            sub_slot, sb_cfg, context)) continue;
       if (bind_basic_sensor_card(sub_slot, sb_cfg, context, card_palette, cs)) continue;
       espcontrol::cards::BasicActionSubpageEnvironment action_environment;
       action_environment.grid_config = &cfg;

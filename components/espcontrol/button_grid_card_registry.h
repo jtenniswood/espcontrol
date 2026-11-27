@@ -13,6 +13,7 @@ enum class Family : uint8_t {
   ALARM_ACTION,
   DATE_TIME,
   TIMER,
+  FLIGHTS,
   CLIMATE,
   COVER,
   OCCUPANCY,

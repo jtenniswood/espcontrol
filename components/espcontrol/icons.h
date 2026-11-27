@@ -550,6 +550,9 @@ static const IconEntry ICON_ENTRIES[] = {
     {"Window Contact Sensor",              "\U000F407B"},
     {"Window Sensor",                      "\U000F407C"},
     {"Wired Camera",                       "\U000F407D"},
+    {"Travel",                             "\U000F407E"},
+    {"Connecting Airports",                "\U000F407F"},
+    {"Airplane Mode Inactive",             "\U000F4080"},
     // --- GENERATED:ICONS END ---
 };
 

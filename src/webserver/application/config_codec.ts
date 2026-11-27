@@ -453,6 +453,12 @@ export function createConfigCodecFeature(
     function normalizeSavedConfigSubpageOptions(this: any, options?: any, b?: any) {
         return normalizeSubpageOptions(options || "", b && b.sensor, b && b.precision);
     }
+    function normalizeFlightsOptions(options: string): string {
+        const area = configOptionValue(options, "area");
+        return [area === "entered" || area === "exited" ? "area=" + area : "",
+            configOptionValue(options, "title_source") === "sensor" ? "title_source=sensor" : "",
+            configOptionValue(options, "icon_source") === "custom" ? "icon_source=custom" : ""].filter(Boolean).join(",");
+    }
     function normalizeButtonConfig(this: any, b?: any) {
         var cardColorOptions: any = b ? normalizedCardColorOptions(b.options) : "";
         if (b)
@@ -495,7 +501,10 @@ export function createConfigCodecFeature(
         var normalizedSavedSensor: any = !!(b && normalizeSavedConfigSensor(b, wasLegacyTextSensor, normalizeSavedConfigSensorFields, normalizeSensorOptions));
         var normalizedSavedOccupancy: any = !!(b && normalizeSavedConfigOccupancy(b, normalizeSavedConfigOccupancyFields, normalizeSavedConfigOccupancyOptions));
         var normalizedSavedSwitch: any = !!(b && !normalizedSavedSensor && normalizeSavedConfigSwitch(b, normalizeSwitchConfirmationOptions));
-        if (b && !normalizedSavedSensor && !normalizedSavedSwitch && !normalizedSavedAccess && !normalizedSavedOccupancy && !normalizedSavedStatic && !normalizedSavedFan && !normalizedSavedMower && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && !isClimateCardType(b.type) && b.type !== "webhook" && b.type !== "media" && b.type !== "subpage" && b.type !== "image" && b.type !== "wifi_qr" && b.type !== "wifi_qr_card" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "weather" && !cardLargeNumbersSupported(b)) {
+        if (b?.type === "flights") {
+            b.options = normalizeFlightsOptions(b.options);
+        }
+        else if (b && !normalizedSavedSensor && !normalizedSavedSwitch && !normalizedSavedAccess && !normalizedSavedOccupancy && !normalizedSavedStatic && !normalizedSavedFan && !normalizedSavedMower && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && !isClimateCardType(b.type) && b.type !== "webhook" && b.type !== "media" && b.type !== "subpage" && b.type !== "image" && b.type !== "wifi_qr" && b.type !== "wifi_qr_card" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "weather" && !cardLargeNumbersSupported(b)) {
             b.options = "";
         }
         if (b && cardColorOptions) b.options = [b.options || "", cardColorOptions].filter(Boolean).join(",");
@@ -653,6 +662,9 @@ export function createConfigCodecFeature(
         }
         else if (type === "weather") {
             options = normalizeWeatherOptions(options, { precision });
+        }
+        else if (type === "flights") {
+            options = normalizeFlightsOptions(options);
         }
         else if (type === "subpage") {
             options = normalizeSubpageOptions(options, sensor, precision);

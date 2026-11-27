@@ -8299,10 +8299,187 @@ async function assertWeatherReadingEditors(browser) {
   }
 }
 
+async function assertFlightsPreviewLayout(browser) {
+  const slug = "guition-esp32-p4-jc8012p4a1-v3";
+  const nativeState = nativeConfigState(slug);
+  nativeState.document.buttons[1] = "sensor.espcontrol_flights;;Travel;Auto;;;flights;;units=imperial";
+  const longTitle = "FlightRadar24 Entered the monitored area this afternoon";
+  nativeState.document.buttons[2] = `sensor.espcontrol_flights_entered;${longTitle};Travel;Auto;;;flights;;area=entered`;
+  nativeState.document.buttons[4] = "sensor.espcontrol_flights_exited;;Travel;Auto;;;flights;;area=exited";
+  nativeState.document.buttons[5] = "weather.home;;Auto;Auto;;;weather;today";
+  nativeState.document.subpages[3] = `~B,1|FL,sensor.espcontrol_flights_exited,${longTitle},Travel,Auto,,,,area%3Dexited`;
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+
+  async function checkTile(page, slot, iconClass, sensorLabel) {
+    const card = page.locator('.sp-main [data-slot="' + slot + '"].sp-flights-card');
+    await card.waitFor();
+    assert.strictEqual(await card.locator(".sp-flights-count").textContent(), "3");
+    assert.strictEqual(await card.locator(".sp-flights-sublabel").textContent(), sensorLabel);
+    const icon = card.locator(".mdi-" + iconClass);
+    assert.strictEqual(await icon.count(), 1);
+    assert.strictEqual(await card.locator(".sp-type-badge,.sp-sensor-preview").count(), 0);
+    const layout = await card.evaluate((node, iconClass) => {
+      const boundary = node.getBoundingClientRect();
+      const icon = node.querySelector(".mdi-" + iconClass).getBoundingClientRect();
+      const count = node.querySelector(".sp-flights-count");
+      const sublabel = node.querySelector(".sp-flights-sublabel");
+      const titleRect = count.getBoundingClientRect();
+      const sublabelRect = sublabel.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      return {
+        iconTop: icon.top - boundary.top,
+        iconLeft: icon.left - boundary.left,
+        titleLeft: titleRect.left - boundary.left,
+        sublabelLeft: sublabelRect.left - boundary.left,
+        sublabelBottom: boundary.bottom - sublabelRect.bottom,
+        paddingTop: parseFloat(style.paddingTop),
+        paddingLeft: parseFloat(style.paddingLeft),
+        paddingBottom: parseFloat(style.paddingBottom),
+        ordered: icon.bottom < titleRect.top && titleRect.bottom <= sublabelRect.top,
+        fontSize: getComputedStyle(count).fontSize,
+        sublabelSize: getComputedStyle(sublabel).fontSize,
+        sublabelLines: Math.round(sublabelRect.height / parseFloat(getComputedStyle(sublabel).lineHeight)),
+        sublabelOpacity: getComputedStyle(sublabel).opacity,
+        background: style.backgroundColor,
+      };
+    }, iconClass);
+    const aligned = (offset, padding) => Math.abs(offset - padding) <= 1;
+    assert(layout.ordered, "Flights icon, count and sensor name appear in order");
+    for (const offset of [layout.iconLeft, layout.titleLeft, layout.sublabelLeft]) {
+      assert(aligned(offset, layout.paddingLeft), "Flights elements align to the left inset");
+    }
+    assert(aligned(layout.iconTop, layout.paddingTop), "Flights icon aligns to the top inset");
+    assert(aligned(layout.sublabelBottom, layout.paddingBottom), "Flights sensor name aligns to the bottom inset");
+    return layout;
+  }
+
+  try {
+    await installRoutes(context, slug, { nativeState });
+    const page = await context.newPage();
+    await installFakeEventSource(page);
+    await page.goto("http://espcontrol.test/" + slug + "?events=1");
+    await page.waitForSelector("#sp-app");
+    await seedNativeDocument(page, nativeState);
+    await waitForNativeState(nativeState, () => !nativeState.document.buttons[1].includes("units"), "Legacy Flights units removed");
+    const initialWrites = nativeState.puts.length;
+    const current = await checkTile(page, 1, "material-symbol-travel", "Current in area");
+    const entered = await checkTile(page, 2, "material-symbol-connecting-airports", longTitle);
+    assert.strictEqual(current.sublabelLines, 1);
+    assert.strictEqual(entered.sublabelLines, 2);
+    await checkTile(page, 4, "material-symbol-airplanemode-inactive", "Exited area");
+    const weather = await page.locator('.sp-main [data-slot="5"] .sp-weather-day').evaluate(day => {
+      const value = getComputedStyle(day.querySelector(".sp-weather-temperature-high"));
+      return {
+        label: getComputedStyle(day).fontSize,
+        value: value.fontSize,
+        opacity: value.opacity,
+        background: getComputedStyle(day.closest(".sp-btn")).backgroundColor,
+      };
+    });
+    assert.strictEqual(current.fontSize, weather.label);
+    assert.strictEqual(current.sublabelSize, weather.value);
+    assert.strictEqual(current.sublabelOpacity, weather.opacity);
+    assert.strictEqual(current.background, weather.background, "Flights uses the sensor background");
+    await page.locator('.sp-main [data-slot="3"] .sp-subpage-badge').click();
+    const exitedSubpage = await checkTile(page, 1, "material-symbol-airplanemode-inactive", longTitle);
+    assert.strictEqual(exitedSubpage.sublabelLines, 2);
+    assert.strictEqual(nativeState.puts.length, initialWrites, "Previewing Flights leaves the saved layout alone");
+    await page.locator(".sp-main .sp-back-btn .sp-back-hit").click();
+    await page.locator('.sp-main [data-slot="1"]').click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.getByRole("button", { name: "Custom Colours", exact: true }).click();
+    assert(await page.getByRole("group", { name: "Card colour presets", exact: true }).isVisible());
+    assert.strictEqual(await page.getByRole("group", { name: "Active state colour", exact: true }).count(), 0);
+    await page.locator('select[id$="flights-area"]').selectOption("exited");
+    await checkTile(page, 1, "material-symbol-airplanemode-inactive", "Exited area");
+    const title = page.locator('.sp-settings-modal input[id$="label"]');
+    if (!(await title.isVisible())) {
+      await page.getByRole("button", { name: "Card Settings", exact: true }).click();
+    }
+    assert.strictEqual(await page.getByText("Units", { exact: true }).count(), 0);
+    await title.fill("Departures from home");
+    const iconInput = page.locator('.sp-settings-modal input[id$="-icon"]');
+    async function selectIcon(name) {
+      if (!(await iconInput.isVisible())) {
+        await page.getByRole("button", { name: "Card Settings", exact: true }).click();
+      }
+      await iconInput.fill(name);
+      await page.locator(".sp-icon-dropdown .sp-icon-option-label").getByText(name, { exact: true }).click();
+    }
+    assert.strictEqual(await iconInput.inputValue(), "Auto");
+    await selectIcon("Home");
+    await checkTile(page, 1, "home", "Departures from home");
+    await page.locator('select[id$="flights-area"]').selectOption("entered");
+    await checkTile(page, 1, "home", "Departures from home");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await waitForNativeState(nativeState, () => nativeState.document.buttons[1].includes("area") &&
+      panelConfigLabel(nativeState.document, 1) === "Departures from home", "Flights area and title saved");
+    assert(!nativeState.document.buttons[1].includes("units"));
+    await page.reload();
+    await page.waitForSelector("#sp-app");
+    await seedNativeDocument(page, nativeState);
+    await checkTile(page, 1, "home", "Departures from home");
+    assert(nativeState.document.buttons[1].includes("icon_source"), "The selected Flights icon is saved");
+    await page.locator('.sp-main [data-slot="1"]').click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await selectIcon("Auto");
+    await checkTile(page, 1, "material-symbol-connecting-airports", "Departures from home");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await waitForNativeState(nativeState, () => !nativeState.document.buttons[1].includes("icon_source"), "Flights icon reset to Auto");
+    await page.locator(".sp-main .sp-empty-cell").first().click();
+    await page.getByRole("button", { name: "Flights card type", exact: true }).click();
+    async function checkDraftTitle(expected) {
+      if (!(await title.isVisible())) {
+        await page.getByRole("button", { name: "Card Settings", exact: true }).click();
+      }
+      assert.strictEqual(await title.inputValue(), expected);
+    }
+    await checkDraftTitle("Current in area");
+    const area = page.locator('select[id$="flights-area"]');
+    await area.selectOption("entered");
+    await checkDraftTitle("Entered area");
+    assert.strictEqual(await page.locator('.sp-settings-modal input[id$="entity"]').inputValue(),
+      "sensor.flightradar24_entered_area");
+    await area.selectOption("exited");
+    await checkDraftTitle("Exited area");
+    await title.fill("My flight sensor");
+    await area.selectOption("current");
+    await checkDraftTitle("My flight sensor");
+    await title.fill("");
+    await area.selectOption("entered");
+    await checkDraftTitle("");
+    await page.locator(".sp-settings-close").click();
+    await page.evaluate(() => window.__seedEspState([
+      { id: "select-screen__language", state: "fr", value: "fr" },
+    ]));
+    await checkTile(page, 4, "material-symbol-airplanemode-inactive", "Sortis de la zone");
+    await page.locator('.sp-main [data-slot="4"]').click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await checkDraftTitle("Sortis de la zone");
+    assert.strictEqual(await area.locator("option:checked").textContent(), "Exited area");
+    await area.selectOption("entered");
+    await checkDraftTitle("Entrés dans la zone");
+    await title.fill("");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await waitForNativeState(nativeState, () => nativeState.document.buttons[4].includes("title_source"), "Flights sensor title saved");
+    await page.reload();
+    await page.waitForSelector("#sp-app");
+    await seedNativeDocument(page, nativeState);
+    await checkTile(page, 4, "material-symbol-connecting-airports", "Espcontrol flights entered");
+    console.log("Flights previews match Weather, use custom titles, and retain the title and view after save and reload.");
+  } finally {
+    await context.close();
+  }
+}
+
 (async function main() {
   const browser = await (process.env.ESPCONTROL_BROWSER_ENGINE === "webkit" ? webkit : chromium).launch();
   const acceptanceOnly = process.env.ESPCONTROL_BROWSER_ACCEPTANCE_ONLY === "1";
   try {
+    if (process.env.ESPCONTROL_FLIGHTS_PREVIEW_ONLY === "1") {
+      await assertFlightsPreviewLayout(browser);
+      return;
+    }
     if (process.env.ESPCONTROL_NATIVE_LAYOUT_ONLY === "1") {
       for (const testCase of ACTIVE_CASES) await assertNativeLayoutStartup(browser, testCase);
       console.log(`Native layout startup and retry passed for ${ACTIVE_CASES.length} generated layouts.`);
@@ -8423,6 +8600,7 @@ async function assertWeatherReadingEditors(browser) {
 
     await assertRainfallEditor(browser);
     await assertWeatherReadingEditors(browser);
+    await assertFlightsPreviewLayout(browser);
     await assertWeatherWidthScaling(browser);
     await assertS3ForecastEditorLayout(browser);
     if (process.env.ESPCONTROL_RESET_ONLY === "1") {

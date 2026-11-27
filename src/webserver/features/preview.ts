@@ -47,6 +47,7 @@ const INFO_ONLY_CARD_TYPES = new Set([
   "calendar",
   "clock",
   "door_window",
+  "flights",
   "image",
   "local_sensor",
   "presence",

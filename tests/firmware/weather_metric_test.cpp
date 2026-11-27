@@ -14,6 +14,10 @@ int main() {
     assert(reading.text == "--" && reading.text_opa == LV_OPA_70);
     assert(reading.text_color == button.text_color && reading.font == &font);
     assert(label.y == -(font.line_height + 2));
+    resize_weather_reading(container, font.line_height * 2);
+    assert(label.y == -(font.line_height * 2 + 2));
+    resize_weather_reading(container, font.line_height);
+    assert(label.y == -(font.line_height + 2));
     channels.clear();
     const std::string entity = "weather.home";
     subscribe_weather_metric(slot, entity, mode, true);

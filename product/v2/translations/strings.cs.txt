@@ -258,6 +258,17 @@ nighttime=Noc
 
 timer=Časovač
 timer_confirm=Potvrdit
+flights=Lety
+flights_current_in_area=Aktuálně v oblasti
+flights_entered_area=Vstoupily do oblasti
+flights_exited_area=Opustily oblast
+flights_none=Žádné lety
+flights_unavailable=Data o letech nejsou k dispozici
+flights_unknown_aircraft=Neznámé letadlo
+flights_climbing=Stoupá
+flights_descending=Klesá
+flights_level=Vodorovně
+flights_on_ground=Na zemi
 guest_wifi=Wi-Fi pro hosty
 wifi_did_not_change=Stav Wi-Fi se nezměnil
 connect_to_the_wifi_hotspot=Připojte se k WiFi hotspotu

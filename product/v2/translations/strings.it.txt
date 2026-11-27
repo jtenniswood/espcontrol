@@ -258,6 +258,17 @@ nighttime=Notte
 
 timer=Timer
 timer_confirm=Confermare
+flights=Voli
+flights_current_in_area=Ora nell’area
+flights_entered_area=Entrati nell’area
+flights_exited_area=Usciti dall’area
+flights_none=Nessun volo
+flights_unavailable=Dati di volo non disponibili
+flights_unknown_aircraft=Aereo sconosciuto
+flights_climbing=In salita
+flights_descending=In discesa
+flights_level=In quota
+flights_on_ground=A terra
 guest_wifi=Wi-Fi ospiti
 wifi_did_not_change=Il Wi-Fi non è cambiato
 connect_to_the_wifi_hotspot=Connettiti all’hotspot WiFi

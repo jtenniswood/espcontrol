@@ -18,6 +18,13 @@ function overlayPlugin(overlays) {
   return {
     name: "generated-output-overlay",
     setup(build) {
+      build.onResolve({ filter: /^\./ }, (args) => {
+        const resolved = path.resolve(args.resolveDir, args.path);
+        for (const candidate of [resolved, resolved + ".ts"]) {
+          if (normalized.has(candidate)) return { path: candidate };
+        }
+        return null;
+      });
       build.onLoad({ filter: /.*/ }, (args) => {
         const contents = normalized.get(path.resolve(args.path));
         if (contents === undefined) return null;

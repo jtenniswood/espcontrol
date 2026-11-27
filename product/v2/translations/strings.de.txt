@@ -258,6 +258,17 @@ nighttime=Nachts
 
 timer=Timer
 timer_confirm=Bestätigen
+flights=Flüge
+flights_current_in_area=Derzeit im Gebiet
+flights_entered_area=Ins Gebiet eingeflogen
+flights_exited_area=Aus dem Gebiet ausgeflogen
+flights_none=Keine Flüge
+flights_unavailable=Flugdaten nicht verfügbar
+flights_unknown_aircraft=Unbekanntes Flugzeug
+flights_climbing=Steigt
+flights_descending=Sinkt
+flights_level=Reiseflug
+flights_on_ground=Am Boden
 guest_wifi=Gast-WLAN
 wifi_did_not_change=WLAN wurde nicht geändert
 connect_to_the_wifi_hotspot=Verbinde dich mit dem WLAN-Hotspot

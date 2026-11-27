@@ -2,6 +2,134 @@
   "baselineVersion": 1,
   "cases": [
     {
+      "name": "flights: current in area",
+      "sourceKind": "contract",
+      "sourceType": "flights",
+      "mode": "current in area",
+      "canonicalType": "flights",
+      "web": {
+        "registration": "flights",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": true
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "17507b6f7fcf1fd9"
+        }
+      },
+      "firmware": {
+        "family": "FLIGHTS"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "none"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
+      "name": "flights: legacy units",
+      "sourceKind": "contract",
+      "sourceType": "flights",
+      "mode": "legacy units",
+      "canonicalType": "flights",
+      "web": {
+        "registration": "flights",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": true
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "17507b6f7fcf1fd9"
+        }
+      },
+      "firmware": {
+        "family": "FLIGHTS"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "none"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
+      "name": "flights: entered area",
+      "sourceKind": "contract",
+      "sourceType": "flights",
+      "mode": "entered area",
+      "canonicalType": "flights",
+      "web": {
+        "registration": "flights",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": true
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "c9475cda3674e522"
+        }
+      },
+      "firmware": {
+        "family": "FLIGHTS"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "none"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
+      "name": "flights: exited area with sensor title and custom icon",
+      "sourceKind": "contract",
+      "sourceType": "flights",
+      "mode": "exited area with sensor title and custom icon",
+      "canonicalType": "flights",
+      "web": {
+        "registration": "flights",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": true
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "333b9bbdb0f5c7eb"
+        }
+      },
+      "firmware": {
+        "family": "FLIGHTS"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "none"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
       "name": "timer: countdown",
       "sourceKind": "contract",
       "sourceType": "timer",

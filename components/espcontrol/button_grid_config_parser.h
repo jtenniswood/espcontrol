@@ -1379,7 +1379,20 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   const bool normalized_saved_occupancy = normalize_saved_config_occupancy(
       p, normalize_saved_config_occupancy_fields,
       normalize_saved_config_occupancy_options);
-  if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "sensor" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "wifi_qr" && p.type != "wifi_qr_card" && p.type != "light_control" && p.type != "vacuum" && p.type != "weather" && !card_large_numbers_supported(p)) {
+  if (p.type == "flights") {
+    const auto area = cfg_option_value(p.options, "area");
+    const bool sensor_title = cfg_option_value(p.options, "title_source") == "sensor";
+    const bool custom_icon = cfg_option_value(p.options, "icon_source") == "custom";
+    p.options = area == "entered" || area == "exited" ? "area=" + area : "";
+    if (sensor_title) {
+      if (!p.options.empty()) p.options += ",";
+      p.options += "title_source=sensor";
+    }
+    if (custom_icon) {
+      if (!p.options.empty()) p.options += ",";
+      p.options += "icon_source=custom";
+    }
+  } else if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "sensor" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "wifi_qr" && p.type != "wifi_qr_card" && p.type != "light_control" && p.type != "vacuum" && p.type != "weather" && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   if ((p.type == "wifi_qr" || p.type == "wifi_qr_card") &&

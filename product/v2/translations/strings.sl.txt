@@ -258,6 +258,17 @@ nighttime=Noč
 
 timer=Časovnik
 timer_confirm=Potrdi
+flights=Leti
+flights_current_in_area=Trenutno na območju
+flights_entered_area=Vstopili na območje
+flights_exited_area=Zapustili območje
+flights_none=Ni letov
+flights_unavailable=Podatki o letih niso na voljo
+flights_unknown_aircraft=Neznano letalo
+flights_climbing=Se dviga
+flights_descending=Se spušča
+flights_level=Vodoravno
+flights_on_ground=Na tleh
 guest_wifi=Wi-Fi za goste
 wifi_did_not_change=Stanje Wi-Fi se ni spremenilo
 connect_to_the_wifi_hotspot=Povežite se z dostopno točko WiFi

@@ -258,6 +258,17 @@ nighttime=Nattetid
 
 timer=Timer
 timer_confirm=Bekräfta
+flights=Flyg
+flights_current_in_area=I området nu
+flights_entered_area=Anlänt till området
+flights_exited_area=Lämnat området
+flights_none=Inga flyg
+flights_unavailable=Flygdata är inte tillgängliga
+flights_unknown_aircraft=Okänt flygplan
+flights_climbing=Stiger
+flights_descending=Sjunker
+flights_level=Planflykt
+flights_on_ground=På marken
 guest_wifi=Gäst-Wi-Fi
 wifi_did_not_change=Wi-Fi ändrades inte
 connect_to_the_wifi_hotspot=Anslut till WiFi-hotspotten

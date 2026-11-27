@@ -36,6 +36,7 @@ Use this page when you know what you want the panel to do but are not sure which
 | Show local date, time, or date and time | [Date & Time](/card-types/calendar) | No entity required for clock modes |
 | Show another city or timezone | [World Clock](/card-types/timezones) | No entity required |
 | Show current weather or daily high/low temperatures | [Weather](/card-types/weather) | `weather` |
+| Count aircraft flying near your home | [Flights](/card-types/flights) | Flightradar24 `sensor` |
 | Show a still image from Home Assistant | [Camera](/card-types/cameras) | `camera` or `image` |
 | Let visitors scan guest Wifi details | [Wifi Sharing](/card-types/wifi-share) | No entity required |
 | Control media playback, volume, progress, or now-playing display | [Media](/card-types/media) | `media_player` |

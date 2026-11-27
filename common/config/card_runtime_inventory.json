@@ -6,6 +6,52 @@
     "modalOwners": ["none", "alarm", "climate", "cover", "image", "media", "wifi_qr", "weather"]
   },
   "types": {
+    "flights": {
+      "classification": "canonical",
+      "canonicalType": "flights",
+      "webRegistration": "flights",
+      "firmwareFamily": "FLIGHTS",
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "none"
+        ],
+        "modalOwner": "none"
+      },
+      "modes": [
+        {
+          "name": "current in area",
+          "config": {
+            "entity": "sensor.flightradar24_current_in_area"
+          }
+        },
+        {
+          "name": "legacy units",
+          "config": {
+            "entity": "sensor.espcontrol_flights",
+            "options": "units=imperial"
+          }
+        },
+        {
+          "name": "entered area",
+          "config": {
+            "entity": "sensor.espcontrol_flights_entered",
+            "options": "area=entered"
+          }
+        },
+        {
+          "name": "exited area with sensor title and custom icon",
+          "config": {
+            "entity": "sensor.espcontrol_flights_exited",
+            "icon": "Airplane",
+            "options": "area=exited,units=imperial,title_source=sensor,icon_source=custom"
+          }
+        }
+      ]
+    },
     "timer": {
       "classification": "canonical",
       "canonicalType": "timer",

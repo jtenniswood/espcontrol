@@ -10,9 +10,9 @@
   },
   "summary": {
     "deviceProfiles": 10,
-    "cardTypes": 44,
+    "cardTypes": 45,
     "entityNames": 116,
-    "icons": 500,
+    "icons": 503,
     "structuralIcons": 28,
     "compatibilityFixtureGroups": 2
   },
@@ -2151,7 +2151,8 @@
         "weather",
         "image",
         "wifi_qr",
-        "timer"
+        "timer",
+        "flights"
       ],
       "capabilities": [
         "informationOnly",
@@ -2713,6 +2714,18 @@
             "actions": true,
             "numericControl": false,
             "modal": true,
+            "runtimeAllocation": true,
+            "subpage": true
+          }
+        },
+        "flights": {
+          "driver": "flights",
+          "capabilities": {
+            "informationOnly": true,
+            "subscriptions": true,
+            "actions": false,
+            "numericControl": false,
+            "modal": false,
             "runtimeAllocation": true,
             "subpage": true
           }
@@ -6861,6 +6874,100 @@
           "precision": "tomorrow",
           "options": ""
         }
+      },
+      "flights": {
+        "label": "Flights",
+        "allowInSubpage": true,
+        "domains": [
+          "sensor"
+        ],
+        "options": [
+          {
+            "name": "area",
+            "label": "Area view",
+            "kind": "choice",
+            "values": [
+              "current",
+              "entered",
+              "exited"
+            ],
+            "defaultValue": "current",
+            "omitDefault": true
+          },
+          {
+            "name": "title_source",
+            "label": "Title source",
+            "kind": "choice",
+            "values": [
+              "view",
+              "sensor"
+            ],
+            "defaultValue": "view",
+            "omitDefault": true
+          },
+          {
+            "name": "icon_source",
+            "label": "Icon source",
+            "kind": "choice",
+            "values": [
+              "auto",
+              "custom"
+            ],
+            "defaultValue": "auto",
+            "omitDefault": true
+          }
+        ],
+        "normalization": {
+          "fields": {
+            "entity": {
+              "policy": "keep"
+            },
+            "label": {
+              "policy": "keep"
+            },
+            "icon": {
+              "policy": "default_if_empty",
+              "value": "Travel"
+            },
+            "icon_on": {
+              "policy": "default",
+              "value": "Auto"
+            },
+            "sensor": {
+              "policy": "clear"
+            },
+            "unit": {
+              "policy": "clear"
+            },
+            "type": {
+              "policy": "default",
+              "value": "flights"
+            },
+            "precision": {
+              "policy": "clear"
+            },
+            "options": {
+              "policy": "keep"
+            }
+          },
+          "unknownOptions": "drop",
+          "canonicalOptionOrder": [
+            "area",
+            "title_source",
+            "icon_source"
+          ]
+        },
+        "default": {
+          "entity": "",
+          "label": "Current in area",
+          "icon": "Travel",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "flights",
+          "precision": "",
+          "options": ""
+        }
       }
     },
     "migrationActions": {
@@ -7140,7 +7247,8 @@
       "screensaver": "SS",
       "webhook": "WH",
       "internal": "I",
-      "subpage": "G"
+      "subpage": "G",
+      "flights": "FL"
     }
   },
   "entityNames": {
@@ -11079,6 +11187,21 @@
         "name": "Wired Camera",
         "codepoint": "F407D",
         "mdi": "material-symbol-nest-cam-wired-stand"
+      },
+      {
+        "name": "Travel",
+        "codepoint": "F407E",
+        "mdi": "material-symbol-travel"
+      },
+      {
+        "name": "Connecting Airports",
+        "codepoint": "F407F",
+        "mdi": "material-symbol-connecting-airports"
+      },
+      {
+        "name": "Airplane Mode Inactive",
+        "codepoint": "F4080",
+        "mdi": "material-symbol-airplanemode-inactive"
       }
     ],
     "domain_defaults": {
