@@ -10,7 +10,7 @@
   },
   "summary": {
     "deviceProfiles": 10,
-    "cardTypes": 44,
+    "cardTypes": 45,
     "entityNames": 116,
     "icons": 500,
     "structuralIcons": 28,
@@ -2151,7 +2151,8 @@
         "weather",
         "image",
         "wifi_qr",
-        "timer"
+        "timer",
+        "flights"
       ],
       "capabilities": [
         "informationOnly",
@@ -2709,6 +2710,18 @@
           "driver": "weather",
           "capabilities": {
             "informationOnly": true,
+            "subscriptions": true,
+            "actions": true,
+            "numericControl": false,
+            "modal": true,
+            "runtimeAllocation": true,
+            "subpage": true
+          }
+        },
+        "flights": {
+          "driver": "flights",
+          "capabilities": {
+            "informationOnly": false,
             "subscriptions": true,
             "actions": true,
             "numericControl": false,
@@ -6861,6 +6874,75 @@
           "precision": "tomorrow",
           "options": ""
         }
+      },
+      "flights": {
+        "label": "Flights",
+        "allowInSubpage": true,
+        "domains": [
+          "sensor"
+        ],
+        "options": [
+          {
+            "name": "units",
+            "label": "Units",
+            "kind": "choice",
+            "values": [
+              "metric",
+              "imperial"
+            ],
+            "defaultValue": "metric",
+            "omitDefault": true
+          }
+        ],
+        "normalization": {
+          "fields": {
+            "entity": {
+              "policy": "keep"
+            },
+            "label": {
+              "policy": "keep"
+            },
+            "icon": {
+              "policy": "default_if_empty",
+              "value": "Airplane"
+            },
+            "icon_on": {
+              "policy": "default",
+              "value": "Auto"
+            },
+            "sensor": {
+              "policy": "clear"
+            },
+            "unit": {
+              "policy": "clear"
+            },
+            "type": {
+              "policy": "default",
+              "value": "flights"
+            },
+            "precision": {
+              "policy": "clear"
+            },
+            "options": {
+              "policy": "keep"
+            }
+          },
+          "unknownOptions": "drop",
+          "canonicalOptionOrder": [
+            "units"
+          ]
+        },
+        "default": {
+          "entity": "",
+          "label": "",
+          "icon": "Airplane",
+          "icon_on": "Auto",
+          "sensor": "",
+          "unit": "",
+          "type": "flights",
+          "precision": "",
+          "options": ""
+        }
       }
     },
     "migrationActions": {
@@ -7140,7 +7222,8 @@
       "screensaver": "SS",
       "webhook": "WH",
       "internal": "I",
-      "subpage": "G"
+      "subpage": "G",
+      "flights": "FL"
     }
   },
   "entityNames": {

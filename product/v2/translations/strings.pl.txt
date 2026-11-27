@@ -258,6 +258,16 @@ nighttime=Noc
 
 timer=Minutnik
 timer_confirm=Potwierdzić
+flights=Loty
+flight_map=Mapa
+flight_list=Lista
+flights_none=Brak lotów w pobliżu
+flights_unavailable=Dane lotów niedostępne
+flights_unknown_aircraft=Nieznany samolot
+flights_climbing=Wznosi się
+flights_descending=Zniża się
+flights_level=Lot poziomy
+flights_on_ground=Na ziemi
 guest_wifi=Wi-Fi dla gości
 wifi_did_not_change=Stan Wi-Fi nie zmienił się
 connect_to_the_wifi_hotspot=Połącz się z hotspotem WiFi

@@ -2,6 +2,70 @@
   "baselineVersion": 1,
   "cases": [
     {
+      "name": "flights: metric",
+      "sourceKind": "contract",
+      "sourceType": "flights",
+      "mode": "metric",
+      "canonicalType": "flights",
+      "web": {
+        "registration": "flights",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "01daffa7b45d191d"
+        }
+      },
+      "firmware": {
+        "family": "FLIGHTS"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "modal"
+        ],
+        "modalOwner": "flights"
+      }
+    },
+    {
+      "name": "flights: imperial",
+      "sourceKind": "contract",
+      "sourceType": "flights",
+      "mode": "imperial",
+      "canonicalType": "flights",
+      "web": {
+        "registration": "flights",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": false
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "01daffa7b45d191d"
+        }
+      },
+      "firmware": {
+        "family": "FLIGHTS"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "modal"
+        ],
+        "modalOwner": "flights"
+      }
+    },
+    {
       "name": "timer: countdown",
       "sourceKind": "contract",
       "sourceType": "timer",

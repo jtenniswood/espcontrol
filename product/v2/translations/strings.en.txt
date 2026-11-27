@@ -259,6 +259,17 @@ nighttime=Nighttime
 # Timer card
 timer=Timer
 timer_confirm=Confirm
+# Flights card
+flights=Flights
+flight_map=Map
+flight_list=List
+flights_none=No flights nearby
+flights_unavailable=Flight data unavailable
+flights_unknown_aircraft=Unknown aircraft
+flights_climbing=Climbing
+flights_descending=Descending
+flights_level=Level
+flights_on_ground=On the ground
 guest_wifi=Guest Wi-Fi
 wifi_did_not_change=Wi-Fi did not change
 connect_to_the_wifi_hotspot=Connect to the WiFi hotspot

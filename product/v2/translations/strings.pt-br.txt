@@ -258,6 +258,16 @@ nighttime=Noite
 
 timer=Temporizador
 timer_confirm=Confirmar
+flights=Voos
+flight_map=Mapa
+flight_list=Lista
+flights_none=Nenhum voo por perto
+flights_unavailable=Dados de voo indisponíveis
+flights_unknown_aircraft=Aeronave desconhecida
+flights_climbing=Subindo
+flights_descending=Descendo
+flights_level=Nivelado
+flights_on_ground=No solo
 guest_wifi=Wi-Fi de convidados
 wifi_did_not_change=O Wi-Fi não mudou
 connect_to_the_wifi_hotspot=Conecte-se ao ponto de acesso WiFi

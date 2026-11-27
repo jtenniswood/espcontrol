@@ -4302,6 +4302,75 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "precision": "tomorrow",
       "options": ""
     }
+  },
+  "flights": {
+    "label": "Flights",
+    "allowInSubpage": true,
+    "domains": [
+      "sensor"
+    ],
+    "options": [
+      {
+        "name": "units",
+        "label": "Units",
+        "kind": "choice",
+        "values": [
+          "metric",
+          "imperial"
+        ],
+        "defaultValue": "metric",
+        "omitDefault": true
+      }
+    ],
+    "normalization": {
+      "fields": {
+        "entity": {
+          "policy": "keep"
+        },
+        "label": {
+          "policy": "keep"
+        },
+        "icon": {
+          "policy": "default_if_empty",
+          "value": "Airplane"
+        },
+        "icon_on": {
+          "policy": "default",
+          "value": "Auto"
+        },
+        "sensor": {
+          "policy": "clear"
+        },
+        "unit": {
+          "policy": "clear"
+        },
+        "type": {
+          "policy": "default",
+          "value": "flights"
+        },
+        "precision": {
+          "policy": "clear"
+        },
+        "options": {
+          "policy": "keep"
+        }
+      },
+      "unknownOptions": "drop",
+      "canonicalOptionOrder": [
+        "units"
+      ]
+    },
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Airplane",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "flights",
+      "precision": "",
+      "options": ""
+    }
   }
 };
 export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
@@ -4858,6 +4927,18 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
       "runtimeAllocation": true,
       "subpage": true
     }
+  },
+  "flights": {
+    "driver": "flights",
+    "capabilities": {
+      "informationOnly": false,
+      "subscriptions": true,
+      "actions": true,
+      "numericControl": false,
+      "modal": true,
+      "runtimeAllocation": true,
+      "subpage": true
+    }
   }
 };
 export const CARD_CONTRACT_MIGRATION_ALIASES: Readonly<Record<string, Partial<CardConfig>>> = {
@@ -4932,7 +5013,8 @@ export const CARD_CONTRACT_SUBPAGE_TYPE_CODES: Readonly<Record<string, string>> 
   "screensaver": "SS",
   "webhook": "WH",
   "internal": "I",
-  "subpage": "G"
+  "subpage": "G",
+  "flights": "FL"
 };
 export const CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE: Readonly<Record<string, string>> = {
   "TM": "timer",
@@ -4974,7 +5056,8 @@ export const CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE: Readonly<Record<string, string
   "SS": "screensaver",
   "WH": "webhook",
   "I": "internal",
-  "G": "subpage"
+  "G": "subpage",
+  "FL": "flights"
 };
 export const CARD_CONTRACT_LARGE_NUMBERS: Readonly<Record<string, LargeNumbersRule>> = {
   "": true,
@@ -5067,6 +5150,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "temperature_source": "temperature_source",
   "temperature_step": "temperature_step",
   "time_unit": "time_unit",
+  "units": "units",
   "vacuum_mode": "vacuum_mode",
   "volume_max": "volume_max",
   "weather_mode": "weather_mode",

@@ -1,0 +1,422 @@
+#pragma once
+
+// Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
+
+// ── Flights card ──────────────────────────────────────────────────────
+// Shows aircraft near home from a Home Assistant template sensor built on the
+// Flightradar24 integration (see docs/card-types/flights.md). The sensor state
+// is the number of flights in the area; its `flights` attribute is the compact
+// list parsed by flights_data.h. Tapping the card opens a list of the nearest
+// flights.
+
+#include "button_grid_flights_map.h"
+
+struct FlightsCardCtx;
+
+struct FlightsModalRow {
+  lv_obj_t *row = nullptr;
+  lv_obj_t *title = nullptr;
+  lv_obj_t *route = nullptr;
+  lv_obj_t *details = nullptr;
+};
+
+struct FlightsModalUi {
+  lv_obj_t *overlay = nullptr;
+  lv_obj_t *panel = nullptr;
+  lv_obj_t *view_button = nullptr;
+  lv_obj_t *view_label = nullptr;
+  FlightsMapUi map;
+  espcontrol::flights::MapBounds rendered_bounds;
+  int content_width = 0;
+  int content_height = 0;
+  int content_top = 0;
+  int inset = 0;
+  int marker_size = 0;
+  bool show_map = true;
+  lv_obj_t *list = nullptr;
+  lv_obj_t *empty_lbl = nullptr;
+  FlightsCardCtx *active = nullptr;
+  std::vector<FlightsModalRow> rows;
+  lv_coord_t row_radius = 0;
+  lv_coord_t row_pad = 0;
+};
+
+inline FlightsModalUi &flights_modal_ui() {
+  static FlightsModalUi ui;
+  return ui;
+}
+
+struct FlightsCardCtx {
+  std::string entity_id;
+  std::string configured_label;
+  std::string friendly_name;
+  lv_obj_t *btn = nullptr;
+  lv_obj_t *value_lbl = nullptr;
+  lv_obj_t *text_lbl = nullptr;
+  const lv_font_t *label_font = nullptr;
+  const lv_font_t *icon_font = nullptr;
+  bool imperial = false;
+  bool available = false;
+  std::string count;
+  std::vector<espcontrol::flights::Flight> flights;
+  espcontrol::flights::MapBounds map_bounds;
+  void detach();
+  ~FlightsCardCtx() { detach(); }
+};
+
+inline void flights_hide_modal() {
+  FlightsModalUi &ui = flights_modal_ui();
+  flights_map_release(ui.map);
+  control_modal_delete_overlay(ControlModalKind::FLIGHTS, ui.overlay);
+  ui = FlightsModalUi();
+}
+
+inline void FlightsCardCtx::detach() {
+  ha_release_callbacks_for_owner(this);
+  if (flights_modal_ui().active == this) flights_hide_modal();
+  btn = nullptr;
+  value_lbl = nullptr;
+  text_lbl = nullptr;
+}
+
+inline std::string flights_card_title(const FlightsCardCtx *ctx) {
+  if (ctx && !ctx->configured_label.empty()) return ctx->configured_label;
+  if (ctx && !ctx->friendly_name.empty()) return ctx->friendly_name;
+  return espcontrol_i18n(std::string("Flights"));
+}
+
+inline const char *flights_vertical_text(espcontrol::flights::Vertical vertical) {
+  using espcontrol::flights::Vertical;
+  switch (vertical) {
+    case Vertical::ON_GROUND: return espcontrol_i18n("On the ground");
+    case Vertical::CLIMBING: return espcontrol_i18n("Climbing");
+    case Vertical::DESCENDING: return espcontrol_i18n("Descending");
+    case Vertical::LEVEL: return espcontrol_i18n("Level");
+    case Vertical::UNKNOWN: break;
+  }
+  return "";
+}
+
+inline std::string flights_row_title(const espcontrol::flights::Flight &flight) {
+  std::string aircraft = flight.aircraft;
+  if (aircraft.empty()) aircraft = espcontrol_i18n(std::string("Unknown aircraft"));
+  if (flight.flight.empty()) return aircraft;
+  return flight.flight + " \xC2\xB7 " + aircraft;
+}
+
+inline std::string flights_row_route(const espcontrol::flights::Flight &flight) {
+  return espcontrol::flights::join(
+    {flight.airline, espcontrol::flights::route(flight)}, " \xC2\xB7 ");
+}
+
+inline std::string flights_row_details(const espcontrol::flights::Flight &flight, bool imperial) {
+  using namespace espcontrol::flights;
+  return join({format_distance(flight.distance_km, imperial),
+               flight.on_ground ? std::string() : format_altitude(flight.altitude_ft, imperial),
+               format_speed(flight.speed_kt, imperial),
+               flights_vertical_text(vertical_state(flight))}, " \xC2\xB7 ");
+}
+
+inline void flights_apply_card_text(FlightsCardCtx *ctx) {
+  if (!ctx) return;
+  if (ctx->value_lbl) {
+    const std::string value = ctx->available && !ctx->count.empty() ? ctx->count : "--";
+    lv_label_set_display_text(ctx->value_lbl, value.c_str());
+  }
+  if (ctx->text_lbl) {
+    // The tile names the nearest flight; the label returns when the sky is clear.
+    const std::string text = ctx->available && !ctx->flights.empty()
+      ? espcontrol::flights::tile_summary(ctx->flights.front())
+      : flights_card_title(ctx);
+    lv_label_set_display_text(ctx->text_lbl, text.c_str());
+  }
+  if (ctx->btn) set_card_checked_state(ctx->btn, ctx->available && !ctx->flights.empty());
+}
+
+inline lv_obj_t *flights_modal_label(lv_obj_t *parent, const lv_font_t *font, uint32_t color) {
+  lv_obj_t *label = lv_label_create(parent);
+  lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
+  lv_obj_set_width(label, lv_pct(100));
+  lv_obj_set_style_text_color(label, lv_color_hex(color), LV_PART_MAIN);
+  lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+  if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
+  apply_text_width_compensation(label);
+  return label;
+}
+
+inline FlightsModalRow flights_modal_create_row(FlightsModalUi &ui, const lv_font_t *font) {
+  FlightsModalRow row;
+  row.row = lv_obj_create(ui.list);
+  lv_obj_set_width(row.row, lv_pct(100));
+  lv_obj_set_height(row.row, LV_SIZE_CONTENT);
+  lv_obj_set_style_radius(row.row, ui.row_radius, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(
+    row.row, lv_color_hex(theme_display_color(current_theme().surface_primary)), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(row.row, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(row.row, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(row.row, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(row.row, ui.row_pad, LV_PART_MAIN);
+  lv_obj_set_style_pad_row(row.row, ui.row_pad / 3, LV_PART_MAIN);
+  lv_obj_set_layout(row.row, LV_LAYOUT_FLEX);
+  lv_obj_set_style_flex_flow(row.row, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
+  lv_obj_clear_flag(row.row, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_clear_flag(row.row, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_flag(row.row, LV_OBJ_FLAG_SCROLL_CHAIN);
+  theme_set_content_background(row.row, false);
+  row.title = flights_modal_label(row.row, font, current_theme().text_primary);
+  row.route = flights_modal_label(row.row, font, current_theme().text_muted);
+  row.details = flights_modal_label(row.row, font, current_theme().text_muted);
+  return row;
+}
+
+inline void flights_set_row_text(lv_obj_t *label, const std::string &text) {
+  lv_label_set_display_text(label, text.c_str());
+  if (text.empty()) lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
+  else lv_obj_clear_flag(label, LV_OBJ_FLAG_HIDDEN);
+}
+
+inline void flights_refresh_map_details(FlightsModalUi &ui) {
+  auto &map = ui.map;
+  const auto &flights = ui.active->flights;
+  const auto selected = std::find_if(flights.begin(), flights.end(), [&](const auto &flight) {
+    return !map.selected.empty() && flight.map_id == map.selected;
+  });
+  if (!ui.active->available || selected == flights.end()) {
+    map.selected.clear();
+    lv_obj_add_flag(map.details, LV_OBJ_FLAG_HIDDEN);
+    return;
+  }
+  const std::string text = espcontrol::flights::join(
+    {flights_row_title(*selected), flights_row_route(*selected),
+     flights_row_details(*selected, ui.active->imperial)}, "  |  ");
+  lv_label_set_display_text(map.details, text.c_str());
+  lv_obj_clear_flag(map.details, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_move_foreground(map.details);
+}
+
+inline void flights_sync_map(FlightsModalUi &ui) {
+  auto &map = ui.map;
+  auto *ctx = ui.active;
+  const auto bounds = ctx->map_bounds;
+  const bool has_map = static_cast<bool>(bounds);
+  if (!(ui.rendered_bounds == bounds) && map.area) {
+    flights_map_release(map);
+    ui.rendered_bounds = {};
+  }
+  if (!has_map) ui.rendered_bounds = {};
+  if (ui.show_map && has_map && !(ui.rendered_bounds == bounds)) {
+    ui.rendered_bounds = bounds;
+    const espcontrol::flights::MapProjection projection(
+      bounds, ui.content_width, ui.content_height);
+    if (flights_map_create(map, ui.panel, projection, ui.inset, ui.content_top,
+                           ui.marker_size, ctx->label_font))
+      flights_map_draw_background(map, bounds);
+  }
+  if (ctx->available && has_map && (map.area || !(ui.rendered_bounds == bounds))) {
+    lv_obj_clear_flag(ui.view_button, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    lv_obj_add_flag(ui.view_button, LV_OBJ_FLAG_HIDDEN);
+  }
+  const bool show_map = ui.show_map && map.area && ctx->available;
+  lv_label_set_display_text(ui.view_label, espcontrol_i18n(show_map ? "List" : "Map"));
+  if (show_map) lv_obj_add_flag(ui.list, LV_OBJ_FLAG_HIDDEN);
+  else lv_obj_clear_flag(ui.list, LV_OBJ_FLAG_HIDDEN);
+  if (!map.area) return;
+  if (!show_map) {
+    lv_obj_add_flag(map.area, LV_OBJ_FLAG_HIDDEN);
+    if (map.timer) lv_timer_pause(map.timer);
+    return;
+  }
+  lv_obj_clear_flag(map.area, LV_OBJ_FLAG_HIDDEN);
+  if (map.timer) lv_timer_resume(map.timer);
+  const uint32_t now = lv_tick_get();
+  for (auto &marker : map.markers) {
+    const auto present = std::find_if(ctx->flights.begin(), ctx->flights.end(), [&](const auto &flight) {
+      return flight.map_id == marker.track.id && flight.has_position();
+    });
+    if ((!ctx->available || present == ctx->flights.end()) && marker.button) {
+      marker.track.id.clear();
+      lv_obj_add_flag(marker.button, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
+  if (ctx->available) {
+    for (const auto &flight : ctx->flights) {
+      if (!flight.has_position()) continue;
+      auto marker = std::find_if(map.markers.begin(), map.markers.end(), [&](const auto &m) {
+        return m.track.id == flight.map_id;
+      });
+      if (marker == map.markers.end()) {
+        marker = std::find_if(map.markers.begin(), map.markers.end(),
+                              [](const auto &m) { return m.track.id.empty(); });
+      }
+      if (marker == map.markers.end()) break;
+      if (!marker->button) {
+        flights_map_create_marker(map, *marker, ctx->icon_font, ctx->label_font, [](lv_event_t *event) {
+          auto &ui = flights_modal_ui();
+          auto *marker = static_cast<FlightsMapMarker *>(lv_event_get_user_data(event));
+          if (!ui.active || !marker) return;
+          ui.map.selected = marker->track.id;
+          flights_refresh_map_details(ui);
+        });
+      }
+      auto &track = marker->track;
+      const auto same = [](float a, float b) { return a == b || (std::isnan(a) && std::isnan(b)); };
+      if (track.id != flight.map_id || track.latitude != flight.latitude ||
+          track.longitude != flight.longitude || !same(track.heading, flight.heading) ||
+          !same(track.speed, flight.speed_kt) || track.on_ground != flight.on_ground) {
+        track.update(flight, map.projection, now);
+        lv_obj_set_style_transform_rotation(marker->plane,
+          std::isfinite(flight.heading) ? std::lround(flight.heading * 10) : 0, LV_PART_MAIN);
+      }
+      lv_label_set_display_text(marker->label, espcontrol::flights::flight_title(flight).c_str());
+    }
+  }
+  flights_refresh_map_details(ui);
+  flights_map_animate(map);
+}
+
+inline void flights_refresh_modal(FlightsCardCtx *ctx) {
+  FlightsModalUi &ui = flights_modal_ui();
+  if (!ctx || ui.active != ctx || !ui.list) return;
+  flights_sync_map(ui);
+  const size_t count = ctx->available ? ctx->flights.size() : 0;
+  if (ui.rows.size() != count || (count == 0 && !ui.empty_lbl)) {
+    // Rows only change when flights enter or leave; keep the scroll position.
+    const lv_coord_t scroll_y = lv_obj_get_scroll_y(ui.list);
+    lv_obj_clean(ui.list);
+    ui.rows.clear();
+    ui.empty_lbl = nullptr;
+    for (size_t i = 0; i < count; ++i)
+      ui.rows.push_back(flights_modal_create_row(ui, ctx->label_font));
+    if (count == 0) {
+      ui.empty_lbl = flights_modal_label(ui.list, ctx->label_font, current_theme().text_muted);
+      lv_label_set_long_mode(ui.empty_lbl, LV_LABEL_LONG_WRAP);
+      lv_obj_set_style_text_align(ui.empty_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    }
+    lv_obj_update_layout(ui.list);
+    lv_obj_scroll_to_y(ui.list, scroll_y, LV_ANIM_OFF);
+  }
+  if (ui.empty_lbl) {
+    const char *key = ctx->available ? "No flights nearby" : "Flight data unavailable";
+    lv_label_set_display_text(ui.empty_lbl, espcontrol_i18n(key));
+  }
+  for (size_t i = 0; i < count; ++i) {
+    const auto &flight = ctx->flights[i];
+    flights_set_row_text(ui.rows[i].title, flights_row_title(flight));
+    flights_set_row_text(ui.rows[i].route, flights_row_route(flight));
+    flights_set_row_text(ui.rows[i].details, flights_row_details(flight, ctx->imperial));
+  }
+}
+
+inline void flights_open_modal(FlightsCardCtx *ctx) {
+  if (!ctx || !ctx->btn) return;
+  const int width_compensation = icon_width_compensation_percent();
+  ControlModalShell shell = control_modal_open_shell(
+    ControlModalKind::FLIGHTS, ctx->btn, width_compensation,
+    ctx->icon_font, flights_hide_modal);
+  if (!shell.overlay || !shell.panel) return;
+  FlightsModalUi &ui = flights_modal_ui();
+  ui.overlay = shell.overlay;
+  ui.active = ctx;
+  ui.panel = shell.panel;
+
+  ControlModalLayout &layout = shell.layout;
+  lv_coord_t gap = control_modal_scaled_px(12, layout.short_side);
+  if (gap < 8) gap = 8;
+  ui.row_pad = gap;
+  ui.row_radius = control_modal_scaled_px(16, layout.short_side);
+  const lv_coord_t title_y = layout.inset + layout.back_size / 2;
+  const lv_coord_t list_y = layout.inset + layout.back_size + gap;
+  lv_coord_t list_h = layout.panel_h - list_y - layout.inset;
+  if (list_h < 60) list_h = 60;
+
+  const int switch_width = std::max<int>(layout.back_size, 84);
+  lv_obj_t *title = control_modal_create_title(
+    shell.panel, flights_card_title(ctx), shell.content_w - 2 * (switch_width + gap),
+    ctx->label_font, width_compensation);
+  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, title_y - layout.back_size / 2);
+
+  ui.list = control_modal_create_scroll_list(shell.panel, shell.content_w, list_h, gap);
+  lv_obj_align(ui.list, LV_ALIGN_TOP_LEFT, layout.inset, list_y);
+  ui.content_width = shell.content_w;
+  ui.content_height = list_h;
+  ui.content_top = list_y;
+  ui.inset = layout.inset;
+  ui.marker_size = layout.back_size;
+
+  ui.view_button = lv_button_create(shell.panel);
+  lv_obj_set_size(ui.view_button, switch_width, layout.back_size);
+  lv_obj_align(ui.view_button, LV_ALIGN_TOP_LEFT, layout.inset, layout.inset);
+  lv_obj_set_style_radius(ui.view_button, layout.back_size / 2, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.view_button,
+    lv_color_hex(theme_display_color(current_theme().surface_primary)), LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(ui.view_button, 0, LV_PART_MAIN);
+  ui.view_label = lv_label_create(ui.view_button);
+  if (ctx->label_font) lv_obj_set_style_text_font(ui.view_label, ctx->label_font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(ui.view_label, lv_color_hex(current_theme().text_primary), LV_PART_MAIN);
+  lv_obj_center(ui.view_label);
+  lv_obj_add_event_cb(ui.view_button, [](lv_event_t *) {
+    auto &ui = flights_modal_ui();
+    ui.show_map = !ui.show_map;
+    flights_sync_map(ui);
+  }, LV_EVENT_CLICKED, nullptr);
+  flights_refresh_modal(ctx);
+  lv_obj_move_foreground(ui.overlay);
+}
+
+inline void handle_flights_card_click(FlightsCardCtx *ctx) {
+  flights_open_modal(ctx);
+}
+
+inline void subscribe_flights_card(FlightsCardCtx *ctx) {
+  if (!ctx || ctx->entity_id.empty()) return;
+  HaCallbackOwnerScope callback_owner(ctx);
+  ha_subscribe_state(
+    ctx->entity_id,
+    std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
+      ctx->available = !ha_entity_state_unavailable_ref(ctx->entity_id, state);
+      ctx->count = ctx->available ? string_ref_limited(state, 8) : "";
+      flights_apply_card_text(ctx);
+      flights_refresh_modal(ctx);
+    })
+  );
+  ha_subscribe_attribute(
+    ctx->entity_id, std::string("flights"),
+    std::function<void(esphome::StringRef)>([ctx](esphome::StringRef list) {
+      auto next = espcontrol::flights::parse_list(
+        string_ref_limited(list, espcontrol::flights::MAX_LIST_TEXT_LEN));
+      if (next == ctx->flights) return;
+      ctx->flights = std::move(next);
+      flights_apply_card_text(ctx);
+      flights_refresh_modal(ctx);
+    })
+  );
+  ha_subscribe_attribute(
+    ctx->entity_id, std::string("bounds"),
+    std::function<void(esphome::StringRef)>([ctx](esphome::StringRef bounds) {
+      const auto next = espcontrol::flights::parse_map_bounds(string_ref_limited(bounds, 100));
+      if (next == ctx->map_bounds) return;
+      ctx->map_bounds = next;
+      flights_refresh_modal(ctx);
+    })
+  );
+  if (ctx->configured_label.empty()) {
+    ha_subscribe_attribute(
+      ctx->entity_id, std::string("friendly_name"),
+      std::function<void(esphome::StringRef)>([ctx](esphome::StringRef name) {
+        ctx->friendly_name = string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN);
+        flights_apply_card_text(ctx);
+      })
+    );
+  }
+}
+
+inline void setup_flights_card(BtnSlot &s, const ParsedCfg &p) {
+  lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+  lv_label_set_display_text(s.sensor_lbl, "--");
+  lv_label_set_display_text(s.unit_lbl, "");
+  lv_label_set_display_text(
+    s.text_lbl, p.label.empty() ? espcontrol_i18n("Flights") : p.label.c_str());
+  apply_push_button_transition(s.btn);
+}
