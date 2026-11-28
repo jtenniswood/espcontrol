@@ -463,7 +463,7 @@ lvgl:
                         - label:
                             id: cover_art_track_previous_icon
                             align: center
-                            text: "\U000F04AE"
+                            text: "\U000F5002"
                             text_font: font_icon_main
                             text_color: 0xFFFFFF
                             clickable: false
@@ -515,7 +515,7 @@ lvgl:
                         - label:
                             id: cover_art_track_next_icon
                             align: center
-                            text: "\U000F04AD"
+                            text: "\U000F5003"
                             text_font: font_icon_main
                             text_color: 0xFFFFFF
                             clickable: false

@@ -24,7 +24,12 @@ GOOGLE_SOURCE = (
 )
 ASSETS = ROOT / "common" / "assets"
 AXES = {"FILL": 0, "wght": 400, "GRAD": 0, "opsz": 24}
-FILLED_SYMBOLS = {0xF5000: "play_arrow", 0xF5001: "pause"}
+FILLED_SYMBOLS = {
+    0xF5000: "play_arrow",
+    0xF5001: "pause",
+    0xF5002: "skip_previous",
+    0xF5003: "skip_next",
+}
 
 
 def icon_slots():
