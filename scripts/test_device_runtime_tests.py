@@ -14,11 +14,33 @@ import unittest
 from unittest.mock import patch
 
 import test_device_runtime as runtime
+from summarize_display_benchmark import analyze
 
 
 def info(version="2026.9.1", compiled="test-build"):
     return SimpleNamespace(name="test", mac_address="AA:BB:CC:DD:EE:FF", model="fake",
                            esphome_version=version, compilation_time=compiled, project_version="dev")
+
+
+class DisplayBenchmarkSummaryTests(unittest.TestCase):
+    def test_allocated_buffer_is_optional_and_empty_refreshes_do_not_count(self):
+        memory = "internal_free=100 internal_min=90 internal_largest=80 psram_free=200 psram_min=180 psram_largest=160"
+        records = [
+            f"sample time_us=1000 {memory} task_count=2 total_runtime=1000 lost=0",
+            "task id=1 idle_core=0 runtime=500",
+            "task id=2 idle_core=1 runtime=750",
+            f"sample time_us=2000 {memory} task_count=2 total_runtime=2000 lost=0",
+            "task id=1 idle_core=0 runtime=1250",
+            "task id=2 idle_core=1 runtime=1750",
+            "events F:1160 C:1180 V:1200 V:1400 F:1480 C:1490 V:1500",
+        ]
+        records = [f"[I][display_benchmark:42]: {record}" for record in records]
+        self.assertIsNone(analyze(records)["lvgl_draw_buffer_bytes"])
+        records[3] += " draw_buffer_bytes=512000"
+        result = analyze(records)
+        self.assertEqual(result["lvgl_draw_buffer_bytes"], 512000)
+        self.assertEqual(result["cpu_busy_percent_both_cores"], 12.5)
+        self.assertEqual(result["render_timings_us"]["refresh_interval"]["p95"], 300)
 
 
 class EvidenceTests(unittest.TestCase):

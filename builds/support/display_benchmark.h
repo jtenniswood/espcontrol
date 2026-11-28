@@ -20,6 +20,7 @@ class Probe final : public esphome::touchscreen::TouchListener {
  public:
   void attach(lv_display_t *display, esphome::touchscreen::Touchscreen &touchscreen) {
     if (display == nullptr || attached_) return;
+    draw_buffer_bytes_ = lv_display_get_draw_buf_size(display);
     lv_display_add_event_cb(display, display_event_, LV_EVENT_ALL, this);
     touchscreen.register_listener(this);
     attached_ = true;
@@ -37,12 +38,13 @@ class Probe final : public esphome::touchscreen::TouchListener {
     Runtime total_runtime = 0;
     const auto task_count = uxTaskGetSystemState(tasks_.data(), tasks_.size(), &total_runtime);
     ESP_LOGI(TAG, "sample time_us=%" PRId64 " internal_free=%zu internal_min=%zu internal_largest=%zu "
-             "psram_free=%zu psram_min=%zu psram_largest=%zu task_count=%u total_runtime=%" PRIu64 " lost=%u",
+             "psram_free=%zu psram_min=%zu psram_largest=%zu draw_buffer_bytes=%" PRIu32
+             " task_count=%u total_runtime=%" PRIu64 " lost=%u",
              esp_timer_get_time(),
              heap_caps_get_free_size(INTERNAL), heap_caps_get_minimum_free_size(INTERNAL),
              heap_caps_get_largest_free_block(INTERNAL), heap_caps_get_free_size(EXTERNAL),
              heap_caps_get_minimum_free_size(EXTERNAL), heap_caps_get_largest_free_block(EXTERNAL),
-             static_cast<unsigned>(task_count), static_cast<uint64_t>(total_runtime), lost_);
+             draw_buffer_bytes_, static_cast<unsigned>(task_count), static_cast<uint64_t>(total_runtime), lost_);
     for (unsigned i = 0; i < task_count; ++i) {
       const auto &task = tasks_[i];
       // The snapshot holds a pointer to the task name. A worker can exit
@@ -101,6 +103,7 @@ class Probe final : public esphome::touchscreen::TouchListener {
   static constexpr const char *TAG = "display_benchmark";
   std::array<Event, 512> events_{};
   std::array<TaskStatus_t, 48> tasks_{};
+  uint32_t draw_buffer_bytes_{0};
   size_t used_{0};
   unsigned lost_{0};
   bool attached_{false};

@@ -99,6 +99,7 @@ def analyze(lines):
         "cpu_busy_counter_ticks": busy,
         "cpu_busy_percent_both_cores": 100 * busy / (2 * elapsed),
         "memory_min_bytes": {key: min(sample[key] for sample in samples) for key in MEMORY_FIELDS},
+        "lvgl_draw_buffer_bytes": last.get("draw_buffer_bytes"),
         "render_timings_us": {name: summary(values) for name, values in sorted(timings.items())},
         "touches": {"presses": touch_counts["T"], "releases": touch_counts["U"]},
     }

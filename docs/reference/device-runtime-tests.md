@@ -104,6 +104,16 @@ capture. Start the runner before the workload so the first complete sample
 precedes the measured actions. Add the existing `--modal-entity` option for
 repeatable remote modal cycles.
 
+For the buffer-size comparison, use
+`builds/guition-esp32-p4-jc8012p4a1-v3-benchmark-quarter-buffer.yaml` as the
+candidate. It sets the LVGL draw and rotation buffer size to 25% of a frame.
+Compare it with the benchmark build above, which uses the normal V3 allocation
+policy. Check full-screen redraws and all supported orientations as well as
+the repeated modal workload. Smaller buffers make LVGL split large redraws
+into more transfers, so check frame timing alongside available memory. The
+summary records the allocated LVGL draw buffer size, so a baseline that fell
+back to a smaller allocation remains distinguishable.
+
 ```sh
 npm run test:device-runtime -- --host 192.168.6.103 --capture-display --output build/display-baseline
 python3 scripts/summarize_display_benchmark.py build/display-baseline/display-benchmark.log
