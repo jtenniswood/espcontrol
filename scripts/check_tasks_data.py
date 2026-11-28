@@ -99,6 +99,7 @@ TASKS = (
          domains=("firmware",),
          inputs=(
              "tests/firmware/**",
+             "builds/support/display_native_flush.h",
              "components/web_server_idf/**",
              "components/gsl3680/**",
              "common/addon/backlight.yaml",
@@ -226,7 +227,8 @@ TASKS = (
     task("preview-features", ("node", "scripts/check_preview_features.js"), dependencies=("generated",), profiles=PRODUCT,
          domains=("product", "web"), inputs=("src/webserver/features/**", "src/webserver/model/**", "src/webserver/contracts/**", "tests/web/*_feature.test.ts", "tests/web/preview_grid.test.ts", "scripts/check_preview_features.js", "scripts/load_typescript_module.js"), parallel_safe=True),
     task("device-runtime-tests", ("python3", "scripts/test_device_runtime_tests.py"), profiles=FAST,
-         domains=("firmware",), inputs=("scripts/test_device_runtime.py", "scripts/test_device_runtime_tests.py"),
+         domains=("firmware",), inputs=("scripts/test_device_runtime.py", "scripts/test_device_runtime_tests.py",
+                                        "scripts/summarize_display_benchmark.py"),
          parallel_safe=True),
     task("memory-monitor", ("python3", "scripts/monitor_display_memory.py", "--self-test"), profiles=FAST,
          domains=("firmware",), inputs=("scripts/monitor_display_memory.py",), parallel_safe=True),

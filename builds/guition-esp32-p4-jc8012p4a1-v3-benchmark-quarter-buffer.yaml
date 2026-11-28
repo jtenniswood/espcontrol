@@ -1,0 +1,10 @@
+# Same V3 benchmark workload with smaller LVGL draw and rotation buffers.
+# Keep this experimental configuration out of the public installer matrix.
+packages:
+  benchmark: !include guition-esp32-p4-jc8012p4a1-v3-benchmark.yaml
+
+esphome:
+  build_path: build/espcontrol-jc8012p4a1-v3-quarter-buffer
+
+lvgl:
+  buffer_size: 25%

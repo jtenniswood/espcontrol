@@ -93,3 +93,64 @@ physical device testing.
 The runner's own offline tests are included in the fast/CI checks. Run them alone
 with `npm run check:device-runtime-tests`; they use mocked APIs and a local HTTP
 fixture, without contacting hardware.
+
+## 10-inch V3 display performance
+
+The local `builds/guition-esp32-p4-jc8012p4a1-v3-benchmark.yaml` build adds
+touch, LVGL, heap and FreeRTOS timing counters to the normal V3 factory
+configuration. Use the same instrumented build settings for baseline and
+candidate firmware. Capture one workload per run and avoid rebooting during a
+capture. Start the runner before the workload so the first complete sample
+precedes the measured actions. Add the existing `--modal-entity` option for
+repeatable remote modal cycles. With `--capture-display` the runner waits for
+the first benchmark sample before it opens a modal. Allow enough observation
+time for the cycles and a final report after the last redraw.
+
+For the buffer-size comparison, use
+`builds/guition-esp32-p4-jc8012p4a1-v3-benchmark-quarter-buffer.yaml` as the
+candidate. It sets the LVGL draw and rotation buffer size to 25% of a frame.
+Compare it with the benchmark build above, which uses the normal V3 allocation
+policy. Check full-screen redraws and all supported orientations as well as
+the repeated modal workload. Smaller buffers make LVGL split large redraws
+into more transfers, so check frame timing alongside available memory. The
+summary records the allocated LVGL draw buffer size, so a baseline that fell
+back to a smaller allocation remains distinguishable.
+
+For the DSI transfer comparison, use
+`builds/guition-esp32-p4-jc8012p4a1-v3-benchmark-staged-dsi.yaml` against the
+quarter-buffer build. It keeps ESPHome's LVGL and rotation path and gives the
+DSI driver one PSRAM buffer for transfers. This lets the next region render
+while DMA reads the previous region. The refresh waits for its final transfer.
+Confirm the summary reports both allocated `dsi_staging_bytes` and nonzero
+`dsi_staged_submissions` for the workload before comparing CPU, frame timing,
+and memory. The staging path adds a copy and uses additional PSRAM, so include
+those costs in the comparison.
+
+For a dedicated worker comparison, use
+`builds/guition-esp32-p4-jc8012p4a1-v3-benchmark-native-flush.yaml` against the
+quarter-buffer build. At the default 90° orientation, the worker rotates and
+transfers an eligible region while LVGL can draw into a second buffer. Other
+orientations, unsupported regions, and rejected hardware rotations use the
+normal ESPHome flush. Use `native_flush_regions` to confirm the worker ran,
+`native_flush_bytes` to account for its two extra PSRAM buffers, and
+`cpu_task_ticks` to compare the ESPHome loop and display worker. Confirm
+visible output after rotation, wake, and repeated full-screen redraws.
+
+```sh
+npm run test:device-runtime -- --host 192.168.6.103 --capture-display --output build/display-baseline
+python3 scripts/summarize_display_benchmark.py build/display-baseline/display-benchmark.log
+```
+
+Use equal-duration idle, slider/navigation and image-heavy workloads, and
+alternate baseline and candidate runs on the same panel. Record the firmware
+commit, orientation, dashboard, and action count alongside each capture. The
+summary reports elapsed time and combined busy time for both CPU cores,
+minimum heap availability, touch counts, and LVGL timings. Refresh intervals
+include idle gaps, so compare them within the same continuous interaction.
+The timer spans instrumented firmware work. Use high-speed video to measure
+touch-to-visible feedback and check scanout for tearing. Repeat the normal
+installer, OTA, and existing Home Assistant automation checks before rollout.
+The summary drops an unfinished final report so CPU, frame timing, and touch
+counts describe the same interval. Capture at least two complete reports.
+For older captures without event counts, the summary uses the next report as
+the boundary and discards the last report.

@@ -14,11 +14,91 @@ import unittest
 from unittest.mock import patch
 
 import test_device_runtime as runtime
+from summarize_display_benchmark import analyze
 
 
 def info(version="2026.9.1", compiled="test-build"):
     return SimpleNamespace(name="test", mac_address="AA:BB:CC:DD:EE:FF", model="fake",
                            esphome_version=version, compilation_time=compiled, project_version="dev")
+
+
+class DisplayBenchmarkSummaryTests(unittest.TestCase):
+    def test_allocated_buffer_is_optional_and_empty_refreshes_do_not_count(self):
+        memory = "internal_free=100 internal_min=90 internal_largest=80 psram_free=200 psram_min=180 psram_largest=160"
+        records = [
+            f"sample time_us=1000 {memory} task_count=2 total_runtime=1000 lost=0 event_count=0",
+            "task id=1 idle_core=0 runtime=500",
+            "task id=2 idle_core=1 runtime=750",
+            f"sample time_us=2000 {memory} task_count=2 total_runtime=2000 lost=0 event_count=7",
+            "task id=1 idle_core=0 runtime=1250",
+            "task id=2 idle_core=1 runtime=1750",
+            "events F:1160 C:1180 V:1200 V:1400 F:1480 C:1490 V:1500",
+        ]
+        records = [f"[I][display_benchmark:42]: {record}" for record in records]
+        self.assertIsNone(analyze(records)["lvgl_draw_buffer_bytes"])
+        records[0] += " dsi_staged_submissions=100"
+        records[3] += " draw_buffer_bytes=512000 dsi_staging_bytes=512000 dsi_staged_submissions=112"
+        result = analyze(records)
+        self.assertEqual(result["lvgl_draw_buffer_bytes"], 512000)
+        self.assertEqual(result["dsi_staging_bytes"], 512000)
+        self.assertEqual(result["dsi_staged_submissions"], 12)
+        self.assertEqual(result["cpu_busy_percent_both_cores"], 12.5)
+        self.assertEqual(result["render_timings_us"]["refresh_interval"]["p95"], 300)
+
+    def test_dedicated_worker_regions_and_cpu_are_reported_over_the_capture(self):
+        memory = "internal_free=100 internal_min=90 internal_largest=80 psram_free=200 psram_min=180 psram_largest=160"
+        records = [
+            f"sample time_us=1000 {memory} task_count=4 total_runtime=1000 lost=0 event_count=0 native_flush_regions=8",
+            "task id=1 idle_core=0 runtime=500",
+            "task id=2 idle_core=1 runtime=750",
+            "task id=3 idle_core=-1 role=1 runtime=200",
+            "task id=4 idle_core=-1 role=2 runtime=100",
+            f"sample time_us=2000 {memory} task_count=4 total_runtime=2000 lost=0 event_count=0 native_flush_regions=18 "
+            "native_flush_bytes=1024000",
+            "task id=1 idle_core=0 runtime=1250",
+            "task id=2 idle_core=1 runtime=1750",
+            "task id=3 idle_core=-1 role=1 runtime=300",
+            "task id=4 idle_core=-1 role=2 runtime=250",
+        ]
+        result = analyze(f"[I][display_benchmark:42]: {record}" for record in records)
+        self.assertEqual(result["native_flush_regions"], 10)
+        self.assertEqual(result["native_flush_bytes"], 1024000)
+        self.assertEqual(result["cpu_task_ticks"], {"esphome_loop": 100, "display_worker": 150})
+
+    def test_partial_terminal_trace_does_not_extend_the_cpu_or_touch_window(self):
+        memory = "internal_free=100 internal_min=90 internal_largest=80 psram_free=200 psram_min=180 psram_largest=160"
+        reports = []
+        for time_us, expected in ((1000, 0), (2000, 2), (3000, 2)):
+            reports.extend([
+                f"sample time_us={time_us} {memory} task_count=2 total_runtime={time_us} lost=0 event_count={expected}",
+                f"task id=1 idle_core=0 runtime={time_us // 2}",
+                f"task id=2 idle_core=1 runtime={time_us // 2}",
+            ])
+            if time_us == 2000:
+                reports.append("events T:1200 U:1600")
+            elif time_us == 3000:
+                reports.append("events T:2400")
+
+        def capture(records):
+            return analyze(f"[I][display_benchmark:42]: {record}" for record in records)
+
+        partial = capture(reports)
+        self.assertTrue(partial["discarded_terminal_sample"])
+        self.assertAlmostEqual(partial["seconds_between_samples"], 0.001)
+        self.assertEqual(partial["cpu_busy_counter_ticks"], 1000)
+        self.assertEqual(partial["touches"], {"presses": 1, "releases": 1})
+
+        complete = capture(reports + ["events U:2800"])
+        self.assertFalse(complete["discarded_terminal_sample"])
+        self.assertEqual(complete["cpu_busy_counter_ticks"], 2000)
+        self.assertEqual(complete["touches"], {"presses": 2, "releases": 2})
+
+        with self.assertRaisesRegex(ValueError, "missing or has unexpected trace events"):
+            capture(reports + [reports[0].replace("1000", "4000")])
+
+        legacy_tail = list(reports)
+        legacy_tail[-4] = legacy_tail[-4].replace(" event_count=2", "")
+        self.assertEqual(capture(legacy_tail + ["events U:2800"]), partial)
 
 
 class EvidenceTests(unittest.TestCase):
@@ -166,7 +246,8 @@ class FakeProbe:
 class RunnerTests(unittest.IsolatedAsyncioTestCase):
     async def run_fake(self, *, crash=False, disconnected=False, acknowledge=True,
                        modal=True, duration=.15, cycles=2, dwell=.005, memory=True, http_mac="ddeeff", change_identity_after_open=False, close_delay=0,
-                       record_close=False, cancel_run=False, cancel_close=False, timeout=.05):
+                       record_close=False, cancel_run=False, cancel_close=False, timeout=.05, capture_display=False,
+                       send_display_sample=True):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         calls=[]
@@ -185,6 +266,9 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
                 cb(SimpleNamespace(key=99,state='secret config'))
             def subscribe_logs(self, cb, **kwargs):
                 self.log=cb
+                if capture_display and send_display_sample:
+                    cb(SimpleNamespace(message=b'[I][display_benchmark:40]: sample time_us=1000', level=3))
+                    cb(SimpleNamespace(message=b'[I][other:40]: unrelated log', level=3))
                 if crash: cb(SimpleNamespace(message=b'Guru Meditation Error: test',level=1))
                 if disconnected:
                     asyncio.create_task(self.on_stop(False))
@@ -213,7 +297,7 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
             output=Path(tmp.name)/'results',min_heap_percent=5,interval=.005,duration=duration,
             expect_version='2026.9.1',expect_build='test-build',
             modal_entity='media_player.office' if modal else None,
-            modal_cycles=cycles,modal_dwell=dwell)
+            modal_cycles=cycles,modal_dwell=dwell,capture_display=capture_display)
         with patch.dict('sys.modules',{'aioesphomeapi':SimpleNamespace(LogLevel=levels)}), \
              patch.object(runtime,'HttpProbe',FakeProbe), patch.object(FakeProbe,'mac_suffix',http_mac), redirect_stdout(io.StringIO()):
             suite_task=asyncio.create_task(runtime.run_suite(args,Client))
@@ -221,6 +305,9 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
         report=json.loads((args.output/'report.json').read_text())
         events=(args.output/'events.jsonl').read_text()
         self.assertNotIn('secret config',events)
+        if capture_display and send_display_sample:
+            self.assertEqual((args.output/'display-benchmark.log').read_text(),
+                             '[I][display_benchmark:40]: sample time_us=1000\n')
         return code, report, calls
 
     async def test_success_requires_actual_modal_open_log_and_health(self):
@@ -255,6 +342,17 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(code,0,report)
         self.assertEqual(report['http_identity']['mac_suffix'],'ddeeff')
         self.assertGreater(report['counts']['identity_verified'],0)
+
+    async def test_display_capture_retains_only_benchmark_records(self):
+        code, report, _ = await self.run_fake(modal=False, capture_display=True)
+        self.assertEqual(code, 0, report)
+        self.assertEqual(report['counts']['display_benchmark_log'], 1)
+
+    async def test_display_capture_waits_for_sample_before_opening_modal(self):
+        code, report, calls = await self.run_fake(capture_display=True, send_display_sample=False)
+        self.assertEqual(code, 1, report)
+        self.assertIn('display_benchmark_missing', report['failures'])
+        self.assertNotIn('open_modal', calls)
 
     async def test_default_passive_mode_sends_no_modal_actions(self):
         code,report,calls=await self.run_fake(modal=False)

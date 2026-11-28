@@ -1,0 +1,18 @@
+# Dedicated pixel worker for the V3's default 90-degree orientation.
+packages:
+  benchmark: !include guition-esp32-p4-jc8012p4a1-v3-benchmark-quarter-buffer.yaml
+
+esphome:
+  build_path: build/espcontrol-jc8012p4a1-v3-native-flush
+  includes:
+    - support/display_native_flush.h
+    - support/display_native_flush_task.h
+  on_boot:
+    - priority: -90
+      then:
+        - lambda: |-
+            auto &task = espcontrol::display_native_flush::FlushTask::instance();
+            const auto bytes = task.attach(*id(main_lvgl), *id(my_display));
+            espcontrol::display_benchmark::probe().set_native_flush(bytes, []() {
+              return espcontrol::display_native_flush::FlushTask::instance().processed_regions();
+            }, task.worker());

@@ -1,0 +1,24 @@
+# Local instrumented build. Keep out of the public installer device matrix.
+packages:
+  v3: !include guition-esp32-p4-jc8012p4a1-v3.factory.yaml
+
+esp32:
+  framework:
+    sdkconfig_options:
+      CONFIG_FREERTOS_USE_TRACE_FACILITY: "y"
+      CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS: "y"
+
+esphome:
+  includes:
+    - support/display_benchmark.h
+  on_boot:
+    - priority: -100
+      then:
+        - lambda: |-
+            espcontrol::display_benchmark::probe().attach(id(main_lvgl)->get_disp(), *id(my_touchscreen));
+
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          espcontrol::display_benchmark::probe().report();
