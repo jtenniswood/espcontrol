@@ -88,7 +88,7 @@ struct SliderCtx {
   bool available = true;
   bool interactive = true;
   bool numeric = false;
-  bool numeric_dragging = false;
+  bool dragging = false;
   bool numeric_metadata_ready = false;
   bool numeric_min_known = false;
   bool numeric_max_known = false;
@@ -100,6 +100,8 @@ struct SliderCtx {
   double numeric_state = 0.0;
   std::string numeric_unit;
   lv_obj_t *value_sublabel = nullptr;
+  lv_timer_t *value_hold_timer = nullptr;
+  int preview_position = 0;
   int reported_percent = -1;
   bool percent_state_known = false;
   bool percent_slider_on = false;
@@ -1447,8 +1449,15 @@ inline void slider_geometry_refresh_event_cb(lv_event_t *e) {
   slider_refresh_geometry(slider);
 }
 
+inline void slider_clear_value_hold(SliderCtx *ctx) {
+  if (!ctx || !ctx->value_hold_timer) return;
+  lv_timer_del(ctx->value_hold_timer);
+  ctx->value_hold_timer = nullptr;
+}
+
 inline void slider_detach_runtime(SliderCtx *ctx,
                                   lv_obj_t *deleting_slider = nullptr) {
+  slider_clear_value_hold(ctx);
   espcontrol::media_slider_lifecycle::detach<
     SliderCtx, lv_timer_t, lv_obj_t>(
       ctx, deleting_slider,
@@ -2792,21 +2801,24 @@ inline void setup_cover_command_card(BtnSlot &s, const ParsedCfg &p) {
   apply_push_button_transition(s.btn);
 }
 
-inline void slider_refresh_value_sublabel(lv_obj_t *slider, SliderCtx *ctx) {
-  if (!ctx || !ctx->value_sublabel) return;
+inline void slider_refresh_value_sublabel(SliderCtx *ctx) {
+  // Subscriptions keep updating the reported value during the hold.
+  if (!ctx || !ctx->value_sublabel || ctx->value_hold_timer) return;
   std::string value = "--";
   if (ctx->numeric) {
-    if (ctx->numeric_dragging) {
+    if (ctx->dragging) {
       const auto metadata = slider_numeric_metadata(ctx);
       value = espcontrol::number_slider::format_value(
-        espcontrol::number_slider::value_for_position(metadata, lv_slider_get_value(slider)),
+        espcontrol::number_slider::value_for_position(metadata, ctx->preview_position),
         metadata);
     } else if (ctx->numeric_state_known) {
       value = ctx->numeric_state_text;
     }
-    if ((ctx->numeric_dragging || ctx->numeric_state_known) && !ctx->numeric_unit.empty()) {
+    if ((ctx->dragging || ctx->numeric_state_known) && !ctx->numeric_unit.empty()) {
       value += " " + ctx->numeric_unit;
     }
+  } else if (ctx->dragging) {
+    value = std::to_string(ctx->preview_position) + "%";
   } else if (ctx->available) {
     const int percent = ctx->percent_slider_on ? ctx->reported_percent : 0;
     if (percent >= 0) value = std::to_string(percent) + "%";
@@ -2814,9 +2826,27 @@ inline void slider_refresh_value_sublabel(lv_obj_t *slider, SliderCtx *ctx) {
   lv_label_set_display_text(ctx->value_sublabel, value.c_str());
 }
 
+constexpr uint32_t SLIDER_VALUE_HOLD_MS = 2000;
+
+inline void slider_hold_released_value(SliderCtx *ctx, int position) {
+  slider_clear_value_hold(ctx);
+  ctx->preview_position = position;
+  ctx->dragging = true;
+  slider_refresh_value_sublabel(ctx);
+  ctx->dragging = false;
+  if (!ctx->value_sublabel) return;
+  ctx->value_hold_timer = lv_timer_create([](lv_timer_t *timer) {
+    auto *ctx = static_cast<SliderCtx *>(lv_timer_get_user_data(timer));
+    ctx->value_hold_timer = nullptr;
+    slider_refresh_value_sublabel(ctx);
+  }, SLIDER_VALUE_HOLD_MS, ctx);
+  if (ctx->value_hold_timer) lv_timer_set_repeat_count(ctx->value_hold_timer, 1);
+  else slider_refresh_value_sublabel(ctx);
+}
+
 inline void slider_numeric_apply_state(lv_obj_t *slider, SliderCtx *ctx) {
   if (!slider || !ctx || !ctx->numeric || !ctx->numeric_metadata_ready ||
-      !ctx->numeric_state_known || ctx->numeric_dragging) return;
+      !ctx->numeric_state_known || ctx->dragging) return;
   const auto metadata = slider_numeric_metadata(ctx);
   const int position = espcontrol::number_slider::position_for_value(
     metadata, ctx->numeric_state);
@@ -2833,11 +2863,11 @@ inline void slider_numeric_update_interaction(lv_obj_t *slider, SliderCtx *ctx) 
     lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
 }
 
-inline void slider_numeric_cancel_drag(lv_obj_t *slider, SliderCtx *ctx) {
-  if (!ctx || !ctx->numeric) return;
-  ctx->numeric_dragging = false;
-  slider_refresh_value_sublabel(slider, ctx);
-  slider_numeric_apply_state(slider, ctx);
+inline void slider_cancel_drag(lv_obj_t *slider, SliderCtx *ctx) {
+  if (!ctx || !ctx->dragging) return;
+  ctx->dragging = false;
+  slider_refresh_value_sublabel(ctx);
+  if (ctx->numeric) slider_numeric_apply_state(slider, ctx);
 }
 
 inline void slider_numeric_refresh_metadata(lv_obj_t *slider, SliderCtx *ctx) {
@@ -2846,7 +2876,7 @@ inline void slider_numeric_refresh_metadata(lv_obj_t *slider, SliderCtx *ctx) {
   const bool complete = ctx->numeric_min_known && ctx->numeric_max_known &&
                         ctx->numeric_step_known;
   const bool ready = complete && espcontrol::number_slider::metadata_valid(metadata);
-  const bool was_dragging = ctx->numeric_dragging;
+  const bool was_dragging = ctx->dragging;
   ctx->numeric_metadata_ready = ready;
   if (ready) {
     lv_slider_set_range(
@@ -2857,8 +2887,8 @@ inline void slider_numeric_refresh_metadata(lv_obj_t *slider, SliderCtx *ctx) {
              ctx->numeric_step);
   }
   if (was_dragging) {
-    ctx->numeric_dragging = false;
-    slider_refresh_value_sublabel(slider, ctx);
+    ctx->dragging = false;
+    slider_refresh_value_sublabel(ctx);
   }
   if (ready) slider_numeric_apply_state(slider, ctx);
   slider_numeric_update_interaction(slider, ctx);
@@ -2940,26 +2970,31 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
     int pct = slider_position_percent(c, val);
     int fill_val = c->inverted ? 100 - pct : pct;
     slider_update_ctx_fill(c, lv_obj_get_parent(sl), fill_val);
-    if (c->numeric && c->numeric_dragging) slider_refresh_value_sublabel(sl, c);
+    if (c->dragging) {
+      c->preview_position = val;
+      slider_refresh_value_sublabel(c);
+    }
   }, LV_EVENT_VALUE_CHANGED, nullptr);
 
   if (interactive) {
     lv_obj_add_event_cb(slider, [](lv_event_t *e) {
       lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
       SliderCtx *c = sl ? (SliderCtx *)lv_obj_get_user_data(sl) : nullptr;
-      if (c && c->numeric) {
-        if (!c->available || !c->numeric_metadata_ready) return;
-        c->numeric_dragging = true;
+      if (!c || !c->available || (c->numeric && !c->numeric_metadata_ready)) return;
+      if (c->value_sublabel || c->numeric) {
+        slider_clear_value_hold(c);
+        c->dragging = true;
       }
       slider_apply_vertical_pointer_value(sl);
-      if (c && c->numeric) slider_refresh_value_sublabel(sl, c);
+      if (c->dragging) {
+        c->preview_position = lv_slider_get_value(sl);
+        slider_refresh_value_sublabel(c);
+      }
     }, LV_EVENT_PRESSED, nullptr);
 
     lv_obj_add_event_cb(slider, [](lv_event_t *e) {
       lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
       slider_apply_vertical_pointer_value(sl);
-      SliderCtx *c = sl ? (SliderCtx *)lv_obj_get_user_data(sl) : nullptr;
-      if (c && c->numeric && c->numeric_dragging) slider_refresh_value_sublabel(sl, c);
     }, LV_EVENT_PRESSING, nullptr);
 
     lv_obj_add_event_cb(slider, [](lv_event_t *e) {
@@ -2968,22 +3003,22 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
       SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(sl);
       if (c && !c->entity_id.empty()) {
         if (!c->available) {
-          slider_numeric_cancel_drag(sl, c);
+          slider_cancel_drag(sl, c);
           return;
         }
         slider_apply_vertical_pointer_value(sl);
         int val = lv_slider_get_value(sl);
         if (c->numeric) {
           if (!c->numeric_metadata_ready) {
-            slider_numeric_cancel_drag(sl, c);
+            slider_cancel_drag(sl, c);
             return;
           }
           const auto metadata = slider_numeric_metadata(c);
           const double value = espcontrol::number_slider::value_for_position(metadata, val);
-          c->numeric_dragging = false;
-          slider_refresh_value_sublabel(sl, c);
+          slider_hold_released_value(c, val);
           send_numeric_slider_action(c->entity_id, value, metadata);
         } else {
+          slider_hold_released_value(c, val);
           send_slider_action(c->entity_id, val, c->cover_tilt);
         }
       }
@@ -2992,7 +3027,7 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
     lv_obj_add_event_cb(slider, [](lv_event_t *e) {
       lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
       SliderCtx *c = sl ? (SliderCtx *)lv_obj_get_user_data(sl) : nullptr;
-      slider_numeric_cancel_drag(sl, c);
+      slider_cancel_drag(sl, c);
     }, LV_EVENT_PRESS_LOST, nullptr);
   }
 }
@@ -3035,6 +3070,7 @@ inline void slider_numeric_apply_metadata_value(lv_obj_t *slider, SliderCtx *ctx
   double *target = field == 0 ? &ctx->numeric_min
                               : (field == 1 ? &ctx->numeric_max
                                             : &ctx->numeric_step);
+  if (*known == valid && (!valid || *target == parsed)) return;
   *known = valid;
   if (valid) *target = parsed;
   slider_numeric_refresh_metadata(slider, ctx);
@@ -3098,12 +3134,12 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
     ha_subscribe_attribute(
       entity_id, std::string("unit_of_measurement"),
       std::function<void(esphome::StringRef)>(
-        [slider, sctx](esphome::StringRef value) {
+        [sctx](esphome::StringRef value) {
           if (!sctx) return;
           sctx->numeric_unit = slider_attribute_missing_ref(value)
             ? ""
             : string_ref_limited(value, HA_SHORT_STATE_MAX_LEN);
-          slider_refresh_value_sublabel(slider, sctx);
+          slider_refresh_value_sublabel(sctx);
         })
     );
   } else if (is_cover) {
@@ -3132,7 +3168,7 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
           }
           if (sctx && sctx->value_sublabel) {
             sctx->reported_percent = valid ? pct : -1;
-            if (sctx->percent_state_known) slider_refresh_value_sublabel(slider, sctx);
+            if (sctx->percent_state_known) slider_refresh_value_sublabel(sctx);
           }
         })
     );
@@ -3158,7 +3194,7 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
           }
           if (sctx && sctx->value_sublabel) {
             sctx->reported_percent = valid ? pct : -1;
-            if (sctx->percent_state_known) slider_refresh_value_sublabel(slider, sctx);
+            if (sctx->percent_state_known) slider_refresh_value_sublabel(sctx);
           }
         })
     );
@@ -3188,11 +3224,10 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
               sctx->numeric_state = numeric_value;
               sctx->numeric_state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
             }
-            if (!valid && sctx->numeric_dragging)
-              slider_numeric_cancel_drag(slider, sctx);
+            if (!valid) slider_cancel_drag(slider, sctx);
             slider_numeric_update_interaction(slider, sctx);
             if (valid) slider_numeric_apply_state(slider, sctx);
-            slider_refresh_value_sublabel(slider, sctx);
+            slider_refresh_value_sublabel(sctx);
           }
           return;
         }
@@ -3201,8 +3236,11 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
         if (sctx && sctx->value_sublabel) {
           sctx->percent_state_known = true;
           sctx->percent_slider_on = on;
-          if (unavailable) sctx->reported_percent = -1;
-          slider_refresh_value_sublabel(slider, sctx);
+          if (unavailable) {
+            sctx->reported_percent = -1;
+            slider_cancel_drag(slider, sctx);
+          }
+          slider_refresh_value_sublabel(sctx);
         }
         if (!on) {
           slider_set_value_safe(slider, 0);

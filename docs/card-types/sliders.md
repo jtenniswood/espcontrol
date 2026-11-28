@@ -23,7 +23,8 @@ For light-only controls, you may prefer the newer [Lights](/card-types/lights) c
 
 - **Drag** the slider and release it to send one new value to Home Assistant.
 - The current value appears below the card name. Lights show brightness and fans show speed as a percentage.
-- For `number` entities and `input_number` helpers, the slider uses the minimum, maximum, step, and unit reported by Home Assistant. While you drag, the value below the name previews the exact value that will be sent.
+- While you drag, the value below the name follows the slider. After release, it holds your chosen value for two seconds, then shows the latest value reported by Home Assistant.
+- For `number` entities and `input_number` helpers, the slider uses the minimum, maximum, step, and unit reported by Home Assistant.
 - A coloured **fill bar** shows the current level in real time as it rises from the bottom of the card.
 - When the entity changes externally (from Home Assistant or another control), the fill bar updates automatically. Number sliders also adapt if Home Assistant changes their range or step.
 
