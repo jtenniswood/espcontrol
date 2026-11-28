@@ -260,6 +260,7 @@ async def run_suite(args, client_factory=None):
     connection_lost = asyncio.Event()
     interrupted = False
     active_tasks = []
+    benchmark_log = (args.output / "display-benchmark.log").open("w", encoding="utf-8") if args.capture_display else None
 
     async def http_sample():
         # Keep boot-clock samples in request order even when reconnect identity
@@ -281,6 +282,9 @@ async def run_suite(args, client_factory=None):
     def on_log(message):
         text = message.message.decode("utf-8", errors="replace") if isinstance(message.message, bytes) else str(message.message)
         evidence.counts["native_log"] += 1
+        if benchmark_log is not None and "[display_benchmark:" in text:
+            benchmark_log.write(safe_log(text).strip() + "\n")
+            evidence.counts["display_benchmark_log"] += 1
         if CRASH.search(re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", text)):
             evidence.event("crash_signature", failure=True, message=safe_log(text))
         elif message.level <= 1:
@@ -324,8 +328,8 @@ async def run_suite(args, client_factory=None):
                     if state.key in keys and not getattr(state, "missing_state", False):
                         evidence.memory(keys[state.key], float(state.state))
                 client.subscribe_states(on_state)
-                client.subscribe_logs(on_log, log_level=LogLevel.LOG_LEVEL_INFO if args.modal_entity else LogLevel.LOG_LEVEL_WARN,
-                                      dump_config=False)
+                log_level = LogLevel.LOG_LEVEL_INFO if args.modal_entity or args.capture_display else LogLevel.LOG_LEVEL_WARN
+                client.subscribe_logs(on_log, log_level=log_level, dump_config=False)
                 ready.set()
                 while not stop.is_set() and not connection_lost.is_set():
                     await pause(min(args.interval, 1.0))
@@ -443,6 +447,10 @@ async def run_suite(args, client_factory=None):
             for result in results:
                 if isinstance(result, Exception):
                     evidence.event("test_task_error", failure=True, error=type(result).__name__)
+        if benchmark_log is not None:
+            benchmark_log.close()
+            if not evidence.counts["display_benchmark_log"]:
+                evidence.event("display_benchmark_missing", failure=True)
         report = final_report(evidence, args, interrupted)
     print(f"{report['status'].upper()}: {dict(evidence.failures)}; report: {args.output / 'report.md'}", flush=True)
     return 0 if report["status"] == "passed" else 1
@@ -462,6 +470,8 @@ def arguments(argv=None):
     parser.add_argument("--modal-cycles", type=int, default=20)
     parser.add_argument("--modal-dwell", type=positive, default=1, help="seconds with modal open and closed")
     parser.add_argument("--min-heap-percent", type=positive, default=5)
+    parser.add_argument("--capture-display", action="store_true",
+                        help="capture instrumentation records from an instrumented display build")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
     if re.search(r"[/@\s]", args.host) or not args.host:

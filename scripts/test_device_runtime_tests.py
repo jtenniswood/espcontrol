@@ -166,7 +166,7 @@ class FakeProbe:
 class RunnerTests(unittest.IsolatedAsyncioTestCase):
     async def run_fake(self, *, crash=False, disconnected=False, acknowledge=True,
                        modal=True, duration=.15, cycles=2, dwell=.005, memory=True, http_mac="ddeeff", change_identity_after_open=False, close_delay=0,
-                       record_close=False, cancel_run=False, cancel_close=False, timeout=.05):
+                       record_close=False, cancel_run=False, cancel_close=False, timeout=.05, capture_display=False):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         calls=[]
@@ -185,6 +185,9 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
                 cb(SimpleNamespace(key=99,state='secret config'))
             def subscribe_logs(self, cb, **kwargs):
                 self.log=cb
+                if capture_display:
+                    cb(SimpleNamespace(message=b'[I][display_benchmark:40]: sample time_us=1000', level=3))
+                    cb(SimpleNamespace(message=b'[I][other:40]: unrelated log', level=3))
                 if crash: cb(SimpleNamespace(message=b'Guru Meditation Error: test',level=1))
                 if disconnected:
                     asyncio.create_task(self.on_stop(False))
@@ -213,7 +216,7 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
             output=Path(tmp.name)/'results',min_heap_percent=5,interval=.005,duration=duration,
             expect_version='2026.9.1',expect_build='test-build',
             modal_entity='media_player.office' if modal else None,
-            modal_cycles=cycles,modal_dwell=dwell)
+            modal_cycles=cycles,modal_dwell=dwell,capture_display=capture_display)
         with patch.dict('sys.modules',{'aioesphomeapi':SimpleNamespace(LogLevel=levels)}), \
              patch.object(runtime,'HttpProbe',FakeProbe), patch.object(FakeProbe,'mac_suffix',http_mac), redirect_stdout(io.StringIO()):
             suite_task=asyncio.create_task(runtime.run_suite(args,Client))
@@ -221,6 +224,9 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
         report=json.loads((args.output/'report.json').read_text())
         events=(args.output/'events.jsonl').read_text()
         self.assertNotIn('secret config',events)
+        if capture_display:
+            self.assertEqual((args.output/'display-benchmark.log').read_text(),
+                             '[I][display_benchmark:40]: sample time_us=1000\n')
         return code, report, calls
 
     async def test_success_requires_actual_modal_open_log_and_health(self):
@@ -255,6 +261,11 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(code,0,report)
         self.assertEqual(report['http_identity']['mac_suffix'],'ddeeff')
         self.assertGreater(report['counts']['identity_verified'],0)
+
+    async def test_display_capture_retains_only_benchmark_records(self):
+        code, report, _ = await self.run_fake(modal=False, capture_display=True)
+        self.assertEqual(code, 0, report)
+        self.assertEqual(report['counts']['display_benchmark_log'], 1)
 
     async def test_default_passive_mode_sends_no_modal_actions(self):
         code,report,calls=await self.run_fake(modal=False)

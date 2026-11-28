@@ -93,3 +93,28 @@ physical device testing.
 The runner's own offline tests are included in the fast/CI checks. Run them alone
 with `npm run check:device-runtime-tests`; they use mocked APIs and a local HTTP
 fixture, without contacting hardware.
+
+## 10-inch V3 display performance
+
+The local `builds/guition-esp32-p4-jc8012p4a1-v3-benchmark.yaml` build adds
+touch, LVGL, heap and FreeRTOS timing counters to the normal V3 factory
+configuration. Use the same instrumented build settings for baseline and
+candidate firmware. Capture one workload per run and avoid rebooting during a
+capture. Start the runner before the workload so the first complete sample
+precedes the measured actions. Add the existing `--modal-entity` option for
+repeatable remote modal cycles.
+
+```sh
+npm run test:device-runtime -- --host 192.168.6.103 --capture-display --output build/display-baseline
+python3 scripts/summarize_display_benchmark.py build/display-baseline/display-benchmark.log
+```
+
+Use equal-duration idle, slider/navigation and image-heavy workloads, and
+alternate baseline and candidate runs on the same panel. Record the firmware
+commit, orientation, dashboard, and action count alongside each capture. The
+summary reports elapsed time and combined busy time for both CPU cores,
+minimum heap availability, touch counts, and LVGL timings. Refresh intervals
+include idle gaps, so compare them within the same continuous interaction.
+The timer spans instrumented firmware work. Use high-speed video to measure
+touch-to-visible feedback and check scanout for tearing. Repeat the normal
+installer, OTA, and existing Home Assistant automation checks before rollout.
