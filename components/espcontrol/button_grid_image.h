@@ -14,6 +14,7 @@
 #include "cover_art.h"
 #include "../artwork_image/image_pipeline_policy.h"
 #include <cstring>
+#include <string_view>
 
 constexpr uint32_t IMAGE_CARD_STARTUP_RETRY_MS = 45000;
 constexpr uint32_t IMAGE_CARD_RETRY_INTERVAL_MS = 2000;
@@ -65,6 +66,7 @@ struct ImageCardCtx {
   std::string cached_entity_id;
   std::string modal_source_url;
   std::string access_token;
+  std::string rejected_camera_token;
   std::function<void(espcontrol::DisplayTakeoverKind)> begin_display_takeover;
   std::function<void(espcontrol::DisplayTakeoverKind)> end_display_takeover;
   uint32_t retry_deadline_ms = 0;
@@ -1014,6 +1016,9 @@ inline void image_card_handle_modal_download_error(ImageCardCtx *ctx) {
 
 inline bool image_card_context_visible_on_active_screen(ImageCardCtx *ctx);
 
+inline void image_card_reject_camera_token(ImageCardCtx *ctx, int status,
+                                           const std::string &url);
+
 inline void image_card_bind_callbacks(ImageCardCtx *ctx) {
   if (!ctx || !ctx->image) return;
   auto *bound_image = ctx->image;
@@ -1026,8 +1031,10 @@ inline void image_card_bind_callbacks(ImageCardCtx *ctx) {
   }
   if (image_changed || !bound_image->has_on_error_callbacks()) {
     bound_image->add_on_error_callback([ctx, bound_image]() {
-      if (ctx->image == bound_image && !image_card_pipeline_suspended())
+      if (ctx->image == bound_image && !image_card_pipeline_suspended()) {
         image_card_handle_download_error(ctx);
+        image_card_reject_camera_token(ctx, bound_image->get_last_http_status(), bound_image->get_url());
+      }
     });
   }
   ctx->callbacks_bound_image = bound_image;
@@ -1071,8 +1078,10 @@ inline void image_card_bind_modal_callbacks(
   });
   modal_image->add_on_error_callback([modal_image]() {
     ImageCardCtx *ctx = image_card_modal_ui().active;
-    if (ctx && ctx->modal_image == modal_image && !image_card_pipeline_suspended())
+    if (ctx && ctx->modal_image == modal_image && !image_card_pipeline_suspended()) {
       image_card_handle_modal_download_error(ctx);
+      image_card_reject_camera_token(ctx, modal_image->get_last_http_status(), modal_image->get_url());
+    }
   });
 }
 
@@ -1124,6 +1133,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].base_url.clear();
     contexts[i].base_url_provider = nullptr;
     contexts[i].access_token.clear();
+    contexts[i].rejected_camera_token.clear();
     contexts[i].begin_display_takeover = nullptr;
     contexts[i].end_display_takeover = nullptr;
     contexts[i].retry_deadline_ms = 0;
@@ -1731,7 +1741,8 @@ inline bool image_card_valid_access_token(const std::string &token) {
   return !token.empty() && token != "unknown" && token != "unavailable";
 }
 
-inline bool image_card_query_has_param(const std::string &url, const std::string &param) {
+inline bool image_card_query_has_param(const std::string &url, const std::string &param,
+                                       std::string_view *value = nullptr) {
   size_t query = url.find('?');
   if (query == std::string::npos) return false;
   size_t fragment = url.find('#', query + 1);
@@ -1744,11 +1755,47 @@ inline bool image_card_query_has_param(const std::string &url, const std::string
     if (eq != std::string::npos && eq < next &&
         eq - pos == param.size() &&
         url.compare(pos, param.size(), param) == 0) {
+      if (value) *value = std::string_view(url).substr(eq + 1, next - eq - 1);
       return true;
     }
     pos = next + 1;
   }
   return false;
+}
+
+inline std::string_view image_card_camera_proxy_token(const ImageCardCtx *ctx,
+                                                      const std::string &url) {
+  if (ctx->media_artwork || ctx->entity_id.rfind("camera.", 0) != 0) return {};
+  const size_t scheme = url.find("://");
+  if (scheme == std::string::npos) return {};
+  const size_t path = url.find('/', scheme + 3);
+  const size_t query = url.find('?', path);
+  if (query == std::string::npos ||
+      url.compare(path, query - path, image_card_entity_proxy_path(ctx->entity_id)) != 0) return {};
+  std::string_view token;
+  image_card_query_has_param(url, "token", &token);
+  return token;
+}
+
+inline bool image_card_uses_rejected_camera_token(const ImageCardCtx *ctx, const std::string &url) {
+  return !ctx->rejected_camera_token.empty() &&
+         image_card_camera_proxy_token(ctx, url) == ctx->rejected_camera_token;
+}
+
+inline void image_card_reject_camera_token(ImageCardCtx *ctx, int status,
+                                           const std::string &url) {
+  if (status != 401 || !ctx->active) return;
+  const auto token = image_card_camera_proxy_token(ctx, url);
+  if (token.empty()) return;
+
+  // Tile and expanded requests use different sizes but share the same token.
+  // Remove the rejected source from both retry paths and ignore retained copies.
+  ctx->rejected_camera_token.assign(token);
+  if (image_card_uses_rejected_camera_token(ctx, ctx->source_url)) {
+    ctx->source_url.clear();
+    ctx->next_download_retry_ms = 0;
+  }
+  ha_schedule_metadata_refresh(ctx->entity_id, {"entity_picture"}, HA_SUBSCRIPTION_SCOPE_DEFAULT);
 }
 
 inline std::string image_card_append_query_param(const std::string &url,
@@ -2262,8 +2309,8 @@ inline void image_card_modal_request_timer_cb(lv_timer_t *timer) {
   ImageCardCtx *ctx = static_cast<ImageCardCtx *>(lv_timer_get_user_data(timer));
   if (ui.request_timer == timer) ui.request_timer = nullptr;
   lv_timer_del(timer);
-  if (!ctx || !image_card_modal_active_for(ctx) || !image_card_context_on_active_screen(ctx) ||
-      !ha_api_state_connected()) return;
+  if (!ctx || ctx->source_url.empty() || !image_card_modal_active_for(ctx) ||
+      !image_card_context_on_active_screen(ctx) || !ha_api_state_connected()) return;
   if (!image_card_request_modal_source_url(ctx)) {
     image_card_handle_modal_download_error(ctx);
   }
@@ -2610,12 +2657,14 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
     image_card_wait_for_picture(ctx);
     return;
   }
+  if (image_card_uses_rejected_camera_token(ctx, url)) return;
   if (espcontrol::artwork::artwork_picture_response_clears_retry(
         ctx->media_artwork, ctx->media_artwork_retry_mask)) {
     ctx->next_picture_retry_ms = 0;
   }
   uint32_t now = esphome::millis();
   bool source_changed = ctx->source_url != url;
+  const bool recovering_camera_auth = ctx->source_url.empty() && !ctx->rejected_camera_token.empty();
   const bool image_entity = ctx->entity_id.rfind("image.", 0) == 0;
   const bool dirty = image_entity && (image_card_modal_active_for(ctx)
       ? ctx->revision.modal_dirty() : ctx->revision.tile_dirty());
@@ -2637,6 +2686,7 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
   ctx->source_url = url;
   image_card_log_diagnostics(ctx, "picture-url-ready");
   if (image_card_modal_active_for(ctx)) {
+    if (recovering_camera_auth && image_card_camera_retry_blocked(ctx)) return;
     // Configured camera modes control repeated downloads; HA token/state events
     // may update credentials but must not defeat activity windows or rate limits.
     if (image_entity || ctx->explicit_picture_refresh ||
