@@ -540,10 +540,12 @@ export function createControlsFieldsFeature(
             (unit != null ? '<span class="sp-sensor-unit">' + helpers.escHtml(unit) + '</span>' : "") +
             '</span>';
     }
-    function cardBadgeLabelHtml(this: any, helpers?: any, label?: any, _badgeIcon?: any) {
-        return '<span class="sp-btn-label-row"><span class="sp-btn-label">' +
-            helpers.escHtml(label) +
-            '</span></span>';
+    function cardBadgeLabelHtml(this: any, helpers?: any, label?: any, _badgeIcon?: any, sublabel?: string) {
+        const rowClass = sublabel ? "sp-btn-label-row sp-card-label-stack" : "sp-btn-label-row";
+        return '<span class="' + rowClass + '"><span class="sp-btn-label">' +
+            helpers.escHtml(label) + '</span>' +
+            (sublabel ? '<span class="sp-card-sublabel sp-card-sublabel-line">' + helpers.escHtml(sublabel) + '</span>' : '') +
+            '</span>';
     }
     function cardIconHtml(this: any, iconSlugName?: any, extraHtml?: any) {
         return '<span class="sp-btn-icon mdi mdi-' + iconSlugName + '"></span>' + (extraHtml || "");

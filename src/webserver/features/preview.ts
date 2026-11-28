@@ -157,7 +157,7 @@ export function applySliderPreviewTextContrast(card: HTMLElement, baseTextColor:
   const edge = fromTop ? fillBounds.bottom : fillBounds.top;
   const topTextColor = fromTop ? fillTextColor : baseTextColor;
   const bottomTextColor = fromTop ? baseTextColor : fillTextColor;
-  for (const label of card.querySelectorAll<HTMLElement>(".sp-btn-icon,.sp-btn-label,.sp-sensor-badge,.sp-btn-label-row .mdi")) {
+  for (const label of card.querySelectorAll<HTMLElement>(".sp-btn-icon,.sp-btn-label,.sp-card-sublabel,.sp-sensor-badge,.sp-btn-label-row .mdi")) {
     const bounds = label.getBoundingClientRect();
     if (bounds.height <= 0) continue;
     const split = Math.max(0, Math.min(100, (edge - bounds.top) / bounds.height * 100));

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "button_grid_card_sublabel.h"
 #include "button_grid_slider_geometry.h"
 #include "button_grid_slider_contrast.h"
 #include "clock_bar.h"
@@ -98,10 +99,11 @@ struct SliderCtx {
   double numeric_step = 0.0;
   double numeric_state = 0.0;
   std::string numeric_unit;
-  lv_obj_t *icon_lbl = nullptr;
-  lv_obj_t *sensor_container = nullptr;
-  lv_obj_t *sensor_lbl = nullptr;
-  lv_obj_t *unit_lbl = nullptr;
+  lv_obj_t *value_sublabel = nullptr;
+  int reported_percent = -1;
+  bool percent_state_known = false;
+  bool percent_slider_on = false;
+  std::string numeric_state_text;
   // light_temperature fields
   bool light_temp = false;
   int kelvin_min = 2000;
@@ -234,6 +236,7 @@ inline MediaVolumeModalUi &media_volume_modal_ui() {
 
 inline int slider_clamp_pct(int pct);
 inline bool slider_parse_light_brightness_pct(esphome::StringRef val, int &pct);
+inline bool slider_entity_is_light(const std::string &entity_id);
 inline void slider_set_value_safe(lv_obj_t *slider, int pct);
 inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
                                 bool interactive = true);
@@ -1419,6 +1422,10 @@ inline void slider_refresh_geometry(lv_obj_t *slider) {
   if (!c || !btn) return;
 
   slider_fit_to_button(slider, btn, c->horizontal);
+  if (c->value_sublabel) {
+    lv_obj_set_width(c->value_sublabel, std::max<lv_coord_t>(1,
+      lv_obj_get_width(btn) - c->label_pad_left - c->content_pad_right));
+  }
   int val = lv_slider_get_value(slider);
   int pct = slider_position_percent(c, val);
   int fill_val = c->inverted ? 100 - pct : pct;
@@ -2785,25 +2792,26 @@ inline void setup_cover_command_card(BtnSlot &s, const ParsedCfg &p) {
   apply_push_button_transition(s.btn);
 }
 
-inline void slider_numeric_restore_visual(SliderCtx *ctx) {
-  if (!ctx || !ctx->numeric) return;
-  if (ctx->sensor_container) lv_obj_add_flag(ctx->sensor_container, LV_OBJ_FLAG_HIDDEN);
-  if (ctx->sensor_lbl) lv_label_set_display_text(ctx->sensor_lbl, "");
-  if (ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, "");
-  if (ctx->icon_lbl) lv_obj_clear_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
-}
-
-inline void slider_numeric_show_value(lv_obj_t *slider, SliderCtx *ctx) {
-  if (!slider || !ctx || !ctx->numeric || !ctx->numeric_metadata_ready) return;
-  const auto metadata = slider_numeric_metadata(ctx);
-  const double value = espcontrol::number_slider::value_for_position(
-    metadata, lv_slider_get_value(slider));
-  const std::string formatted = espcontrol::number_slider::format_value(
-    value, metadata);
-  if (ctx->icon_lbl) lv_obj_add_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
-  if (ctx->sensor_lbl) lv_label_set_display_text(ctx->sensor_lbl, formatted.c_str());
-  if (ctx->unit_lbl) lv_label_set_display_text(ctx->unit_lbl, ctx->numeric_unit.c_str());
-  if (ctx->sensor_container) lv_obj_clear_flag(ctx->sensor_container, LV_OBJ_FLAG_HIDDEN);
+inline void slider_refresh_value_sublabel(lv_obj_t *slider, SliderCtx *ctx) {
+  if (!ctx || !ctx->value_sublabel) return;
+  std::string value = "--";
+  if (ctx->numeric) {
+    if (ctx->numeric_dragging) {
+      const auto metadata = slider_numeric_metadata(ctx);
+      value = espcontrol::number_slider::format_value(
+        espcontrol::number_slider::value_for_position(metadata, lv_slider_get_value(slider)),
+        metadata);
+    } else if (ctx->numeric_state_known) {
+      value = ctx->numeric_state_text;
+    }
+    if ((ctx->numeric_dragging || ctx->numeric_state_known) && !ctx->numeric_unit.empty()) {
+      value += " " + ctx->numeric_unit;
+    }
+  } else if (ctx->available) {
+    const int percent = ctx->percent_slider_on ? ctx->reported_percent : 0;
+    if (percent >= 0) value = std::to_string(percent) + "%";
+  }
+  lv_label_set_display_text(ctx->value_sublabel, value.c_str());
 }
 
 inline void slider_numeric_apply_state(lv_obj_t *slider, SliderCtx *ctx) {
@@ -2828,7 +2836,7 @@ inline void slider_numeric_update_interaction(lv_obj_t *slider, SliderCtx *ctx) 
 inline void slider_numeric_cancel_drag(lv_obj_t *slider, SliderCtx *ctx) {
   if (!ctx || !ctx->numeric) return;
   ctx->numeric_dragging = false;
-  slider_numeric_restore_visual(ctx);
+  slider_refresh_value_sublabel(slider, ctx);
   slider_numeric_apply_state(slider, ctx);
 }
 
@@ -2850,7 +2858,7 @@ inline void slider_numeric_refresh_metadata(lv_obj_t *slider, SliderCtx *ctx) {
   }
   if (was_dragging) {
     ctx->numeric_dragging = false;
-    slider_numeric_restore_visual(ctx);
+    slider_refresh_value_sublabel(slider, ctx);
   }
   if (ready) slider_numeric_apply_state(slider, ctx);
   slider_numeric_update_interaction(slider, ctx);
@@ -2910,10 +2918,15 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
   ctx->interactive = interactive;
   ctx->numeric = espcontrol::number_slider::is_numeric_entity(p.entity);
   ctx->available = !ctx->numeric;
-  ctx->icon_lbl = s.icon_lbl;
-  ctx->sensor_container = s.sensor_container;
-  ctx->sensor_lbl = s.sensor_lbl;
-  ctx->unit_lbl = s.unit_lbl;
+  if (p.type == "slider" &&
+      (ctx->numeric || is_fan_entity(p.entity) || slider_entity_is_light(p.entity))) {
+    ctx->content_pad_right = padding.right;
+    ctx->value_sublabel = lv_label_create(s.btn);
+    lv_label_set_long_mode(ctx->value_sublabel, LV_LABEL_LONG_DOT);
+    lv_label_set_display_text(ctx->value_sublabel, "--");
+    apply_text_width_compensation(ctx->value_sublabel);
+    slider_bind_text_contrast(ctx->value_sublabel, fill);
+  }
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(s.btn, slider);
   if (!interactive || ctx->numeric) lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
@@ -2927,7 +2940,7 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
     int pct = slider_position_percent(c, val);
     int fill_val = c->inverted ? 100 - pct : pct;
     slider_update_ctx_fill(c, lv_obj_get_parent(sl), fill_val);
-    if (c->numeric && c->numeric_dragging) slider_numeric_show_value(sl, c);
+    if (c->numeric && c->numeric_dragging) slider_refresh_value_sublabel(sl, c);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
 
   if (interactive) {
@@ -2939,14 +2952,14 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
         c->numeric_dragging = true;
       }
       slider_apply_vertical_pointer_value(sl);
-      if (c && c->numeric) slider_numeric_show_value(sl, c);
+      if (c && c->numeric) slider_refresh_value_sublabel(sl, c);
     }, LV_EVENT_PRESSED, nullptr);
 
     lv_obj_add_event_cb(slider, [](lv_event_t *e) {
       lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
       slider_apply_vertical_pointer_value(sl);
       SliderCtx *c = sl ? (SliderCtx *)lv_obj_get_user_data(sl) : nullptr;
-      if (c && c->numeric && c->numeric_dragging) slider_numeric_show_value(sl, c);
+      if (c && c->numeric && c->numeric_dragging) slider_refresh_value_sublabel(sl, c);
     }, LV_EVENT_PRESSING, nullptr);
 
     lv_obj_add_event_cb(slider, [](lv_event_t *e) {
@@ -2968,7 +2981,7 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
           const auto metadata = slider_numeric_metadata(c);
           const double value = espcontrol::number_slider::value_for_position(metadata, val);
           c->numeric_dragging = false;
-          slider_numeric_restore_visual(c);
+          slider_refresh_value_sublabel(sl, c);
           send_numeric_slider_action(c->entity_id, value, metadata);
         } else {
           send_slider_action(c->entity_id, val, c->cover_tilt);
@@ -3090,7 +3103,7 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
           sctx->numeric_unit = slider_attribute_missing_ref(value)
             ? ""
             : string_ref_limited(value, HA_SHORT_STATE_MAX_LEN);
-          if (sctx->numeric_dragging) slider_numeric_show_value(slider, sctx);
+          slider_refresh_value_sublabel(slider, sctx);
         })
     );
   } else if (is_cover) {
@@ -3110,11 +3123,16 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
     ha_subscribe_attribute(
       entity_id, std::string("percentage"),
       std::function<void(esphome::StringRef)>(
-        [slider, btn_ptr, fill, horiz, inv, rad](esphome::StringRef val) {
+        [slider, btn_ptr, fill, horiz, inv, rad, sctx](esphome::StringRef val) {
           int pct = 0;
-          if (slider_parse_pct(val, pct)) {
+          const bool valid = slider_parse_pct(val, pct);
+          if (valid) {
             slider_set_value_safe(slider, pct);
             slider_update_fill(fill, btn_ptr, inv ? 100 - pct : pct, horiz, inv, rad);
+          }
+          if (sctx && sctx->value_sublabel) {
+            sctx->reported_percent = valid ? pct : -1;
+            if (sctx->percent_state_known) slider_refresh_value_sublabel(slider, sctx);
           }
         })
     );
@@ -3129,13 +3147,18 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
               sctx->entity_id.c_str(), string_ref_limited(val, HA_SHORT_STATE_MAX_LEN).c_str());
           }
           int pct = 0;
-          if (slider_parse_light_brightness_pct(val, pct)) {
+          const bool valid = slider_parse_light_brightness_pct(val, pct);
+          if (valid) {
             slider_set_value_safe(slider, pct);
             slider_update_fill(fill, btn_ptr, inv ? 100 - pct : pct, horiz, inv, rad);
           } else if (!slider_attribute_missing_ref(val)) {
             ESP_LOGW("slider", "Ignoring invalid brightness for %s: %s",
               sctx ? sctx->entity_id.c_str() : "",
               string_ref_limited(val, HA_SHORT_STATE_MAX_LEN).c_str());
+          }
+          if (sctx && sctx->value_sublabel) {
+            sctx->reported_percent = valid ? pct : -1;
+            if (sctx->percent_state_known) slider_refresh_value_sublabel(slider, sctx);
           }
         })
     );
@@ -3161,16 +3184,26 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
           if (sctx) {
             sctx->available = valid;
             sctx->numeric_state_known = valid;
-            if (valid) sctx->numeric_state = numeric_value;
+            if (valid) {
+              sctx->numeric_state = numeric_value;
+              sctx->numeric_state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
+            }
             if (!valid && sctx->numeric_dragging)
               slider_numeric_cancel_drag(slider, sctx);
             slider_numeric_update_interaction(slider, sctx);
             if (valid) slider_numeric_apply_state(slider, sctx);
+            slider_refresh_value_sublabel(slider, sctx);
           }
           return;
         }
         if (sctx) sctx->available = !unavailable;
         bool on = is_entity_on_ref(state);
+        if (sctx && sctx->value_sublabel) {
+          sctx->percent_state_known = true;
+          sctx->percent_slider_on = on;
+          if (unavailable) sctx->reported_percent = -1;
+          slider_refresh_value_sublabel(slider, sctx);
+        }
         if (!on) {
           slider_set_value_safe(slider, 0);
           slider_update_fill(fill, btn_ptr, inv ? 100 : 0, horiz, inv, rad);

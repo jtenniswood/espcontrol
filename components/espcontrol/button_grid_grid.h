@@ -251,7 +251,8 @@ inline void refresh_media_card_layout(
     int row_span, int col_span);
 inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
                                       const std::string &entity_id);
-inline void refresh_slider_card_layout(BtnSlot &slot);
+inline void refresh_slider_card_layout(BtnSlot &slot,
+                                       const DisplayProfile *display = nullptr);
 inline bool bind_garage_status_card(
     BtnSlot &slot, const ParsedCfg &config,
     TransientStatusLabel **status_label_out);
@@ -742,7 +743,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     espcontrol::cards::numeric_selectable_driver_attach_interaction(
       s, p, context);
     espcontrol::cards::numeric_selectable_driver_refresh_layout(
-      s, p, context);
+      s, p, context, display);
     return;
   }
   if (espcontrol::cards::cleaning_driver_setup_visual(s, p, context)) {
@@ -969,7 +970,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
   }
 }
 
-inline void refresh_slider_card_layout(BtnSlot &s) {
+inline void refresh_slider_card_layout(BtnSlot &s, const DisplayProfile *display) {
   lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
   SliderCtx *ctx = slider ? (SliderCtx *)lv_obj_get_user_data(slider) : nullptr;
   // Reuse the padding captured before the slider zeroed it so the icon and label
@@ -981,7 +982,17 @@ inline void refresh_slider_card_layout(BtnSlot &s) {
   const lv_coord_t pad_bottom = ctx
     ? ctx->label_pad_bottom : lv_obj_get_style_pad_bottom(s.btn, LV_PART_MAIN);
   if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, pad_left, pad_top);
-  if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad_left, -pad_bottom);
+  lv_coord_t title_bottom = pad_bottom;
+  if (display && ctx && ctx->value_sublabel) {
+    lv_obj_t *value = ctx->value_sublabel;
+    const auto *font = display_small_text_font(
+      *display, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN));
+    apply_card_sublabel_style(value, s.btn, font);
+    lv_obj_set_height(value, font->line_height);
+    lv_obj_align(value, LV_ALIGN_BOTTOM_LEFT, pad_left, -pad_bottom);
+    title_bottom += font->line_height + CARD_SUBLABEL_GAP;
+  }
+  if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad_left, -title_bottom);
   if (slider) slider_refresh_geometry(slider);
 }
 
@@ -1025,7 +1036,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
         s, p, context, cfg)) return;
 
   if (espcontrol::cards::numeric_selectable_driver_refresh_layout(
-        s, p, context)) return;
+        s, p, context, display)) return;
 
   if (espcontrol::cards::climate_control_driver_refresh_layout(
         s, p, context, display, row_span, col_span)) return;

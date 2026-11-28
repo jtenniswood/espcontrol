@@ -3479,7 +3479,7 @@ async function assertSliderActiveColours(page, label) {
         { id: "select-screen__theme_mode", state: theme, value: theme },
         ...types.map((type, index) => ({
           id: `text-button_${index + 1}_config`,
-          state: `light.test;${type};Lightbulb;Auto;;;${type};;card_off_color=313131,card_active_color=${mode},card_on_color=FFFFFF`,
+          state: `${type === "slider" && theme === "Light" ? "input_number.test" : "light.test"};${type};Lightbulb;Auto;;;${type};;card_off_color=313131,card_active_color=${mode},card_on_color=FFFFFF`,
         })),
       ];
       if (renderWhileHidden) {
@@ -3496,7 +3496,10 @@ async function assertSliderActiveColours(page, label) {
         fillBottom: card.querySelector(".sp-slider-fill").getBoundingClientRect().bottom,
         trackTop: card.querySelector(".sp-slider-track").getBoundingClientRect().top,
         trackBottom: card.querySelector(".sp-slider-track").getBoundingClientRect().bottom,
-        texts: Array.from(card.querySelectorAll(".sp-btn-icon,.sp-btn-label")).map(label => ({
+        sublabel: card.querySelector(".sp-card-sublabel")?.textContent,
+        sublabelBelowName: card.querySelector(".sp-card-sublabel")?.getBoundingClientRect().top >
+          card.querySelector(".sp-btn-label").getBoundingClientRect().bottom,
+        texts: Array.from(card.querySelectorAll(".sp-btn-icon,.sp-btn-label,.sp-card-sublabel")).map(label => ({
           gradient: label.style.backgroundImage,
           clip: getComputedStyle(label).backgroundClip,
         })),
@@ -3504,6 +3507,10 @@ async function assertSliderActiveColours(page, label) {
       for (const [index, card] of rendered.entries()) {
         assert.strictEqual(card.fill, mode === "matching" ? "#767676" : "#FFFFFF", `${label}: ${theme}/${types[index]}/${mode} fill`);
         const fromTop = types[index] === "cover";
+        if (types[index] === "slider") {
+          assert.strictEqual(card.sublabel, theme === "Light" ? "21.5" : "80%", label + ": Slider preview shows a sample value");
+          assert(card.sublabelBelowName, label + ": Slider value sits below the name");
+        }
         assert(Math.abs(fromTop ? card.fillTop - card.trackTop : card.fillBottom - card.trackBottom) < .1,
           `${label}: ${types[index]} fill grows from the ${fromTop ? "top" : "bottom"}`);
         if (mode !== "matching") {
@@ -7632,7 +7639,7 @@ async function assertWeatherWidthScaling(browser) {
   const page = await browser.newPage();
   try {
     await page.setContent('<style>' + createWebStyles(false) + '</style><div id="weather" class="sp-btn sp-weather-daily-card" style="position:relative;width:120px;height:120px;--btn-label:16px;--btn-icon:32px;--btn-pad:8px;--r:8px"><span class="sp-weather-days">' +
-      Array.from({ length: 8 }, (_, i) => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + (i ? 'Tue' : 'Today') + '</span><span class="sp-weather-temperature-high">18°/2°</span></span>').join('') + '</span></div>');
+      Array.from({ length: 8 }, (_, i) => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + (i ? 'Tue' : 'Today') + '</span><span class="sp-weather-temperature-high sp-card-sublabel">18°/2°</span></span>').join('') + '</span></div>');
     const firstDayRows = await page.locator('.sp-weather-day').first().evaluate(day => Array.from(day.children).map(child => child.textContent));
     assert.deepStrictEqual(firstDayRows, ['☀', 'Today', '18°/2°'], 'Daily preview matches the device order and omits a separate low temperature row.');
     await page.addScriptTag({content:layoutScript});
@@ -7706,7 +7713,7 @@ async function assertWeatherWidthScaling(browser) {
     await page.setContent('<style>@font-face{font-family:Roboto;src:url(data:font/woff2;base64,' + roboto + ')}' + createWebStyles(false) + '</style>' +
       '<div class="sp-screen" style="' + Object.entries(vars).map(([key, value]) => key + ':' + value).join(';') + '"><div class="sp-main">' +
       '<div id="weather" class="sp-btn sp-weather-daily-card" style="grid-column:span 3"><span class="sp-weather-days">' +
-      ['Today','Tue','Wed','Thu','Fri','Sat','Sun','Mon'].map(day => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + day + '</span><span class="sp-weather-temperature-high">18°/2°</span></span>').join('') + '</span></div></div></div>');
+      ['Today','Tue','Wed','Thu','Fri','Sat','Sun','Mon'].map(day => '<span class="sp-weather-day"><span class="mdi">☀</span><span>' + day + '</span><span class="sp-weather-temperature-high sp-card-sublabel">18°/2°</span></span>').join('') + '</span></div></div></div>');
     await page.evaluate(() => document.fonts.ready);
     await page.addScriptTag({content:layoutScript});
     await page.evaluate(() => {
