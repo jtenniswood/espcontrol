@@ -36,9 +36,12 @@ class DisplayBenchmarkSummaryTests(unittest.TestCase):
         ]
         records = [f"[I][display_benchmark:42]: {record}" for record in records]
         self.assertIsNone(analyze(records)["lvgl_draw_buffer_bytes"])
-        records[3] += " draw_buffer_bytes=512000"
+        records[0] += " dsi_staged_submissions=100"
+        records[3] += " draw_buffer_bytes=512000 dsi_staging_bytes=512000 dsi_staged_submissions=112"
         result = analyze(records)
         self.assertEqual(result["lvgl_draw_buffer_bytes"], 512000)
+        self.assertEqual(result["dsi_staging_bytes"], 512000)
+        self.assertEqual(result["dsi_staged_submissions"], 12)
         self.assertEqual(result["cpu_busy_percent_both_cores"], 12.5)
         self.assertEqual(result["render_timings_us"]["refresh_interval"]["p95"], 300)
 

@@ -79,6 +79,12 @@ class MipiDsi final : public display::Display {
 
   void dump_config() override;
 
+#ifdef USE_ESPCONTROL_STAGED_DSI
+  size_t enable_staged_draw(size_t bytes);
+  void set_staged_refresh(bool active);
+  uint32_t staged_submissions() const { return this->staged_submissions_; }
+#endif
+
  protected:
   bool setup_dsi_();
 #ifdef USE_WAVESHARE_P4_86_LCD_PROBE
@@ -113,6 +119,15 @@ class MipiDsi final : public display::Display {
   esp_lcd_dsi_bus_handle_t bus_handle_{};
   esp_lcd_panel_io_handle_t io_handle_{};
   SemaphoreHandle_t io_lock_{};
+#ifdef USE_ESPCONTROL_STAGED_DSI
+  bool wait_for_staged_draw_();
+  bool try_staged_draw_(int x, int y, int width, int height, const uint8_t *pixels);
+  uint8_t *staged_pixels_{nullptr};
+  size_t staged_capacity_{0};
+  uint32_t staged_submissions_{0};
+  bool staged_pending_{false};
+  bool staged_refresh_{false};
+#endif
   uint8_t *buffer_{nullptr};
   uint16_t x_low_{1};
   uint16_t y_low_{1};

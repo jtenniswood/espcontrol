@@ -1,0 +1,27 @@
+# Keep DSI transfer isolation separate from the quarter-buffer comparison.
+packages:
+  benchmark: !include guition-esp32-p4-jc8012p4a1-v3-benchmark-quarter-buffer.yaml
+
+esphome:
+  build_path: build/espcontrol-jc8012p4a1-v3-staged-dsi
+  build_flags:
+    - -DUSE_ESPCONTROL_STAGED_DSI
+  on_boot:
+    - priority: -90
+      then:
+        - lambda: |-
+            auto *display = id(main_lvgl)->get_disp();
+            auto *panel = id(my_display);
+            const auto bytes = panel->enable_staged_draw(lv_display_get_draw_buf_size(display));
+            espcontrol::display_benchmark::probe().set_dsi_staging(bytes, []() {
+              return id(my_display)->staged_submissions();
+            });
+            if (bytes == 0) return;
+            lv_display_add_event_cb(display, [](lv_event_t *event) {
+              auto *driver = static_cast<esphome::mipi_dsi::MipiDsi *>(lv_event_get_user_data(event));
+              driver->set_staged_refresh(true);
+            }, LV_EVENT_RENDER_START, panel);
+            lv_display_add_event_cb(display, [](lv_event_t *event) {
+              auto *driver = static_cast<esphome::mipi_dsi::MipiDsi *>(lv_event_get_user_data(event));
+              driver->set_staged_refresh(false);
+            }, LV_EVENT_REFR_READY, panel);

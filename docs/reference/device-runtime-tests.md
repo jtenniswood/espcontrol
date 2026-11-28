@@ -114,6 +114,16 @@ into more transfers, so check frame timing alongside available memory. The
 summary records the allocated LVGL draw buffer size, so a baseline that fell
 back to a smaller allocation remains distinguishable.
 
+For the DSI transfer comparison, use
+`builds/guition-esp32-p4-jc8012p4a1-v3-benchmark-staged-dsi.yaml` against the
+quarter-buffer build. It keeps ESPHome's LVGL and rotation path and gives the
+DSI driver one PSRAM buffer for transfers. This lets the next region render
+while DMA reads the previous region. The refresh waits for its final transfer.
+Confirm the summary reports both allocated `dsi_staging_bytes` and nonzero
+`dsi_staged_submissions` for the workload before comparing CPU, frame timing,
+and memory. The staging path adds a copy and uses additional PSRAM, so include
+those costs in the comparison.
+
 ```sh
 npm run test:device-runtime -- --host 192.168.6.103 --capture-display --output build/display-baseline
 python3 scripts/summarize_display_benchmark.py build/display-baseline/display-benchmark.log

@@ -94,12 +94,17 @@ def analyze(lines):
     if elapsed <= 0 or any(delta < 0 or delta > elapsed for delta in idle):
         raise ValueError("CPU counters wrapped or disagree. Capture a shorter interval.")
     busy = 2 * elapsed - sum(idle)
+    staged_submissions = None
+    if "dsi_staged_submissions" in first and "dsi_staged_submissions" in last:
+        staged_submissions = (last["dsi_staged_submissions"] - first["dsi_staged_submissions"]) % (1 << 32)
     return {
         "seconds_between_samples": (last["time_us"] - first["time_us"]) / 1_000_000,
         "cpu_busy_counter_ticks": busy,
         "cpu_busy_percent_both_cores": 100 * busy / (2 * elapsed),
         "memory_min_bytes": {key: min(sample[key] for sample in samples) for key in MEMORY_FIELDS},
         "lvgl_draw_buffer_bytes": last.get("draw_buffer_bytes"),
+        "dsi_staging_bytes": last.get("dsi_staging_bytes"),
+        "dsi_staged_submissions": staged_submissions,
         "render_timings_us": {name: summary(values) for name, values in sorted(timings.items())},
         "touches": {"presses": touch_counts["T"], "releases": touch_counts["U"]},
     }

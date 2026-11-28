@@ -28,6 +28,10 @@ class Probe final : public esphome::touchscreen::TouchListener {
 
   void touch(esphome::touchscreen::TouchPoint) override { record_('T'); }
   void release() override { record_('U'); }
+  void set_dsi_staging(size_t bytes, uint32_t (*submissions)()) {
+    dsi_staging_bytes_ = bytes;
+    dsi_staged_submissions_ = submissions;
+  }
 
   void report() {
     if (!attached_) return;
@@ -39,12 +43,14 @@ class Probe final : public esphome::touchscreen::TouchListener {
     const auto task_count = uxTaskGetSystemState(tasks_.data(), tasks_.size(), &total_runtime);
     ESP_LOGI(TAG, "sample time_us=%" PRId64 " internal_free=%zu internal_min=%zu internal_largest=%zu "
              "psram_free=%zu psram_min=%zu psram_largest=%zu draw_buffer_bytes=%" PRIu32
-             " task_count=%u total_runtime=%" PRIu64 " lost=%u",
+             " dsi_staging_bytes=%zu dsi_staged_submissions=%" PRIu32 " task_count=%u total_runtime=%" PRIu64 " lost=%u",
              esp_timer_get_time(),
              heap_caps_get_free_size(INTERNAL), heap_caps_get_minimum_free_size(INTERNAL),
              heap_caps_get_largest_free_block(INTERNAL), heap_caps_get_free_size(EXTERNAL),
              heap_caps_get_minimum_free_size(EXTERNAL), heap_caps_get_largest_free_block(EXTERNAL),
-             draw_buffer_bytes_, static_cast<unsigned>(task_count), static_cast<uint64_t>(total_runtime), lost_);
+             draw_buffer_bytes_, dsi_staging_bytes_, dsi_staged_submissions_ != nullptr ? dsi_staged_submissions_() : 0,
+             static_cast<unsigned>(task_count),
+             static_cast<uint64_t>(total_runtime), lost_);
     for (unsigned i = 0; i < task_count; ++i) {
       const auto &task = tasks_[i];
       // The snapshot holds a pointer to the task name. A worker can exit
@@ -104,6 +110,8 @@ class Probe final : public esphome::touchscreen::TouchListener {
   std::array<Event, 512> events_{};
   std::array<TaskStatus_t, 48> tasks_{};
   uint32_t draw_buffer_bytes_{0};
+  size_t dsi_staging_bytes_{0};
+  uint32_t (*dsi_staged_submissions_)() = nullptr;
   size_t used_{0};
   unsigned lost_{0};
   bool attached_{false};

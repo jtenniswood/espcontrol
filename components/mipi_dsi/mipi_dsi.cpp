@@ -4,6 +4,10 @@
 #include "dpi_timing.h"
 #include "esp_clk_tree.h"
 #include "esphome/core/helpers.h"
+#ifdef USE_ESPCONTROL_STAGED_DSI
+#include <cstring>
+#include "esp_heap_caps.h"
+#endif
 #ifdef USE_WAVESHARE_P4_86_LCD_PROBE
 #include "waveshare_p4_86_probe.h"
 #endif
@@ -296,11 +300,73 @@ void MipiDsi::draw_pixels_at(int x_start, int y_start, int w, int h, const uint8
                                      x_pad);
     return;
   }
+#ifdef USE_ESPCONTROL_STAGED_DSI
+  if (this->staged_refresh_ && x_offset == 0 && y_offset == 0 && x_pad == 0 &&
+      this->try_staged_draw_(x_start, y_start, w, h, ptr))
+    return;
+#endif
   this->write_to_display_(x_start, y_start, w, h, ptr, x_offset, y_offset, x_pad);
 }
 
+#ifdef USE_ESPCONTROL_STAGED_DSI
+size_t MipiDsi::enable_staged_draw(size_t bytes) {
+  if (this->is_failed() || this->io_lock_ == nullptr || bytes == 0) return 0;
+  if (this->staged_pixels_ != nullptr) return this->staged_capacity_;
+  this->staged_pixels_ = static_cast<uint8_t *>(heap_caps_aligned_alloc(64, bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+  if (this->staged_pixels_ == nullptr) {
+    ESP_LOGW(TAG, "Staged DSI unavailable; synchronous transfers remain active");
+    return 0;
+  }
+  this->staged_capacity_ = bytes;
+  ESP_LOGI(TAG, "Staged DSI enabled with %u bytes", static_cast<unsigned>(bytes));
+  return bytes;
+}
+
+void MipiDsi::set_staged_refresh(bool active) {
+  this->staged_refresh_ = active;
+  if (!active) this->wait_for_staged_draw_();
+}
+
+bool MipiDsi::wait_for_staged_draw_() {
+  if (!this->staged_pending_) return true;
+  if (xSemaphoreTake(this->io_lock_, pdMS_TO_TICKS(100)) != pdTRUE) {
+    // DMA may still own the buffer. Preserve ownership until it signals so
+    // neither a later async draw nor a synchronous fallback can overwrite it.
+    ESP_LOGE(TAG, "Timed out waiting for staged DSI transfer");
+    return false;
+  }
+  this->staged_pending_ = false;
+  return true;
+}
+
+bool MipiDsi::try_staged_draw_(int x, int y, int width, int height, const uint8_t *pixels) {
+  if (this->staged_pixels_ == nullptr || x < 0 || y < 0 || width <= 0 || height <= 0 ||
+      static_cast<size_t>(x) + width > this->width_ || static_cast<size_t>(y) + height > this->height_)
+    return false;
+
+  const size_t bytes = static_cast<size_t>(width) * height * (3 - this->color_depth_);
+  if (bytes > this->staged_capacity_) return false;
+  if (!this->wait_for_staged_draw_()) return true;
+
+  // LVGL and its rotation helper can reuse their buffers as soon as the
+  // flush callback returns. DMA reads only from display-owned memory.
+  std::memcpy(this->staged_pixels_, pixels, bytes);
+  const auto err = esp_lcd_panel_draw_bitmap(this->handle_, x, y, x + width, y + height, this->staged_pixels_);
+  this->staged_pending_ = err == ESP_OK;
+  if (this->staged_pending_) {
+    ++this->staged_submissions_;
+  } else {
+    ESP_LOGE(TAG, "Staged DSI submission failed: %s", esp_err_to_name(err));
+  }
+  return true;
+}
+#endif
+
 void MipiDsi::write_to_display_(int x_start, int y_start, int w, int h, const uint8_t *ptr, int x_offset, int y_offset,
                                 int x_pad) {
+#ifdef USE_ESPCONTROL_STAGED_DSI
+  if (!this->wait_for_staged_draw_()) return;
+#endif
   esp_err_t err = ESP_OK;
   auto bytes_per_pixel = 3 - this->color_depth_;
   auto stride = (x_offset + w + x_pad) * bytes_per_pixel;
