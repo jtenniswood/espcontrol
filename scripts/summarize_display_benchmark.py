@@ -24,13 +24,8 @@ def summary(values):
     }
 
 
-def analyze(lines):
+def read_samples(lines):
     samples = []
-    timings = {}
-    starts = {}
-    previous = 0
-    flushed_this_refresh = False
-    touch_counts = {"T": 0, "U": 0}
 
     for line in lines:
         record = LOG_RECORD.search(line)
@@ -41,20 +36,50 @@ def analyze(lines):
         if kind in ("sample", "task"):
             fields = {key: int(value) for key, value in re.findall(r"(\w+)=(-?\d+)", data)}
             if kind == "sample":
-                if fields["lost"]:
-                    raise ValueError("Firmware dropped trace events. Shorten each reporting interval.")
                 if samples and fields["time_us"] <= samples[-1]["time_us"]:
                     raise ValueError("Expected one uninterrupted capture in boot timestamp order.")
-                samples.append({**fields, "tasks": []})
+                samples.append({**fields, "tasks": [], "events": []})
             elif samples:
                 samples[-1]["tasks"].append(fields)
             continue
 
-        # The first report contains startup events from before the first
-        # CPU counter snapshot. Compare both measurements over the same window.
-        if len(samples) < 2:
-            continue
-        for code, timestamp in re.findall(r"([TUDRFCWAV]):(\d+)", data):
+        if samples:
+            samples[-1]["events"].extend(re.findall(r"([TUDRFCWAV]):(\d+)", data))
+
+    # The receiver can stop midway through the last report. A legacy final
+    # report has no event count, so only a following report establishes its end.
+    discarded_terminal_sample = False
+    if samples:
+        last = samples[-1]
+        expected = last.get("event_count")
+        if expected is None or len(last["tasks"]) < last["task_count"] or len(last["events"]) < expected:
+            samples.pop()
+            discarded_terminal_sample = True
+
+    if len(samples) < 2:
+        raise ValueError("Capture at least two complete benchmark samples.")
+    for sample in samples:
+        if sample["lost"]:
+            raise ValueError("Firmware dropped trace events. Shorten each reporting interval.")
+        if sample["task_count"] == 0 or len(sample["tasks"]) != sample["task_count"]:
+            raise ValueError("At least one CPU snapshot is missing or has unexpected task records.")
+        if sample.get("event_count", len(sample["events"])) != len(sample["events"]):
+            raise ValueError("At least one benchmark report is missing or has unexpected trace events.")
+    return samples, discarded_terminal_sample
+
+
+def analyze(lines):
+    samples, discarded_terminal_sample = read_samples(lines)
+    timings = {}
+    starts = {}
+    previous = 0
+    flushed_this_refresh = False
+    touch_counts = {"T": 0, "U": 0}
+
+    # The first report contains events from before the first CPU snapshot.
+    # Measure CPU and display activity over the same window.
+    for sample in samples[1:]:
+        for code, timestamp in sample["events"]:
             now = int(timestamp)
             if now < previous:
                 raise ValueError("Trace events are out of order or span multiple boots.")
@@ -74,11 +99,6 @@ def analyze(lines):
                     timings.setdefault(label, []).append(now - starts.pop(start))
             if code in "DFWV":
                 starts[code] = now
-
-    if len(samples) < 2:
-        raise ValueError("Capture at least two complete benchmark samples.")
-    if any(s["task_count"] == 0 or len(s["tasks"]) != s["task_count"] for s in samples):
-        raise ValueError("At least one CPU snapshot is missing task records.")
 
     def idle_counters(sample):
         counters = {task["idle_core"]: task["runtime"] for task in sample["tasks"]
@@ -108,6 +128,7 @@ def analyze(lines):
     }
     return {
         "seconds_between_samples": (last["time_us"] - first["time_us"]) / 1_000_000,
+        "discarded_terminal_sample": discarded_terminal_sample,
         "cpu_busy_counter_ticks": busy,
         "cpu_busy_percent_both_cores": 100 * busy / (2 * elapsed),
         "cpu_task_ticks": role_ticks,

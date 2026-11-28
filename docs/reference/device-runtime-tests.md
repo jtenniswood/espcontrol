@@ -148,3 +148,7 @@ include idle gaps, so compare them within the same continuous interaction.
 The timer spans instrumented firmware work. Use high-speed video to measure
 touch-to-visible feedback and check scanout for tearing. Repeat the normal
 installer, OTA, and existing Home Assistant automation checks before rollout.
+The summary drops an unfinished final report so CPU, frame timing, and touch
+counts describe the same interval. Capture at least two complete reports.
+For older captures without event counts, the summary uses the next report as
+the boundary and discards the last report.

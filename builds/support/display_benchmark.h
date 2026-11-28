@@ -49,7 +49,8 @@ class Probe final : public esphome::touchscreen::TouchListener {
     ESP_LOGI(TAG, "sample time_us=%" PRId64 " internal_free=%zu internal_min=%zu internal_largest=%zu "
              "psram_free=%zu psram_min=%zu psram_largest=%zu draw_buffer_bytes=%" PRIu32
              " dsi_staging_bytes=%zu dsi_staged_submissions=%" PRIu32
-             " native_flush_bytes=%zu native_flush_regions=%" PRIu32 " task_count=%u total_runtime=%" PRIu64 " lost=%u",
+             " native_flush_bytes=%zu native_flush_regions=%" PRIu32
+             " task_count=%u total_runtime=%" PRIu64 " lost=%u event_count=%zu",
              esp_timer_get_time(),
              heap_caps_get_free_size(INTERNAL), heap_caps_get_minimum_free_size(INTERNAL),
              heap_caps_get_largest_free_block(INTERNAL), heap_caps_get_free_size(EXTERNAL),
@@ -57,7 +58,7 @@ class Probe final : public esphome::touchscreen::TouchListener {
              draw_buffer_bytes_, dsi_staging_bytes_, dsi_staged_submissions_ != nullptr ? dsi_staged_submissions_() : 0,
              native_flush_bytes_, native_flush_regions_ != nullptr ? native_flush_regions_() : 0,
              static_cast<unsigned>(task_count),
-             static_cast<uint64_t>(total_runtime), lost_);
+             static_cast<uint64_t>(total_runtime), lost_, used_);
     const auto reporting_task = xTaskGetCurrentTaskHandle();
     for (unsigned i = 0; i < task_count; ++i) {
       const auto &task = tasks_[i];

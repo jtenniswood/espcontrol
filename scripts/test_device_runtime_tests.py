@@ -26,10 +26,10 @@ class DisplayBenchmarkSummaryTests(unittest.TestCase):
     def test_allocated_buffer_is_optional_and_empty_refreshes_do_not_count(self):
         memory = "internal_free=100 internal_min=90 internal_largest=80 psram_free=200 psram_min=180 psram_largest=160"
         records = [
-            f"sample time_us=1000 {memory} task_count=2 total_runtime=1000 lost=0",
+            f"sample time_us=1000 {memory} task_count=2 total_runtime=1000 lost=0 event_count=0",
             "task id=1 idle_core=0 runtime=500",
             "task id=2 idle_core=1 runtime=750",
-            f"sample time_us=2000 {memory} task_count=2 total_runtime=2000 lost=0",
+            f"sample time_us=2000 {memory} task_count=2 total_runtime=2000 lost=0 event_count=7",
             "task id=1 idle_core=0 runtime=1250",
             "task id=2 idle_core=1 runtime=1750",
             "events F:1160 C:1180 V:1200 V:1400 F:1480 C:1490 V:1500",
@@ -48,12 +48,12 @@ class DisplayBenchmarkSummaryTests(unittest.TestCase):
     def test_dedicated_worker_regions_and_cpu_are_reported_over_the_capture(self):
         memory = "internal_free=100 internal_min=90 internal_largest=80 psram_free=200 psram_min=180 psram_largest=160"
         records = [
-            f"sample time_us=1000 {memory} task_count=4 total_runtime=1000 lost=0 native_flush_regions=8",
+            f"sample time_us=1000 {memory} task_count=4 total_runtime=1000 lost=0 event_count=0 native_flush_regions=8",
             "task id=1 idle_core=0 runtime=500",
             "task id=2 idle_core=1 runtime=750",
             "task id=3 idle_core=-1 role=1 runtime=200",
             "task id=4 idle_core=-1 role=2 runtime=100",
-            f"sample time_us=2000 {memory} task_count=4 total_runtime=2000 lost=0 native_flush_regions=18 "
+            f"sample time_us=2000 {memory} task_count=4 total_runtime=2000 lost=0 event_count=0 native_flush_regions=18 "
             "native_flush_bytes=1024000",
             "task id=1 idle_core=0 runtime=1250",
             "task id=2 idle_core=1 runtime=1750",
@@ -64,6 +64,41 @@ class DisplayBenchmarkSummaryTests(unittest.TestCase):
         self.assertEqual(result["native_flush_regions"], 10)
         self.assertEqual(result["native_flush_bytes"], 1024000)
         self.assertEqual(result["cpu_task_ticks"], {"esphome_loop": 100, "display_worker": 150})
+
+    def test_partial_terminal_trace_does_not_extend_the_cpu_or_touch_window(self):
+        memory = "internal_free=100 internal_min=90 internal_largest=80 psram_free=200 psram_min=180 psram_largest=160"
+        reports = []
+        for time_us, expected in ((1000, 0), (2000, 2), (3000, 2)):
+            reports.extend([
+                f"sample time_us={time_us} {memory} task_count=2 total_runtime={time_us} lost=0 event_count={expected}",
+                f"task id=1 idle_core=0 runtime={time_us // 2}",
+                f"task id=2 idle_core=1 runtime={time_us // 2}",
+            ])
+            if time_us == 2000:
+                reports.append("events T:1200 U:1600")
+            elif time_us == 3000:
+                reports.append("events T:2400")
+
+        def capture(records):
+            return analyze(f"[I][display_benchmark:42]: {record}" for record in records)
+
+        partial = capture(reports)
+        self.assertTrue(partial["discarded_terminal_sample"])
+        self.assertAlmostEqual(partial["seconds_between_samples"], 0.001)
+        self.assertEqual(partial["cpu_busy_counter_ticks"], 1000)
+        self.assertEqual(partial["touches"], {"presses": 1, "releases": 1})
+
+        complete = capture(reports + ["events U:2800"])
+        self.assertFalse(complete["discarded_terminal_sample"])
+        self.assertEqual(complete["cpu_busy_counter_ticks"], 2000)
+        self.assertEqual(complete["touches"], {"presses": 2, "releases": 2})
+
+        with self.assertRaisesRegex(ValueError, "missing or has unexpected trace events"):
+            capture(reports + [reports[0].replace("1000", "4000")])
+
+        legacy_tail = list(reports)
+        legacy_tail[-4] = legacy_tail[-4].replace(" event_count=2", "")
+        self.assertEqual(capture(legacy_tail + ["events U:2800"]), partial)
 
 
 class EvidenceTests(unittest.TestCase):
