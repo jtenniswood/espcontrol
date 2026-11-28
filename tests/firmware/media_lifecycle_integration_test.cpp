@@ -99,7 +99,7 @@ struct SliderCtx {
   bool media_position = true;
   lv_obj_t *fill = nullptr, *media_slider = nullptr, *media_track_bg = nullptr;
   lv_obj_t *media_value_lbl = nullptr, *media_status_lbl = nullptr, *geometry_parent = nullptr;
-  lv_timer_t *geometry_timer = nullptr, *media_timer = nullptr;
+  lv_timer_t *geometry_timer = nullptr, *media_timer = nullptr, *value_hold_timer = nullptr;
   unsigned char media_position_refresh_remaining = 0;
   SliderCtx() { ++live_sliders; }
   ~SliderCtx() { --live_sliders; }
@@ -374,9 +374,11 @@ void test_slider_deleted_before_owner(const std::string &mode, Surface surface) 
     Card card(mode, surface);
     card.bind();
     SliderCtx *ctx = card.slider();
+    ctx->value_hold_timer = lv_timer_create([](lv_timer_t *) { CHECK(false); }, 2000, ctx);
     delete_widget(ctx->media_slider);
     CHECK(ctx->media_slider == nullptr);
     CHECK(ctx->geometry_timer == nullptr && ctx->media_timer == nullptr);
+    CHECK(ctx->value_hold_timer == nullptr);
     advance_timers();
     send_event(card.slot.btn, LV_EVENT_SIZE_CHANGED);
   }

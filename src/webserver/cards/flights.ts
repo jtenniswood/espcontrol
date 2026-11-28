@@ -130,7 +130,7 @@ export function registerFlightsCardTypes(registry: CardRegistry, cardUi: CardUiS
         iconHtml: '<span class="sp-flights-reading">' +
           '<span class="mdi mdi-' + (customIcon ? iconSlug(customIcon) : AREA_VIEWS[area].icon) + '" aria-hidden="true"></span>' +
           '<span class="sp-flights-count">3</span>' +
-          '<span class="sp-flights-sublabel">' + helpers.escHtml(name) + '</span></span>',
+          '<span class="sp-flights-sublabel sp-card-sublabel">' + helpers.escHtml(name) + '</span></span>',
         labelHtml: "",
         labelEditable: false,
       };
