@@ -14,6 +14,11 @@ target_compile_features(dpi_timing_test PRIVATE cxx_std_17)
 target_compile_options(dpi_timing_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
 target_include_directories(dpi_timing_test PRIVATE ../../components/mipi_dsi)
 add_test(NAME dpi_timing_test COMMAND dpi_timing_test)
+add_executable(display_native_flush_test display_native_flush_test.cpp)
+target_compile_features(display_native_flush_test PRIVATE cxx_std_17)
+target_compile_options(display_native_flush_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_include_directories(display_native_flush_test PRIVATE ../../builds/support)
+add_test(NAME display_native_flush_test COMMAND display_native_flush_test)
 add_test(NAME p4_pipeline_runtime_test COMMAND
   ${CMAKE_COMMAND} -E env "CXX=${CMAKE_CXX_COMPILER}"
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/p4_pipeline_runtime_test.py)

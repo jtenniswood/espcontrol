@@ -99,6 +99,7 @@ TASKS = (
          domains=("firmware",),
          inputs=(
              "tests/firmware/**",
+             "builds/support/display_native_flush.h",
              "components/web_server_idf/**",
              "components/gsl3680/**",
              "common/addon/backlight.yaml",

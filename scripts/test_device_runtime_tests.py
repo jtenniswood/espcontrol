@@ -45,6 +45,26 @@ class DisplayBenchmarkSummaryTests(unittest.TestCase):
         self.assertEqual(result["cpu_busy_percent_both_cores"], 12.5)
         self.assertEqual(result["render_timings_us"]["refresh_interval"]["p95"], 300)
 
+    def test_dedicated_worker_regions_and_cpu_are_reported_over_the_capture(self):
+        memory = "internal_free=100 internal_min=90 internal_largest=80 psram_free=200 psram_min=180 psram_largest=160"
+        records = [
+            f"sample time_us=1000 {memory} task_count=4 total_runtime=1000 lost=0 native_flush_regions=8",
+            "task id=1 idle_core=0 runtime=500",
+            "task id=2 idle_core=1 runtime=750",
+            "task id=3 idle_core=-1 role=1 runtime=200",
+            "task id=4 idle_core=-1 role=2 runtime=100",
+            f"sample time_us=2000 {memory} task_count=4 total_runtime=2000 lost=0 native_flush_regions=18 "
+            "native_flush_bytes=1024000",
+            "task id=1 idle_core=0 runtime=1250",
+            "task id=2 idle_core=1 runtime=1750",
+            "task id=3 idle_core=-1 role=1 runtime=300",
+            "task id=4 idle_core=-1 role=2 runtime=250",
+        ]
+        result = analyze(f"[I][display_benchmark:42]: {record}" for record in records)
+        self.assertEqual(result["native_flush_regions"], 10)
+        self.assertEqual(result["native_flush_bytes"], 1024000)
+        self.assertEqual(result["cpu_task_ticks"], {"esphome_loop": 100, "display_worker": 150})
+
 
 class EvidenceTests(unittest.TestCase):
     def setUp(self):
