@@ -1034,9 +1034,11 @@ script:
           }
           lv_obj_set_style_bg_color(id(cover_art_playback_button), button_color, LV_PART_MAIN);
           lv_obj_set_style_bg_color(id(cover_art_track_controls), button_color, LV_PART_MAIN);
+          const auto pressed_selector = static_cast<lv_style_selector_t>(LV_PART_MAIN) |
+                                        static_cast<lv_style_selector_t>(LV_STATE_PRESSED);
           for (auto *button : {id(cover_art_playback_button), id(cover_art_track_previous_button),
                                id(cover_art_track_pause_button), id(cover_art_track_next_button)}) {
-            lv_obj_set_style_bg_color(button, pressed_color, LV_PART_MAIN | LV_STATE_PRESSED);
+            lv_obj_set_style_bg_color(button, pressed_color, pressed_selector);
           }
 
   - id: cover_art_clear_image_source
