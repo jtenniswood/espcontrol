@@ -258,8 +258,12 @@ int main() {
     const auto track = track_controls_layout(layout, button);
     assert(track.width > 2 * track.height && track.width <= layout.screen_width - 2 * button.margin);
     assert(track.panel_height > 0 && track.panel_height <= layout.panel_height);
-    assert(layout.panel_y + track.panel_height <= std::min(button_y,
+    assert(track.panel_y + track.panel_height <= std::min(button_y,
            layout.screen_height - button.margin - track.height));
+    if (layout.split && layout.screen_height > layout.screen_width) {
+      assert(track.panel_y > layout.art_y + layout.art_size);
+      assert(track.panel_height >= 69 + 47 + 28 + 10 + 14);
+    }
   }
   PlaybackControl without_resume;
   assert(without_resume.begin("player.a", "playing", 1) == PlaybackCommand::PAUSE);

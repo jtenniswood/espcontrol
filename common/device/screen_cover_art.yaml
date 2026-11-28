@@ -834,6 +834,7 @@ script:
           lv_obj_set_size(id(cover_art_playback_button), playback.size, playback.size);
           lv_obj_align(id(cover_art_playback_button), LV_ALIGN_BOTTOM_RIGHT, -playback.margin, -playback.margin);
           if (track_controls_enabled) {
+            lv_obj_set_y(id(cover_art_track_panel), track_controls.panel_y);
             lv_obj_set_width(id(cover_art_track_panel), layout.panel_width);
             lv_obj_set_height(id(cover_art_track_panel), track_controls.panel_height);
             const int artist_line = lv_font_get_line_height(
@@ -842,8 +843,11 @@ script:
                 lv_obj_get_style_text_font(id(cover_art_time_label), LV_PART_MAIN));
             const int title_budget = track_controls.panel_height - artist_line - time_line -
                 ${cover_art_artist_pad_top} - ${cover_art_time_pad_top} - layout.panel_padding;
+            const int line_step = std::max(1, title_line_height + ${cover_art_title_line_space});
+            const int extra_lines = std::max(0, std::min(playback.title_max_height, title_budget) -
+                title_line_height) / line_step;
             lv_obj_set_style_max_height(id(cover_art_title_label),
-                std::min(playback.title_max_height, std::max(title_line_height, title_budget)), LV_PART_MAIN);
+                title_line_height + extra_lines * line_step, LV_PART_MAIN);
           } else if (!${cover_art_square_overlay} || id(cover_art_playback_control_enabled).state) {
             lv_obj_set_width(id(cover_art_track_panel), playback.panel_width);
             lv_obj_set_height(id(cover_art_track_panel), playback.panel_height);
