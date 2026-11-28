@@ -26,6 +26,7 @@ stub = r'''
 #include <cstring>
 #include <functional>
 #include <memory>
+#include <string>
 #include <vector>
 #include "gif_image.h"
 #include "esphome/core/log.h"
@@ -35,7 +36,8 @@ stub = r'''
 namespace esphome::artwork_image {
 enum P4PipelinePriority { P4_PIPELINE_TILE, P4_PIPELINE_MODAL };
 struct Downloader { void end() {} };
-struct ArtworkImage {
+class ArtworkImage {
+ public:
   bool service_active_ = false, p4_pipeline_pending_ = false, s3_transfer_pending_ = false;
   std::shared_ptr<Downloader> downloader_;
   std::unique_ptr<ImageDecoder> decoder_;
@@ -70,6 +72,8 @@ struct ArtworkImage {
   std::vector<std::function<void()>> error_callbacks;
   bool has_on_finished_callbacks() const { return !finished_callbacks.empty(); }
   bool has_on_error_callbacks() const { return !error_callbacks.empty(); }
+  int get_last_http_status() const { return 0; }
+  std::string get_url() const { return {}; }
   void add_on_finished_callback(std::function<void(bool)> callback) { finished_callbacks.push_back(callback); }
   void add_on_error_callback(std::function<void()> callback) { error_callbacks.push_back(callback); }
   void set_animation_callbacks(std::function<bool()> visible, std::function<void()> redraw,
@@ -174,6 +178,7 @@ void image_card_apply_downloaded(ImageCardCtx *) {}
 void image_card_handle_download_error(ImageCardCtx *) {}
 void image_card_apply_modal_downloaded(ImageCardCtx *) {}
 void image_card_handle_modal_download_error(ImageCardCtx *) {}
+void image_card_reject_camera_token(ImageCardCtx *, int, const std::string &) {}
 """
 ui_source = (ROOT / "components/espcontrol/button_grid_image.h").read_text()
 for name in ("image_card_page_visible", "image_card_context_visible_on_active_screen",

@@ -142,6 +142,7 @@ Camera performance also depends on the connection between the panel and Home Ass
 |---|---|
 | The card says **Configure** | Add a `camera.*` or `image.*` entity to the card. |
 | The card says **Unavailable** | Check that the entity exists in Home Assistant and has an image available. |
+| The panel logs HTTP 403 for camera images that work in Home Assistant | Check Home Assistant's `/config/ip_bans.yaml` for the panel's IP address. If listed, remove that entry and restart Home Assistant. The panel can still receive entity updates while Home Assistant blocks its image requests. See [Home Assistant IP filtering and banning](https://www.home-assistant.io/integrations/http/#ip-filtering-and-banning). |
 | The card says **Too many** | Remove or move some Camera cards so the panel has enough image download slots. |
 | The picture is cropped | Change **Image fit** to **Show full image**. |
 | The picture does not update often | For a camera, enable periodic refresh or set an activity trigger, and check snapshot freshness in Home Assistant. For an image entity, check that its image-update timestamp changes. |
