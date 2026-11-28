@@ -9,6 +9,7 @@ export interface ArtworkPostApiFeature {
     postMediaPlayerSleepPrevention(on?: any): any;
     postMediaPlayerSleepPreventionEntity(value?: any): any;
     postCoverArtPlaybackControl(on?: any): any;
+    postCoverArtTrackControls(on: boolean): any;
     postCoverArtScreensaver(on?: any): any;
     postClockOverlay(on?: any): any;
     postMetadataOverlay(on?: any): any;
@@ -55,6 +56,10 @@ export function createArtworkPostApiFeature(
     }
     function postCoverArtPlaybackControl(this: any, on?: any) {
         return postSwitchWithObjectIds(entityName("screen_saver_cover_art_playback_control"), entityObjectIds("screen_saver_cover_art_playback_control"), on);
+    }
+    function postCoverArtTrackControls(on: boolean) {
+        const key = "screen_saver_cover_art_track_controls";
+        return postSwitchWithObjectIds(entityName(key), entityObjectIds(key), on);
     }
     function postCoverArtScreensaver(this: any, on?: any) {
         return postSwitchWithObjectIds(entityName("screen_saver_cover_art"), entityObjectIds("screen_saver_cover_art"), on);
@@ -115,6 +120,7 @@ export function createArtworkPostApiFeature(
         postMediaPlayerSleepPrevention,
         postMediaPlayerSleepPreventionEntity,
         postCoverArtPlaybackControl,
+        postCoverArtTrackControls,
         postCoverArtScreensaver,
         postClockOverlay,
         postMetadataOverlay,

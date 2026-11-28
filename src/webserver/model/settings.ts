@@ -428,6 +428,7 @@ export interface BackupPanelSettingsState {
   coverArtAttributeConditions: string;
   coverArtDelay: unknown;
   coverArtPlaybackControl: boolean;
+  coverArtTrackControls: boolean;
   coverArtTrackOverlayDuration: unknown;
   coverArtHideExternalInput: boolean;
   coverArtHomeAssistantHost: string;
@@ -597,6 +598,7 @@ export function normalizeBackupPanelSettings(
       objectValue(settings, "cover_art_delay") != null ? settings.cover_art_delay : 10,
     ),
     coverArtPlaybackControl: objectValue(settings, "cover_art_playback_control") != null ? !!settings.cover_art_playback_control : true,
+    coverArtTrackControls: settings.cover_art_track_controls === true,
     coverArtTrackOverlayDuration: objectValue(settings, "cover_art_track_overlay_duration") != null ? settings.cover_art_track_overlay_duration : 5,
     coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null
       ? !!settings.cover_art_hide_external_input

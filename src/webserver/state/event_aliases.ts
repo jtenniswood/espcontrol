@@ -23,6 +23,7 @@ export const SSE_ALIAS_GROUPS = {
   screensaverTimeout: ["number-screensaver_timeout", "number-screen_saver__timeout", "number-screen_saver_timeout"],
   clockScreensaver: ["switch-screen_saver__clock", "switch-screen_saver_clock", "switch-clock_screensaver_enabled"],
   coverArtPlaybackControl: ["switch-screen_saver__cover_art_playback_control", "switch-screen_saver_cover_art_playback_control", "switch-cover_art_playback_control_enabled"],
+  coverArtTrackControls: ["switch-screen_saver__cover_art_track_controls", "switch-screen_saver_cover_art_track_controls", "switch-cover_art_track_controls_enabled"],
   mediaPlayerSleepPrevention: ["switch-screen_saver__media_player_sleep_prevention", "switch-screen_saver_media_player_sleep_prevention", "switch-media_player_sleep_prevention_enabled"],
   mediaPlayerSleepPreventionEntity: ["text-media_player_sleep_prevention_entity"],
   coverArt: ["switch-screen_saver__cover_art", "switch-screen_saver_cover_art", "switch-screensaver_cover_art"],
@@ -85,6 +86,7 @@ export function applySseHandlerAliases(handlers: SseHandlers): void {
   addSseAliases(handlers, SSE_ALIAS_GROUPS.screensaverTimeout, "number-screensaver_timeout");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.clockScreensaver, "switch-screen_saver__clock");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArtPlaybackControl, "switch-screen_saver__cover_art_playback_control");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArtTrackControls, "switch-screen_saver__cover_art_track_controls");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.mediaPlayerSleepPrevention, "switch-screen_saver__media_player_sleep_prevention");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.mediaPlayerSleepPreventionEntity, "text-media_player_sleep_prevention_entity");
   addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArt, "switch-screen_saver__cover_art");

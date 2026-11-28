@@ -172,6 +172,7 @@ export interface AppState {
   coverArtFilteringEnabled: boolean;
   coverArtDelay: number;
   coverArtPlaybackControlOn: boolean;
+  coverArtTrackControlsOn: boolean;
   coverArtTrackOverlayDuration: number;
   coverArtHideExternalInputOn: boolean;
   homeAssistantArtworkProtocol: string;

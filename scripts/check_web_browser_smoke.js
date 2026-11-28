@@ -1828,6 +1828,17 @@ async function assertSettingsPage(page, label, options = {}, posts = []) {
     `${label}: cover art secondary entity should begin inside its collapsed panel`,
   );
   await screensaverSettings.locator("> .sp-disclosure-button").click();
+  const trackControls = screensaverSettings.locator("#sp-set-ss-track-controls");
+  assert.strictEqual(await trackControls.isChecked(), false, `${label}: track controls should be off by default`);
+  for (const action of ["turn_on", "turn_off"]) {
+    const beforeTrackControls = posts.length;
+    await screensaverSettings.locator("#sp-set-ss-track-controls + .sp-toggle-track").click();
+    await waitForPost(posts, {
+      domain: "switch",
+      name: "screen_saver__cover_art_track_controls",
+      action,
+    }, `${label}: save track controls ${action}`, beforeTrackControls);
+  }
   assert.strictEqual(await coverArtCard.locator("#sp-set-cover-art-clock-overlay").count(), 0,
     `${label}: media Cover Art must not offer the camera clock overlay`);
   assert(

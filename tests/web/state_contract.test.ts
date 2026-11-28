@@ -110,6 +110,7 @@ export function runStateContractTests(): void {
     clockScreensaver: "switch-screen_saver__clock",
     mediaPlayerSleepPrevention: "switch-screen_saver__media_player_sleep_prevention",
     coverArtPlaybackControl: "switch-screen_saver__cover_art_playback_control",
+    coverArtTrackControls: "switch-screen_saver__cover_art_track_controls",
     mediaPlayerSleepPreventionEntity: "text-media_player_sleep_prevention_entity",
     coverArt: "switch-screen_saver__cover_art",
     cameraDimming: "number-screen_saver__camera_dimming",

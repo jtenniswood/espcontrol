@@ -488,6 +488,9 @@ export function createSettingsPageHelpersFeature(
         if (els.setCoverArtPlaybackControlToggle) {
             els.setCoverArtPlaybackControlToggle.checked = state.coverArtPlaybackControlOn;
         }
+        if (els.setCoverArtTrackControlsToggle) {
+            els.setCoverArtTrackControlsToggle.checked = state.coverArtTrackControlsOn;
+        }
         if (els.setCoverArtToggle) {
             els.setCoverArtToggle.checked = !!state.coverArtScreensaverOn;
         }
