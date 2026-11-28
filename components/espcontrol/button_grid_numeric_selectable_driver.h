@@ -92,10 +92,10 @@ inline bool numeric_selectable_driver_attach_interaction(
 
 inline bool numeric_selectable_driver_refresh_layout(
     BtnSlot &slot, const ParsedCfg &config, const Context &context,
-    const DisplayProfile &display) {
+    const DisplayProfile &display, lv_coord_t label_max_height = LV_COORD_MAX) {
   if (!numeric_selectable_driver_matches(context, config)) return false;
   if (numeric_selectable_driver_slider(context)) {
-    refresh_slider_card_layout(slot, &display);
+    refresh_slider_card_layout(slot, &display, label_max_height);
   }
   return true;
 }

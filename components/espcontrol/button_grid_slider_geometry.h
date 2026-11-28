@@ -5,6 +5,14 @@
 namespace espcontrol {
 namespace slider_geometry {
 
+inline int32_t title_height_for_space(int32_t available_height, int32_t line_height,
+                                      int32_t line_space) {
+  const int32_t line_step = line_height + line_space;
+  if (line_height <= 0 || line_step <= 0 || available_height < line_height) return 0;
+  const int32_t extra_lines = (available_height - line_height) / line_step;
+  return line_height + extra_lines * line_step;
+}
+
 inline int32_t vertical_edge_inset(int32_t height) {
   if (height <= 0) return 0;
 

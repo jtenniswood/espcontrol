@@ -252,7 +252,8 @@ inline void refresh_media_card_layout(
 inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
                                       const std::string &entity_id);
 inline void refresh_slider_card_layout(BtnSlot &slot,
-                                       const DisplayProfile *display = nullptr);
+                                       const DisplayProfile *display = nullptr,
+                                       lv_coord_t label_max_height = LV_COORD_MAX);
 inline bool bind_garage_status_card(
     BtnSlot &slot, const ParsedCfg &config,
     TransientStatusLabel **status_label_out);
@@ -377,6 +378,7 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
   }
   if (s.text_lbl) {
     lv_obj_remove_local_style_prop(s.text_lbl, LV_STYLE_MARGIN_TOP, LV_PART_MAIN);
+    lv_obj_remove_local_style_prop(s.text_lbl, LV_STYLE_MAX_HEIGHT, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(s.text_lbl, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_pad_all(s.text_lbl, 0, LV_PART_MAIN);
     lv_obj_set_style_radius(s.text_lbl, 0, LV_PART_MAIN);
@@ -970,7 +972,8 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
   }
 }
 
-inline void refresh_slider_card_layout(BtnSlot &s, const DisplayProfile *display) {
+inline void refresh_slider_card_layout(BtnSlot &s, const DisplayProfile *display,
+                                       lv_coord_t label_max_height) {
   lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
   SliderCtx *ctx = slider ? (SliderCtx *)lv_obj_get_user_data(slider) : nullptr;
   // Reuse the padding captured before the slider zeroed it so the icon and label
@@ -991,6 +994,17 @@ inline void refresh_slider_card_layout(BtnSlot &s, const DisplayProfile *display
     lv_obj_set_height(value, font->line_height);
     lv_obj_align(value, LV_ALIGN_BOTTOM_LEFT, pad_left, -pad_bottom);
     title_bottom += font->line_height + CARD_SUBLABEL_GAP;
+    const lv_coord_t card_height = lv_obj_get_height(s.btn);
+    if (card_height > 0) {
+      const auto *icon_font = s.icon_lbl && !lv_obj_has_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN)
+        ? lv_obj_get_style_text_font(s.icon_lbl, LV_PART_MAIN) : nullptr;
+      const auto *title_font = lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN);
+      const lv_coord_t icon_height = icon_font ? icon_font->line_height : 0;
+      const lv_coord_t available = card_height - pad_top - icon_height - title_bottom;
+      lv_obj_set_style_max_height(s.text_lbl, espcontrol::slider_geometry::title_height_for_space(
+        std::min(available, label_max_height), title_font->line_height,
+        lv_obj_get_style_text_line_space(s.text_lbl, LV_PART_MAIN)), LV_PART_MAIN);
+    }
   }
   if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad_left, -title_bottom);
   if (slider) slider_refresh_geometry(slider);
@@ -1035,8 +1049,10 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
   if (espcontrol::cards::navigation_driver_refresh_layout(
         s, p, context, cfg)) return;
 
+  const lv_coord_t label_max_height = cfg.label_lines > 0 && s.text_lbl
+    ? lv_obj_get_style_max_height(s.text_lbl, LV_PART_MAIN) : LV_COORD_MAX;
   if (espcontrol::cards::numeric_selectable_driver_refresh_layout(
-        s, p, context, display)) return;
+        s, p, context, display, label_max_height)) return;
 
   if (espcontrol::cards::climate_control_driver_refresh_layout(
         s, p, context, display, row_span, col_span)) return;
