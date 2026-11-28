@@ -250,6 +250,7 @@ async def run_suite(args, client_factory=None):
     http_lock = asyncio.Lock()
     stop = asyncio.Event()
     ready = asyncio.Event()
+    benchmark_sample = asyncio.Event()
     opened = asyncio.Event()
     rejected = asyncio.Event()
     modal_finished = asyncio.Event()
@@ -283,8 +284,11 @@ async def run_suite(args, client_factory=None):
         text = message.message.decode("utf-8", errors="replace") if isinstance(message.message, bytes) else str(message.message)
         evidence.counts["native_log"] += 1
         if benchmark_log is not None and "[display_benchmark:" in text:
-            benchmark_log.write(safe_log(text).strip() + "\n")
+            line = safe_log(text).strip()
+            benchmark_log.write(line + "\n")
             evidence.counts["display_benchmark_log"] += 1
+            if "]: sample time_us=" in line:
+                benchmark_sample.set()
         if CRASH.search(re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", text)):
             evidence.event("crash_signature", failure=True, message=safe_log(text))
         elif message.level <= 1:
@@ -300,6 +304,7 @@ async def run_suite(args, client_factory=None):
         nonlocal client, services, intentional_close
         while not stop.is_set():
             connection_lost.clear()
+            benchmark_sample.clear()
             client = client_factory(args.host, args.api_port,
                                     os.environ.get("ESPCONTROL_API_PASSWORD"),
                                     noise_psk=os.environ.get("ESPCONTROL_API_NOISE_PSK"),
@@ -388,6 +393,11 @@ async def run_suite(args, client_factory=None):
             await asyncio.wait_for(ready.wait(), args.timeout * 2)
             if not {"open_modal", "close_modal"}.issubset(services):
                 raise RuntimeError("modal actions missing")
+            if benchmark_log is not None:
+                try:
+                    await asyncio.wait_for(benchmark_sample.wait(), args.timeout)
+                except asyncio.TimeoutError:
+                    raise RuntimeError("display benchmark sample missing before workload") from None
             for _ in range(args.modal_cycles):
                 if stop.is_set() or not ready.is_set():
                     break

@@ -246,7 +246,8 @@ class FakeProbe:
 class RunnerTests(unittest.IsolatedAsyncioTestCase):
     async def run_fake(self, *, crash=False, disconnected=False, acknowledge=True,
                        modal=True, duration=.15, cycles=2, dwell=.005, memory=True, http_mac="ddeeff", change_identity_after_open=False, close_delay=0,
-                       record_close=False, cancel_run=False, cancel_close=False, timeout=.05, capture_display=False):
+                       record_close=False, cancel_run=False, cancel_close=False, timeout=.05, capture_display=False,
+                       send_display_sample=True):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         calls=[]
@@ -265,7 +266,7 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
                 cb(SimpleNamespace(key=99,state='secret config'))
             def subscribe_logs(self, cb, **kwargs):
                 self.log=cb
-                if capture_display:
+                if capture_display and send_display_sample:
                     cb(SimpleNamespace(message=b'[I][display_benchmark:40]: sample time_us=1000', level=3))
                     cb(SimpleNamespace(message=b'[I][other:40]: unrelated log', level=3))
                 if crash: cb(SimpleNamespace(message=b'Guru Meditation Error: test',level=1))
@@ -304,7 +305,7 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
         report=json.loads((args.output/'report.json').read_text())
         events=(args.output/'events.jsonl').read_text()
         self.assertNotIn('secret config',events)
-        if capture_display:
+        if capture_display and send_display_sample:
             self.assertEqual((args.output/'display-benchmark.log').read_text(),
                              '[I][display_benchmark:40]: sample time_us=1000\n')
         return code, report, calls
@@ -346,6 +347,12 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
         code, report, _ = await self.run_fake(modal=False, capture_display=True)
         self.assertEqual(code, 0, report)
         self.assertEqual(report['counts']['display_benchmark_log'], 1)
+
+    async def test_display_capture_waits_for_sample_before_opening_modal(self):
+        code, report, calls = await self.run_fake(capture_display=True, send_display_sample=False)
+        self.assertEqual(code, 1, report)
+        self.assertIn('display_benchmark_missing', report['failures'])
+        self.assertNotIn('open_modal', calls)
 
     async def test_default_passive_mode_sends_no_modal_actions(self):
         code,report,calls=await self.run_fake(modal=False)

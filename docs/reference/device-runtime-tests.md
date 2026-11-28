@@ -102,7 +102,9 @@ configuration. Use the same instrumented build settings for baseline and
 candidate firmware. Capture one workload per run and avoid rebooting during a
 capture. Start the runner before the workload so the first complete sample
 precedes the measured actions. Add the existing `--modal-entity` option for
-repeatable remote modal cycles.
+repeatable remote modal cycles. With `--capture-display` the runner waits for
+the first benchmark sample before it opens a modal. Allow enough observation
+time for the cycles and a final report after the last redraw.
 
 For the buffer-size comparison, use
 `builds/guition-esp32-p4-jc8012p4a1-v3-benchmark-quarter-buffer.yaml` as the
