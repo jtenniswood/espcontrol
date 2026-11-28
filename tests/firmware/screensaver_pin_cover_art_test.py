@@ -15,6 +15,7 @@ scripts = {script['id']: script for script in yaml.load(text[text.index('script:
 wake = scripts['cover_art_handle_touch']['then'][0]['if']['condition']['lambda']
 toggle = scripts['cover_art_toggle_playback']['then'][0]['lambda'].replace('${cover_art_square_overlay}', 'square_panel')
 refresh = scripts['cover_art_update_playback_control']['then'][-1]['lambda'].replace('${cover_art_square_overlay}', 'square_panel')
+skip = scripts['cover_art_skip_track']['then'][0]['lambda']
 source = r'''
 #include <cassert>
 #include <cstdio>
@@ -24,9 +25,10 @@ source = r'''
 #define id(value) value
 constexpr int LV_OBJ_FLAG_HIDDEN = 1;
 constexpr int LV_OPA_50 = 128, LV_OPA_COVER = 255;
-struct Widget { bool hidden = false; } widget, button, icon;
+struct Widget { bool hidden = false; } widget, button, icon, pill, pause_button;
 Widget *cover_art_screensaver = &widget;
 Widget *cover_art_playback_button = &button, *cover_art_playback_icon = &icon;
+Widget *cover_art_track_controls = &pill, *cover_art_track_pause_button = &pause_button;
 bool lv_obj_has_flag(Widget *obj, int) { return obj->hidden; }
 void lv_obj_add_flag(Widget *obj, int) { obj->hidden = true; }
 void lv_obj_clear_flag(Widget *obj, int) { obj->hidden = false; }
@@ -35,6 +37,7 @@ void lv_obj_set_style_opa(Widget *, int, int) {}
 bool square_panel = false;
 bool screensaver_wake_touch_guard_active = false;
 struct Setting { bool state = true; } cover_art_playback_control_enabled;
+Setting cover_art_track_controls_enabled{false};
 struct App { espcontrol::DisplayModeController controller; auto &display() { return controller; } } espcontrol_app;
 std::string cover_art_active_media_player_entity = "media_player.room";
 std::string cover_art_last_playback_state = "playing";
@@ -44,19 +47,27 @@ uint32_t millis() { return 1234; }
 namespace espcontrol::cover_art { enum class PlaybackCommand { NONE, PAUSE, PLAY }; }
 int sent = 0;
 std::string last_service;
-bool ha_send_entity_action(const std::string &, const char *service) { ++sent; last_service = service; return true; }
+std::string last_entity;
+bool ha_send_entity_action(const std::string &entity, const char *service) {
+  ++sent;
+  last_service = service;
+  last_entity = entity;
+  return true;
+}
 struct Control {
   auto begin(const std::string &, const std::string &state, uint32_t) {
     return state == "paused" ? espcontrol::cover_art::PlaybackCommand::PLAY : espcontrol::cover_art::PlaybackCommand::PAUSE;
   }
   void cancel_pending() {}
   void expire(uint32_t) {}
-  bool pending() { return false; }
+  bool pending() { return awaiting_pause; }
+  bool awaiting_pause = false;
 } cover_art_playback_control;
 struct Script { void execute() {} } cover_art_update_playback_control;
 bool uses_wake_path() { WAKE_LAMBDA }
 void toggle_playback() { TOGGLE_LAMBDA }
 void refresh_playback() { REFRESH_LAMBDA }
+void skip_track(bool next) { SKIP_LAMBDA }
 int main() {
   auto &pin = espcontrol::screensaver_pin();
   pin.setup();
@@ -157,8 +168,66 @@ int main() {
     refresh_playback();
     assert(!button.hidden);
   }
+  square_panel = true;
+  cover_art_last_playback_state = "playing";
+  cover_art_track_controls_enabled.state = true;
+  cover_art_active_media_player_entity = "media_player.external_source";
+  refresh_playback();
+  assert(!pill.hidden && button.hidden);
+  const int before_skip = sent;
+  skip_track(false);
+  assert(sent == before_skip + 1 && last_service == "media_player.media_previous_track");
+  skip_track(true);
+  assert(sent == before_skip + 2 && last_service == "media_player.media_next_track");
+  assert(last_entity == cover_art_active_media_player_entity);
+  cover_art_playback_control.awaiting_pause = true;
+  skip_track(true);
+  cover_art_playback_control.awaiting_pause = false;
+  screensaver_wake_touch_guard_active = true;
+  skip_track(false);
+  screensaver_wake_touch_guard_active = false;
+  widget.hidden = true;
+  skip_track(true);
+  widget.hidden = false;
+  assert(sent == before_skip + 2);
+
+  cover_art_last_playback_state = "buffering";
+  refresh_playback();
+  assert(pill.hidden);
+  skip_track(true);
+  cover_art_last_playback_state = "paused";
+  refresh_playback();
+  assert(pill.hidden && !button.hidden);
+  skip_track(true);
+  assert(sent == before_skip + 2);
+  cover_art_last_playback_state = "playing";
+  cover_art_playback_control_enabled.state = false;
+  refresh_playback();
+  assert(!pill.hidden && button.hidden);
+  toggle_playback();
+  assert(sent == before_skip + 3 && last_service == "media_player.media_pause");
+
+  cover_art_playback_control_enabled.state = true;
+  allow = true;
+  assert(pin.save(false, nullptr, nullptr, &allow));
+  assert(pin.lock());
+  refresh_playback();
+  assert(pill.hidden && !button.hidden);
+  skip_track(true);
+  assert(pin.submit(code));
+  connected = false;
+  refresh_playback();
+  assert(pill.hidden);
+  skip_track(false);
+  connected = true;
+  cover_art_track_controls_enabled.state = false;
+  refresh_playback();
+  assert(pill.hidden && !button.hidden);
+  skip_track(false);
+  assert(sent == before_skip + 3);
 }
-'''.replace('WAKE_LAMBDA', wake).replace('TOGGLE_LAMBDA', toggle).replace('REFRESH_LAMBDA', refresh)
+'''.replace('WAKE_LAMBDA', wake).replace('TOGGLE_LAMBDA', toggle).replace(
+    'REFRESH_LAMBDA', refresh).replace('SKIP_LAMBDA', skip)
 with tempfile.TemporaryDirectory() as directory:
     cpp, binary = Path(directory) / 'test.cpp', Path(directory) / 'test'
     cpp.write_text(source)

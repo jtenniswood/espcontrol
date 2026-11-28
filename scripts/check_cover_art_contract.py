@@ -255,7 +255,21 @@ int main() {
     const int button_y = layout.screen_height - button.margin - button.size;
     assert(layout.panel_x + button.panel_width <= button_x ||
            layout.panel_y + button.panel_height <= button_y);
+    const auto track = track_controls_layout(layout, button);
+    assert(track.width > 2 * track.height && track.width <= layout.screen_width - 2 * button.margin);
+    assert(track.panel_height > 0 && track.panel_height <= layout.panel_height);
+    assert(track.panel_y + track.panel_height <= std::min(button_y,
+           layout.screen_height - button.margin - track.height));
+    if (layout.split && layout.screen_height > layout.screen_width) {
+      assert(track.panel_y > layout.art_y + layout.art_size);
+      assert(track.panel_height >= 69 + 47 + 28 + 10 + 14);
+    }
   }
+  PlaybackControl without_resume;
+  assert(without_resume.begin("player.a", "playing", 1) == PlaybackCommand::PAUSE);
+  assert(without_resume.pending());
+  without_resume.observe("player.a", "paused", 2, false);
+  assert(!without_resume.pending() && !without_resume.retains_pause("player.a"));
   RuntimeState s; assert(!s.needs_download()); s.select_source("track-a"); assert(s.needs_download());
   s.begin_download("track-a?refresh=1"); s.select_source("track-b");
   assert(s.apply_download("track-a?refresh=1") && s.loaded_url == "track-a" && s.needs_download());
@@ -901,18 +915,22 @@ assert '''if (id(cover_art_playback_control).retains_pause(cover_entity)) {
                   id(cover_art_show_track_overlay).execute();''' in playback
 fallback = yaml_script_body(screen, "cover_art_show_black_screen") or ""
 assert "retains_pause(id(cover_art_active_media_player_entity))" in fallback
-assert "lv_obj_set_style_text_color(id(cover_art_playback_icon), lv_color_hex(0xFFFFFF), LV_PART_MAIN);" in fallback
+assert "id: cover_art_style_playback_controls" in fallback
 accent_script = yaml_script_body(screen, "cover_art_extract_accent_color") or ""
-assert "espcontrol::cover_art::playback_icon_color(" in accent_script
-assert "rgb(button_color), rgb(pressed_color)" in accent_script
-assert "lv_obj_set_style_text_color(id(cover_art_playback_icon), lv_color_hex(icon_color), LV_PART_MAIN);" in accent_script
+assert "id(cover_art_style_playback_controls).execute(" in accent_script
+playback_style = yaml_script_body(screen, "cover_art_style_playback_controls") or ""
+assert "espcontrol::cover_art::playback_icon_color(" in playback_style
+assert "rgb(button_color), rgb(pressed_color)" in playback_style
+assert "id(cover_art_playback_icon), id(cover_art_track_previous_icon)" in playback_style
+assert "lv_obj_set_style_bg_color(id(cover_art_track_controls), button_color" in playback_style
 setting = yaml_script_body(screen, "cover_art_refresh_playback_setting") or ""
 assert "${cover_art_square_overlay} && !id(cover_art_playback_control_enabled).state" in setting
 assert "script.execute: cover_art_return_home_after_playback" in setting
 assert "id(cover_art_playback_control).reset()" in setting
 assert "id(cover_art_layout_signature).clear()" in setting
 assert "script.execute: cover_art_apply_responsive_layout" in setting
-assert "!id(cover_art_playback_control_enabled).state) return;" in control
+assert "const bool round_control_enabled" in control
+assert "observe(cover_entity, state_text, millis(), can_resume);" in playback
 layout_script = yaml_script_body(screen, "cover_art_apply_responsive_layout") or ""
 compensation_call = "apply_width_compensation(id(cover_art_playback_button), icon_width_compensation_percent());"
 assert compensation_call in layout_script

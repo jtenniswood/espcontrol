@@ -26,6 +26,7 @@ export function createSettingsCoverArtSectionFeature(codec: Pick<ConfigCodecFeat
         postMediaPlayerSleepPrevention,
         postMediaPlayerSleepPreventionEntity,
         postCoverArtPlaybackControl,
+        postCoverArtTrackControls,
         postCoverArtScreensaver,
         postCoverArtMediaPlayerEntity,
         postCoverArtSecondaryMediaPlayerEntity,
@@ -67,6 +68,13 @@ export function createSettingsCoverArtSectionFeature(codec: Pick<ConfigCodecFeat
             });
             els.setCoverArtPlaybackControlToggle = playbackToggle.input;
         }
+        const trackControlsToggle = toggleRow("Show Track Controls", "sp-set-ss-track-controls", state.coverArtTrackControlsOn);
+        coverArtScreensaverSettingsBody.appendChild(trackControlsToggle.row);
+        trackControlsToggle.input.addEventListener("change", function (this: HTMLInputElement) {
+            state.coverArtTrackControlsOn = this.checked;
+            postCoverArtTrackControls(this.checked);
+        });
+        els.setCoverArtTrackControlsToggle = trackControlsToggle.input;
         var coverArtEntityField: any = document.createElement("div");
         coverArtEntityField.className = "sp-field";
         coverArtEntityField.appendChild(fieldLabel("Media Player Entity", "sp-set-ss-cover-art-player"));

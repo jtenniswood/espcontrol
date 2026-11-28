@@ -31,6 +31,7 @@ BACKUP_FIELDS = (
     ('settings', 'screensaver_camera_dimming', 'screen_saver_camera_dimming', 'number', 'Screen Saver: Camera Dimming'),
     ('settings', 'presence_sensor_entity', 'presence_sensor_entity', 'text', 'Presence Sensor Entity'),
     ('settings', 'cover_art_playback_control', 'screen_saver_cover_art_playback_control', 'switch', 'Screen Saver: Cover Art Playback Control'),
+    ('settings', 'cover_art_track_controls', 'screen_saver_cover_art_track_controls', 'switch', 'Screen Saver: Cover Art Track Controls'),
     ('settings', 'media_player_sleep_prevention', 'screen_saver_media_player_sleep_prevention', 'switch', 'Screen Saver: Media Player Sleep Prevention'),
     ('settings', 'media_player_sleep_prevention_entity', 'media_player_sleep_prevention_entity', 'text', 'Media Player Sleep Prevention Entity'),
     ('settings', 'cover_art_screensaver', 'screen_saver_cover_art', 'switch', 'Screen Saver: Cover Art'),

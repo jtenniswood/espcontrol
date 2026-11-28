@@ -122,6 +122,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
         postMediaPlayerSleepPrevention,
         postMediaPlayerSleepPreventionEntity,
         postCoverArtPlaybackControl,
+        postCoverArtTrackControls,
         postCoverArtScreensaver,
         postClockOverlay,
         postCoverArtMediaPlayerEntity,
@@ -305,6 +306,7 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                 cover_art_attribute_conditions: state.coverArtAttributeConditions,
                 cover_art_delay: state.coverArtDelay,
                 cover_art_playback_control: state.coverArtPlaybackControlOn,
+                cover_art_track_controls: state.coverArtTrackControlsOn,
                 cover_art_track_overlay_duration: state.coverArtTrackOverlayDuration,
                 cover_art_hide_external_input: state.coverArtHideExternalInputOn,
                 home_assistant_artwork_protocol: normalizeHomeAssistantArtworkProtocol(state.homeAssistantArtworkProtocol),
@@ -577,6 +579,8 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     postMediaPlayerSleepPrevention(importedSettings.mediaPlayerSleepPrevention);
                     postMediaPlayerSleepPreventionEntity(importedSettings.mediaPlayerSleepPreventionEntity);
                     postCoverArtPlaybackControl(importedSettings.coverArtPlaybackControl);
+                    if (s.cover_art_track_controls !== undefined)
+                        postCoverArtTrackControls(importedSettings.coverArtTrackControls);
                     postCoverArtScreensaver(importedSettings.coverArtScreensaver);
                     if (state.clockDateSupported) controllers.clockBarPostApi.postClockDate(importedSettings.clockDate);
                     if (state.clockOverlaySupported) postClockOverlay(importedSettings.clockOverlay);
@@ -666,6 +670,8 @@ export function createAppBackupFeature(controllers: AppBackupControllers): AppBa
                     state.coverArtAttributeConditions = importedSettings.coverArtAttributeConditions;
                     state.coverArtDelay = importedSettings.coverArtDelay;
                     state.coverArtPlaybackControlOn = importedSettings.coverArtPlaybackControl;
+                    if (s.cover_art_track_controls !== undefined)
+                        state.coverArtTrackControlsOn = importedSettings.coverArtTrackControls;
                     state.coverArtTrackOverlayDuration = importedSettings.coverArtTrackOverlayDuration;
                     state.coverArtHideExternalInputOn = importedSettings.coverArtHideExternalInput;
                     state.homeAssistantArtworkProtocol = importedSettings.coverArtHomeAssistantProtocol;

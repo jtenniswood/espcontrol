@@ -35,6 +35,7 @@ Open **Screen > Sleep & Schedule > Cover Art Screen Saver** on your [device setu
 | **Show After** | Choose how long to wait after the last touch before showing artwork. |
 | **Show Track Details For** | Set the detail timeout on 4-inch square panels, including Never and Always. |
 | **Persistent Play/Pause Control** | Show or hide the playback button on 4-inch square panels. Larger panels show it whenever playback control is allowed by PIN protection. |
+| **Show Track Controls** | Show Previous, Pause and Next in a pill while the media player is playing. Off by default. When paused, the round Resume button is available wherever the round playback control is enabled. Track skipping requires an unlocked screen. |
 
 With Keep Screen Awake off, Timer or Sensor screensaver mode can still show eligible artwork when sleep activates. With Screensaver Disabled, artwork uses Show After. A time-based [Night Schedule](/settings/sleep#night-schedule) takes priority during night hours.
 

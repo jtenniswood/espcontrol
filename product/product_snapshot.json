@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 10,
     "cardTypes": 45,
-    "entityNames": 116,
+    "entityNames": 117,
     "icons": 503,
     "structuralIcons": 28,
     "compatibilityFixtureGroups": 2
@@ -7676,6 +7676,19 @@
           "screen_saver__cover_art_playback_control",
           "screen_saver_cover_art_playback_control",
           "cover_art_playback_control_enabled"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_saver_cover_art_track_controls",
+        "domain": "switch",
+        "name": "Screen Saver: Cover Art Track Controls",
+        "objectIds": [
+          "screen_saver__cover_art_track_controls",
+          "screen_saver_cover_art_track_controls",
+          "cover_art_track_controls_enabled"
         ],
         "groups": [
           "settings"

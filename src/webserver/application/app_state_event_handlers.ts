@@ -267,6 +267,10 @@ export function createAppStateEventHandlersFeature(
                 state.coverArtPlaybackControlOn = d.value === true || val === "ON";
                 syncCoverArtScreensaverUi();
             },
+            "switch-screen_saver__cover_art_track_controls": function (this: any, val?: any, d?: any) {
+                state.coverArtTrackControlsOn = d.value === true || val === "ON";
+                syncCoverArtScreensaverUi();
+            },
             "switch-screen_saver__cover_art": function (this: any, val?: any, d?: any) {
                 state.coverArtScreensaverOn = d.value === true || val === "ON";
                 syncCoverArtScreensaverUi();

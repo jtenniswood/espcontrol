@@ -530,6 +530,8 @@
 - "\U000F4080"  # material-symbol-airplanemode-inactive
 # --- GENERATED:ICONS END ---
 
-# Filled Material Symbols for the cover art screensaver playback button.
+# Filled Material Symbols for the cover art screensaver playback controls.
 - "\U000F5000"  # play_arrow
 - "\U000F5001"  # pause
+- "\U000F5002"  # skip_previous
+- "\U000F5003"  # skip_next

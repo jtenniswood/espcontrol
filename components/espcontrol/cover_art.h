@@ -291,13 +291,14 @@ class PlaybackControl {
     return command_;
   }
 
-  void observe(const std::string &entity, const std::string &state, uint32_t now) {
+  void observe(const std::string &entity, const std::string &state, uint32_t now,
+               bool can_resume = true) {
     expire(now);
     if (entity != entity_) { reset(); return; }
     if (state == "paused") {
       if (command_ == PlaybackCommand::PAUSE) {
-        retained_ = true;
-        command_ = PlaybackCommand::NONE;
+        retained_ = can_resume;
+        cancel_pending();
       }
     } else if (state == "playing" || state == "buffering") {
       if (command_ != PlaybackCommand::PAUSE) reset();
@@ -438,6 +439,21 @@ inline PlaybackButtonLayout playback_button_layout(const Layout &layout, int tit
   // The button's reserved band supplies the bottom spacing on square screens.
   const int bottom_padding = layout.title_max_lines > 0 ? 0 : layout.panel_padding;
   return {size, margin, width, height, title_height, bottom_padding};
+}
+
+struct TrackControlsLayout {
+  int width, height, panel_y, panel_height;
+};
+inline TrackControlsLayout track_controls_layout(const Layout &layout, const PlaybackButtonLayout &playback) {
+  const bool portrait = layout.split && layout.screen_height > layout.screen_width;
+  // Leave room for a title, artist and elapsed time above either control in portrait.
+  const int height = portrait ? playback.size * 3 / 4 : playback.size;
+  const int panel_y = portrait ? layout.art_y + layout.art_size + playback.margin / 2 : layout.panel_y;
+  const int panel_height = portrait
+      ? std::min(layout.panel_height, layout.screen_height - panel_y -
+                 std::max(height + 2 * playback.margin, playback.size + playback.margin))
+      : playback.panel_height;
+  return {height * 5 / 2, height, panel_y, panel_height};
 }
 
 inline int artist_height_budget(int panel_height, int title_height, int line_height,

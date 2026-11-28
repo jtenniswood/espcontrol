@@ -66,6 +66,10 @@ struct Select { std::string option; std::string current_option() { return option
 bool screen_rotation_ready = false;
 int display_rotation = -1;
 auto *cover_art_playback_button = &button;
+lv_obj_t previous, pause, next;
+auto *cover_art_track_previous_icon = &previous;
+auto *cover_art_track_pause_icon = &pause;
+auto *cover_art_track_next_icon = &next;
 #define id(x) x
 ''' + helpers + "\nvoid cover_art_apply_responsive_layout() {\n" + compensation + r'''
 }
@@ -79,6 +83,9 @@ void check(const std::string &option) {
   const bool portrait = option == "90" || option == "270";
   assert(button.x == (portrait ? 256 : 243));
   assert(button.y == (portrait ? 243 : 256));
+  for (auto *icon : {&previous, &pause, &next}) {
+    assert(icon->x == button.x && icon->y == button.y);
+  }
   assert(display_rotation == (std::stoi(option) + 180) % 360);
   // Standalone icons use the same rotated axis, preserving their chosen zoom.
   apply_icon_width_compensation(&icon, 180);

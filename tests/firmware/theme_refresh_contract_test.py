@@ -28,7 +28,11 @@ cover_art = (DEVICE / "screen_cover_art.yaml").read_text(encoding="utf-8")
 assert not re.search(r"register_theme_|apply_current_theme|current_theme\(\)", cover_art)
 assert "${cover_art_text_color}" in cover_art
 assert "espcontrol::cover_art::playback_icon_color(" in cover_art
-assert "lv_obj_set_style_text_color(id(cover_art_playback_icon), lv_color_hex(icon_color)" in cover_art
+playback_icons = re.search(r"for \(auto \*icon : \{([^}]+)\}\) \{\s*"
+                           r"lv_obj_set_style_text_color\(icon, lv_color_hex\(icon_color\)", cover_art)
+assert playback_icons is not None
+for icon in ("playback", "track_previous", "track_pause", "track_next"):
+    assert f"id(cover_art_{icon}_icon)" in playback_icons.group(1)
 assert not re.search(r"\$theme_\w+", cover_art)
 assert "bg_color: 0x313131" in cover_art
 assert "text_color: 0xFFFFFF" in cover_art
