@@ -70,6 +70,42 @@ api:
         cover_stop_cancel_pending_request();
 
 script:
+  - id: ha_reload_entry_after_firmware_change
+    then:
+      - lambda: |-
+          if (!ha_api_state_connected()) return;
+
+          const auto build_time = static_cast<uint32_t>(App.get_build_time());
+          auto &last_build_time = id(ha_last_connected_firmware_build);
+          if (build_time == 0 || last_build_time == build_time) return;
+
+          // A saved layout identifies existing panels upgrading from firmware
+          // that did not record its build time.
+          if (last_build_time != 0 || !id(button_order).state.empty()) {
+            char mac[esphome::MAC_ADDRESS_PRETTY_BUFFER_SIZE];
+            esphome::get_mac_address_pretty_into_buffer(mac);
+
+            esphome::api::HomeassistantActionRequest request;
+            if (!ha_action_begin(request, "homeassistant.reload_config_entry", false, 0)) return;
+            request.variables.init(1);
+            request.data_template.init(1);
+            ha_action_add_variable(request, "panel_mac", mac);
+            // Every display exposes a backlight light. Match by hardware MAC
+            // so the request also works after renaming the device or entity.
+            ha_action_add_data_template(request, "entry_id", R"jinja(
+              {%- for entity in integration_entities('esphome') if entity.startswith('light.') -%}
+                {%- if ('mac', panel_mac | lower) in (device_attr(entity, 'connections') or []) -%}
+                  {{- config_entry_id(entity) -}}
+                  {%- break -%}
+                {%- endif -%}
+              {%- endfor -%}
+            )jinja");
+            if (!ha_action_send(request)) return;
+            ESP_LOGI("api", "Requested Home Assistant ESPHome entry reload after firmware update");
+          }
+          // Reloading reconnects the panel, so consume the request once per build.
+          last_build_time = build_time;
+
   # Only one connection's delayed recovery work may be alive at a time.
   # Diagnostic log clients must neither start nor cancel Home Assistant work.
   - id: ha_refresh_after_connect
@@ -115,6 +151,7 @@ script:
             - script.execute: backlight_recalc_sunrise_sunset
             - script.execute: screen_schedule_check
             - delay: 8s
+            - script.execute: ha_reload_entry_after_firmware_change
             - lambda: |-
                 if (ha_api_connected()) refresh_image_cards();
                 if (ha_api_state_connected()) {
@@ -122,6 +159,7 @@ script:
                   ha_flush_deferred_state_requests();
                 }
             - delay: 20s
+            - script.execute: ha_reload_entry_after_firmware_change
             - lambda: |-
                 if (ha_api_connected()) refresh_image_cards();
                 if (ha_api_state_connected()) {
@@ -129,11 +167,18 @@ script:
                   ha_flush_deferred_state_requests();
                 }
             - delay: 25s
+            - script.execute: ha_reload_entry_after_firmware_change
             - lambda: |-
                 if (ha_api_state_connected()) {
                   refresh_weather_forecast_cards();
                   ha_flush_deferred_state_requests();
                 }
+globals:
+  - id: ha_last_connected_firmware_build
+    type: uint32_t
+    restore_value: true
+    initial_value: '0'
+
 interval:
   - interval: 5s
     then:
