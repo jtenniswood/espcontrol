@@ -13,7 +13,7 @@ import re
 GROUPS = (
     ("button_grid_sliders.h", "", (
         "slider_deferred_geometry_refresh_cb", "slider_geometry_refresh_event_cb",
-        "slider_detach_runtime", "slider_geometry_delete_event_cb",
+        "slider_clear_value_hold", "slider_detach_runtime", "slider_geometry_delete_event_cb",
         "slider_bind_geometry_refresh",
     )),
     ("button_grid_media.h", "", (

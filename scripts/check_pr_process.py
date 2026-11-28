@@ -28,6 +28,12 @@ TEMPLATE_CHECKLIST_ITEMS = (
     "Ready to merge after user confirmation",
     ISSUE_CONFIRMATION,
 )
+AFFECTED_DEVICES = re.compile(
+    r"^ {0,3}(?:[-*+] +)?(?:\*\*)?"
+    r"Affected (?:displays?(?:/devices?)?|devices?)(?:, if applicable)?"
+    r"(?:\*\*)?:(?:\*\*)?[ \t]*(?P<inline>[^\r\n]*)",
+    re.IGNORECASE | re.MULTILINE,
+)
 
 
 def section_text(text: str, heading: str) -> str:
@@ -55,10 +61,8 @@ def has_heading(text: str, heading: str) -> bool:
 
 def uses_pr_template(body: str) -> bool:
     heading_count = sum(has_heading(body, heading) for heading in REQUIRED_BODY_HEADINGS)
-    if heading_count == len(REQUIRED_BODY_HEADINGS):
-        return True
-
-    if heading_count >= 2:
+    # Free-form descriptions can also have Documentation decision and Testing sections.
+    if heading_count >= 2 and any(has_heading(body, heading) for heading in (STATUS_HEADING, ISSUE_HEADING)):
         return True
 
     template_checklist_count = sum(
@@ -70,13 +74,21 @@ def uses_pr_template(body: str) -> bool:
 
 
 def docs_notes(section: str) -> str:
-    match = re.search(r"^Docs notes:\s*$", section, re.MULTILINE)
-    if not match:
-        return ""
+    notes = re.sub(r"^ {0,3}- \[[ xX]\][^\r\n]*", "", section, flags=re.MULTILINE)
+    notes = re.sub(r"^ {0,3}Docs notes:[ \t]*", "", notes, flags=re.MULTILINE)
+    return notes_body(notes)
 
-    notes = section[match.end() :].strip()
-    notes = re.sub(r"^\s*-\s*$", "", notes, flags=re.MULTILINE).strip()
-    return notes
+
+def has_affected_device(testing: str) -> bool:
+    match = AFFECTED_DEVICES.search(testing)
+    if not match:
+        return False
+
+    if notes_body(match["inline"]):
+        return True
+
+    details = testing[match.end() :].lstrip()
+    return bool(re.match(r"[-*+][ \t]+(?!\[[ xX]\])\S", details))
 
 
 def notes_body(section: str) -> str:
@@ -131,7 +143,7 @@ def assert_pr_body_ready(body: str) -> None:
     selected_text = selected[0].lower()
     if "no docs needed" in selected_text or "follow-up" in selected_text:
         assert docs_notes(section), (
-            "Add a short Docs notes explanation when docs were not updated or are "
+            "Add a short explanation under Documentation decision when docs were not updated or are "
             "planned as a follow-up."
         )
 
@@ -148,10 +160,9 @@ def assert_pr_body_ready(body: str) -> None:
     assert len(testing_choices) == 1, "Choose exactly one device testing requirement."
 
     if "device testing is required" in testing_choices[0].lower():
-        assert "Affected display/device" in testing, "PR body is missing the affected device prompt."
-        after_prompt = testing.split("Affected display/device", 1)[1]
-        assert re.search(r"^\s*-\s+\S+", after_prompt, re.MULTILINE), (
-            "Name the affected display/device when device testing is required."
+        assert has_affected_device(testing), (
+            "Name the affected display/device under Testing, for example "
+            "'Affected devices: 7-inch Guition JC1060P470'."
         )
     else:
         testing_notes = section_text(body, "Notes for testing")
@@ -227,6 +238,20 @@ Affected display/device, if applicable:
     no_docs = no_docs.replace("- [ ] No docs needed", "- [x] No docs needed")
     no_docs = no_docs.replace("- Updated docs/features/example.md.", "- Internal script-only change.")
     assert_pr_body_ready(no_docs)
+    assert_pr_body_ready(no_docs.replace("Docs notes:\n\n- ", ""))
+    assert_pr_body_ready(no_docs.replace("Docs notes:\n\n- ", "Docs notes: "))
+
+    device_prompt = "Affected display/device, if applicable:\n\n- Guition JC1060P470"
+    assert_pr_body_ready(valid.replace(device_prompt, "**Affected devices:** Guition JC1060P470"))
+    assert_pr_body_ready(valid.replace(device_prompt, "Affected display:\n\n- Guition JC1060P470"))
+
+    for device_field in ("", "Affected devices:\n\n-", "Affected devices:\n\n- [x] Local checks passed."):
+        try:
+            assert_pr_body_ready(valid.replace(device_prompt, device_field))
+        except AssertionError as error:
+            assert str(error).startswith("Name the affected display/device under Testing")
+        else:
+            raise AssertionError("self-test expected missing affected device to fail")
 
     missing_choice = valid.replace("- [x] Updated", "- [ ] Updated")
     try:
@@ -297,6 +322,16 @@ Documentation-only wording change.
 - [x] Device testing is not required because this only changes docs.
 """
     assert_pr_body_ready(freeform_with_template_checkbox)
+
+    freeform_docs_decision = """## Documentation decision
+
+This restores existing behavior and needs no configuration changes.
+
+## Testing
+
+- [x] Camera runtime tests passed.
+"""
+    assert_pr_body_ready(freeform_docs_decision)
 
     partial_template = valid.replace("## PR status", "## Next steps")
     try:

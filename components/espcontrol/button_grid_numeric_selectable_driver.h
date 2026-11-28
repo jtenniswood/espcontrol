@@ -91,10 +91,11 @@ inline bool numeric_selectable_driver_attach_interaction(
 }
 
 inline bool numeric_selectable_driver_refresh_layout(
-    BtnSlot &slot, const ParsedCfg &config, const Context &context) {
+    BtnSlot &slot, const ParsedCfg &config, const Context &context,
+    const DisplayProfile &display, lv_coord_t label_max_height = LV_COORD_MAX) {
   if (!numeric_selectable_driver_matches(context, config)) return false;
   if (numeric_selectable_driver_slider(context)) {
-    refresh_slider_card_layout(slot);
+    refresh_slider_card_layout(slot, &display, label_max_height);
   }
   return true;
 }
@@ -165,7 +166,7 @@ inline void numeric_selectable_driver_bind_slider(
     slot.btn, slot.icon_lbl, slider, has_icon_on, icon_off, icon_on,
     config.entity, false);
   if (config.label.empty()) {
-    subscribe_friendly_name(slot.text_lbl, config.entity);
+    subscribe_friendly_name_preserving_layout(slot.text_lbl, config.entity);
   }
 }
 

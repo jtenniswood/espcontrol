@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include "button_grid_card_sublabel.h"
 #include "rainfall_display.h"
 
 // Forecast widgets exist only on configured forecast cards. The modal allocates
@@ -177,7 +178,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     lv_obj_set_height(col.day, font_height);
     lv_obj_set_height(col.high, temperature_height);
     lv_obj_set_pos(col.day, x, text_top);
-    lv_obj_set_pos(col.high, x, text_top + font_height + 2);
+    lv_obj_set_pos(col.high, x, text_top + font_height + CARD_SUBLABEL_GAP);
     std::string date = card->view == WeatherForecastView::TOMORROW
       ? espcontrol_i18n(std::string("Tomorrow")) : weather_daily_date_label(day, forecast);
     // Columns may be created after the card foreground was synchronized.
@@ -190,9 +191,7 @@ inline void weather_daily_render_card(WeatherDailyCard *card) {
     const auto high = card->view == WeatherForecastView::RAINFALL
       ? espcontrol::rainfall::amount(day.precipitation, forecast.precipitation_unit)
       : weather_daily_temperature_range(day, forecast.temperature_unit);
-    // Blend secondary text with the card surface instead of painting opaque grey.
-    lv_obj_set_style_text_color(col.high, foreground, LV_PART_MAIN);
-    lv_obj_set_style_text_opa(col.high, LV_OPA_70, LV_PART_MAIN);
+    apply_card_sublabel_style(col.high, card->owner, card->temperature_font);
     lv_label_set_display_text(col.high, high.c_str());
   }
 }

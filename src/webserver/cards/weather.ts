@@ -225,7 +225,7 @@ export function registerWeatherCardTypes(
                 return {
                     buttonClass: "sp-weather-wind-card",
                     iconHtml: '<span class="sp-btn-icon mdi mdi-arrow-top-right"></span>',
-                    labelHtml: '<span class="sp-btn-label">North East<span class="sp-weather-wind-speed">12.5 km/h</span></span>',
+                    labelHtml: '<span class="sp-btn-label">North East<span class="sp-weather-wind-speed sp-card-sublabel sp-card-sublabel-line">12.5 km/h</span></span>',
                     labelEditable: false,
                 };
             }
@@ -236,7 +236,7 @@ export function registerWeatherCardTypes(
                 return {
                     buttonClass: "sp-rainfall-card",
                     iconHtml: '<span class="sp-btn-icon mdi mdi-' + reading.icon + '"></span>',
-                    labelHtml: '<span class="sp-btn-label">' + reading.label + '<span class="sp-rainfall-value">' + sample + '</span></span>',
+                    labelHtml: '<span class="sp-btn-label">' + reading.label + '<span class="sp-rainfall-value sp-card-sublabel sp-card-sublabel-line">' + sample + '</span></span>',
                     labelEditable: false,
                 };
             }
@@ -246,7 +246,7 @@ export function registerWeatherCardTypes(
                 else if (b.precision === "tomorrow") samples = samples.slice(1, 2).map(([, condition, temperature]) => ["Tomorrow", condition, temperature]);
                 return {
                     buttonClass: "sp-weather-daily-card",
-                    iconHtml: '<span class="sp-weather-days">' + samples.map((day) => '<span class="sp-weather-day" data-weather-weekday="' + (day[0] === "Today" ? "Mon" : day[0] === "Tomorrow" ? "Tue" : day[0]) + '"><span class="mdi mdi-' + day[1] + '"></span><span>' + day[0] + '</span><span class="sp-weather-temperature-high">' + day[2] + '</span></span>').join("") + '</span>',
+                    iconHtml: '<span class="sp-weather-days">' + samples.map((day) => '<span class="sp-weather-day" data-weather-weekday="' + (day[0] === "Today" ? "Mon" : day[0] === "Tomorrow" ? "Tue" : day[0]) + '"><span class="mdi mdi-' + day[1] + '"></span><span>' + day[0] + '</span><span class="sp-weather-temperature-high sp-card-sublabel">' + day[2] + '</span></span>').join("") + '</span>',
                     labelHtml: "",
                 };
             }

@@ -2,6 +2,7 @@
 #include <cassert>
 #include <functional>
 #include <string>
+#include <string_view>
 #include "camera_refresh_policy.h"
 #include "artwork_controller.h"
 #include "../artwork_image/image_pipeline_policy.h"
@@ -54,6 +55,7 @@ struct ImageCardCtx {
   uint32_t retry_deadline_ms = 0, last_tile_request_started_ms = 0;
   uint32_t access_token_request_started_ms = 0;
   std::string entity_id = "image.test", source_url = "http://ha/image?token=old", url, access_token;
+  std::string rejected_camera_token;
   uint8_t media_artwork_retry_mask = 0;
   uint32_t last_download_completed_ms = 99000, next_picture_retry_ms = 0, next_download_retry_ms = 0;
   uint32_t revision_retry_ms = 0;
@@ -73,7 +75,6 @@ constexpr uint32_t IMAGE_CARD_MODAL_REFRESH_DELAY_MS = 1000;
 constexpr uint32_t IMAGE_CARD_RETRY_INTERVAL_MS = 2000;
 FakeImage tile, modal;
 ImageCardCtx contexts[2];
-constexpr uint32_t IMAGE_CARD_API_RETRY_INTERVAL_MS = 250;
 constexpr int IMAGE_CARD_STARTUP_DOWNLOAD_RETRIES = 3;
 bool enough_memory = true;
 ImageCardCtx *active_download = nullptr;
@@ -112,14 +113,21 @@ bool image_card_context_visible_on_active_screen(ImageCardCtx *ctx) { return ima
 bool image_card_has_separate_modal_image(ImageCardCtx *) { return true; }
 std::string string_ref_limited(const std::string &s, size_t n) { return s.substr(0, n); }
 std::string image_card_base_url(ImageCardCtx *) { return "http://ha"; }
-std::string image_card_join_url(const std::string &, const std::string &s) { return s; }
-std::string image_card_entity_proxy_path(const std::string &) { return ""; }
 std::string image_card_proxy_path_with_token(const std::string &s, const std::string &) { return s; }
 bool image_card_valid_access_token(const std::string &) { return true; }
 bool image_card_home_assistant_proxy_authed(const std::string &) { return true; }
 bool ha_read_retained_attribute(const std::string &, const std::string &,
                                 std::function<void(std::string)>, void * = nullptr) {
   return false;
+}
+constexpr uint32_t HA_SUBSCRIPTION_SCOPE_DEFAULT = 1;
+int camera_metadata_refreshes = 0;
+void ha_schedule_metadata_refresh(const std::string &entity,
+                                  std::initializer_list<const char *> attributes,
+                                  uint32_t scope) {
+  assert(entity == "camera.test" && scope == HA_SUBSCRIPTION_SCOPE_DEFAULT);
+  assert(attributes.size() == 1 && std::string_view(*attributes.begin()) == "entity_picture");
+  ++camera_metadata_refreshes;
 }
 void image_card_log_diagnostics(ImageCardCtx *, const char *, int = 0, int = 0) {}
 void image_card_hide(ImageCardCtx *) {}
@@ -154,7 +162,7 @@ void reset() {
   image_card_page_visible() = nullptr;
   contexts[0].image = &tile;
   contexts[0].modal_image = &modal;
-  tile_requests = modal_requests = 0;
+  tile_requests = modal_requests = camera_metadata_refreshes = 0;
   connected = true;
   esphome::now = 100000;
 }
@@ -166,6 +174,41 @@ void finish_tile() {
   ctx.revision.tile_applied = ctx.revision.tile_requested;
 }
 int main() {
+  // Both views size their requests independently but share the camera token.
+  // The retry loop and retained metadata must wait for a different token.
+  const std::string old_picture = "http://ha/api/camera_proxy/camera.test?token=old";
+  const std::string new_picture = "http://ha/api/camera_proxy/camera.test?token=new";
+  for (bool expanded : {false, true}) {
+    reset();
+    auto &card = contexts[0];
+    card.entity_id = "camera.test";
+    card.modal = expanded;
+    card.source_url = old_picture;
+    card.next_download_retry_ms = esphome::now + 2000;
+    const std::string failed_url = old_picture + (expanded ? "&width=480" : "&width=150");
+    image_card_reject_camera_token(&card, 403, failed_url);
+    image_card_reject_camera_token(&card, 401, "http://ha/unrelated?token=old");
+    image_card_reject_camera_token(&card, 401, "http://ha/api/camera_proxy/camera.other?token=old");
+    assert(card.source_url == old_picture && card.next_download_retry_ms == esphome::now + 2000);
+    assert(camera_metadata_refreshes == 0);
+
+    image_card_reject_camera_token(&card, 401, failed_url);
+    assert(card.source_url.empty() && card.next_download_retry_ms == 0);
+    assert(camera_metadata_refreshes == 1);
+    esphome::now += 30000;
+    image_card_refresh_due();
+    image_card_handle_picture(&card, "/api/camera_proxy/camera.test?token=old");
+    assert(tile_requests == 0 && modal_requests == 0 && card.source_url.empty());
+
+    image_card_handle_picture(&card, "/api/camera_proxy/camera.test?token=new");
+    assert(card.source_url == new_picture);
+    assert(tile_requests == !expanded && modal_requests == expanded);
+    image_card_handle_picture(&card, "/api/camera_proxy/camera.test?token=old");
+    image_card_reject_camera_token(&card, 401, failed_url);
+    assert(card.source_url == new_picture);  // A late event cannot remove a newer source.
+    assert(tile_requests == !expanded && modal_requests == expanded);
+  }
+
   // Returning to a cached image on a subpage must reload discarded playback
   // even when its HA revision and URL are unchanged. Hidden pages stay quiet.
   reset();

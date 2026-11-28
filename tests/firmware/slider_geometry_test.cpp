@@ -20,9 +20,17 @@ bool maps_position_to(int32_t pointer_y, int32_t top, int32_t bottom,
 }  // namespace
 
 int main() {
+  using espcontrol::slider_geometry::title_height_for_space;
   using espcontrol::slider_geometry::vertical_edge_inset;
   using espcontrol::slider_geometry::vertical_pointer_percent;
   using espcontrol::slider_geometry::vertical_pointer_position;
+
+  // The compact S3 tile can fit one complete title line above the value.
+  constexpr int compact_title_space = 139 - 14 - 44 - 14 - 26 - 2;
+  if (title_height_for_space(compact_title_space, 22, 0) != 22) return EXIT_FAILURE;
+  if (title_height_for_space(44, 22, 2) != 22) return EXIT_FAILURE;
+  if (title_height_for_space(46, 22, 2) != 46) return EXIT_FAILURE;
+  if (title_height_for_space(10, 22, 2) != 0) return EXIT_FAILURE;
 
   if (vertical_edge_inset(0) != 0) return EXIT_FAILURE;
   if (vertical_edge_inset(20) != 5) return EXIT_FAILURE;
