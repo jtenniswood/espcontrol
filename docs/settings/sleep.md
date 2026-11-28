@@ -170,7 +170,7 @@ Turning **Display Backlight** off directly during a temporary night wake ends th
 
 Under **Diagnostic** on the panel’s Home Assistant device page, **Screen: Display Source** shows which rule is controlling the display. For example, `manual_sleep` means the display is sleeping on request, `screen_schedule` means the night schedule is in charge, and `idle_timer` means the screensaver timer has taken over. It can also show a temporary display takeover, such as `critical` for a critical alert.
 
-If the new controls are missing after a firmware update, reload the panel’s ESPHome integration entry in Home Assistant.
+After a firmware update, the panel can request a one-time reload of its ESPHome integration entry if [Home Assistant actions](/getting-started/home-assistant-actions) are enabled. If the new controls are still missing, reload the panel’s ESPHome entry in Home Assistant.
 
 ## PIN Protection {#pin-protection-after-wake}
 
