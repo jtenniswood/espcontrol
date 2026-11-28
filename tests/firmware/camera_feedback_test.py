@@ -29,6 +29,7 @@ source = r'''
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <string_view>
 #include "camera_refresh_policy.h"
 #include "image_pipeline_policy.h"
 uint32_t now_ms = 0;
@@ -66,9 +67,12 @@ struct ImageCardCtx {
  Image *image = nullptr, *modal_image = nullptr;
  Widget *widget = nullptr, *btn = nullptr;
  std::string entity_id = "camera.front", source_url = "snapshot", url = "snapshot";
+ std::string base_url = "http://ha:8123";
+ std::function<std::string()> base_url_provider;
  std::string modal_url = "snapshot", modal_source_url = "snapshot";
  std::function<void(espcontrol::DisplayTakeoverKind)> end_display_takeover;
  bool requested_once = false, access_token_request_pending = false, camera_refresh_pending = false;
+ bool camera_auth_refresh_pending = false;
  bool scheduled_tile_request = false;
  bool media_artwork_refresh_forced = false;
  uint32_t retry_deadline_ms = 0, media_artwork_retry_mask = 0, media_artwork_timeout_retries = 0;
@@ -155,6 +159,14 @@ constexpr uint32_t IMAGE_CARD_STARTUP_DOWNLOAD_RETRIES = 10;
 constexpr int IMAGE_CARD_MAX_CONTEXTS = 1;
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_DEFAULT = 1;
 uint32_t ha_subscription_generation() { return 1; }
+int scheduled_picture_reads = 0;
+void ha_schedule_metadata_refresh(const std::string &entity, std::initializer_list<const char *> attrs,
+                                  uint32_t scope) {
+ assert(entity == "camera.front");
+ assert(attrs.size() == 1 && std::string(*attrs.begin()) == "entity_picture");
+ assert(scope == HA_SUBSCRIPTION_SCOPE_DEFAULT);
+ ++scheduled_picture_reads;
+}
 bool image_card_context_current(ImageCardCtx *, const std::string &, uint32_t) { return true; }
 std::string string_ref_limited(const std::string &v, size_t n) { return v.substr(0,n); }
 std::function<void(std::string)> state_callback;
@@ -195,6 +207,9 @@ for name in ('image_card_startup_retry_active', 'image_card_schedule_picture_ret
              'image_card_finish_scheduled_tile_request', 'image_card_handle_download_error',
              'image_card_modal_has_tile_fallback',
              'image_card_modal_cache_matches', 'image_card_modal_needs_open_refresh',
+             'image_card_join_url', 'image_card_base_url', 'image_card_entity_proxy_path',
+             'image_card_query_has_param', 'image_card_camera_proxy_for_entity',
+             'image_card_refresh_rejected_camera_url', 'image_card_apply_camera_auth_refresh',
              'image_card_apply_entity_state', 'subscribe_image_card_entity_state',
              'image_card_refresh_entity_state',
              'image_card_hide_modal', 'image_card_apply_modal_downloaded',
@@ -240,6 +255,29 @@ void screensaver_download_error() {
 ''' + error_callback + '\n}\n'
 source += r'''
 int main() {
+ ImageCardCtx rejected;
+ rejected.source_url = "http://ha:8123/api/camera_proxy/camera.front?token=old";
+ rejected.access_token = "old";
+ rejected.next_download_retry_ms = 4000;
+ image_card_refresh_rejected_camera_url(&rejected, 500, rejected.source_url);
+ image_card_refresh_rejected_camera_url(
+     &rejected, 403, "http://ha:8123/api/camera_proxy/camera.other?token=old");
+ assert(!rejected.camera_auth_refresh_pending && scheduled_picture_reads == 0);
+ assert(!image_card_apply_camera_auth_refresh(&rejected, "unavailable"));
+
+ image_card_refresh_rejected_camera_url(&rejected, 403, rejected.source_url);
+ assert(rejected.camera_auth_refresh_pending && scheduled_picture_reads == 1);
+ assert(image_card_apply_camera_auth_refresh(
+     &rejected, "/api/camera_proxy/camera.front?token=#fragment"));
+ assert(rejected.camera_auth_refresh_pending && rejected.source_url ==
+        "http://ha:8123/api/camera_proxy/camera.front?token=old");
+ assert(image_card_apply_camera_auth_refresh(
+     &rejected, "/api/camera_proxy/camera.front?token=fresh"));
+ assert(!rejected.camera_auth_refresh_pending && rejected.source_url ==
+        "http://ha:8123/api/camera_proxy/camera.front?token=fresh");
+ assert(rejected.access_token == "fresh" && rejected.next_download_retry_ms == 4000);
+ assert(tile_requests == 0 && modal_requests == 0);
+
  // Follow runtime palette changes on tiles, open expanded images, and a
  // retained modal cache. Crop and media artwork remain image-owned.
  for (bool fit : {false, true}) {
