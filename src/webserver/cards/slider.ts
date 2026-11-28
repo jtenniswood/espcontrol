@@ -375,13 +375,17 @@ export function registerSliderCardTypes(
                         labelHtml: cardBadgeLabelHtml(helpers, label, metadata.preview.badge),
                     };
                 }
+                const domain = (b.entity || "").split(".")[0];
+                const sublabel = opts.type === "slider"
+                    ? (domain === "number" || domain === "input_number" ? "21.5" : "80%")
+                    : undefined;
                 return {
                     buttonClass: opts.type === "cover" ? "sp-cover-preview" : "",
                     iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>' +
                         '<span class="sp-slider-preview"><span class="sp-slider-track">' +
                         '<span class="sp-slider-fill"></span>' +
                         '</span></span>',
-                    labelHtml: cardBadgeLabelHtml(helpers, label, metadata.preview.badge),
+                    labelHtml: cardBadgeLabelHtml(helpers, label, metadata.preview.badge, sublabel),
                 };
             },
         };
